@@ -1,0 +1,8 @@
+{
+  "name": "innovation-platform",
+  "description": "Build and ship apps on the davidlaporte.org Innovation Platform: create an app via the inno-platform MCP server, scaffold a Starlette container under app/ per platform conventions, containerize it, run the security gates locally before pushing, ship through CI/CD, and manage access to a live app.",
+  "author": {
+    "name": "David LaPorte"
+  },
+  "mcpServers": "./.mcp.json"
+}

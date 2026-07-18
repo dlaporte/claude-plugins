@@ -1,0 +1,19 @@
+{
+  "name": "davidlaporte",
+  "description": "David LaPorte's Claude Code plugins for the davidlaporte.org homelab Innovation Platform and future tools.",
+  "owner": {
+    "name": "David LaPorte"
+  },
+  "metadata": {
+    "pluginRoot": "./plugins"
+  },
+  "plugins": [
+    {
+      "name": "innovation-platform",
+      "source": "innovation-platform",
+      "description": "Build and ship apps on the davidlaporte.org Innovation Platform: create an app via the inno-platform MCP server, scaffold a Starlette container under app/ per platform conventions, containerize it, run the security gates locally before pushing, ship through CI/CD, and manage access to a live app.",
+      "category": "development",
+      "homepage": "https://github.com/dlaporte/claude-plugins"
+    }
+  ]
+}
