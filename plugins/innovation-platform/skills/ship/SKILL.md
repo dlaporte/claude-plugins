@@ -9,6 +9,19 @@ Run `preflight` first if it hasn't already passed locally in this session —
 `ship`'s job is committing, pushing, and watching CI, not re-deriving whether
 the code is clean.
 
+## 0. Precondition — the app must actually be built
+
+If `app/.needs-build` still exists in the repo, STOP — this app is still the
+untouched template scaffold. Pushing it deploys nothing (CI's `scaffold-check`
+skips the deploy job by design). Tell the user plainly, e.g. "This app hasn't
+been built yet — let's add your actual app before shipping," and hand back to
+`new-app`/`migrate-app` (or help them build it). Do not delete the marker just
+to force a deploy of an empty scaffold.
+
+```bash
+test -f app/.needs-build && echo "BLOCKED: app/.needs-build present — build the app first" || echo "OK: no scaffold marker"
+```
+
 ## 1. Commit and push to `main`
 
 ```bash

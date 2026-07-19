@@ -86,6 +86,15 @@ so plainly and stop here.
    gate-pinned (the broker's OIDC `job_workflow_ref` check carries that
    enforcement, so editing the caller workflow can't bypass anything;
    it can only break the deploy).
+   Also delete the template's scaffold marker so the migrated app can deploy —
+   it is a hidden file that "replacing the example app" won't remove on its own:
+
+   ```bash
+   rm -f app/.needs-build
+   ```
+
+   (While `app/.needs-build` is present, CI skips deployment and `ship` refuses
+   to push.)
 4. Adapt while porting:
    - entrypoint listens on **8080** and serves **`/healthz`**;
    - auth code deleted, identity read from `X-Forwarded-User` (Python: the

@@ -34,6 +34,21 @@ Confirm all three back to the user before calling the tool — provisioning is
 real (creates a GitHub repo, Okta group, D1 database, R2 bucket) and isn't
 cheap to undo.
 
+## 1b. Design the app before provisioning
+
+Provisioning is real and not cheap to undo, and the user deserves to see what
+they're approving. Before calling `create_app`, produce and present a real
+design — not a one-line summary buried in the tool-approval prompt.
+
+Invoke the **`superpowers:brainstorming`** skill to design the app: what it
+does, its data model (D1 tables / R2 objects), its routes/pages, and its access
+model (who can see and edit). If that skill isn't available in the session,
+run an equivalent inline pass: present the same four points as a short written
+design in the conversation and get explicit user approval.
+
+Only once the user has approved the design do you proceed to `create_app`. The
+design also seeds the scaffolding in §3.
+
 ## 2. Call the MCP tool
 
 Call `create_app` on the `inno-platform` MCP server:
@@ -97,6 +112,16 @@ The cloned repo already contains the platform template: `app/main.py`,
 it. Load the `platform-conventions` skill before writing any application code
 (framework, storage, identity, and the do-not-touch file list), and the
 `containerize` skill before editing the Dockerfile.
+
+**Delete the scaffold marker as you build.** The generated repo ships
+`app/.needs-build`, which makes CI skip deployment until it's removed. Once you
+begin writing the real app (per the approved design), delete it:
+
+```bash
+rm -f app/.needs-build
+```
+
+Leaving it in place means `ship` will refuse to deploy — by design.
 
 Typical scaffolding steps for a new feature:
 - Add routes to `app/main.py` (or split into new modules under `app/`,
