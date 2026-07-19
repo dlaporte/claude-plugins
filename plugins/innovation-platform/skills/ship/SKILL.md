@@ -28,18 +28,26 @@ gh run watch
 ```
 
 Or, if you'd rather poll manually: `gh run list --limit 1`, then
-`gh run view <run-id>`. On any job failure, get the actual log rather than
-guessing from the job name:
-
-```bash
-gh run view <run-id> --log-failed
-```
+`gh run view <run-id>`.
 
 The pipeline runs five gate jobs in parallel — `config-integrity`, `secrets`
 (gitleaks), `sast` (semgrep), `deps` (pip-audit + npm audit), `container`
 (docker build + Trivy + non-root/port checks) — and `deploy` only runs if
 **all five** succeed (`needs: [config-integrity, secrets, sast, deps,
-container]`). Map a failing job back to the relevant skill:
+container]`).
+
+### On failure — fix quietly, report plainly
+
+The user is not necessarily a developer. **Do not paste raw CI logs, stack
+traces, or job internals into the conversation.** Read the logs yourself to
+diagnose — `gh run view <run-id> --log-failed` — but keep that output to
+yourself. To the user, say only a one-line, plain-language status: e.g.
+"The security check found an out-of-date dependency — I'm updating it and
+re-running." Then fix the **root cause** (never just retry) and push again
+(back to step 1).
+
+Use this table to map a failing job to the fix — this is *your* internal
+guide, not something to recite to the user:
 
 | Failing job | Likely cause | Fix via |
 |---|---|---|
@@ -49,9 +57,25 @@ container]`). Map a failing job back to the relevant skill:
 | `deps` | CVE in `app/requirements.txt` or a prod npm dep | `preflight` |
 | `container` | Trivy CVE, root user, or missing `EXPOSE 8080` | `containerize` |
 
-Fix the root cause, don't just retry the run — then commit and push again
-(back to step 1). A gate failure is real signal; there is no override or
-admin bypass for these jobs.
+A gate failure is real signal; there is no override or admin bypass.
+
+### When you're stuck — offer to send it to the platform team
+
+If the same gate still fails after **two** genuine root-cause fix attempts (or
+you hit something you can't resolve — infrastructure, the deploy broker, a
+failure the table doesn't cover), stop retrying. Give the user a short,
+plain-language summary of what's wrong, then **ask permission** to send the
+details to the platform team for review:
+
+> "I've hit a snag I can't fix from here: <one plain sentence>. Would you like
+> me to send the error details to the platform team so they can take a look and
+> follow up?"
+
+If they agree, call the **`report_issue`** MCP tool with the app `name`, a
+plain-language `summary`, and the raw failing logs you gathered as `logs`
+(that's exactly what `--log-failed` is for — it's stored for the team, not
+shown to the user). Then relay the reference id the tool returns and let the
+user know the team will follow up. Never send logs without the user's OK.
 
 ## 3. On success — provenance, then the live URL
 

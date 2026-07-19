@@ -75,6 +75,13 @@ app and confirming they want it gone.
 | `renew_app` | app owner, or `inno-platform-admins` |
 | `decommission_app` | app owner, or `inno-platform-admins` |
 | `create_app` | any signed-in Okta user (becomes the owner) |
+| `report_issue` | app owner, or `inno-platform-admins` |
+| `list_issues` | `inno-platform-admins` only |
+
+`report_issue({ name, summary, logs })` files a diagnostics issue when a
+deploy is stuck (see the `ship` skill's failure flow) — it stores the logs for
+the platform team and emails them. `list_issues` lets a platform admin review
+the open queue for triage.
 
 If you're unsure whether the signed-in user owns an app, call `app_status`
 first — its `forbidden` vs. success response is itself the authorization
