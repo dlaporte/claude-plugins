@@ -36,6 +36,10 @@ from starlette.templating import Jinja2Templates
 app = Starlette(routes=[Route("/healthz", healthz), Route("/", home)])
 ```
 
+This convention binds template-scaffolded apps. An app brought in by the
+`migrate-app` skill may keep its original framework as long as `pip-audit`
+and Trivy stay clean — don't "correct" a migrated app to Starlette.
+
 ## Rendering: Jinja2 with autoescape on, never string-built HTML
 
 `Jinja2Templates(directory="templates")` autoescapes interpolated values by
@@ -107,6 +111,9 @@ fails the build on any difference in:
   request routing, and the storage proxy)
 - `package.json` and the lockfile (`package-lock.json`)
 - `tsconfig.json`
+- `CLAUDE.md`'s required section headers — the gate checks all five
+  headers from the template are present (the rest of the file is yours
+  to extend)
 
 Also do not add a competing `wrangler.json` or `wrangler.toml`, or a
 `.wrangler/` directory — Wrangler's config discovery order (`wrangler.json` >
