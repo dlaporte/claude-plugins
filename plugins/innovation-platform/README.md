@@ -21,8 +21,8 @@ attributable to your real Okta identity, not a shared service credential.
 ## What's in the box
 
 - **`.mcp.json`** — points at `https://inno-platform.davidlaporte.org/mcp`,
-  the platform's remote MCP server (tools: `create_app`, `list_apps`,
-  `app_status`, `grant_access`, `revoke_access`, `renew_app`,
+  the platform's remote MCP server (tools: `create_app`, `check_name`,
+  `list_apps`, `app_status`, `grant_access`, `revoke_access`, `renew_app`,
   `decommission_app`, `get_platform_docs`, `report_issue`, and the
   admin-only `list_issues`).
 - **`skills/new-app`** — intake -> `create_app` -> clone -> scaffold.

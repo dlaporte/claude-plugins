@@ -23,8 +23,16 @@ provisioning, then ports the code rather than scaffolding fresh.
    `^[a-z][a-z0-9-]{2,28}$`). This becomes the GitHub repo `inno-{name}` and
    the live URL `https://inno-{name}.davidlaporte.org`, so keep it short and
    DNS-safe. A handful of names are reserved by the platform (`platform`,
-   `template`, `app`, `replace`) — if `create_app` rejects the name as invalid or reserved,
-   ask for a different one rather than guessing a workaround.
+   `template`, `app`, `replace`).
+
+   **Verify availability before you settle on a name — never recommend or
+   confirm a name without checking it first.** Call the **`check_name`** MCP
+   tool (read-only; provisions nothing) on the candidate. Only proceed with a
+   name it reports as **available**. If it comes back in-use, reserved, or
+   invalid, ask the user for a different one; if it's the caller's *own*
+   existing/decommissioned app, tell them that (and note `create_app` would
+   restore rather than create). `list_apps` shows only the caller's own apps,
+   so it can't confirm a name is free platform-wide — use `check_name`.
 2. **One-line purpose** — becomes the app's `description`.
 3. **Initial members' emails** (optional, can be empty) — Okta
    emails to grant access alongside the owner. The list can be added to later

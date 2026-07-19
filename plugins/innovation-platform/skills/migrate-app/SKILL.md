@@ -56,8 +56,14 @@ order:
    domains, background jobs/cron, and any always-on/websocket assumptions.
 7. **Proposed app name** — must match `^[a-z][a-z0-9-]{2,28}$`; a few names
    are reserved server-side, so have a fallback. The repo becomes
-   `inno-{name}` and the URL `https://inno-{name}.davidlaporte.org`. Also
-   ask who else needs access — optional initial members' Okta emails feed
+   `inno-{name}` and the URL `https://inno-{name}.davidlaporte.org`.
+   **Check the name with the `check_name` MCP tool (read-only) before you
+   propose it — don't recommend a name you haven't confirmed is available.**
+   Only put forward a name `check_name` reports as **available**; if it's
+   in-use/reserved/invalid, pick another, and if it's the caller's own
+   decommissioned app, surface that (`create_app` would restore it). `list_apps`
+   only sees the caller's own apps, so it can't confirm platform-wide freeness.
+   Also ask who else needs access — optional initial members' Okta emails feed
    `create_app`'s `members` and can be added later via `manage-app`.
 
 Close the assessment with an effort summary and the blocker list, then
