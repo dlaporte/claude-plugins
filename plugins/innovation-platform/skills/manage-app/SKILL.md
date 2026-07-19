@@ -1,6 +1,6 @@
 ---
 name: manage-app
-description: Use to share, check on, renew, or tear down a live Innovation Platform app via the inno-platform MCP tools (grant_access, revoke_access, app_status, renew_app, decommission_app). Use when the user wants to give someone access, check deploy status, keep an app alive, or delete one.
+description: Use to share, check on, renew, or tear down a live Innovation Platform app via the inno-platform MCP tools (grant_access, revoke_access, app_status, renew_app, decommission_app). Use when the user wants to give someone access, check deploy status, renew an app that's still in use, or delete one.
 ---
 
 # manage-app
@@ -49,11 +49,22 @@ this" without needing GitHub Actions access.
 
 ## `renew_app({ name })`
 
-Resets the app's idle clock. The platform reclaims resources from apps that
-go unused for too long, so if an app is important but seeing low traffic,
-call this periodically (or set up a reminder) rather than letting it drift
-toward reclamation. This does not redeploy or change anything about the
-running app — it only touches the last-seen/idle timestamp.
+Resets the app's idle clock — **only for an app the user confirms is still in
+active use.** This does not redeploy or change anything about the running app;
+it only touches the last-seen/idle timestamp.
+
+The platform **deliberately** reclaims resources from apps that go unused. That
+idle-reclamation is a cost-control policy, not a malfunction to work around.
+
+**Never offer to schedule or automate renewals** — no cron jobs, reminders,
+recurring `renew_app` calls, keep-alive pings, or "I can set that up to run
+periodically." Artificially holding an idle app open subverts the reclamation
+policy and runs up needless cost, so do not suggest it even if the user seems
+worried about losing the app. Present the honest options instead: keep using
+it (normal traffic and genuine `renew_app` calls reset the clock naturally),
+let it drift to reclamation if it's no longer needed, or `decommission_app` it
+deliberately. Keeping a genuinely-idle app running indefinitely is a
+platform-policy decision for an admin, not something to engineer around here.
 
 ## `decommission_app({ name })` — destructive, confirm first
 
