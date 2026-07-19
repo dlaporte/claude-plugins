@@ -55,6 +55,29 @@ create_app({ name, description, members })
   ```
   The app URL is a 404/unprovisioned until the first successful `ship`.
 
+### `create_app` may CREATE or RESTORE — read the response
+
+`create_app` is idempotent on the name and handles a previously-decommissioned
+app. Branch on what it returns:
+
+- **Created** (text starts with `App "{name}" created.`) — proceed to clone +
+  scaffold (below).
+- **Restored** (text starts with `Restored "{name}".`) — the caller owned a
+  decommissioned app that was still within its retention window; its **data
+  (D1/R2) and repo are intact** and access has been re-provisioned, but it is
+  **not live yet**. Skip scaffolding (the code already exists). Tell the user
+  it's restored, then **offer to redeploy it** — a `git push` to `main` on the
+  existing repo, which kicks off CI/CD (hand to the `ship` skill). Do **not**
+  push automatically; ask first. Their local clone may be stale/absent — offer
+  to `git clone` (or `git pull`) first.
+- **"You already have an app named …"** — nothing to create; if it's idle,
+  mention `renew_app`.
+- **"name isn't available"** / `name_unavailable` — the name belongs to someone
+  else; ask for a different one. Do **not** assume it's the user's own app.
+- **"data has already been purged"** — the app's retention window lapsed and its
+  data is gone; it can't be restored (a fresh `create_app` on the name will work
+  once the daily purge frees it).
+
 ## 3. Clone and scaffold
 
 ```bash

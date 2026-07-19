@@ -66,6 +66,13 @@ let it drift to reclamation if it's no longer needed, or `decommission_app` it
 deliberately. Keeping a genuinely-idle app running indefinitely is a
 platform-policy decision for an admin, not something to engineer around here.
 
+A **decommissioned** app is not renewable — `renew_app` returns
+`app_decommissioned`. To bring a decommissioned app back within its retention
+window, its **owner** calls `create_app` with the same name (see the `new-app`
+skill's restore flow): that recreates its access and reuses its retained data,
+and a redeploy (`git push`) brings it online. After the retention window lapses
+the data is purged and it can't be restored.
+
 ## `decommission_app({ name })` — destructive, confirm first
 
 Tears the app down: removes the deployed Worker/container, and the
