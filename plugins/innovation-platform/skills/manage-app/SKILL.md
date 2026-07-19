@@ -1,6 +1,6 @@
 ---
 name: manage-app
-description: Use to share, check on, renew, or tear down a live Innovation Platform app via the inno-platform MCP tools (grant_access, revoke_access, app_status, renew_app, decommission_app). Use when the user wants to give someone access, check deploy status, renew an app that's still in use, or delete one.
+description: Use to share, check on, start, stop, or configure a deployed Innovation Platform app via the inno-platform MCP tools (grant_access, revoke_access, app_status, start_app, stop_app, request_start, get_app_metrics, set_config). Use when the user wants to give someone access, check deploy status, bring back a stopped app, or shut one down.
 ---
 
 # manage-app
@@ -13,6 +13,53 @@ Okta group**. A `forbidden` error back from any of these tools means exactly
 that; don't retry it and don't try to work around it locally (there is no
 local escalation — authorization lives in the platform, not the client).
 
+There is also a web panel at `https://inno-platform.davidlaporte.org` with the
+same capabilities (same API, same authorization) — point users there for
+anything visual: dashboards, notification history, lifecycle timelines.
+
+## The lifecycle (know this before advising anyone)
+
+States: `created` → `deploying` → `active` ⇄ `warned` → `stopped` → *(purged)*.
+
+- **Any authenticated request to an app resets its idle clock.** Traffic is
+  the only keep-alive; there is no "renew" action.
+- After 14 idle days (default) an app is **warned** — still fully serving,
+  just a notice. 14 days later it is **stopped**: its domain is detached, so
+  it can't serve and **can't be deployed** (a `git push` fails with
+  `app_stopped` until it's started).
+- A stopped app's data is kept for 30 days (default), then **purged**:
+  infrastructure, database, and files permanently deleted. The GitHub repo,
+  audit history, and notification history survive purge.
+- All of these windows are platform config, overridable per app or per user.
+  **Unstoppable** apps (admin-set) are exempt from the idle clock entirely.
+
+The platform **deliberately** reclaims resources from idle apps. That is a
+cost-control policy, not a malfunction to work around. **Never offer to
+schedule or automate keep-alive traffic** — no cron pings, no periodic
+anything. If an app should genuinely never expire, that's the admin-set
+`lifecycle.unstoppable` config, not an engineering workaround.
+
+## `start_app({ name })` — bring back a stopped app
+
+Reattaches the domain and resets the idle clock; the app serves again
+immediately, **no redeploy needed**. Owners have a limited number of
+self-service starts (default 1, lifetime, per app — check `app_status`);
+admins are unlimited and don't consume the owner's allowance. When the owner
+is out of starts, `start_app` returns `start_limit_reached` — use
+`request_start({ name, reason })` instead, which notifies every platform
+admin and lands in their panel notification feed.
+
+## `stop_app({ name })` — destructive-ish, confirm first
+
+Detaches the app's domain now: it stops serving, can't be deployed, and its
+30-day purge countdown begins. Everything is intact and `start_app` fully
+reverses it until the window closes — but **always confirm with the user by
+name before calling**, and tell them the purge date from the response.
+Rejected with `app_unstoppable` if the app is marked unstoppable (an admin
+must turn that off first). There is no un-purge: once the window lapses (or
+an admin purges deliberately), only the repo and history remain, and the name
+becomes reusable via a fresh `create_app`.
+
 ## `grant_access({ name, email })` / `revoke_access({ name, email })`
 
 Adds or removes a user from the app's `inno-{name}-users` Okta group — this
@@ -21,90 +68,55 @@ access here is what actually lets someone past the Okta login on
 `https://inno-{name}.davidlaporte.org`.
 
 - `email` must look like a real, unquoted email address — the platform
-  rejects anything containing quotes, backslashes, or whitespace (this is
-  deliberate: it stops an authenticated owner from smuggling Okta
-  search-filter syntax through the parameter).
+  rejects anything containing quotes, backslashes, or whitespace.
 - If the target email has no matching Okta user, the tool returns an error
-  rather than silently no-op'ing — surface that to the user rather than
-  assuming it worked.
-- Authorization: owner of the app, or a platform admin.
+  rather than silently no-op'ing — surface that to the user.
+- Note: membership grants access to the **app**, not to the platform panel —
+  the panel shows people only the apps they own.
 
-## `app_status({ name })`
+## `app_status({ name })` / `get_app_metrics({ name, days })`
 
-Read-only. Returns the app's status, owner, URL, creation time, last-seen
-time, and last deployment (commit + outcome + timestamp), e.g.:
+Read-only. `app_status` returns status, owner, URL, last-seen time, last
+deployment, and — when relevant — the stop/purge deadlines and the owner's
+remaining self-service starts. `get_app_metrics` returns per-day requests,
+errors, and p50 CPU from Cloudflare analytics.
 
-```
-App: my-app
-Status: live
-Owner: alice@davidlaporte.org
-URL: https://inno-my-app.davidlaporte.org
-Created: 2026-06-01T12:00:00Z
-Last seen: 2026-07-18T09:00:00Z
-Last deployment: live (commit a1b2c3d) at 2026-07-17T22:14:00Z
-```
+Deployment statuses: `pending`, `deploying`, `deployed`.
 
-App statuses: `created` (provisioned, not yet deployed), `deploying`, `live`,
-`warned`/`stopped` (idle lifecycle), `decommissioned`. Deployment statuses:
-`pending`, `deploying`, `live`.
+## Configuration (`get_config` / `set_config` / `remove_config`)
 
-Use this to answer "is my app up", "did the last deploy work", or "who owns
-this" without needing GitHub Actions access.
+Admin-only, except each user may set their own self-service settings (e.g.
+`notify.email.enabled` — their personal email on/off switch) at their own
+user scope. Values resolve most-specific-first: **app › user › platform ›
+factory default**. Useful keys: `lifecycle.unstoppable` (app or user scope —
+user scope covers every app that user owns), `start.self_max`,
+`lifecycle.*_days`, `container.sleep_after` (applies on the app's next
+deploy), `notify.email.<event>`.
 
-## `renew_app({ name })`
+## Notifications (`list_notifications` / `mark_notification_read`)
 
-Resets the app's idle clock — **only for an app the user confirms is still in
-active use.** This does not redeploy or change anything about the running app;
-it only touches the last-seen/idle timestamp.
-
-The platform **deliberately** reclaims resources from apps that go unused. That
-idle-reclamation is a cost-control policy, not a malfunction to work around.
-
-**Never offer to schedule or automate renewals** — no cron jobs, reminders,
-recurring `renew_app` calls, keep-alive pings, or "I can set that up to run
-periodically." Artificially holding an idle app open subverts the reclamation
-policy and runs up needless cost, so do not suggest it even if the user seems
-worried about losing the app. Present the honest options instead: keep using
-it (normal traffic and genuine `renew_app` calls reset the clock naturally),
-let it drift to reclamation if it's no longer needed, or `decommission_app` it
-deliberately. Keeping a genuinely-idle app running indefinitely is a
-platform-policy decision for an admin, not something to engineer around here.
-
-A **decommissioned** app is not renewable — `renew_app` returns
-`app_decommissioned`. To bring a decommissioned app back within its retention
-window, its **owner** calls `create_app` with the same name (see the `new-app`
-skill's restore flow): that recreates its access and reuses its retained data,
-and a redeploy (`git push`) brings it online. After the retention window lapses
-the data is purged and it can't be restored.
-
-## `decommission_app({ name })` — destructive, confirm first
-
-Tears the app down: removes the deployed Worker/container, and the
-underlying D1 database and R2 bucket data are retained for a retention window
-(default 30 days) before being purged permanently — along with every record of
-the app, at which point the name becomes reusable. **Always confirm with the
-user by name before calling this.** Within the retention window the owner can
-restore it themselves by calling `create_app` with the same name (see the
-`new-app` skill's restore flow); after the window lapses there is no undo. Do
-not call `decommission_app` speculatively or as part of "cleanup" without the
-user explicitly naming the app and confirming they want it gone.
+The platform's durable event feed — lifecycle transitions, deploys, issues.
+Owners see their own apps' history (kept even after an app is purged);
+admins see everything. Every email the platform sends corresponds to an
+entry here.
 
 ## Authorization summary
 
 | Tool | Who can call it |
 |---|---|
 | `grant_access` / `revoke_access` | app owner, or `inno-platform-admins` |
-| `app_status` | app owner, or `inno-platform-admins` |
-| `renew_app` | app owner, or `inno-platform-admins` |
-| `decommission_app` | app owner, or `inno-platform-admins` |
+| `app_status` / `get_app_metrics` | app owner, or `inno-platform-admins` |
+| `start_app` / `stop_app` / `request_start` | app owner (starts limited), or admins (unlimited) |
 | `create_app` | any signed-in Okta user (becomes the owner) |
 | `report_issue` | app owner, or `inno-platform-admins` |
-| `list_issues` | `inno-platform-admins` only |
+| `list_issues` / `resolve_issue` / `list_users` / `query_audit` / `get_config` | `inno-platform-admins` only |
+| `set_config` / `remove_config` | admins; users for their own self-service settings |
+| `list_notifications` / `mark_notification_read` | scoped to the caller |
+| `get_platform_status` | any signed-in user |
 
 `report_issue({ name, summary, logs })` files a diagnostics issue when a
-deploy is stuck (see the `ship` skill's failure flow) — it stores the logs for
-the platform team and emails them. `list_issues` lets a platform admin review
-the open queue for triage.
+deploy is stuck (see the `ship` skill's failure flow) — it stores the logs,
+notifies the admins, and shows up in the panel's Issues view for triage.
 
 If you're unsure whether the signed-in user owns an app, call `app_status`
 first — its `forbidden` vs. success response is itself the authorization
@@ -115,4 +127,3 @@ check.
 If the user doesn't remember an app's exact `name`, call the read-only
 `list_apps` tool first — it lists apps the caller owns (or, for platform
 admins, all apps), each with its status, owner, and URL.
-

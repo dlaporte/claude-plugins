@@ -30,9 +30,10 @@ provisioning, then ports the code rather than scaffolding fresh.
    tool (read-only; provisions nothing) on the candidate. Only proceed with a
    name it reports as **available**. If it comes back in-use, reserved, or
    invalid, ask the user for a different one; if it's the caller's *own*
-   existing/decommissioned app, tell them that (and note `create_app` would
-   restore rather than create). `list_apps` shows only the caller's own apps,
-   so it can't confirm a name is free platform-wide — use `check_name`.
+   existing app, tell them that (a stopped app is brought back with
+   `start_app`, not by re-creating it). `list_apps` shows only the caller's
+   own apps, so it can't confirm a name is free platform-wide — use
+   `check_name`.
 2. **One-line purpose** — becomes the app's `description`.
 3. **Initial members' emails** (optional, can be empty) — Okta
    emails to grant access alongside the owner. The list can be added to later
@@ -75,36 +76,29 @@ create_app({ name, description, members })
   (e.g. `invalid_name`, or a wrapped provisioning error) rather than retrying
   blindly.
 - On success the tool returns text containing the repo URL and the (not-yet-
-  live) app URL:
+  serving) app URL:
   ```
   App "{name}" created.
   Repo: https://github.com/dlaporte/inno-{name}
-  URL: https://inno-{name}.davidlaporte.org (live once CI deploys it)
+  URL: https://inno-{name}.davidlaporte.org (serving once CI deploys it)
   ```
   The app URL is a 404/unprovisioned until the first successful `ship`.
 
-### `create_app` may CREATE or RESTORE — read the response
+### `create_app` responses — read them, don't assume
 
-`create_app` is idempotent on the name and handles a previously-decommissioned
-app. Branch on what it returns:
+`create_app` is idempotent on the name. Branch on what it returns:
 
 - **Created** (text starts with `App "{name}" created.`) — proceed to clone +
   scaffold (below).
-- **Restored** (text starts with `Restored "{name}".`) — the caller owned a
-  decommissioned app that was still within its retention window; its **data
-  (D1/R2) and repo are intact** and access has been re-provisioned, but it is
-  **not live yet**. Skip scaffolding (the code already exists). Tell the user
-  it's restored, then **offer to redeploy it** — a `git push` to `main` on the
-  existing repo, which kicks off CI/CD (hand to the `ship` skill). Do **not**
-  push automatically; ask first. Their local clone may be stale/absent — offer
-  to `git clone` (or `git pull`) first.
-- **"You already have an app named …"** — nothing to create; if it's idle,
-  mention `renew_app`.
+- **"You already have an app named …"** — nothing to create. If the response
+  says it's **stopped**, the way back is `start_app` (see the `manage-app`
+  skill) — starting reattaches the domain with all data intact, no redeploy
+  needed.
 - **"name isn't available"** / `name_unavailable` — the name belongs to someone
   else; ask for a different one. Do **not** assume it's the user's own app.
-- **"data has already been purged"** — the app's retention window lapsed and its
-  data is gone; it can't be restored (a fresh `create_app` on the name will work
-  once the daily purge frees it).
+- A **purged** app leaves no row behind, so its name simply creates fresh —
+  the old data is gone permanently (only the repo and history survived), and
+  this is a brand-new app that happens to share the name.
 
 ## 3. Clone and scaffold
 

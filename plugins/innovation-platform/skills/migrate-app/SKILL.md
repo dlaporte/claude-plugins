@@ -74,8 +74,9 @@ order:
    propose it — don't recommend a name you haven't confirmed is available.**
    Only put forward a name `check_name` reports as **available**; if it's
    in-use/reserved/invalid, pick another, and if it's the caller's own
-   decommissioned app, surface that (`create_app` would restore it). `list_apps`
-   only sees the caller's own apps, so it can't confirm platform-wide freeness.
+   existing app, surface that (a stopped app is brought back with `start_app`,
+   not by re-creating it). `list_apps` only sees the caller's own apps, so it
+   can't confirm platform-wide freeness.
    Also ask who else needs access — optional initial members' Okta emails feed
    `create_app`'s `members` and can be added later via `manage-app`.
 
@@ -109,14 +110,13 @@ retry or walk away.
 1. Call `create_app({ name, description, members })` — same semantics as
    `new-app`: owner is the signed-in Okta user, provisioning is synchronous
    (~15-30s), and a non-empty `error` field is surfaced verbatim, not
-   retried blindly. One behavior matters here: `create_app` is
-   restore-aware — if the chosen name belongs to one of the caller's own
-   decommissioned apps still inside its retention window, the response
-   starts with `Restored "{name}"` instead of `App "{name}" created.`,
-   the cloned repo contains the OLD app's code (not the template), and
-   its retained D1/R2 data re-attaches. If that happens, STOP and
-   confirm with the user (or rerun with a different name) before porting
-   anything.
+   retried blindly. One behavior matters here: if the chosen name belongs to
+   one of the caller's own existing apps (including a stopped one), the
+   response says so instead of creating — STOP and confirm with the user
+   (or rerun with a different name) before porting anything. A previously
+   purged app leaves only its repo behind: `create_app` on that name creates
+   fresh, but the generated repo may collide with the old one on GitHub —
+   surface the create response verbatim if it errors.
 2. `git clone https://github.com/dlaporte/inno-{name}.git` and work in the
    clone.
 3. Port the code **into `app/`**, replacing the template's example app.
@@ -168,4 +168,4 @@ End the same way `new-app` does: the next steps are `preflight` locally,
 then `ship` — don't commit or push unless asked. If gates fail after
 pushing, map the failing job through `ship`'s table. If the user abandons
 the migration after provisioning, point at `manage-app`
-(`decommission_app`) so the provisioned resources don't linger.
+(`stop_app`) so the app winds down — it purges automatically when the start window closes.

@@ -69,6 +69,7 @@ guide, not something to recite to the user:
 | `sast` | semgrep OWASP finding in `app/` | `platform-conventions` (escaping, SQL) |
 | `deps` | CVE in `app/requirements.txt` or a prod npm dep | `preflight` |
 | `container` | Trivy CVE, root user, or missing `EXPOSE 8080` | `containerize` |
+| `deploy` fails with `app_stopped` | the app was stopped by the lifecycle (or deliberately) — **stopped apps cannot be deployed** | `manage-app`: `start_app` first, then push again |
 
 A gate failure is real signal; there is no override or admin bypass.
 

@@ -15,16 +15,20 @@ gate-check, ship, and manage.
 The first tool call against the `inno-platform` MCP server (e.g. from the
 `new-app` skill's `create_app`) opens a browser window for an **Okta login**.
 This is expected — the MCP server authenticates you as yourself so every
-action it takes (creating an app, granting access, decommissioning) is
-attributable to your real Okta identity, not a shared service credential.
+action it takes (creating an app, granting access, stopping or starting one)
+is attributable to your real Okta identity, not a shared service credential.
 
 ## What's in the box
 
 - **`.mcp.json`** — points at `https://inno-platform.davidlaporte.org/mcp`,
   the platform's remote MCP server (tools: `create_app`, `check_name`,
-  `list_apps`, `app_status`, `grant_access`, `revoke_access`, `renew_app`,
-  `decommission_app`, `get_platform_docs`, `report_issue`, and the
-  admin-only `list_issues`).
+  `list_apps`, `app_status`, `grant_access`, `revoke_access`, `stop_app`,
+  `start_app`, `request_start`, `get_app_metrics`, `get_platform_status`,
+  `list_notifications`, `mark_notification_read`, `get_platform_docs`,
+  `report_issue`, self-service `set_config`, and the admin-only `list_issues`,
+  `resolve_issue`, `list_users`, `query_audit`, `get_config`). There's also a
+  web panel with the same capabilities at
+  `https://inno-platform.davidlaporte.org`.
 - **`skills/new-app`** — intake -> `create_app` -> clone -> scaffold.
 - **`skills/migrate-app`** — assess an existing repo (read-only), then
   provision and port it into a new `inno-{app}`, keeping its stack where
