@@ -17,8 +17,8 @@ error; wait for it to complete.
    starting with a letter (matches the platform's `isValidAppName` regex:
    `^[a-z][a-z0-9-]{2,28}$`). This becomes the GitHub repo `inno-{name}` and
    the live URL `https://inno-{name}.davidlaporte.org`, so keep it short and
-   DNS-safe. A handful of names are reserved by the platform (e.g. `platform`,
-   `admin`, `www`) — if `create_app` rejects the name as invalid or reserved,
+   DNS-safe. A handful of names are reserved by the platform (`platform`,
+   `template`, `app`, `replace`) — if `create_app` rejects the name as invalid or reserved,
    ask for a different one rather than guessing a workaround.
 2. **One-line purpose** — becomes the app's `description`.
 3. **Initial members' emails** (optional, can be empty) — Okta

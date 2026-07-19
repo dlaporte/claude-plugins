@@ -36,13 +36,17 @@ time, and last deployment (commit + outcome + timestamp), e.g.:
 
 ```
 App: my-app
-Status: active
+Status: live
 Owner: alice@davidlaporte.org
 URL: https://inno-my-app.davidlaporte.org
 Created: 2026-06-01T12:00:00Z
 Last seen: 2026-07-18T09:00:00Z
-Last deployment: success (commit a1b2c3d) at 2026-07-17T22:14:00Z
+Last deployment: live (commit a1b2c3d) at 2026-07-17T22:14:00Z
 ```
+
+App statuses: `created` (provisioned, not yet deployed), `deploying`, `live`,
+`warned`/`stopped` (idle lifecycle), `decommissioned`. Deployment statuses:
+`pending`, `deploying`, `live`.
 
 Use this to answer "is my app up", "did the last deploy work", or "who owns
 this" without needing GitHub Actions access.
@@ -76,13 +80,14 @@ the data is purged and it can't be restored.
 ## `decommission_app({ name })` — destructive, confirm first
 
 Tears the app down: removes the deployed Worker/container, and the
-underlying D1 database and R2 bucket data are retained for 30 days before
-being purged permanently. **Always confirm with the user by name before
-calling this** — there is no MCP-level undo once the 30-day retention window
-lapses, and even within the window, restoring is a manual platform-side
-operation, not something this tool exposes. Do not call `decommission_app`
-speculatively or as part of "cleanup" without the user explicitly naming the
-app and confirming they want it gone.
+underlying D1 database and R2 bucket data are retained for a retention window
+(default 30 days) before being purged permanently — along with every record of
+the app, at which point the name becomes reusable. **Always confirm with the
+user by name before calling this.** Within the retention window the owner can
+restore it themselves by calling `create_app` with the same name (see the
+`new-app` skill's restore flow); after the window lapses there is no undo. Do
+not call `decommission_app` speculatively or as part of "cleanup" without the
+user explicitly naming the app and confirming they want it gone.
 
 ## Authorization summary
 

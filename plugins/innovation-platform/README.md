@@ -29,7 +29,7 @@ attributable to your real Okta identity, not a shared service credential.
   FastAPI), Jinja2 autoescaping, the storage client, identity via
   `X-Forwarded-User`, and the files CI will reject if you touch them.
 - **`skills/containerize`** — a copy-pasteable Dockerfile that passes the
-  container gate (non-root, port 8080, `/healthz`, patched base image).
+  container gate (non-root, `EXPOSE 8080`, patched base image; `/healthz` is a runtime contract the gateway relies on — CI does not probe it).
 - **`skills/preflight`** — run the CI security gates locally before pushing.
 - **`skills/ship`** — commit, push to `main`, watch CI, report the live URL.
 - **`skills/manage-app`** — grant/revoke access, check status, renew, or
