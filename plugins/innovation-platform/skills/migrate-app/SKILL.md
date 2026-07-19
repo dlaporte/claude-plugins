@@ -41,14 +41,18 @@ order:
 4. **Container contract deltas** — what changes to reach: listens on 8080,
    serves `/healthz`, runs non-root, patched base image (see `containerize`).
 5. **Gate risks** — secrets in the working tree (gitleaks), dependency CVEs
-   (`pip-audit` / `npm audit` / Trivy), semgrep OWASP patterns such as
+   (`pip-audit` for Python requirements; the Trivy image scan covers
+   everything the container installs — CI's `npm audit` only checks the
+   template's own root `package.json`), semgrep OWASP patterns such as
    string-built HTML or raw SQL formatting.
 6. **What does not carry over** — git history (fresh repo; secrets buried in
    old history become moot, but working-tree secrets do not), custom
    domains, background jobs/cron, and any always-on/websocket assumptions.
 7. **Proposed app name** — must match `^[a-z][a-z0-9-]{2,28}$`; a few names
    are reserved server-side, so have a fallback. The repo becomes
-   `inno-{name}` and the URL `https://inno-{name}.davidlaporte.org`.
+   `inno-{name}` and the URL `https://inno-{name}.davidlaporte.org`. Also
+   ask who else needs access — optional initial members' Okta emails feed
+   `create_app`'s `members` and can be added later via `manage-app`.
 
 Close the assessment with an effort summary and the blocker list, then
 **stop and get explicit user approval** (of the plan *and* the name) before
@@ -62,7 +66,14 @@ so plainly and stop here.
 1. Call `create_app({ name, description, members })` — same semantics as
    `new-app`: owner is the signed-in Okta user, provisioning is synchronous
    (~15-30s), and a non-empty `error` field is surfaced verbatim, not
-   retried blindly.
+   retried blindly. One behavior matters here: `create_app` is
+   restore-aware — if the chosen name belongs to one of the caller's own
+   decommissioned apps still inside its retention window, the response
+   starts with `Restored "{name}"` instead of `App "{name}" created.`,
+   the cloned repo contains the OLD app's code (not the template), and
+   its retained D1/R2 data re-attaches. If that happens, STOP and
+   confirm with the user (or rerun with a different name) before porting
+   anything.
 2. `git clone https://github.com/dlaporte/inno-{name}.git` and work in the
    clone.
 3. Port the code **into `app/`**, replacing the template's example app.
