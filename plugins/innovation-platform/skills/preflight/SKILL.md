@@ -81,23 +81,23 @@ echo "== npm audit ==" && npm audit --omit=dev
 echo "ALL GREEN — safe to ship"
 ```
 
-**Do not install scanners on the user's machine to run preflight.** preflight is
-optional — **CI runs every one of these gates authoritatively on push** (`secrets`
-= gitleaks, `sast` = semgrep, `deps` = pip-audit + npm audit), so a missing local
-scanner is never a blocker, only a slower feedback loop. When a scanner isn't
-installed, prefer running it **ephemerally** (no persistent install), and never
-`brew`/`pipx install` onto the user's system without explicit consent:
+**preflight never installs software on the user's machine.** It is optional —
+**CI runs every one of these gates authoritatively on push** (`secrets` =
+gitleaks, `sast` = semgrep, `deps` = pip-audit + npm audit), so a missing local
+scanner is not a blocker, only a slower feedback loop.
 
-- **semgrep, pip-audit** (Python) — run with `uvx` (or `pipx run`), which uses a
-  throwaway environment and leaves nothing behind:
-  `uvx semgrep --config p/owasp-top-ten --error app/` ·
-  `uvx pip-audit -r app/requirements.txt`.
-- **npm audit** — `npm` is already present in the app repo; nothing to install.
-- **gitleaks** (Go — no `uvx` equivalent) — if Docker is available, run it
-  container-only:
-  `docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:latest detect --source=/repo --no-banner`.
-  Otherwise **ask before installing** (`brew install gitleaks`); if the user
-  declines, skip it and let CI's `secrets` gate be the check.
+- Run the scanners **already on the user's PATH** (the commands above); `npm` is
+  always present in an app repo.
+- If a scanner **isn't installed, skip that check** and note that CI will run it.
+  Do **not** install it — no `brew`, `pipx install`, `pip install`, `npm i -g`,
+  `apt`, `go install`, `cargo install`, or any other package install, and do not
+  add the tool to the user's system in any form (not even a one-off).
+- The only allowed alternative — and only when the user **already has** an
+  ephemeral runner and wants the local check — is to run a Python scanner
+  *without installing anything* via that runner: `uvx semgrep --config
+  p/owasp-top-ten --error app/`, `uvx pip-audit -r app/requirements.txt` (or
+  `pipx run …`). Never install the runner itself; for a missing `gitleaks`, just
+  skip it.
 
-When in doubt, skip local preflight entirely — CI is the real gate, and it runs
-regardless.
+Modifying the user's system to run an optional local check that CI runs anyway is
+never worth it — when in doubt, skip preflight and let CI be the gate.
