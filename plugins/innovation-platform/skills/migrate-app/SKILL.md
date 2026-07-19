@@ -66,12 +66,15 @@ so plainly and stop here.
 2. `git clone https://github.com/dlaporte/inno-{name}.git` and work in the
    clone.
 3. Port the code **into `app/`**, replacing the template's example app.
-   Never touch the pinned template files: `src/gateway/`, `package.json`,
-   `package-lock.json`, `tsconfig.json`, `.github/workflows/deploy.yml`,
-   the `CLAUDE.md` required headers, or `wrangler.jsonc`'s
-   orchestrator-managed fields — and never add a competing
-   `wrangler.json`/`wrangler.toml`/`.wrangler/`. (`config-integrity` rejects
-   all of these; see `platform-conventions`.)
+   Never touch the gate-pinned template files: `src/gateway/`,
+   `package.json`, `package-lock.json`, `tsconfig.json`, the `CLAUDE.md`
+   required headers, or `wrangler.jsonc`'s orchestrator-managed fields —
+   and never add a competing `wrangler.json`/`wrangler.toml`/`.wrangler/`.
+   (`config-integrity` rejects all of these; see `platform-conventions`.)
+   Leave `.github/workflows/deploy.yml` as templated too — it is NOT
+   gate-pinned (the broker's OIDC `job_workflow_ref` check carries that
+   enforcement, so editing the caller workflow can't bypass anything;
+   it can only break the deploy).
 4. Adapt while porting:
    - entrypoint listens on **8080** and serves **`/healthz`**;
    - auth code deleted, identity read from `X-Forwarded-User` (Python: the
