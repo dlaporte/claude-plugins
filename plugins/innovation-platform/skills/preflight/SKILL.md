@@ -81,7 +81,23 @@ echo "== npm audit ==" && npm audit --omit=dev
 echo "ALL GREEN — safe to ship"
 ```
 
-If any command isn't installed locally, install it before skipping it
-(`brew install semgrep gitleaks`, `pipx install pip-audit`) — these are
-lightweight, fast tools designed to run pre-push, and skipping one just moves
-the failure to CI where the feedback loop is slower.
+**Do not install scanners on the user's machine to run preflight.** preflight is
+optional — **CI runs every one of these gates authoritatively on push** (`secrets`
+= gitleaks, `sast` = semgrep, `deps` = pip-audit + npm audit), so a missing local
+scanner is never a blocker, only a slower feedback loop. When a scanner isn't
+installed, prefer running it **ephemerally** (no persistent install), and never
+`brew`/`pipx install` onto the user's system without explicit consent:
+
+- **semgrep, pip-audit** (Python) — run with `uvx` (or `pipx run`), which uses a
+  throwaway environment and leaves nothing behind:
+  `uvx semgrep --config p/owasp-top-ten --error app/` ·
+  `uvx pip-audit -r app/requirements.txt`.
+- **npm audit** — `npm` is already present in the app repo; nothing to install.
+- **gitleaks** (Go — no `uvx` equivalent) — if Docker is available, run it
+  container-only:
+  `docker run --rm -v "$PWD:/repo" ghcr.io/gitleaks/gitleaks:latest detect --source=/repo --no-banner`.
+  Otherwise **ask before installing** (`brew install gitleaks`); if the user
+  declines, skip it and let CI's `secrets` gate be the check.
+
+When in doubt, skip local preflight entirely — CI is the real gate, and it runs
+regardless.
