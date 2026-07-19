@@ -1,8 +1,9 @@
 # innovation-platform
 
 Claude Code plugin for the davidlaporte.org Innovation Platform. Bundles the
-`inno-platform` MCP server and six skills that walk Claude through the whole
-app lifecycle: create, write, containerize, gate-check, ship, and manage.
+`inno-platform` MCP server and seven skills that walk Claude through the whole
+app lifecycle: create (or migrate existing code), write, containerize,
+gate-check, ship, and manage.
 
 ## Install
 
@@ -25,6 +26,9 @@ attributable to your real Okta identity, not a shared service credential.
   `decommission_app`, `get_platform_docs`, `report_issue`, and the
   admin-only `list_issues`).
 - **`skills/new-app`** — intake -> `create_app` -> clone -> scaffold.
+- **`skills/migrate-app`** — assess an existing repo (read-only), then
+  provision and port it into a new `inno-{app}`, keeping its stack where
+  the gates allow.
 - **`skills/platform-conventions`** — the approved stack (Starlette, not
   FastAPI), Jinja2 autoescaping, the storage client, identity via
   `X-Forwarded-User`, and the files CI will reject if you touch them.

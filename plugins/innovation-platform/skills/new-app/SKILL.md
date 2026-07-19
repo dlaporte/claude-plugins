@@ -11,6 +11,11 @@ plugin's `.mcp.json`) to be connected. The first call to any `inno-platform`
 tool triggers an Okta browser login — that's expected, not an
 error; wait for it to complete.
 
+**Migrating existing code?** If the user already has a repo or codebase they
+want on the platform, use the `migrate-app` skill instead — it adds a
+read-only assessment (auth to strip, storage to port, gate risks) before
+provisioning, then ports the code rather than scaffolding fresh.
+
 ## 1. Intake — ask the user for three things
 
 1. **App name** — lowercase letters, digits, hyphens only, 3-29 chars,
