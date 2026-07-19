@@ -36,9 +36,13 @@ from starlette.templating import Jinja2Templates
 app = Starlette(routes=[Route("/healthz", healthz), Route("/", home)])
 ```
 
-This convention binds template-scaffolded apps. An app brought in by the
-`migrate-app` skill may keep its original framework as long as `pip-audit`
-and Trivy stay clean — don't "correct" a migrated app to Starlette.
+This convention binds **template-scaffolded (new) apps only.** An app brought in
+by the `migrate-app` skill **keeps its original stack** — any language or
+framework — as long as it meets the HTTP container contract and stays clean
+under the security gates (Trivy on the image; `pip-audit`/`npm audit` where a
+manifest exists; semgrep on `app/`). **No CI gate checks the language or
+framework** — the contract is HTTP on port 8080, not Python. Don't "correct" a
+migrated app to Starlette.
 
 ## Rendering: Jinja2 with autoescape on, never string-built HTML
 

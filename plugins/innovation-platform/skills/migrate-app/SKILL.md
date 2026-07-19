@@ -20,13 +20,19 @@ tool call triggers an Okta browser login — expected, not an error.
 Scan the existing repo and present a **migration assessment** covering, in
 order:
 
-1. **Stack** — language, framework, entrypoint, current listen port. The
-   container contract is language-agnostic (see `containerize`), so the
-   original stack is usually keepable as-is; the platform's Python/Starlette
-   conventions apply to *template-scaffolded* apps, not migrated ones. One
-   known trap: **FastAPI** is keepable only if its resolved Starlette version
-   clears `pip-audit`/Trivy (older pins drag in CVE-bearing `starlette
-   0.46.x` — check the lockfile/requirements, don't assume).
+1. **Stack — keep it.** The platform contract is **HTTP on port 8080**, not a
+   language: the gateway proxies authenticated requests to your container over
+   HTTP, and **no CI gate checks the language or framework** (`config-integrity`
+   pins the *gateway* and template files, never your `app/` code's stack). So
+   keep the app's existing stack as-is — TypeScript/Express, Go, Ruby, whatever.
+   Python/Starlette is only the *template default* for brand-new apps
+   (`new-app`), **never a requirement for a migration**. Porting to another
+   language is a **last resort**, taken only if the stack fundamentally cannot
+   meet the container contract (below) or clear the security gates — not the
+   default move. Note the entrypoint, framework, and current listen port so you
+   can adapt them to 8080 + `/healthz`. One known trap: **FastAPI** is keepable
+   only if its resolved Starlette version clears `pip-audit`/Trivy (older pins
+   drag in CVE-bearing `starlette 0.46.x` — check the lockfile, don't assume).
 2. **Auth to strip** — login routes, session middleware, password storage,
    OAuth flows. All of it goes: the gateway verifies the user against Okta
    and injects `X-Forwarded-User` / `X-Forwarded-Groups` (see
@@ -104,7 +110,13 @@ so plainly and stop here.
      replaced);
    - dependencies pinned in the stack's manifest (`app/requirements.txt`
      for Python), CVE-clean;
-   - Dockerfile rewritten per `containerize` for the app's actual runtime.
+   - Dockerfile rewritten per `containerize` for the app's actual runtime;
+   - **CLAUDE.md** — keep the five required section headers (`config-integrity`
+     checks their presence), but rewrite the *body* to describe the migrated
+     app's actual stack. The template's CLAUDE.md says "the stack is Starlette";
+     left unedited it ships in the repo and misleads every future Claude session
+     (and Claude Code auto-loads it) into thinking a TS/Go/Ruby app must be
+     Python. Editing the body is safe — only the headers are gate-checked.
 5. Write **`MIGRATION.md`** at the repo root (extra root files pass the
    gates): what was ported, what was stripped (auth, dropped services),
    what was rewired (storage), deferred TODOs, and any open blockers with
