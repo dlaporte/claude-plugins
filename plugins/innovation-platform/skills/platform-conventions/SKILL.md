@@ -96,6 +96,31 @@ copies of these headers before injecting its own verified values, so there is
 no spoofing surface as long as you don't add one. `"unknown"` is a reasonable
 default only for local dev, never a real auth decision in production code.
 
+### Sign out: one link, no session code
+
+Every app includes a "Sign out" link (footer is fine) pointing at the
+platform-wide Cloudflare Access logout:
+
+```html
+<a href="https://{TEAM_DOMAIN}/cdn-cgi/access/logout">Sign out</a>
+```
+
+`{TEAM_DOMAIN}` is environment-specific — **never hard-code it**. Pull it
+when scaffolding, from either source (they are the same value):
+
+- the `Sign-out URL` line of the `get_platform_status` MCP tool (the
+  `get_platform_docs` tool states this same convention), or
+- the `ACCESS_TEAM_DOMAIN` var in the app repo's own `wrangler.jsonc` — the
+  value the gateway itself verifies JWTs against.
+
+It must be the *team* domain, not `/cdn-cgi/access/logout` on the app's own
+hostname — the per-app logout clears only that app's cookie, which the
+still-live global Access session silently re-issues. The team-domain logout
+ends the Access session for **all** platform apps. Known caveat, not a bug:
+if the user's Okta session is still alive, revisiting an app signs them back
+in without a prompt; a full sign-out on a shared machine also requires
+signing out of Okta.
+
 ## Keep `ENVIRONMENT=production`
 
 `wrangler.jsonc`'s `vars.ENVIRONMENT` must stay `"production"` in the deployed
