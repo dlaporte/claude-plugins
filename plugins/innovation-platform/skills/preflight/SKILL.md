@@ -11,6 +11,14 @@ these four commands mirror the platform's `sast`, `secrets`, and `deps` CI
 jobs closely enough that running them locally first saves a push-wait-fail
 loop. Run all four from the repo root before handing off to `ship`.
 
+**False positive?** Never work around a finding in code (renaming, string
+splitting, suppression comments). Platform admins can centrally ignore a
+specific rule/CVE/advisory ID per app via the config store (the ignore also
+applies to the platform's periodic vulnerability sweep) — ask an admin, with
+the finding ID and why it doesn't apply. CI also honors an admin-set gate
+policy fetched at run time; if a gate shows "DISABLED by platform policy" in
+the CI log, that's deliberate, not a bug.
+
 ## 1. Semgrep — OWASP Top Ten, scoped to `app/`
 
 ```bash
