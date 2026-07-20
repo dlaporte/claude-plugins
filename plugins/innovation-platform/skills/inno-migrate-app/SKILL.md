@@ -77,6 +77,11 @@ order:
    existing app, surface that (a stopped app is brought back with `start_app`,
    not by re-creating it). `list_apps` only sees the caller's own apps, so it
    can't confirm platform-wide freeness.
+   **If `check_name` warns the user is at their active-app limit**, resolve
+   that before ANY migration work: show their apps (`list_apps`) and offer —
+   with explicit confirmation only — to `stop_app` one to make room;
+   otherwise the options are an admin raising their `apps.max_active`
+   override, or pausing the migration.
    Also ask who else needs access — optional initial members' Okta emails feed
    `create_app`'s `members` and can be added later via `inno-manage-app`.
 

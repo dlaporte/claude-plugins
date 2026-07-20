@@ -34,6 +34,16 @@ provisioning, then ports the code rather than scaffolding fresh.
    `start_app`, not by re-creating it). `list_apps` shows only the caller's
    own apps, so it can't confirm a name is free platform-wide — use
    `check_name`.
+
+   **Active-app limit.** `check_name` also warns when the user is at their
+   active-app limit ("you are at your active-app limit (N of M)") — at the
+   cap, `create_app` WILL fail with `app_limit_reached`, so resolve this
+   BEFORE any build work: show the user their apps (`list_apps`) and **offer
+   to stop one or more** (`stop_app`) to make room — only ever with their
+   explicit confirmation, never silently (stopping detaches the app's domain
+   and starts its purge countdown). If they decline, stop here: the
+   remaining options are asking a platform admin to raise their limit
+   (`apps.max_active`, user scope) or not building the app.
 2. **One-line purpose** — becomes the app's `description`.
 3. **Initial members' emails** (optional, can be empty) — Okta
    emails to grant access alongside the owner. The list can be added to later

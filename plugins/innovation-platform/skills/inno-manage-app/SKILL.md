@@ -49,6 +49,14 @@ is out of starts, `start_app` returns `start_limit_reached` — use
 `request_start({ name, reason })` instead, which notifies every platform
 admin and lands in their panel notification feed.
 
+`start_app` can also return **`app_limit_reached`**: starting would put the
+owner over their active-app limit (the message carries the numbers). Report
+it factually and name the remedies — the owner stops one of their own apps
+when THEY choose to, or a platform admin raises their `apps.max_active`
+user-scope override. **Do NOT propose or offer to stop specific apps to make
+room on a start** — that trade-off (taking down something running) is the
+user's to initiate, unprompted.
+
 ## `stop_app({ name })` — destructive-ish, confirm first
 
 Detaches the app's domain now: it stops serving, can't be deployed, and its
