@@ -1,14 +1,21 @@
 ---
-name: platform-conventions
+name: inno-platform-conventions
 description: Use when writing or reviewing code inside an inno-{app} repo's app/ directory — the approved stack, storage, identity, and the files CI will reject if touched. Load this before writing any application code for an Innovation Platform app.
 ---
 
-# platform-conventions
+# inno-platform-conventions
 
 The Innovation Platform deploys a Cloudflare Workers gateway (Durable
 Object + Container) in front of your app. The gateway is templated and
 policed by CI; your job is everything under `app/`. These rules are not
 style preferences — each one maps to a CI gate that will fail the deploy.
+
+## Releases: push = checks, tag = deploy
+
+A push to main runs the platform's safety gates and deploys NOTHING — push
+work-in-progress freely; that run is the safety preflight
+(`inno-safety-preflight` narrates it). Deploys happen only when a `v*`
+release tag is pushed (`inno-ship` handles versioning + tagging).
 
 ## Web framework: Starlette, not FastAPI
 
@@ -37,7 +44,7 @@ app = Starlette(routes=[Route("/healthz", healthz), Route("/", home)])
 ```
 
 This convention binds **template-scaffolded (new) apps only.** An app brought in
-by the `migrate-app` skill **keeps its original stack** — any language or
+by the `inno-migrate-app` skill **keeps its original stack** — any language or
 framework — as long as it meets the HTTP container contract and stays clean
 under the security gates (Trivy on the image; `pip-audit`/`npm audit` where a
 manifest exists; semgrep on `app/`). **No CI gate checks the language or

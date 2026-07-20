@@ -1,9 +1,9 @@
 ---
-name: containerize
+name: inno-containerize
 description: Use when writing or editing the Dockerfile for an inno-{app} repo. Encodes the exact contract the platform's container gate (Trivy + non-root/port checks) requires — base image, patching, user, port, healthcheck.
 ---
 
-# containerize
+# inno-containerize
 
 The `container` CI job builds your Dockerfile with **no deploy credentials
 present** (an app author fully controls this build's inputs, and nothing of

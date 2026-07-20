@@ -1,9 +1,9 @@
 ---
-name: manage-app
+name: inno-manage-app
 description: Use to share, check on, start, stop, or configure a deployed Innovation Platform app via the inno-platform MCP tools (grant_access, revoke_access, app_status, start_app, stop_app, request_start, get_app_metrics, set_config). Use when the user wants to give someone access, check deploy status, bring back a stopped app, or shut one down.
 ---
 
-# manage-app
+# inno-manage-app
 
 All operations here call tools on the `inno-platform` MCP server (see the
 plugin's `.mcp.json`). Every tool authorizes the caller server-side against
@@ -115,7 +115,7 @@ entry here.
 | `get_platform_status` | any signed-in user |
 
 `report_issue({ name, summary, logs })` files a diagnostics issue when a
-deploy is stuck (see the `ship` skill's failure flow) — it stores the logs,
+deploy is stuck (see the `inno-ship` skill's failure flow) — it stores the logs,
 notifies the admins, and shows up in the panel's Issues view for triage.
 
 If you're unsure whether the signed-in user owns an app, call `app_status`

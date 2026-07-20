@@ -1,9 +1,9 @@
 ---
-name: migrate-app
+name: inno-migrate-app
 description: Use when the user has an EXISTING repo or codebase they want on the Innovation Platform ("deploy this to the innovation platform", "migrate this app", "convert this repo"). Assesses fit read-only, gets approval, provisions via create_app, then ports the code into the new inno-{app} repo — keeping its original stack where the platform's gates allow.
 ---
 
-# migrate-app
+# inno-migrate-app
 
 An existing repo can never be deployed to the platform in place: the deploy
 broker only mints tokens for registered `inno-{app}` repos whose CI run
@@ -27,7 +27,7 @@ order:
    *gateway* and template files, never your `app/` code's stack). Keeping the
    existing stack — TypeScript/Express, Go, Ruby, whatever — is usually the
    right call and the default bias; Python/Starlette is only the *template
-   default* for brand-new apps (`new-app`), never a migration requirement. But
+   default* for brand-new apps (`inno-new-app`), never a migration requirement. But
    whether to keep or port is a genuine choice, and it is **the user's to
    make** — your job is to inform it, not to decide unilaterally in either
    direction. Assess and present:
@@ -49,7 +49,7 @@ order:
 2. **Auth to strip** — login routes, session middleware, password storage,
    OAuth flows. All of it goes: the gateway verifies the user against Okta
    and injects `X-Forwarded-User` / `X-Forwarded-Groups` (see
-   `platform-conventions`). List each file/route that must be removed.
+   `inno-platform-conventions`). List each file/route that must be removed.
 3. **Persistence to port** — local files and SQLite move to the platform's
    storage endpoints (D1 for SQL, R2 for files) reached at
    `http://storage.internal` (`/_storage/*`). Python apps use the template's
@@ -58,7 +58,7 @@ order:
    Postgres-specific SQL, Redis, queues, third-party managed services — are
    **blockers**: name them explicitly, never silently drop them.
 4. **Container contract deltas** — what changes to reach: listens on 8080,
-   serves `/healthz`, runs non-root, patched base image (see `containerize`).
+   serves `/healthz`, runs non-root, patched base image (see `inno-containerize`).
 5. **Gate risks** — secrets in the working tree (gitleaks), dependency CVEs
    (`pip-audit` for Python requirements; the Trivy image scan covers
    everything the container installs — CI's `npm audit` only checks the
@@ -78,7 +78,7 @@ order:
    not by re-creating it). `list_apps` only sees the caller's own apps, so it
    can't confirm platform-wide freeness.
    Also ask who else needs access — optional initial members' Okta emails feed
-   `create_app`'s `members` and can be added later via `manage-app`.
+   `create_app`'s `members` and can be added later via `inno-manage-app`.
 
 Close the assessment with an effort summary and the blocker list, then
 **stop and get explicit user approval** (of the plan *and* the name) before
@@ -108,7 +108,7 @@ it is, so if the port isn't what they wanted the original is intact and they can
 retry or walk away.
 
 1. Call `create_app({ name, description, members })` — same semantics as
-   `new-app`: owner is the signed-in Okta user, provisioning is synchronous
+   `inno-new-app`: owner is the signed-in Okta user, provisioning is synchronous
    (~15-30s), and a non-empty `error` field is surfaced verbatim, not
    retried blindly. One behavior matters here: if the chosen name belongs to
    one of the caller's own existing apps (including a stopped one), the
@@ -124,7 +124,7 @@ retry or walk away.
    `package.json`, `package-lock.json`, `tsconfig.json`, the `CLAUDE.md`
    required headers, or `wrangler.jsonc`'s orchestrator-managed fields —
    and never add a competing `wrangler.json`/`wrangler.toml`/`.wrangler/`.
-   (`config-integrity` rejects all of these; see `platform-conventions`.)
+   (`config-integrity` rejects all of these; see `inno-platform-conventions`.)
    Leave `.github/workflows/deploy.yml` as templated too — it is NOT
    gate-pinned (the broker's OIDC `job_workflow_ref` check carries that
    enforcement, so editing the caller workflow can't bypass anything;
@@ -136,7 +136,7 @@ retry or walk away.
    rm -f app/.needs-build
    ```
 
-   (While `app/.needs-build` is present, CI skips deployment and `ship` refuses
+   (While `app/.needs-build` is present, CI skips deployment and `inno-ship` refuses
    to push.)
 4. Adapt while porting:
    - entrypoint listens on **8080** and serves **`/healthz`**;
@@ -147,7 +147,7 @@ retry or walk away.
      replaced);
    - dependencies pinned in the stack's manifest (`app/requirements.txt`
      for Python), CVE-clean;
-   - Dockerfile rewritten per `containerize` for the app's actual runtime;
+   - Dockerfile rewritten per `inno-containerize` for the app's actual runtime;
    - **CLAUDE.md** — keep the five required section headers (`config-integrity`
      checks their presence), but rewrite the *body* to describe the migrated
      app's actual stack. The template's CLAUDE.md says "the stack is Starlette";
@@ -164,8 +164,8 @@ retry or walk away.
 
 ## Hand off
 
-End the same way `new-app` does: the next steps are `preflight` locally,
-then `ship` — don't commit or push unless asked. If gates fail after
-pushing, map the failing job through `ship`'s table. If the user abandons
-the migration after provisioning, point at `manage-app`
+End the same way `inno-new-app` does: the next steps are `inno-safety-preflight` locally,
+then `inno-ship` — don't commit or push unless asked. If gates fail after
+pushing, map the failing job through `inno-ship`'s table. If the user abandons
+the migration after provisioning, point at `inno-manage-app`
 (`stop_app`) so the app winds down — it purges automatically when the start window closes.

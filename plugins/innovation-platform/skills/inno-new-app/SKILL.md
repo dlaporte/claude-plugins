@@ -1,9 +1,9 @@
 ---
-name: new-app
+name: inno-new-app
 description: Use when the user wants to create a new app on the Innovation Platform ("new app", "create an app", "start a project on inno-platform"). Guides intake, calls the create_app MCP tool, clones the provisioned repo, and scaffolds app/ per platform-conventions.
 ---
 
-# new-app
+# inno-new-app
 
 Creates a new Innovation Platform app end to end: intake -> provision via MCP ->
 clone -> scaffold. Requires the `inno-platform` MCP server (ships with this
@@ -12,7 +12,7 @@ tool triggers an Okta browser login — that's expected, not an
 error; wait for it to complete.
 
 **Migrating existing code?** If the user already has a repo or codebase they
-want on the platform, use the `migrate-app` skill instead — it adds a
+want on the platform, use the `inno-migrate-app` skill instead — it adds a
 read-only assessment (auth to strip, storage to port, gate risks) before
 provisioning, then ports the code rather than scaffolding fresh.
 
@@ -37,7 +37,23 @@ provisioning, then ports the code rather than scaffolding fresh.
 2. **One-line purpose** — becomes the app's `description`.
 3. **Initial members' emails** (optional, can be empty) — Okta
    emails to grant access alongside the owner. The list can be added to later
-   with the `manage-app` skill's `grant_access`.
+   with the `inno-manage-app` skill's `grant_access`.
+
+## 1a. Guardrails check — HARD STOP on conflict
+
+Before confirming anything, call the **`get_guardrails`** MCP tool and
+evaluate the proposed **name** and **purpose** against the platform's
+acceptable-use policy. This is qualitative judgment (impersonation,
+misleading authority, offensive names, prohibited purposes, data handling) —
+apply the policy's spirit, not just its examples.
+
+- **Clean** → proceed; no need to mention it unless the user asks.
+- **Conflict** → do NOT call `create_app`. Name the specific policy line,
+  explain the problem in one plain sentence, and help the user pick a
+  compliant name/purpose. If they believe their use is legitimate anyway
+  (e.g. sanctioned research), direct them to a platform admin for an explicit
+  exception first — you cannot grant one, and you must not create the app
+  without it.
 
 Confirm all three back to the user before calling the tool — provisioning is
 real (creates a GitHub repo, Okta group, D1 database, R2 bucket) and isn't
@@ -82,7 +98,7 @@ create_app({ name, description, members })
   Repo: https://github.com/dlaporte/inno-{name}
   URL: https://inno-{name}.davidlaporte.org (serving once CI deploys it)
   ```
-  The app URL is a 404/unprovisioned until the first successful `ship`.
+  The app URL is a 404/unprovisioned until the first successful `inno-ship`.
 
 ### `create_app` responses — read them, don't assume
 
@@ -91,7 +107,7 @@ create_app({ name, description, members })
 - **Created** (text starts with `App "{name}" created.`) — proceed to clone +
   scaffold (below).
 - **"You already have an app named …"** — nothing to create. If the response
-  says it's **stopped**, the way back is `start_app` (see the `manage-app`
+  says it's **stopped**, the way back is `start_app` (see the `inno-manage-app`
   skill) — starting reattaches the domain with all data intact, no redeploy
   needed.
 - **"name isn't available"** / `name_unavailable` — the name belongs to someone
@@ -111,9 +127,9 @@ The cloned repo already contains the platform template: `app/main.py`,
 `app/requirements.txt`, `app/templates/index.html`, `Dockerfile`,
 `src/gateway/`, `wrangler.jsonc`, `package.json`, `.github/workflows/deploy.yml`.
 **Do not regenerate these from scratch** — start from what's there and extend
-it. Load the `platform-conventions` skill before writing any application code
+it. Load the `inno-platform-conventions` skill before writing any application code
 (framework, storage, identity, and the do-not-touch file list), and the
-`containerize` skill before editing the Dockerfile.
+`inno-containerize` skill before editing the Dockerfile.
 
 **Delete the scaffold marker as you build.** The generated repo ships
 `app/.needs-build`, which makes CI skip deployment until it's removed. Once you
@@ -123,19 +139,19 @@ begin writing the real app (per the approved design), delete it:
 rm -f app/.needs-build
 ```
 
-Leaving it in place means `ship` will refuse to deploy — by design.
+Leaving it in place means `inno-ship` will refuse to deploy — by design.
 
 Typical scaffolding steps for a new feature:
 - Add routes to `app/main.py` (or split into new modules under `app/`,
   importing them from `main.py` — the Starlette `app` object is the ASGI
   entrypoint `uvicorn` runs).
 - Add templates under `app/templates/` (never delete the directory — a
-  missing `templates/` dir is a common runtime 500, see `containerize`).
+  missing `templates/` dir is a common runtime 500, see `inno-containerize`).
 - Add pinned dependencies to `app/requirements.txt`.
 
 ## 4. Hand off
 
 Once scaffolding is in place, tell the user the app was created (repo +
-future URL), and that the next steps are: write the app, run `preflight`
-locally, then `ship`. Don't push anything yet unless asked — `new-app`'s job
+future URL), and that the next steps are: write the app, run `inno-safety-preflight`
+locally, then `inno-ship`. Don't push anything yet unless asked — `inno-new-app`'s job
 is provisioning + scaffolding, not deploying.
