@@ -40,8 +40,9 @@ is attributable to your real Okta identity, not a shared service credential.
   container gate (non-root, `EXPOSE 8080`, patched base image; `/healthz` is a runtime contract the gateway relies on — CI does not probe it).
 - **`skills/preflight`** — run the CI security gates locally before pushing.
 - **`skills/ship`** — commit, push to `main`, watch CI, report the live URL.
-- **`skills/manage-app`** — grant/revoke access, check status, renew, or
-  decommission a live app.
+- **`skills/manage-app`** — grant/revoke access, check status and metrics,
+  stop or start an app, and read its notifications. Idle apps are warned,
+  stopped, then purged on a config-driven clock; any traffic resets it.
 
 ## How the platform enforces security
 
