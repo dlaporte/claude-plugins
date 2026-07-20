@@ -24,23 +24,25 @@ is attributable to your real Okta identity, not a shared service credential.
   the platform's remote MCP server (tools: `create_app`, `check_name`,
   `list_apps`, `app_status`, `grant_access`, `revoke_access`, `stop_app`,
   `start_app`, `request_start`, `get_app_metrics`, `get_platform_status`,
-  `list_notifications`, `mark_notification_read`, `get_platform_docs`,
-  `report_issue`, self-service `set_config`, and the admin-only `list_issues`,
-  `resolve_issue`, `list_users`, `query_audit`, `get_config`). There's also a
+  `list_notifications`, `mark_notification_read`, `mark_all_notifications_read`,
+  `get_platform_docs`, `get_guardrails`, `get_ci_status`, `report_issue`,
+  self-service `set_config`/`remove_config`, and the admin-only `purge_app`,
+  `get_config`, `list_issues`, `resolve_issue`, `list_users`, `query_audit`).
+  There's also a
   web panel with the same capabilities at
   `https://inno-platform.davidlaporte.org`.
-- **`skills/new-app`** — intake -> `create_app` -> clone -> scaffold.
-- **`skills/migrate-app`** — assess an existing repo (read-only), then
+- **`skills/inno-new-app`** — intake -> `create_app` -> clone -> scaffold.
+- **`skills/inno-migrate-app`** — assess an existing repo (read-only), then
   provision and port it into a new `inno-{app}`, keeping its stack where
   the gates allow.
-- **`skills/platform-conventions`** — the approved stack (Starlette, not
+- **`skills/inno-platform-conventions`** — the approved stack (Starlette, not
   FastAPI), Jinja2 autoescaping, the storage client, identity via
   `X-Forwarded-User`, and the files CI will reject if you touch them.
-- **`skills/containerize`** — a copy-pasteable Dockerfile that passes the
+- **`skills/inno-containerize`** — a copy-pasteable Dockerfile that passes the
   container gate (non-root, `EXPOSE 8080`, patched base image; `/healthz` is a runtime contract the gateway relies on — CI does not probe it).
-- **`skills/preflight`** — run the CI security gates locally before pushing.
-- **`skills/ship`** — commit, push to `main`, watch CI, report the live URL.
-- **`skills/manage-app`** — grant/revoke access, check status and metrics,
+- **`skills/inno-safety-preflight`** — run the CI security gates locally before pushing.
+- **`skills/inno-ship`** — commit, push to `main`, watch CI, report the live URL.
+- **`skills/inno-manage-app`** — grant/revoke access, check status and metrics,
   stop or start an app, and read its notifications. Idle apps are warned,
   stopped, then purged on a config-driven clock; any traffic resets it.
 

@@ -23,7 +23,7 @@ provisioning, then ports the code rather than scaffolding fresh.
    `^[a-z][a-z0-9-]{2,28}$`). This becomes the GitHub repo `inno-{name}` and
    the live URL `https://inno-{name}.davidlaporte.org`, so keep it short and
    DNS-safe. A handful of names are reserved by the platform (`platform`,
-   `template`, `app`, `replace`).
+   `template`, `app`, `replace`, `inno-platform`).
 
    **Verify availability before you settle on a name — never recommend or
    confirm a name without checking it first.** Call the **`check_name`** MCP
