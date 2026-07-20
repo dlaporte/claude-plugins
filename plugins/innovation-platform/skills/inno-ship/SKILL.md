@@ -116,3 +116,24 @@ Shipped v<X.Y.Z> — https://inno-{name}.davidlaporte.org
 and note that the app is **Okta-gated** — the first visit prompts an Okta
 login (Cloudflare Access), and only the owner plus anyone granted access via
 `inno-manage-app`'s `grant_access` can reach it.
+
+### Do not curl, dig, or otherwise resolve the hostname to "verify" success
+
+Never look up `inno-{name}.davidlaporte.org` yourself (via `curl`, `dig`,
+`nslookup`, a browser navigation, etc.) as a way to confirm the deploy
+worked — especially right after a first-ever deploy for a brand-new app. The
+DNS record for a freshly deployed hostname can take up to roughly a minute to
+propagate, and any tool commands you run execute on the user's own machine,
+sharing their real network stack — not an isolated sandbox. A lookup that
+lands in that propagation window gets a negative (NXDOMAIN/SERVFAIL) answer,
+and that negative result can get cached independently in multiple places
+(the user's router-level DNS resolver, e.g. AdGuard Home/Pi-hole, and their
+OS's local resolver cache, e.g. macOS `mDNSResponder`) for minutes — making
+the app look broken to the user long after it actually went live, and it
+won't self-correct until each cache's negative TTL expires or someone
+manually flushes it.
+
+The `deploy` job's success/failure and the `app_status` MCP tool's
+deployment timestamp are the authoritative, side-effect-free signals — use
+those. If the user wants to see the app for themselves, let them visit it
+in their own browser; don't pre-check it for them.
