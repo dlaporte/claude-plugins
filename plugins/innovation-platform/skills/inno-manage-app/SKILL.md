@@ -152,7 +152,7 @@ the archive appears on the app's panel page (Data exports card) and is kept
 for a limited time (default 30 days). Owner or admin only.
 
 - **One export at a time per app** — `export_in_progress` means wait for the
-  current one to finish or fail; the platform times out a dead job after 2 h.
+  current one to finish or fail; the platform times out a dead job after 6 h.
 - Offer this proactively when a user is about to stop an app they may not
   restart, or asks about leaving/migrating off the platform.
 - The platform also builds an archive **automatically before any purge** and
