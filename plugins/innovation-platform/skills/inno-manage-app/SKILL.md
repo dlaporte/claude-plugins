@@ -1,6 +1,6 @@
 ---
 name: inno-manage-app
-description: Use to share, check on, start, stop, transfer, export, open up, or configure a deployed Innovation Platform app via the inno-platform MCP tools (grant_access, revoke_access, set_app_access, app_status, start_app, stop_app, request_start, transfer_app, export_app_data, get_app_metrics, set_config). Use when the user wants to give someone access, open an app to everyone with SSO, check deploy status, bring back a stopped app, hand an app to a new owner, download their app's data, or shut one down.
+description: Use to share, check on, start, stop, export, open up, or configure a deployed Innovation Platform app via the inno-platform MCP tools (grant_access, revoke_access, set_app_access, app_status, start_app, stop_app, request_start, transfer_app (admin-only), export_app_data, get_app_metrics, set_config). Use when the user wants to give someone access, open an app to everyone with SSO, check deploy status, bring back a stopped app, reassign ownership (admins), download their app's data, or shut one down.
 ---
 
 # inno-manage-app
@@ -109,17 +109,22 @@ returns it to the named member list (open: false). Owner or admin only.
 - Confirm before opening — state plainly that EVERY SSO user will have
   access, not just current members.
 
-## `transfer_app({ name, new_owner_email })` — hand an app to someone else
+## `transfer_app({ name, new_owner_email })` — reassign ownership (ADMINS ONLY)
 
-Immediate: the recipient becomes the owner (lifecycle notices, quota, and
-management rights move to them) and is added to the app's access group; the
-previous owner **keeps access as a regular member** (`revoke_access` for a
-clean break). Owner or admin only; the recipient must be an Okta user.
+**Platform admins only** (tightened 2026-07-21): there is no accept step, so
+owner-initiated transfers could dump unwanted apps on people. When an app
+OWNER asks to transfer their app, do NOT call this tool for them — tell them
+a platform admin must do it, and offer to draft the request.
+
+When the caller IS an admin: immediate — the recipient becomes the owner
+(lifecycle notices, quota, and management rights move to them) and is added
+to the app's access group; the previous owner **keeps access as a regular
+member** and is notified. The recipient must be an Okta user.
 
 - Counts against the recipient's `apps.max_active` **unless the app is
   stopped** — an `app_limit_reached` error means the recipient is at their
-  cap: they can stop one of their apps, or an admin can raise their limit.
-  Do NOT offer to stop the recipient's apps for them.
+  cap: an admin can raise their limit. Do NOT offer to stop the recipient's
+  apps for them.
 - Confirm before calling — this takes effect immediately, there is no
   accept step. State plainly who gains and who keeps what.
 
@@ -164,7 +169,7 @@ entry here.
 | `app_status` / `get_app_metrics` | app owner, or `inno-platform-admins` |
 | `start_app` / `stop_app` / `request_start` | app owner (starts limited), or admins (unlimited) |
 | `export_app_data` | app owner, or `inno-platform-admins` |
-| `transfer_app` | app owner, or `inno-platform-admins` |
+| `transfer_app` | `inno-platform-admins` only (owners ask an admin) |
 | `set_app_access` | app owner, or `inno-platform-admins` (opening gated by `access.allow_open`) |
 | `create_app` | any signed-in Okta user (becomes the owner) |
 | `report_issue` | app owner, or `inno-platform-admins` |
