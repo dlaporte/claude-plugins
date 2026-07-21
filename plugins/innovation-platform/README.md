@@ -41,8 +41,8 @@ is attributable to your real Okta identity, not a shared service credential.
   files CI will reject if you touch them. Requirements are served live by
   the `get_app_contract` tool — skills cite it, not stale copies.
 - **`skills/inno-containerize`** — the container contract for ANY stack
-  (non-root, `EXPOSE 8080`, patched base, CVE-clean; `/healthz` is a runtime
-  contract the gateway relies on — CI does not probe it) with Python/Node/Go
+  (non-root, `EXPOSE 8080`, patched base, CVE-clean; `/healthz` reserved for
+  platform health monitoring — CI does not probe it) with Python/Node/Go
   reference recipes; base images come digest-pinned from `get_app_contract`.
 - **`skills/inno-safety-preflight`** — run the CI security gates locally before pushing.
 - **`skills/inno-ship`** — commit, push to `main`, watch CI, report the live URL.

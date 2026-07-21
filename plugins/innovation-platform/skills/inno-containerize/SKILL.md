@@ -27,8 +27,9 @@ deploy that passed CI.
 3. **CVE-clean image** — patch the base's OS packages in the build
    (`apt-get upgrade` / `apk upgrade`) so the Trivy gate passes; a stock
    base commonly ships fixable CVEs that have nothing to do with your code.
-4. **`GET /healthz` → 200** — a runtime contract the gateway depends on
-   (CI does not probe it). Keep it cheap and storage-independent.
+4. **`GET /healthz` → 200** — reserved for platform health monitoring
+   (CI does not probe it today; platform features bind to it without
+   notice). Keep it cheap and storage-independent.
 
 **Base image: call the `get_app_contract` MCP tool for the platform's
 current digest-pinned recommended bases (python/node/go) — never hard-code
