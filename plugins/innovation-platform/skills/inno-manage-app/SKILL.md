@@ -128,6 +128,21 @@ member** and is notified. The recipient must be an Okta user.
 - Confirm before calling — this takes effect immediately, there is no
   accept step. State plainly who gains and who keeps what.
 
+## `get_app_usage({ name, days? })` — meters and estimated cost
+
+Collected usage (worker requests/CPU, container vCPU/memory/egress, database
+rows and size, file storage/ops) plus a month-to-date cost **estimate**.
+Owner or admin. Two honesty rules when relaying results:
+
+- Always say the dollar figure is an **estimate from the platform's Pricing
+  settings, not a bill** (the tool's text says so — keep that framing).
+- An empty result means "the nightly collector hasn't filled this in yet",
+  NOT "the app has no traffic" — live charts are on the app's panel page.
+
+The container is almost always the biggest line; if a user asks how to lower
+it, the honest lever is `container.sleep_after` (admin-set, applies on next
+deploy).
+
 ## `export_app_data({ name })` — take your data with you
 
 Starts a background build of a downloadable archive: the app's D1 database as
@@ -166,7 +181,7 @@ entry here.
 | Tool | Who can call it |
 |---|---|
 | `grant_access` / `revoke_access` | app owner, or `inno-platform-admins` |
-| `app_status` / `get_app_metrics` | app owner, or `inno-platform-admins` |
+| `app_status` / `get_app_metrics` / `get_app_usage` | app owner, or `inno-platform-admins` |
 | `start_app` / `stop_app` / `request_start` | app owner (starts limited), or admins (unlimited) |
 | `export_app_data` | app owner, or `inno-platform-admins` |
 | `transfer_app` | `inno-platform-admins` only (owners ask an admin) |
