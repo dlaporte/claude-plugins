@@ -25,7 +25,7 @@ is attributable to your real Okta identity, not a shared service credential.
   `list_apps`, `app_status`, `grant_access`, `revoke_access`, `set_app_access`, `stop_app`,
   `start_app`, `request_start`, `transfer_app`, `export_app_data`, `get_app_metrics`, `get_app_usage`, `get_platform_status`,
   `list_notifications`, `mark_notification_read`, `mark_all_notifications_read`,
-  `get_platform_docs`, `get_guardrails`, `get_ci_status`, `report_issue`,
+  `get_platform_docs`, `get_guardrails`, `get_app_contract`, `get_ci_status`, `report_issue`,
   self-service `set_config`/`remove_config`, and the admin-only `purge_app`,
   `get_config`, `list_issues`, `resolve_issue`, `list_users`, `query_audit`).
   There's also a
@@ -35,11 +35,15 @@ is attributable to your real Okta identity, not a shared service credential.
 - **`skills/inno-migrate-app`** — assess an existing repo (read-only), then
   provision and port it into a new `inno-{app}`, keeping its stack where
   the gates allow.
-- **`skills/inno-platform-conventions`** — the approved stack (Starlette, not
-  FastAPI), Jinja2 autoescaping, the storage client, identity via
-  `X-Forwarded-User`, and the files CI will reject if you touch them.
-- **`skills/inno-containerize`** — a copy-pasteable Dockerfile that passes the
-  container gate (non-root, `EXPOSE 8080`, patched base image; `/healthz` is a runtime contract the gateway relies on — CI does not probe it).
+- **`skills/inno-platform-conventions`** — stack policy (Python/Starlette is
+  the tested stack; any stack meeting the contract is fine), escaping,
+  the storage client/endpoints, identity via `X-Forwarded-User`, and the
+  files CI will reject if you touch them. Requirements are served live by
+  the `get_app_contract` tool — skills cite it, not stale copies.
+- **`skills/inno-containerize`** — the container contract for ANY stack
+  (non-root, `EXPOSE 8080`, patched base, CVE-clean; `/healthz` is a runtime
+  contract the gateway relies on — CI does not probe it) with Python/Node/Go
+  reference recipes; base images come digest-pinned from `get_app_contract`.
 - **`skills/inno-safety-preflight`** — run the CI security gates locally before pushing.
 - **`skills/inno-ship`** — commit, push to `main`, watch CI, report the live URL.
 - **`skills/inno-manage-app`** — grant/revoke access, check status and metrics,

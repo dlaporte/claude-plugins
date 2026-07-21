@@ -110,7 +110,7 @@ shows it, and the safety sweep's auto-respin rebuilds at exactly that tag.
 On success, report:
 
 ```
-Shipped v<X.Y.Z> — https://inno-{name}.davidlaporte.org
+Shipped v<X.Y.Z> — <the app URL, as reported by app_status / create_app>
 ```
 
 and note that the app is **Okta-gated** — the first visit prompts an Okta

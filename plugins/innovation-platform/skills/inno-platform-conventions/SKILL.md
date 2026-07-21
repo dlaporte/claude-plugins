@@ -1,6 +1,6 @@
 ---
 name: inno-platform-conventions
-description: Use when writing or reviewing code inside an inno-{app} repo's app/ directory — the approved stack, storage, identity, and the files CI will reject if touched. Load this before writing any application code for an Innovation Platform app.
+description: Use when writing or reviewing code inside an inno-{app} repo's app/ directory — stack policy, storage, identity, and the files CI will reject if touched. Load this before writing any application code for an Innovation Platform app.
 ---
 
 # inno-platform-conventions
@@ -10,6 +10,13 @@ Object + Container) in front of your app. The gateway is templated and
 policed by CI; your job is everything under `app/`. These rules are not
 style preferences — each one maps to a CI gate that will fail the deploy.
 
+**Fetch the `get_app_contract` MCP tool before writing app code.** It serves
+the platform's full application contract — every requirement (port, health,
+identity, storage, protected files), the deployment patterns including what
+the platform does NOT support, and the CURRENT digest-pinned recommended
+base images. The tool is the live source; never restate contract values from
+memory or hard-code a base-image digest.
+
 ## Releases: push = checks, tag = deploy
 
 A push to main runs the platform's safety gates and deploys NOTHING — push
@@ -17,50 +24,36 @@ work-in-progress freely; that run is the safety preflight
 (`inno-safety-preflight` narrates it). Deploys happen only when a `v*`
 release tag is pushed (`inno-ship` handles versioning + tagging).
 
-## Web framework: Starlette, not FastAPI
+## Stack: the user's choice — Python/Starlette is the tested path
 
-Pin `app/requirements.txt` to:
+**Python/Starlette is the platform's tested stack**: the template's reference
+app (`app/main.py`, plain Starlette) uses it, real platform apps run on it,
+and it should work for most implementations — choosing it means starting
+from a known-good working example. **Alternative stacks are equally fine**:
+the contract is HTTP on port 8080, not a language, and **no CI gate checks
+the language or framework**. This holds for new and migrated apps alike
+(`inno-migrate-app` keeps the original stack by default) — don't "correct"
+an app to Starlette in either direction.
 
-```
-starlette>=1.3.1,<2
-uvicorn[standard]==0.32.*
-httpx==0.27.*
-jinja2==3.1.*
-```
+Whatever the stack: pin dependencies in its own manifest under `app/`
+(`requirements.txt` for the Python reference — the template's copy is the
+source for its pins; `package.json` for Node; `go.mod` for Go; …) and keep
+them CVE-clean — the `deps` (pip-audit, Python) and `container` (Trivy, any
+stack) gates fail the build otherwise. One known trap, informational not
+prohibitive: older **FastAPI** pins drag in a CVE-bearing Starlette line —
+check that the lockfile resolves a clean version before committing to it.
 
-Use **Starlette directly**, not FastAPI. This isn't a style choice: FastAPI's
-transitive Starlette pin historically dragged in `starlette 0.46.x`, which
-has known CVEs — the `deps` job's `pip-audit` and the `container` job's Trivy
-scan both fail the build on it. The template's reference app
-(`app/main.py`) is plain Starlette:
+## Rendering: escape by default, never string-built HTML
 
-```python
-from starlette.applications import Starlette
-from starlette.responses import JSONResponse
-from starlette.routing import Route
-from starlette.templating import Jinja2Templates
-
-app = Starlette(routes=[Route("/healthz", healthz), Route("/", home)])
-```
-
-This convention binds **template-scaffolded (new) apps only.** An app brought in
-by the `inno-migrate-app` skill **keeps its original stack** — any language or
-framework — as long as it meets the HTTP container contract and stays clean
-under the security gates (Trivy on the image; `pip-audit`/`npm audit` where a
-manifest exists; semgrep on `app/`). **No CI gate checks the language or
-framework** — the contract is HTTP on port 8080, not Python. Don't "correct" a
-migrated app to Starlette.
-
-## Rendering: Jinja2 with autoescape on, never string-built HTML
-
-`Jinja2Templates(directory="templates")` autoescapes interpolated values by
-default. **Never build HTML with f-strings, `.format()`, or string
+Whatever the framework, **never build HTML with string interpolation or
 concatenation** — the current user's identity (`X-Forwarded-User`) is
 attacker-influenced input (anyone who can reach the gateway with a valid Okta
 session controls their own email string, and it flows straight into your
-templates), so unescaped interpolation is a stored/reflected-XSS gate: the
-`sast` job's `semgrep --config p/owasp-top-ten --error app/` and human review
-both reject it. Always route dynamic content through
+pages), so unescaped interpolation is a stored/reflected-XSS gate: the
+`sast` job's semgrep OWASP scan on `app/` and human review both reject it.
+Use your stack's auto-escaping template engine. In the Python reference,
+`Jinja2Templates(directory="templates")` autoescapes by default — route all
+dynamic content through
 `templates.TemplateResponse(request, "page.html", {...})`.
 
 ## Persistence: the storage client, never local disk
@@ -84,7 +77,9 @@ database and R2 bucket. **Leave `INNO_STORAGE_BASE` unset** — locally and in
 production the default is correct; only override it if you're running the
 app process entirely outside the container (unusual). File storage is
 `put_file`/`get_file`/`list_files`/`delete_file` against the same client,
-backed by R2.
+backed by R2. Non-Python stacks call the same plain-HTTP endpoints directly
+(`POST /_storage/sql/query|execute`, `PUT/GET/DELETE /_storage/files/{key}`,
+`GET /_storage/files` — see `get_app_contract` for the table).
 
 ## Identity: read the header, never build auth
 

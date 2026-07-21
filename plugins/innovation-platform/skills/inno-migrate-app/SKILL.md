@@ -17,6 +17,13 @@ tool call triggers an Okta browser login — expected, not an error.
 
 ## Phase 1 — Assess (read-only; provision nothing yet)
 
+**Fetch the `get_app_contract` MCP tool first — it IS the assessment
+checklist**: the full requirement list, the deployment patterns, what the
+platform does NOT support (background jobs, machine-to-machine APIs,
+guaranteed long-lived connections — instant blockers to surface), and the
+current recommended base images. Judge the repo against the contract rather
+than a remembered summary of it.
+
 Scan the existing repo and present a **migration assessment** covering, in
 order:
 
@@ -67,9 +74,11 @@ order:
 6. **What does not carry over** — git history (fresh repo; secrets buried in
    old history become moot, but working-tree secrets do not), custom
    domains, background jobs/cron, and any always-on/websocket assumptions.
-7. **Proposed app name** — must match `^[a-z][a-z0-9-]{2,28}$`; a few names
-   are reserved server-side, so have a fallback. The repo becomes
-   `inno-{name}` and the URL `https://inno-{name}.davidlaporte.org`.
+7. **Proposed app name** — lowercase letters/digits/hyphens, 3-29 chars,
+   starting with a letter; a few names are reserved server-side, so have a
+   fallback. The repo becomes `inno-{name}` and the app gets
+   `https://inno-{name}.` on the platform domain (quote the exact URLs from
+   `create_app`'s response — never construct them).
    **Check the name with the `check_name` MCP tool (read-only) before you
    propose it — don't recommend a name you haven't confirmed is available.**
    Only put forward a name `check_name` reports as **available**; if it's
@@ -122,7 +131,7 @@ retry or walk away.
    purged app leaves only its repo behind: `create_app` on that name creates
    fresh, but the generated repo may collide with the old one on GitHub —
    surface the create response verbatim if it errors.
-2. `git clone https://github.com/dlaporte/inno-{name}.git` and work in the
+2. `git clone <repo URL from the create_app response>` and work in the
    clone.
 3. Port the code **into `app/`**, replacing the template's example app.
    Never touch the gate-pinned template files: `src/gateway/`,
@@ -155,10 +164,11 @@ retry or walk away.
    - Dockerfile rewritten per `inno-containerize` for the app's actual runtime;
    - **CLAUDE.md** — keep the five required section headers (`config-integrity`
      checks their presence), but rewrite the *body* to describe the migrated
-     app's actual stack. The template's CLAUDE.md says "the stack is Starlette";
-     left unedited it ships in the repo and misleads every future Claude session
-     (and Claude Code auto-loads it) into thinking a TS/Go/Ruby app must be
-     Python. Editing the body is safe — only the headers are gate-checked.
+     app's actual stack. The template's body documents the Python reference
+     implementation; left unedited it ships in the repo and points every
+     future Claude session (Claude Code auto-loads it) at code that no
+     longer exists. Editing the body is safe — only the headers are
+     gate-checked.
 5. Write **`MIGRATION.md`** at the repo root (extra root files pass the
    gates): what was ported, what was stripped (auth, dropped services),
    what was rewired (storage), deferred TODOs, and any open blockers with

@@ -19,11 +19,10 @@ provisioning, then ports the code rather than scaffolding fresh.
 ## 1. Intake — ask the user for three things
 
 1. **App name** — lowercase letters, digits, hyphens only, 3-29 chars,
-   starting with a letter (matches the platform's `isValidAppName` regex:
-   `^[a-z][a-z0-9-]{2,28}$`). This becomes the GitHub repo `inno-{name}` and
-   the live URL `https://inno-{name}.davidlaporte.org`, so keep it short and
-   DNS-safe. A handful of names are reserved by the platform (`platform`,
-   `template`, `app`, `replace`, `inno-platform`).
+   starting with a letter. This becomes the repo name `inno-{name}` and the
+   app's hostname on the platform domain, so keep it short and DNS-safe.
+   (A handful of names are reserved server-side — `check_name` reports
+   those, so don't enumerate or guess.)
 
    **Verify availability before you settle on a name — never recommend or
    confirm a name without checking it first.** Call the **`check_name`** MCP
@@ -75,11 +74,31 @@ Provisioning is real and not cheap to undo, and the user deserves to see what
 they're approving. Before calling `create_app`, produce and present a real
 design — not a one-line summary buried in the tool-approval prompt.
 
+**Fetch the `get_app_contract` MCP tool first** — it carries the platform's
+deployment patterns (and, critically, what the platform does NOT support:
+background jobs, machine-to-machine APIs, guaranteed long-lived
+connections), the stack policy, and the current recommended base images.
+Evaluate the user's idea against it before designing; a not-supported
+requirement surfaces HERE, not after provisioning.
+
 Invoke the **`superpowers:brainstorming`** skill to design the app: what it
 does, its data model (D1 tables / R2 objects), its routes/pages, and its access
 model (who can see and edit). If that skill isn't available in the session,
-run an equivalent inline pass: present the same four points as a short written
+run an equivalent inline pass: present the same points as a short written
 design in the conversation and get explicit user approval.
+
+The design includes two contract-informed choices that are **the user's to
+make, with your recommendation**:
+
+- **Deployment pattern** (from the contract's §5): server-rendered is the
+  default recommendation for internal tools; SPA+API when rich client
+  interactivity is the point.
+- **Stack**: Python/Starlette is the platform's *tested stack* — it should
+  work for most implementations and means starting from the template's
+  working reference app. Alternative stacks (Node, Go, …) are equally
+  supported; the contract is HTTP on port 8080, not a language. Recommend
+  the tested stack absent a reason otherwise (user preference, ecosystem
+  needs), and go with what the user picks.
 
 Only once the user has approved the design do you proceed to `create_app`. The
 design also seeds the scaffolding in §3.
@@ -105,10 +124,12 @@ create_app({ name, description, members })
   serving) app URL:
   ```
   App "{name}" created.
-  Repo: https://github.com/dlaporte/inno-{name}
-  URL: https://inno-{name}.davidlaporte.org (serving once CI deploys it)
+  Repo: https://github.com/{owner}/inno-{name}
+  URL: https://inno-{name}.{platform domain} (serving once CI deploys it)
   ```
-  The app URL is a 404/unprovisioned until the first successful `inno-ship`.
+  **Quote both URLs from the response — never construct them yourself** (the
+  GitHub owner and platform domain are deployment-specific). The app URL is
+  a 404/unprovisioned until the first successful `inno-ship`.
 
 ### `create_app` responses — read them, don't assume
 
@@ -129,17 +150,23 @@ create_app({ name, description, members })
 ## 3. Clone and scaffold
 
 ```bash
-git clone https://github.com/dlaporte/inno-{name}.git
+git clone <repo URL from the create_app response>
 cd inno-{name}
 ```
 
-The cloned repo already contains the platform template: `app/main.py`,
-`app/requirements.txt`, `app/templates/index.html`, `Dockerfile`,
-`src/gateway/`, `wrangler.jsonc`, `package.json`, `.github/workflows/deploy.yml`.
-**Do not regenerate these from scratch** — start from what's there and extend
-it. Load the `inno-platform-conventions` skill before writing any application code
-(framework, storage, identity, and the do-not-touch file list), and the
-`inno-containerize` skill before editing the Dockerfile.
+The cloned repo already contains the platform template: the gateway
+(`src/gateway/`, `wrangler.jsonc`, `package.json`,
+`.github/workflows/deploy.yml` — hands-off) and a **reference
+implementation** under `app/` + `Dockerfile` (Python/Starlette, the tested
+stack). Load the `inno-platform-conventions` skill before writing any
+application code (stack policy, storage, identity, and the do-not-touch
+file list), and the `inno-containerize` skill before editing the Dockerfile.
+
+- **Tested stack chosen (Python):** start from the reference app and extend
+  it — don't regenerate it from scratch.
+- **Another stack chosen:** replace `app/` and the `Dockerfile` wholesale
+  for that stack, honoring the contract you fetched in §1b (port 8080,
+  `/healthz`, identity headers, the storage endpoints, sign-out link).
 
 **Delete the scaffold marker as you build.** The generated repo ships
 `app/.needs-build`, which makes CI skip deployment until it's removed. Once you
@@ -151,13 +178,16 @@ rm -f app/.needs-build
 
 Leaving it in place means `inno-ship` will refuse to deploy — by design.
 
-Typical scaffolding steps for a new feature:
+Typical scaffolding steps for a new feature (Python reference shown; the
+same moves apply in any stack's own idiom):
 - Add routes to `app/main.py` (or split into new modules under `app/`,
   importing them from `main.py` — the Starlette `app` object is the ASGI
   entrypoint `uvicorn` runs).
-- Add templates under `app/templates/` (never delete the directory — a
-  missing `templates/` dir is a common runtime 500, see `inno-containerize`).
-- Add pinned dependencies to `app/requirements.txt`.
+- Add templates under `app/templates/` (never delete the directory while the
+  reference Dockerfile is in use — a missing `templates/` dir is a common
+  runtime 500, see `inno-containerize`).
+- Add pinned dependencies to the stack's manifest (`app/requirements.txt`
+  here).
 
 ## 4. Hand off
 

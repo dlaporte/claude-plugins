@@ -12,15 +12,17 @@ the preflight. Never install or run scanners locally: local results drift
 from CI's and know nothing about centrally-configured ignores or gate
 toggles.
 
-Two things are checked here, and **both are hard requirements before
+Three things are checked here, and **all are hard requirements before
 `inno-ship`**:
 
 1. The **safety gates** (CI): config-integrity, secrets, SAST, dependency
    audit, container build + image CVEs.
 2. The **guardrails policy** (you): a qualitative read of the app against
    the platform's acceptable-use policy.
+3. The **application contract** (you): the app's conformance to the
+   platform's runtime requirements that CI can't see.
 
-## 1. Guardrails review (do this while CI runs, or first)
+## 1. Guardrails + contract review (do this while CI runs, or first)
 
 Call the `get_guardrails` MCP tool and re-read the app against it — name,
 stated purpose, what the code actually does, and how it handles data. You
@@ -32,6 +34,16 @@ have the whole repo in front of you; this is judgment, not grep.
   changed or the user has an explicit admin exception (they arrange that
   with a platform admin — you cannot grant it). This applies even if every
   CI gate is green.
+
+Then call the `get_app_contract` MCP tool and judge the app against the
+MUSTs — focusing on what CI does NOT enforce mechanically: identity read
+only from the gateway headers with no home-grown auth (R3), a sign-out link
+targeting the team-domain logout (R4), durable state in the platform stores
+rather than local disk or memory (R5/R6), `/healthz` present and cheap (R2),
+and no reliance on unsupported patterns (background work, machine-to-machine
+callers, connections that must survive sleep). A contract violation is the
+same hard stop as a guardrails one: name the requirement, fix or guide the
+fix, re-check.
 
 ## 2. Push and watch the gates
 
