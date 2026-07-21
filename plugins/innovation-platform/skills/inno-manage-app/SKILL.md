@@ -1,6 +1,6 @@
 ---
 name: inno-manage-app
-description: Use to share, check on, start, stop, transfer, export, or configure a deployed Innovation Platform app via the inno-platform MCP tools (grant_access, revoke_access, app_status, start_app, stop_app, request_start, transfer_app, export_app_data, get_app_metrics, set_config). Use when the user wants to give someone access, check deploy status, bring back a stopped app, hand an app to a new owner, download their app's data, or shut one down.
+description: Use to share, check on, start, stop, transfer, export, open up, or configure a deployed Innovation Platform app via the inno-platform MCP tools (grant_access, revoke_access, set_app_access, app_status, start_app, stop_app, request_start, transfer_app, export_app_data, get_app_metrics, set_config). Use when the user wants to give someone access, open an app to everyone with SSO, check deploy status, bring back a stopped app, hand an app to a new owner, download their app's data, or shut one down.
 ---
 
 # inno-manage-app
@@ -91,6 +91,24 @@ errors, and p50 CPU from Cloudflare analytics.
 
 Deployment statuses: `pending`, `deploying`, `deployed`.
 
+## `set_app_access({ name, open })` — open to everyone, or members-only
+
+Opens an app to **every SSO user, current and future** (open: true) or
+returns it to the named member list (open: false). Owner or admin only.
+
+- The named member list is **never modified** — closing always restores
+  exactly the configured access. Say so when confirming.
+- Takes effect at each user's **next sign-in**; already-signed-in users keep
+  their session up to 24h. Set expectations when the user asks "why can they
+  still get in?"
+- `open_access_disallowed` means an admin has restricted open access for
+  this app or owner (`access.allow_open`) — a platform admin can change it
+  with `set_config`; do not try to work around it by mass grant_access.
+- `open_access_unprovisioned` means the app predates the feature and needs
+  the one-time admin backfill (`scripts/backfill-open-access.mjs`).
+- Confirm before opening — state plainly that EVERY SSO user will have
+  access, not just current members.
+
 ## `transfer_app({ name, new_owner_email })` — hand an app to someone else
 
 Immediate: the recipient becomes the owner (lifecycle notices, quota, and
@@ -147,6 +165,7 @@ entry here.
 | `start_app` / `stop_app` / `request_start` | app owner (starts limited), or admins (unlimited) |
 | `export_app_data` | app owner, or `inno-platform-admins` |
 | `transfer_app` | app owner, or `inno-platform-admins` |
+| `set_app_access` | app owner, or `inno-platform-admins` (opening gated by `access.allow_open`) |
 | `create_app` | any signed-in Okta user (becomes the owner) |
 | `report_issue` | app owner, or `inno-platform-admins` |
 | `list_issues` / `resolve_issue` / `list_users` / `query_audit` / `get_config` | `inno-platform-admins` only |
