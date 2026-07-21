@@ -23,7 +23,7 @@ is attributable to your real Okta identity, not a shared service credential.
 - **`.mcp.json`** — points at `https://inno-platform.davidlaporte.org/mcp`,
   the platform's remote MCP server (tools: `create_app`, `check_name`,
   `list_apps`, `app_status`, `grant_access`, `revoke_access`, `stop_app`,
-  `start_app`, `request_start`, `get_app_metrics`, `get_platform_status`,
+  `start_app`, `request_start`, `export_app_data`, `get_app_metrics`, `get_platform_status`,
   `list_notifications`, `mark_notification_read`, `mark_all_notifications_read`,
   `get_platform_docs`, `get_guardrails`, `get_ci_status`, `report_issue`,
   self-service `set_config`/`remove_config`, and the admin-only `purge_app`,

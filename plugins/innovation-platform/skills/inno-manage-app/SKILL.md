@@ -1,6 +1,6 @@
 ---
 name: inno-manage-app
-description: Use to share, check on, start, stop, or configure a deployed Innovation Platform app via the inno-platform MCP tools (grant_access, revoke_access, app_status, start_app, stop_app, request_start, get_app_metrics, set_config). Use when the user wants to give someone access, check deploy status, bring back a stopped app, or shut one down.
+description: Use to share, check on, start, stop, export, or configure a deployed Innovation Platform app via the inno-platform MCP tools (grant_access, revoke_access, app_status, start_app, stop_app, request_start, export_app_data, get_app_metrics, set_config). Use when the user wants to give someone access, check deploy status, bring back a stopped app, download their app's data, or shut one down.
 ---
 
 # inno-manage-app
@@ -91,6 +91,22 @@ errors, and p50 CPU from Cloudflare analytics.
 
 Deployment statuses: `pending`, `deploying`, `deployed`.
 
+## `export_app_data({ name })` — take your data with you
+
+Starts a background build of a downloadable archive: the app's D1 database as
+a SQL dump, every stored file from its bucket, and a `manifest.json` (app
+record, members, effective config). The owner is emailed when it's ready;
+the archive appears on the app's panel page (Data exports card) and is kept
+for a limited time (default 30 days). Owner or admin only.
+
+- **One export at a time per app** — `export_in_progress` means wait for the
+  current one to finish or fail; the platform times out a dead job after 2 h.
+- Offer this proactively when a user is about to stop an app they may not
+  restart, or asks about leaving/migrating off the platform.
+- The platform also builds an archive **automatically before any purge** and
+  links it in the purge notice — so "my app was purged, is my data gone?" has
+  a real answer: the emailed link keeps working for the retention window.
+
 ## Configuration (`get_config` / `set_config` / `remove_config`)
 
 Admin-only, except each user may set their own self-service settings (e.g.
@@ -115,6 +131,7 @@ entry here.
 | `grant_access` / `revoke_access` | app owner, or `inno-platform-admins` |
 | `app_status` / `get_app_metrics` | app owner, or `inno-platform-admins` |
 | `start_app` / `stop_app` / `request_start` | app owner (starts limited), or admins (unlimited) |
+| `export_app_data` | app owner, or `inno-platform-admins` |
 | `create_app` | any signed-in Okta user (becomes the owner) |
 | `report_issue` | app owner, or `inno-platform-admins` |
 | `list_issues` / `resolve_issue` / `list_users` / `query_audit` / `get_config` | `inno-platform-admins` only |
