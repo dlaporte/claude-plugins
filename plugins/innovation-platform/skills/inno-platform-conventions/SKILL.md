@@ -6,7 +6,8 @@ description: Use when writing or reviewing code inside an inno-{app} repo's app/
 # inno-platform-conventions
 
 The Innovation Platform deploys a Cloudflare Workers gateway (Durable
-Object + Container) in front of your app. The gateway is templated and
+Object + Container) in front of your app. The gateway is a platform-pinned
+build input — injected into your repo at build time, not vendored — and
 policed by CI; your job is everything under `app/`. These rules are not
 style preferences — each one maps to a CI gate that will fail the deploy.
 
@@ -135,11 +136,17 @@ local `wrangler dev`.
 
 ## Files you must not touch
 
-The `config-integrity` gate diffs your repo against `inno-template@main` and
-fails the build on any difference in:
+`src/gateway/` (Worker code doing JWT verification, request routing, and the
+storage proxy) must not exist in your repo at all — the platform's reusable
+workflow injects the promoted gateway into that path at build time. The
+`config-integrity` gate fails outright if it finds the directory ("delete
+`src/gateway/` — the platform injects the gateway at build time"); never
+create it locally. `wrangler.jsonc`'s `main` still names
+`src/gateway/index.ts` — that's the injected path, not a file you author.
 
-- `src/gateway/` (the entire directory — Worker code doing JWT verification,
-  request routing, and the storage proxy)
+The gate also diffs your repo against `inno-template@main` and fails the
+build on any difference in:
+
 - `package.json` and the lockfile (`package-lock.json`)
 - `tsconfig.json`
 - `CLAUDE.md`'s required section headers — the gate checks all five

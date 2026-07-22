@@ -30,8 +30,9 @@ order:
 1. **Stack — keeping vs. porting is the user's decision, informed by your
    analysis.** The platform contract is **HTTP on port 8080**, not a language:
    the gateway proxies authenticated requests to your container over HTTP, and
-   **no CI gate checks the language or framework** (`config-integrity` pins the
-   *gateway* and template files, never your `app/` code's stack). Keeping the
+   **no CI gate checks the language or framework** (`config-integrity` rejects
+   a vendored *gateway* and pins the template files, never your `app/` code's
+   stack). Keeping the
    existing stack — TypeScript/Express, Go, Ruby, whatever — is usually the
    right call and the default bias; Python/Starlette is only the *template
    default* for brand-new apps (`inno-new-app`), never a migration requirement. But
@@ -134,10 +135,12 @@ retry or walk away.
 2. `git clone <repo URL from the create_app response>` and work in the
    clone.
 3. Port the code **into `app/`**, replacing the template's example app.
-   Never touch the gate-pinned template files: `src/gateway/`,
-   `package.json`, `package-lock.json`, `tsconfig.json`, the `CLAUDE.md`
-   required headers, or `wrangler.jsonc`'s orchestrator-managed fields —
-   and never add a competing `wrangler.json`/`wrangler.toml`/`.wrangler/`.
+   Never touch the gate-pinned template files: `package.json`,
+   `package-lock.json`, `tsconfig.json`, the `CLAUDE.md` required headers,
+   or `wrangler.jsonc`'s orchestrator-managed fields — never add a
+   competing `wrangler.json`/`wrangler.toml`/`.wrangler/`, and never create
+   `src/gateway/` (the platform injects the gateway at build time; the repo
+   must not contain it).
    (`config-integrity` rejects all of these; see `inno-platform-conventions`.)
    Leave `.github/workflows/deploy.yml` as templated too — it is NOT
    gate-pinned (the broker's OIDC `job_workflow_ref` check carries that

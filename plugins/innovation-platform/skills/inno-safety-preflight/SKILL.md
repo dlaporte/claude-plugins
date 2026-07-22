@@ -70,7 +70,7 @@ For each gate, tell the user what happened in THEIR terms:
 | **Real finding** (SAST/deps/CVE) | Show the file:line from the annotations, explain the risk in one sentence, fix it (or guide the fix), re-push. |
 | **Likely false positive** | Never work around it in code (renames, string-splitting, suppression comments). Name the exact finding ID and tell the user a platform admin can add a central ignore for it (optionally with an expiry) — it then clears at both the gate and the periodic safety sweep. |
 | `SAFETY GATE DISABLED by platform policy` in the log | Deliberate admin configuration, not a bug. Note it and move on. |
-| config-integrity failure | Platform-pinned files were modified (gateway/, package.json, wrangler resource blocks, template CLAUDE.md headers). Revert the pinned file — these are never editable app-side. |
+| config-integrity failure | Either a platform-pinned file was modified (package.json, wrangler resource blocks, template CLAUDE.md headers — revert it, never editable app-side) or the repo contains `src/gateway/` (the platform injects the gateway at build time — delete the directory). |
 | container failure | Dockerfile contract problem — hand off to `inno-containerize`. |
 
 Diagnose privately (`get_ci_status` annotations or `gh run view --log-failed`);
