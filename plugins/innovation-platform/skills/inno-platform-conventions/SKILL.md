@@ -82,6 +82,14 @@ backed by R2. Non-Python stacks call the same plain-HTTP endpoints directly
 (`POST /_storage/sql/query|execute`, `PUT/GET/DELETE /_storage/files/{key}`,
 `GET /_storage/files` — see `get_app_contract` for the table).
 
+**Worker-type apps use bindings, not `storage.internal`.** The `storage.internal`
+client above is the *container* path. A worker app (contract §1.1) reaches its
+own D1 and R2 directly through the injected `env.DATA` (D1) and `env.FILES` (R2)
+bindings — e.g. `await env.DATA.prepare("SELECT n FROM visits WHERE email = ?").bind(user).all()`.
+Same "never local disk" rule; same "your own resources only." The schema pattern
+(idempotent `CREATE TABLE IF NOT EXISTS`, or numbered `app/migrations/*.sql`
+applied on boot) is identical either way — see `get_app_contract` §3.
+
 ## Identity: read the header, never build auth
 
 The gateway has already verified the user against Okta before the request

@@ -45,6 +45,17 @@ callers, connections that must survive sleep). A contract violation is the
 same hard stop as a guardrails one: name the requirement, fix or guide the
 fix, re-check.
 
+Finally, if the app has **per-user data, an admin/staff surface, a
+state-changing write, or a call to a paid/external upstream**, call the
+`get_app_security` MCP tool and review the app's code against it. The perimeter
+handles authn/session/CSRF/secrets; this pass covers what it can't — above all
+**authorization/IDOR**: every query for user-owned data scoped by the caller's
+`X-Forwarded-User` (never by an id from the request), admin routes gated on an
+`inno-` group, SQL always bound, output escaped, expensive actions capped. This
+is where the most damaging vibe-coded bug (user A reading user B's rows) is
+caught. A stateless single-view app can skip it. Findings here are advisory —
+present them and fix with the user — not a mechanical hard stop like a gate.
+
 ## 2. Push and watch the gates
 
 ```bash

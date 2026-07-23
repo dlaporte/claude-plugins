@@ -54,6 +54,17 @@ order:
    them to 8080 + `/healthz`. One known trap: **FastAPI** is keepable only if
    its resolved Starlette version clears `pip-audit`/Trivy (older pins drag in
    CVE-bearing `starlette 0.46.x` — check the lockfile, don't assume).
+
+   **Deployment type — container is the migration default; flag a worker only
+   when it clearly fits.** Migrating in place means a **container** (keep the
+   stack, containerize it) — that's the default and almost always right. Raise
+   the **worker** type (contract §1.1) as an option *only* when the source is
+   already a small JS/TS web-UI + API with no native deps and would benefit from
+   ms cold starts — and even then it's a *reimplementation*, not a migration
+   (rewrite the entry as an `app/index.ts` fetch handler, storage via
+   `env.DATA`/`env.FILES`), so present the extra effort honestly and let the
+   user choose. Anything non-JS, native-dep, or long-running stays container.
+   Pass the chosen `type` to `create_app`.
 2. **Auth to strip** — login routes, session middleware, password storage,
    OAuth flows. All of it goes: the gateway verifies the user against Okta
    and injects `X-Forwarded-User` / `X-Forwarded-Groups` (see
@@ -72,7 +83,11 @@ order:
    everything the container installs — CI's `npm audit` only checks the
    platform's injected root `package.json`, never anything under `app/`),
    semgrep OWASP patterns such as
-   string-built HTML or raw SQL formatting.
+   string-built HTML or raw SQL formatting. If the app has per-user data or an
+   admin surface, also fetch **`get_app_security`** and flag any
+   authorization/IDOR gaps in the source (a query that trusts a request id
+   instead of scoping by the caller) to fix during the port — the perimeter
+   handles authn, but object-level access control is still the app's.
 6. **What does not carry over** — git history (fresh repo; secrets buried in
    old history become moot, but working-tree secrets do not), custom
    domains, background jobs/cron, and any always-on/websocket assumptions.
@@ -123,7 +138,9 @@ code exists to fall back on, with steps appropriate to its current state:
 it is, so if the port isn't what they wanted the original is intact and they can
 retry or walk away.
 
-1. Call `create_app({ name, description, members })` — same semantics as
+1. Call `create_app({ name, description, members, type })` — pass the `type`
+   from the Phase 1 decision (`"container"` by default; `"worker"` only for an
+   approved JS/TS reimplementation). Same semantics as
    `inno-new-app`: owner is the signed-in Okta user, provisioning is synchronous
    (~15-30s), and a non-empty `error` field is surfaced verbatim, not
    retried blindly. One behavior matters here: if the chosen name belongs to
