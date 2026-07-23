@@ -34,7 +34,8 @@ plugins/servicenow/
     ├── snow-change/SKILL.md
     ├── snow-order/SKILL.md
     ├── snow-triage/SKILL.md
-    └── snow-report/SKILL.md
+    ├── snow-report/SKILL.md
+    └── snow-kb/SKILL.md
 ```
 
 Plus a `servicenow` entry in `.claude-plugin/marketplace.json`. No OAuth
@@ -81,9 +82,12 @@ Triggered by any ServiceNow-ish request; the other four point back to it.
   ACLs (matches the UI, not a server bug); "Requested URI does not represent
   any resource" → that scoped API isn't enabled; "Invalid sys_id" → resolve
   number → sys_id first.
+- **Attachments** (they apply to any record, so they live here): 
+  `list_attachments`/`get_attachment` to read files off a record (size-capped
+  content), `upload_attachment` to attach; base64 for binary.
 - **Limitations:** no background scripts, no UI-action buttons, no client
   scripts/UI policies (server-side rules still fire).
-- **Pointers** to the four task skills.
+- **Pointers** to the five task skills.
 
 ### `snow-change`
 
@@ -107,7 +111,9 @@ handled automatically; ACL-after-limit search quirk.
 `my_work` queue review → SLA pressure via `get_task_slas` → update
 conventions (customer-visible comments vs internal work_notes via
 `add_comment`) → `resolve_incident` (close code/notes handled). Escalation
-fields (impact/urgency vs priority).
+fields (impact/urgency vs priority). Approvals are part of the queue:
+`list_my_approvals` → inspect the underlying record → `respond_to_approval`
+(works for any approval type; rejection comments required).
 
 ### `snow-report`
 
@@ -115,18 +121,31 @@ Read-only reporting recipes: `aggregate_stats` count-by-group, trends via
 date-range queries, breakdowns; `query_records` with ORDERBY/limit for
 top-N lists. Works on every deployment including read-only.
 
+### `snow-kb`
+
+Knowledge lifecycle: `search_knowledge` (full-text, permission-filtered,
+transparent Table API fallback) → `get_article` (full body; increments view
+count like the portal) → `create_article` (starts as draft; KB by display
+name) → `publish_article` (may land in 'review' if the KB enforces an
+approval workflow — check the returned state). Contributor/publish rights
+surface as 403s.
+
 ## Verification
 
 1. snow-mcp: `uv run pytest` green; push → CI deploy; live
    `connection_info` shows the new fields.
 2. Plugin: install/refresh from the local marketplace; confirm the MCP
-   server connects, all five skills are listed and invocable by slash name.
+   server connects, all six skills are listed and invocable by slash name.
 3. Read-only framing: against production (read-only) confirm `using-snow`'s
    orientation step reports the mode correctly.
 
 ## Out of scope
 
-- Skills for `knowledge`/`approvals`/`attachments`/`dev` packages (docstrings
-  suffice for now; add later if friction shows).
+- A skill for the `dev` package (single admin-gated tool, `commit_update_set`
+  — its docstring suffices).
 - Any hooks/commands/agents in the plugin — skills only for v1.
 - Publishing beyond the personal marketplace.
+
+Coverage note: knowledge gets its own skill (`snow-kb`); approvals fold into
+`snow-triage`; attachments fold into `using-snow` — every package except
+`dev` has skill coverage.
