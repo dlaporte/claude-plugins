@@ -136,7 +136,8 @@ create_app({ name, description, members, type })   // type: "worker" | "containe
   resources). Don't assume failure if it takes a few seconds to return — but
   do surface the tool's `error` field verbatim if it comes back non-empty
   (e.g. `invalid_name`, or a wrapped provisioning error) rather than retrying
-  blindly.
+  blindly. Exception: a generic "upstream service error" is safe to retry
+  ONCE — provisioning is resumable and picks up where it failed.
 - On success the tool returns text containing the repo URL and the (not-yet-
   serving) app URL:
   ```
@@ -171,10 +172,13 @@ git clone <repo URL from the create_app response>
 cd inno-{name}
 ```
 
-The cloned repo already contains the platform template: the thin
-`.github/workflows/deploy.yml` caller workflow (hands-off) and a
-**reference implementation** under `app/` + `Dockerfile` (Python/Starlette,
-the tested *container* stack). Everything else — `src/gateway/`,
+The cloned repo arrives ALREADY PRUNED to the deployment type you chose —
+the template carries both scaffolds and the platform rewrites the repo at
+creation (a `scaffold: worker` / `scaffold: container` commit). Both types
+ship the thin `.github/workflows/deploy.yml` caller workflow (hands-off); a
+**worker** repo has the TS reference (`app/index.ts`), a **container** repo
+the Python/Starlette reference (`app/` + `Dockerfile` + `lib/`). Everything
+else — `src/gateway/`,
 `package.json`, `package-lock.json`, `tsconfig.json`, and the `wrangler.jsonc`
 variants — is injected by the platform at build time and is NOT in the repo;
 don't create any of them. Load the `inno-platform-conventions` skill before
@@ -191,11 +195,13 @@ skill before editing the Dockerfile.
   / `X-Forwarded-Groups`), serve **`GET /healthz` as a route** (200), and
   reach storage through the app's **own bindings** — `env.DATA` (D1),
   `env.FILES` (R2) — not `storage.internal`. Declare any npm deps in a
-  **non-root** `app/package.json`. Replace the Python container reference:
-  remove `app/main.py`, `app/requirements.txt`, `app/templates/`, and the
-  `Dockerfile` (a worker app has no container image — the CI image gates are
-  skipped for it). Do NOT create `wrangler.jsonc`/`app-worker.jsonc` — those
-  are platform-injected.
+  **non-root** `app/package.json`. The repo is already worker-shaped (no
+  Dockerfile, no Python reference — the CI image gates are skipped for this
+  type); extend `app/index.ts` rather than re-scaffolding. Never interpolate
+  user data into hand-built HTML — even escaped, the SAST gate blocks it;
+  return dynamic data as JSON (like the scaffold's `/me`) or use an
+  auto-escaping template library. Do NOT create
+  `wrangler.jsonc`/`app-worker.jsonc` — those are platform-injected.
 - **`container` app, tested stack (Python):** start from the reference app
   (`app/main.py` + `Dockerfile`) and extend it — don't regenerate from
   scratch.
