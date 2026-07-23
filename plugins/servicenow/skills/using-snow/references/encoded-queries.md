@@ -26,6 +26,10 @@ OR). Sorting is part of the query: `^ORDERBY<field>` / `^ORDERBYDESC<field>`.
   `gs.beginningOfLastMonth()`…`gs.endOfLastMonth()`, `gs.beginningOfThisQuarter()`
 - Current user: `assigned_to=javascript:gs.getUserID()`
 
+Only simple `javascript:gs.<helper>()` calls (optionally one integer
+argument) are accepted — the server rejects any other `javascript:`
+expression in a query.
+
 ## Dot-walking
 
 Reference fields traverse with `.`: `caller_id.department.name=IT`,
