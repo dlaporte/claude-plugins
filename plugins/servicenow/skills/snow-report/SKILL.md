@@ -30,6 +30,7 @@ numbers, `query_records` for the rows behind them. Operator syntax:
 - `query_records` returns `total_matching` — quote it, not the page length.
 - Choice fields group by raw value; map labels via `describe_table`'s choice
   lists before presenting.
-- Empty result ≠ zero activity: the user's ACLs scope everything (say so
-  when a number looks implausibly low).
+- ACLs scope `query_records` rows, so an empty list ≠ zero activity —
+  but `aggregate_stats` counts ALL matching records (totals can exceed
+  the rows you can read); note the difference when they disagree.
 - Prefer one `aggregate_stats` with `group_by` over N per-group queries.

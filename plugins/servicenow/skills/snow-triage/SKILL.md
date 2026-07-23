@@ -18,7 +18,7 @@ update, resolve, or approve — report findings and stop.
    past ~75% first.
 3. `list_my_approvals()` — approvals are queue work too. Before deciding,
    fetch the underlying record (`get_record` on the sysapproval target) so
-   the user approves with context; then `respond_to_approval(sys_id,
+   the user approves with context; then `respond_to_approval(approval_sys_id,
    "approved"|"rejected", comments=...)` — rejections need comments.
 
 ## Incident conventions

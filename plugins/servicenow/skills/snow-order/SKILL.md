@@ -34,8 +34,7 @@ actually order.
      incident), not a REQ.
 4. **Track**: ordering returns a REQ number + sys_id. Fulfillment lives on
    RITMs: `query_records(sc_req_item, query="request=<sys_id>")`, and their
-   work items on `sc_task` (`request_item=<ritm sys_id>`). The user's own
-   RITMs also appear in `my_work`.
+   work items on `sc_task` (`request_item=<ritm sys_id>`).
 
 ## Errors that teach
 
