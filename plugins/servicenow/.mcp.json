@@ -1,0 +1,8 @@
+{
+  "mcpServers": {
+    "servicenow": {
+      "type": "http",
+      "url": "https://snow-mcp.davidlaporte.org/mcp"
+    }
+  }
+}

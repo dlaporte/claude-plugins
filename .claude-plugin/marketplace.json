@@ -11,6 +11,13 @@
       "description": "Build and ship apps on the davidlaporte.org Innovation Platform: create an app via the inno-platform MCP server, scaffold a Starlette container under app/ per platform conventions, containerize it, run the security gates locally before pushing, ship through CI/CD, and manage access to a live app.",
       "category": "development",
       "homepage": "https://github.com/dlaporte/claude-plugins"
+    },
+    {
+      "name": "servicenow",
+      "source": "./plugins/servicenow",
+      "description": "Work in ServiceNow as yourself via the snow-mcp server: triage incidents and approvals, drive changes through their state model, order from the service catalog, author knowledge, and report on any table — with skills that adapt to read-only deployments.",
+      "category": "productivity",
+      "homepage": "https://github.com/dlaporte/claude-plugins"
     }
   ]
 }

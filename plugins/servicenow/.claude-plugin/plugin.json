@@ -1,0 +1,8 @@
+{
+  "name": "servicenow",
+  "description": "Work in ServiceNow as yourself via the snow-mcp server (per-user OAuth): triage incidents and approvals, drive changes through their state model with conflict checks, order from the service catalog, author knowledge, and report on any table. Skills adapt to the deployment's read-only mode and tool packages.",
+  "author": {
+    "name": "David LaPorte"
+  },
+  "mcpServers": "./.mcp.json"
+}
