@@ -38,7 +38,18 @@ order:
    default* for brand-new apps (`inno-new-app`), never a migration requirement. But
    whether to keep or port is a genuine choice, and it is **the user's to
    make** — your job is to inform it, not to decide unilaterally in either
-   direction. Assess and present:
+   direction.
+
+   **Deployment type for a migration defaults to `container`** (`create_app`'s
+   `type`): keeping an existing stack in a container is the point of a
+   migration, and container serves any language. Only raise the **`worker`**
+   type when the source is already **JS/TS** and reimplementing it as a
+   Cloudflare Worker is a deliberate, worthwhile choice the user opts into
+   (ms cold starts, no Dockerfile) — that is closer to a rewrite than a
+   migration, so treat it as `inno-new-app` territory (see the worker deltas
+   in `get_app_contract` §1.1). Absent that, migrate as a container.
+
+   Assess and present:
    - **Can the current stack meet the platform requirements?** The container
      contract (8080, `/healthz`, non-root, patched base image) and the security
      gates (Trivy / `pip-audit` / `npm audit`, semgrep, no committed secrets).

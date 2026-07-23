@@ -74,12 +74,13 @@ Provisioning is real and not cheap to undo, and the user deserves to see what
 they're approving. Before calling `create_app`, produce and present a real
 design — not a one-line summary buried in the tool-approval prompt.
 
-**Fetch the `get_app_contract` MCP tool first** — it carries the platform's
-deployment patterns (and, critically, what the platform does NOT support:
-background jobs, machine-to-machine APIs, guaranteed long-lived
-connections), the stack policy, and the current recommended base images.
-Evaluate the user's idea against it before designing; a not-supported
-requirement surfaces HERE, not after provisioning.
+**Fetch the `get_app_contract` MCP tool first** — it carries the two
+deployment **types** and their requirement deltas (§1.1), the deployment
+patterns (and what the platform does NOT support: background jobs,
+machine-to-machine APIs, guaranteed long-lived connections), the stack
+policy, and the current recommended base images. Evaluate the user's idea
+against it before designing; a not-supported requirement surfaces HERE, not
+after provisioning.
 
 Invoke the **`superpowers:brainstorming`** skill to design the app: what it
 does, its data model (D1 tables / R2 objects), its routes/pages, and its access
@@ -87,30 +88,46 @@ model (who can see and edit). If that skill isn't available in the session,
 run an equivalent inline pass: present the same points as a short written
 design in the conversation and get explicit user approval.
 
-The design includes two contract-informed choices that are **the user's to
+The design includes three contract-informed choices that are **the user's to
 make, with your recommendation**:
 
-- **Deployment pattern** (from the contract's §5): server-rendered is the
-  default recommendation for internal tools; SPA+API when rich client
-  interactivity is the point.
-- **Stack**: Python/Starlette is the platform's *tested stack* — it should
-  work for most implementations and means starting from the template's
-  working reference app. Alternative stacks (Node, Go, …) are equally
-  supported; the contract is HTTP on port 8080, not a language. Recommend
-  the tested stack absent a reason otherwise (user preference, ecosystem
-  needs), and go with what the user picks.
+- **Deployment type** — `worker` or `container` (passed to `create_app`;
+  default container server-side, but for a **greenfield** app you recommend
+  and default to **`worker`**):
+  - **`worker` (recommend for greenfield):** the app is its own Cloudflare
+    Worker (JS/TS) behind the gateway — ms cold starts, no Dockerfile,
+    Workers-native bindings. This is the right fit for the common
+    citizen-dev shape (a small web UI + JSON API in TS/JS).
+  - **`container`:** choose this when the description gives a **clear signal**
+    for it — an explicit **non-TS/JS stack** (Python, Go, Ruby, …), **native
+    dependencies** or system binaries, **long-running / heavy compute**, or a
+    port of existing non-JS code (that's `inno-migrate-app`, which defaults
+    to container). Absent such a signal, prefer worker.
+  - State your recommendation and the reason, and go with the user's call.
+- **Deployment pattern** (contract §5): server-rendered is the default for
+  internal tools; SPA+API when rich client interactivity is the point —
+  applies to either type.
+- **Stack** — follows from the type: a **worker** app is TS/JS (that is what
+  Workers run). A **container** app defaults to Python/Starlette (the tested
+  container stack, with a working reference app), or the user's chosen stack
+  — any language is supported; the container contract is HTTP on port 8080,
+  not a language.
 
 Only once the user has approved the design do you proceed to `create_app`. The
-design also seeds the scaffolding in §3.
+type and design seed the scaffolding in §3.
 
 ## 2. Call the MCP tool
 
 Call `create_app` on the `inno-platform` MCP server:
 
 ```
-create_app({ name, description, members })
+create_app({ name, description, members, type })   // type: "worker" | "container" (default container)
 ```
 
+- Pass **`type`** from the design decision (§1b) — `"worker"` for the
+  greenfield default, `"container"` when the description warranted it. Omit
+  it (or pass `"container"`) for a container app. The type is fixed at
+  creation and can't be switched later (make a new app to change it).
 - The app is created with **owner = the signed-in Okta user** (the caller's
   verified identity from the MCP OAuth session) — you cannot set a different
   owner via this tool, and there is no "create on behalf of" option.
@@ -157,18 +174,34 @@ cd inno-{name}
 The cloned repo already contains the platform template: the thin
 `.github/workflows/deploy.yml` caller workflow (hands-off) and a
 **reference implementation** under `app/` + `Dockerfile` (Python/Starlette,
-the tested stack). Everything else — `src/gateway/`, `package.json`,
-`package-lock.json`, `tsconfig.json`, and `wrangler.jsonc` — is injected by
-the platform worker-side at build time and is NOT in the repo; don't create
-any of them. Load the `inno-platform-conventions` skill before writing any application
-code (stack policy, storage, identity, and the do-not-touch file list), and
-the `inno-containerize` skill before editing the Dockerfile.
+the tested *container* stack). Everything else — `src/gateway/`,
+`package.json`, `package-lock.json`, `tsconfig.json`, and the `wrangler.jsonc`
+variants — is injected by the platform at build time and is NOT in the repo;
+don't create any of them. Load the `inno-platform-conventions` skill before
+writing any application code (stack policy, storage, identity, the
+do-not-touch file list), and — for a container app — the `inno-containerize`
+skill before editing the Dockerfile.
 
-- **Tested stack chosen (Python):** start from the reference app and extend
-  it — don't regenerate it from scratch.
-- **Another stack chosen:** replace `app/` and the `Dockerfile` wholesale
-  for that stack, honoring the contract you fetched in §1b (port 8080,
-  `/healthz`, identity headers, the storage endpoints, sign-out link).
+**Scaffold by the deployment type you chose in §1b** (fetch `get_app_contract`
+§1.1 for the authoritative worker deltas):
+
+- **`worker` app (greenfield default):** the entry is **`app/index.ts`**
+  exporting `export default { fetch(request, env, ctx) }`. The request is
+  already Access-verified — read identity from `request.headers` (`X-Forwarded-User`
+  / `X-Forwarded-Groups`), serve **`GET /healthz` as a route** (200), and
+  reach storage through the app's **own bindings** — `env.DATA` (D1),
+  `env.FILES` (R2) — not `storage.internal`. Declare any npm deps in a
+  **non-root** `app/package.json`. Replace the Python container reference:
+  remove `app/main.py`, `app/requirements.txt`, `app/templates/`, and the
+  `Dockerfile` (a worker app has no container image — the CI image gates are
+  skipped for it). Do NOT create `wrangler.jsonc`/`app-worker.jsonc` — those
+  are platform-injected.
+- **`container` app, tested stack (Python):** start from the reference app
+  (`app/main.py` + `Dockerfile`) and extend it — don't regenerate from
+  scratch.
+- **`container` app, another stack:** replace `app/` and the `Dockerfile`
+  wholesale for that stack, honoring the contract (port 8080, `/healthz`,
+  identity headers, the `storage.internal` endpoints, sign-out link).
 
 **Delete the scaffold marker as you build.** The generated repo ships
 `app/.needs-build`, which makes CI skip deployment until it's removed. Once you
@@ -180,16 +213,17 @@ rm -f app/.needs-build
 
 Leaving it in place means `inno-ship` will refuse to deploy — by design.
 
-Typical scaffolding steps for a new feature (Python reference shown; the
-same moves apply in any stack's own idiom):
-- Add routes to `app/main.py` (or split into new modules under `app/`,
-  importing them from `main.py` — the Starlette `app` object is the ASGI
-  entrypoint `uvicorn` runs).
-- Add templates under `app/templates/` (never delete the directory while the
-  reference Dockerfile is in use — a missing `templates/` dir is a common
-  runtime 500, see `inno-containerize`).
-- Add pinned dependencies to the stack's manifest (`app/requirements.txt`
-  here).
+Typical scaffolding steps for a new feature (Python **container** reference
+shown; a **worker** app does the equivalent inside `app/index.ts`'s `fetch`
+handler — route on the URL, read identity from the request headers, read/write
+`env.DATA`/`env.FILES`):
+- Add routes to `app/main.py` (container) or `app/index.ts` (worker); split
+  into modules under `app/` as it grows.
+- (Container, Python) add templates under `app/templates/` — never delete the
+  directory while the reference Dockerfile is in use (a missing `templates/`
+  is a common runtime 500, see `inno-containerize`).
+- Add pinned dependencies to the stack's manifest (`app/requirements.txt` for
+  the Python container; `app/package.json` for a worker or a Node container).
 
 **Rewrite `README.md` — this is required, not optional.** The cloned repo's
 README is inno-template's own ("Use this template…", template internals) and

@@ -12,7 +12,7 @@ the preflight. Never install or run scanners locally: local results drift
 from CI's and know nothing about centrally-configured ignores or gate
 toggles.
 
-Three things are checked here, and **all are hard requirements before
+Four things are checked here, and **all are hard requirements before
 `inno-ship`**:
 
 1. The **safety gates** (CI): config-integrity, secrets, SAST, dependency
@@ -21,8 +21,10 @@ Three things are checked here, and **all are hard requirements before
    the platform's acceptable-use policy.
 3. The **application contract** (you): the app's conformance to the
    platform's runtime requirements that CI can't see.
+4. The **app-code security notes** (you): the app-level risk classes the
+   perimeter can't close — authorization/IDOR above all.
 
-## 1. Guardrails + contract review (do this while CI runs, or first)
+## 1. Guardrails + contract + security review (do this while CI runs, or first)
 
 Call the `get_guardrails` MCP tool and re-read the app against it — name,
 stated purpose, what the code actually does, and how it handles data. You
@@ -44,6 +46,17 @@ and no reliance on unsupported patterns (background work, machine-to-machine
 callers, connections that must survive sleep). A contract violation is the
 same hard stop as a guardrails one: name the requirement, fix or guide the
 fix, re-check.
+
+Finally, for any app with **per-user data, an admin surface, a state-changing
+write, or a call to a paid/external upstream**, call the `get_app_security`
+MCP tool and review the app's code against it. CI's scanners catch injection
+patterns and known-vulnerable deps, but the highest-impact app bug —
+**authorization / IDOR** — is invisible to them: verify every query for
+user-owned data is scoped by the caller's `X-Forwarded-User` (not by an id
+from the request), privileged surfaces gate on an `inno-` group, values bind
+in SQL, output is escaped, and expensive actions are bounded per caller. A
+real authorization hole is a hard stop — fix or guide the fix before
+`inno-ship`. (A stateless single-view tool can skip this.)
 
 ## 2. Push and watch the gates
 

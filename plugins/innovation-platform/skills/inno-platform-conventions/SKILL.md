@@ -18,6 +18,27 @@ the platform does NOT support, and the CURRENT digest-pinned recommended
 base images. The tool is the live source; never restate contract values from
 memory or hard-code a base-image digest.
 
+## Deployment type: container (below) or worker
+
+Most of this skill describes the **`container`** type (a Docker container the
+gateway fronts). The **`worker`** type (the app is its own Cloudflare Worker
+behind the *same* gateway) shares everything about identity, releases, and the
+gateway boundary, but three specifics differ — the authoritative deltas are in
+**`get_app_contract` §1.1**:
+
+- **Entry:** `app/index.ts` exporting `export default { fetch(request, env, ctx) }` —
+  no port, no `EXPOSE`, no Dockerfile (`inno-containerize` does not apply).
+- **Storage:** the app's **own bindings** — `env.DATA` (D1) / `env.FILES`
+  (R2) — instead of `http://storage.internal`. Still no platform credential
+  and no cross-app reach; a binding is a handle to the app's *own* resources.
+- **Health:** answer `GET /healthz` with 200 as a **route** in your `fetch`
+  handler, not a listening port.
+
+Identity (read the header, never build auth), sign-out, ephemerality, the
+protected/injected files, and the safety-gate discipline below are **identical**
+for both types. The rest of this skill's code examples are the container
+reference; translate them into the `fetch` handler for a worker app.
+
 ## Releases: push = checks, tag = deploy
 
 A push to main runs the platform's safety gates and deploys NOTHING — push

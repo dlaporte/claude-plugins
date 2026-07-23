@@ -1,6 +1,6 @@
 {
   "name": "innovation-platform",
-  "description": "Build and ship apps on the davidlaporte.org Innovation Platform: create an app via the inno-platform MCP server, build it in any stack meeting the platform's application contract (Python/Starlette is the tested reference), containerize it, run the security gates before shipping through CI/CD, and manage access to a live app.",
+  "description": "Build and ship apps on the davidlaporte.org Innovation Platform: create an app via the inno-platform MCP server as a Cloudflare Worker (the greenfield default) or a container (any stack) behind the same identity gateway, write it against the platform's application + app-security contracts, run the security gates before shipping through CI/CD, and manage access to a live app.",
   "author": {
     "name": "David LaPorte"
   },

@@ -3,7 +3,10 @@
 Claude Code plugin for the davidlaporte.org Innovation Platform. Bundles the
 `inno-platform` MCP server and seven skills that walk Claude through the whole
 app lifecycle: create (or migrate existing code), write, containerize,
-gate-check, ship, and manage.
+gate-check, ship, and manage. Apps deploy as one of two **types** behind the
+same identity gateway — a **worker** (its own Cloudflare Worker, JS/TS, the
+default for greenfield apps) or a **container** (any stack, a Dockerfile) —
+chosen at `create_app`.
 
 ## Install
 
@@ -23,9 +26,9 @@ is attributable to your real Okta identity, not a shared service credential.
 - **`.mcp.json`** — points at `https://inno-platform.davidlaporte.org/mcp`,
   the platform's remote MCP server (tools: `create_app`, `check_name`,
   `list_apps`, `app_status`, `grant_access`, `revoke_access`, `set_app_access`, `stop_app`,
-  `start_app`, `request_start`, `transfer_app`, `export_app_data`, `get_app_metrics`, `get_app_usage`, `get_platform_status`,
+  `start_app`, `request_start`, `transfer_app`, `export_app_data`, `get_app_metrics`, `get_app_usage`, `get_app_logs`, `restart_app`, `get_platform_status`,
   `list_notifications`, `mark_notification_read`, `mark_all_notifications_read`,
-  `get_platform_docs`, `get_guardrails`, `get_app_contract`, `get_ci_status`, `report_issue`,
+  `get_platform_docs`, `get_guardrails`, `get_app_contract`, `get_app_security`, `get_ci_status`, `report_issue`,
   self-service `set_config`/`remove_config`, and the admin-only `purge_app`,
   `get_config`, `list_issues`, `resolve_issue`, `list_users`, `query_audit`).
   There's also a
@@ -40,11 +43,13 @@ is attributable to your real Okta identity, not a shared service credential.
   the storage client/endpoints, identity via `X-Forwarded-User`, and the
   files CI will reject if you touch them. Requirements are served live by
   the `get_app_contract` tool — skills cite it, not stale copies.
-- **`skills/inno-containerize`** — the container contract for ANY stack
-  (non-root, `EXPOSE 8080`, patched base, CVE-clean; `/healthz` reserved for
-  platform health monitoring — CI does not probe it) with Python/Node/Go
-  reference recipes; base images come digest-pinned from `get_app_contract`.
-- **`skills/inno-safety-preflight`** — run the CI security gates locally before pushing.
+- **`skills/inno-containerize`** — **container-type apps only:** the container
+  contract for ANY stack (non-root, `EXPOSE 8080`, patched base, CVE-clean)
+  with Python/Node/Go recipes; base images digest-pinned from
+  `get_app_contract`. Worker-type apps have no Dockerfile and skip this.
+- **`skills/inno-safety-preflight`** — run the CI security gates, plus a
+  guardrails, application-contract, and `get_app_security` (app-code
+  authorization/IDOR) review, before pushing.
 - **`skills/inno-ship`** — commit, push to `main`, watch CI, report the live URL.
 - **`skills/inno-manage-app`** — grant/revoke access, check status and metrics,
   stop or start an app, and read its notifications. Idle apps are warned,
