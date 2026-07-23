@@ -70,7 +70,7 @@ For each gate, tell the user what happened in THEIR terms:
 | **Real finding** (SAST/deps/CVE) | Show the file:line from the annotations, explain the risk in one sentence, fix it (or guide the fix), re-push. |
 | **Likely false positive** | Never work around it in code (renames, string-splitting, suppression comments). Name the exact finding ID and tell the user a platform admin can add a central ignore for it (optionally with an expiry) — it then clears at both the gate and the periodic safety sweep. |
 | `SAFETY GATE DISABLED by platform policy` in the log | Deliberate admin configuration, not a bug. Note it and move on. |
-| config-integrity failure | The repo contains a platform-injected file that must not exist — `src/gateway/`, `package.json`, `package-lock.json`, `tsconfig.json`, or `wrangler.jsonc` (delete it; the platform injects all of these at build time) — or `CLAUDE.md`'s required template headers were altered (revert them; the rest of the file is yours). |
+| config-integrity failure | The repo contains a platform-injected file that must not exist — `src/gateway/`, `package.json`, `package-lock.json`, `tsconfig.json`, or `wrangler.jsonc` (delete it; the platform injects all of these at build time) — or `CLAUDE.md`'s required template headers were altered (revert them; the rest of the file is yours) — or a root-level `.env*`/`.npmrc`/`.yarnrc` slipped in (remove it). Root-only: the app's own `app/package.json` etc. are fine. |
 | container failure | Dockerfile contract problem — hand off to `inno-containerize`. |
 
 Diagnose privately (`get_ci_status` annotations or `gh run view --log-failed`);

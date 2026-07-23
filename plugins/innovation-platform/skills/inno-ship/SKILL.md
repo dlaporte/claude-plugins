@@ -50,7 +50,13 @@ git fetch --tags
 git tag --list 'v*' --sort=-v:refname | head -3   # what's the latest release?
 git tag v<X.Y.Z>
 git push origin v<X.Y.Z>
+gh release create v<X.Y.Z> --verify-tag --title "v<X.Y.Z> — <short description>" \
+  --notes "<one bullet per commit subject since the last tag>"
 ```
+
+A bare tag deploys but leaves the repo's **Releases** page empty — always
+create the GitHub Release too (after the tag push; creating a release on an
+already-pushed tag does not re-trigger the deploy).
 
 Version selection: default to a **patch** bump of the latest `v*` tag; use a
 **minor** bump when this ships a user-visible feature; `v1.0.0` for a first
@@ -75,7 +81,7 @@ and cut the next patch tag (a tag is immutable — never force-move one).
 
 | Failing job | Likely cause | Fix via |
 |---|---|---|
-| `config-integrity` | repo contains a platform-injected file that must not exist — `src/gateway/`, `package.json`, `package-lock.json`, `tsconfig.json`, or `wrangler.jsonc` (delete it; the platform injects all of these at build time) — or added a stray `wrangler.json`/`.wrangler/` | `inno-platform-conventions` |
+| `config-integrity` | repo contains a platform-injected file that must not exist — `src/gateway/`, `package.json`, `package-lock.json`, `tsconfig.json`, or `wrangler.jsonc` (delete it; the platform injects all of these at build time) — or added a stray `wrangler.json`/`.wrangler/` or a root-level `.env*`/`.npmrc`/`.yarnrc` | `inno-platform-conventions` |
 | `secrets` | gitleaks found a committed credential | rotate + scrub history |
 | `sast` | semgrep OWASP finding in `app/` | `inno-platform-conventions` (escaping, SQL) |
 | `deps` | CVE in `app/requirements.txt` or a prod npm dep | bump the pinned dep |

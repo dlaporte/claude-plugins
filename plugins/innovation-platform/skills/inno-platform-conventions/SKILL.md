@@ -149,8 +149,10 @@ them may exist in your repo at all**:
 
 - `src/gateway/` — the Worker code doing JWT verification, request routing,
   and the storage proxy.
-- `package.json` and its lockfile (`package-lock.json`).
-- `tsconfig.json`.
+- `package.json` and its lockfile (`package-lock.json`) — **at the repo
+  root**. Your app's own build files under `app/` (a Node app's
+  `app/package.json`, etc.) are yours and fine.
+- `tsconfig.json` — repo root only, same rule.
 - `wrangler.jsonc` — including its `main` (`src/gateway/index.ts`, the
   injected gateway's entrypoint) and its resource blocks (container
   `max_instances`, D1/R2 bindings, DO migrations).
@@ -168,6 +170,12 @@ Also do not add a competing `wrangler.json` or `wrangler.toml`, or a
 `wrangler.jsonc` > `wrangler.toml`) means an unvetted `wrangler.json` would
 silently take priority over the platform's injected `wrangler.jsonc` at both
 build and the deploy job's explicit `--config wrangler.jsonc` pin.
+
+The gate also rejects root-level `.env` / `.env.*` files (wrangler loads
+them at deploy time and adopts unset keys — a committed
+`CLOUDFLARE_API_BASE_URL` would redirect API calls, deploy token included)
+and `.npmrc` / `.yarnrc(.yml)` (unpinned package-manager inputs to the
+deploy's `npm ci`). Keep secrets and local env out of the repo entirely.
 
 Everything under `app/` (routes, templates, requirements, your own modules)
 is yours to change freely.
