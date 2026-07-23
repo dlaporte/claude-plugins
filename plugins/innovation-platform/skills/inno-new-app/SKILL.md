@@ -87,18 +87,27 @@ model (who can see and edit). If that skill isn't available in the session,
 run an equivalent inline pass: present the same points as a short written
 design in the conversation and get explicit user approval.
 
-The design includes two contract-informed choices that are **the user's to
+The design includes three contract-informed choices that are **the user's to
 make, with your recommendation**:
 
+- **Deployment type** (contract §1 / §1.1): **worker** (a Cloudflare Worker,
+  JS/TS, ms cold starts, no Dockerfile) or **container** (a Docker container,
+  any stack). **Default to worker for a greenfield app** — most citizen-dev
+  ideas are a JS/TS web UI + API, and worker gives instant cold starts and the
+  simplest path. Recommend **container** instead when the app needs an
+  arbitrary/non-JS stack, native dependencies, ML/data libraries, or
+  long-running compute. Decide this FIRST — it gates the stack and scaffold
+  choices. Pass it to `create_app` as `type`.
 - **Deployment pattern** (from the contract's §5): server-rendered is the
   default recommendation for internal tools; SPA+API when rich client
   interactivity is the point.
-- **Stack**: Python/Starlette is the platform's *tested stack* — it should
-  work for most implementations and means starting from the template's
-  working reference app. Alternative stacks (Node, Go, …) are equally
-  supported; the contract is HTTP on port 8080, not a language. Recommend
-  the tested stack absent a reason otherwise (user preference, ecosystem
-  needs), and go with what the user picks.
+- **Stack**: for a **container** app, Python/Starlette is the platform's
+  *tested stack* — it should work for most implementations and means starting
+  from the template's working reference app; alternative stacks (Node, Go, …)
+  are equally supported (HTTP on port 8080, not a language). For a **worker**
+  app the stack is JS/TS on the Workers runtime — no separate choice. Recommend
+  the tested container stack absent a reason otherwise, and go with what the
+  user picks.
 
 Only once the user has approved the design do you proceed to `create_app`. The
 design also seeds the scaffolding in §3.
@@ -108,8 +117,12 @@ design also seeds the scaffolding in §3.
 Call `create_app` on the `inno-platform` MCP server:
 
 ```
-create_app({ name, description, members })
+create_app({ name, description, members, type })
 ```
+
+`type` is `"worker"` or `"container"` (from the design choice above; omit for
+the container default). It cannot be changed after creation — a different type
+means a new app.
 
 - The app is created with **owner = the signed-in Okta user** (the caller's
   verified identity from the MCP OAuth session) — you cannot set a different
@@ -161,14 +174,29 @@ the tested stack). Everything else — `src/gateway/`, `package.json`,
 `package-lock.json`, `tsconfig.json`, and `wrangler.jsonc` — is injected by
 the platform worker-side at build time and is NOT in the repo; don't create
 any of them. Load the `inno-platform-conventions` skill before writing any application
-code (stack policy, storage, identity, and the do-not-touch file list), and
-the `inno-containerize` skill before editing the Dockerfile.
+code (stack policy, storage, identity, and the do-not-touch file list).
 
-- **Tested stack chosen (Python):** start from the reference app and extend
-  it — don't regenerate it from scratch.
-- **Another stack chosen:** replace `app/` and the `Dockerfile` wholesale
-  for that stack, honoring the contract you fetched in §1b (port 8080,
-  `/healthz`, identity headers, the storage endpoints, sign-out link).
+Scaffold by deployment type:
+
+- **Container app** — load the `inno-containerize` skill before editing the
+  Dockerfile.
+  - *Tested stack (Python):* start from the reference app and extend it — don't
+    regenerate it from scratch.
+  - *Another stack:* replace `app/` and the `Dockerfile` wholesale for that
+    stack, honoring the contract you fetched in §1b (port 8080, `/healthz`,
+    identity headers, the `storage.internal` endpoints, sign-out link).
+- **Worker app** — there is **no Dockerfile**. Replace the container reference
+  with a Worker entry at **`app/index.ts`** exporting
+  `export default { fetch(request, env, ctx) }`, per contract §1.1:
+  - a `GET /healthz` route returning 200;
+  - identity from `request.headers.get("X-Forwarded-User")` /
+    `"X-Forwarded-Groups"` (never build auth);
+  - persistence via the injected **bindings** `env.DATA` (D1) and `env.FILES`
+    (R2) — *not* `storage.internal` (that's the container path);
+  - the platform-wide sign-out link in the UI;
+  - any npm deps in **`app/package.json`** (a non-root package.json is allowed);
+  - schema via idempotent `CREATE TABLE IF NOT EXISTS` or numbered
+    `app/migrations/*.sql` applied on boot (contract §3).
 
 **Delete the scaffold marker as you build.** The generated repo ships
 `app/.needs-build`, which makes CI skip deployment until it's removed. Once you
