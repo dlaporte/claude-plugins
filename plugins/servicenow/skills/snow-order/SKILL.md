@@ -23,9 +23,10 @@ actually order.
 3. **Submit** — pick the path by item `type` and situation:
    - Single `catalog_item` → `order_catalog_item(sys_id, variables={...},
      quantity=N)` (order-now).
-   - Several items in one order → `add_to_cart` each → `get_cart` to review →
-     `checkout_cart` (two-step instances are auto-finalized;
-     `finalize=false` stops at the preview).
+   - Several items in one order → `add_to_cart` each → `get_cart` to review —
+     fix a line with `update_cart_item` (quantity/variables) or drop it with
+     `remove_cart_item` — then `checkout_cart` (two-step instances are
+     auto-finalized; `finalize=false` stops at the preview).
    - `order_guide` (bundles like onboarding) → `get_order_guide_items(sys_id,
      variables={answers})` to see what it selects → `checkout_order_guide`.
    - `record_producer` ("report an issue"-style forms) →
