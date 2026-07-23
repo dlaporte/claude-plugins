@@ -75,7 +75,7 @@ and cut the next patch tag (a tag is immutable — never force-move one).
 
 | Failing job | Likely cause | Fix via |
 |---|---|---|
-| `config-integrity` | repo contains `src/gateway/` (the platform injects it at build time — delete it), or edited `package.json`, lockfile, `tsconfig.json`, or added a stray `wrangler.json`/`.wrangler/` | `inno-platform-conventions` |
+| `config-integrity` | repo contains a platform-injected file that must not exist — `src/gateway/`, `package.json`, `package-lock.json`, `tsconfig.json`, or `wrangler.jsonc` (delete it; the platform injects all of these at build time) — or added a stray `wrangler.json`/`.wrangler/` | `inno-platform-conventions` |
 | `secrets` | gitleaks found a committed credential | rotate + scrub history |
 | `sast` | semgrep OWASP finding in `app/` | `inno-platform-conventions` (escaping, SQL) |
 | `deps` | CVE in `app/requirements.txt` or a prod npm dep | bump the pinned dep |

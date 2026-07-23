@@ -109,12 +109,11 @@ platform-wide Cloudflare Access logout:
 ```
 
 `{TEAM_DOMAIN}` is environment-specific — **never hard-code it**. Pull it
-when scaffolding, from either source (they are the same value):
-
-- the `Sign-out URL` line of the `get_platform_status` MCP tool (the
-  `get_platform_docs` tool states this same convention), or
-- the `ACCESS_TEAM_DOMAIN` var in the app repo's own `wrangler.jsonc` — the
-  value the gateway itself verifies JWTs against.
+when scaffolding from the `Sign-out URL` line of the `get_platform_status`
+MCP tool (the `get_platform_docs` tool states this same convention) — that's
+the only source available to you now that `wrangler.jsonc` (which carries the
+`ACCESS_TEAM_DOMAIN` var the gateway verifies JWTs against) is injected at
+build time rather than living in your repo.
 
 It must be the *team* domain, not `/cdn-cgi/access/logout` on the app's own
 hostname — the per-app logout clears only that app's cookie, which the
@@ -124,43 +123,51 @@ if the user's Okta session is still alive, revisiting an app signs them back
 in without a prompt; a full sign-out on a shared machine also requires
 signing out of Okta.
 
+## Logging: stdout, one event per line
+
+Log like it's a contract: one event per line to stdout, plain text or JSON.
+That stream is what surfaces in the app's panel **Logs tab** and the
+`get_app_logs` MCP tool (container stdout + gateway, newest first) — log well
+now and runtime debugging (`inno-manage-app`'s Runtime issues guidance) is
+actually useful later instead of a wall of noise.
+
 ## Keep `ENVIRONMENT=production`
 
-`wrangler.jsonc`'s `vars.ENVIRONMENT` must stay `"production"` in the deployed
-config. Setting it to `"dev"` flips the gateway into mock-identity mode
+The injected `wrangler.jsonc` (not a file in your repo — see below) pins
+`vars.ENVIRONMENT` to `"production"` for every deploy. That's what keeps the
+gateway in real-identity mode; `"dev"` would flip it into mock-identity mode
 (trusts `X-Mock-User`/`X-Mock-Groups` headers, skips Access JWT verification)
-— that's an authentication bypass, and the `config-integrity` gate rejects
-any deployed app whose `ENVIRONMENT` isn't `production`. The `dev` value only
-belongs in the `"dev": { "vars": { "ENVIRONMENT": "dev" } }` block, used by
-local `wrangler dev`.
+— an authentication bypass — and the `config-integrity` gate rejects any
+deployed app whose `ENVIRONMENT` isn't `production`. This is fully
+platform-managed now: you have no `wrangler.jsonc` to edit, so there's
+nothing for you to configure or accidentally flip here.
 
 ## Files you must not touch
 
-`src/gateway/` (Worker code doing JWT verification, request routing, and the
-storage proxy) must not exist in your repo at all — the platform's reusable
-workflow injects the promoted gateway into that path at build time. The
-`config-integrity` gate fails outright if it finds the directory ("delete
-`src/gateway/` — the platform injects the gateway at build time"); never
-create it locally. `wrangler.jsonc`'s `main` still names
-`src/gateway/index.ts` — that's the injected path, not a file you author.
+The platform injects several files worker-side at build time, and **none of
+them may exist in your repo at all**:
 
-The gate also diffs your repo against `inno-template@main` and fails the
-build on any difference in:
+- `src/gateway/` — the Worker code doing JWT verification, request routing,
+  and the storage proxy.
+- `package.json` and its lockfile (`package-lock.json`).
+- `tsconfig.json`.
+- `wrangler.jsonc` — including its `main` (`src/gateway/index.ts`, the
+  injected gateway's entrypoint) and its resource blocks (container
+  `max_instances`, D1/R2 bindings, DO migrations).
 
-- `package.json` and the lockfile (`package-lock.json`)
-- `tsconfig.json`
-- `CLAUDE.md`'s required section headers — the gate checks all five
-  headers from the template are present (the rest of the file is yours
-  to extend)
+The `config-integrity` gate fails outright if it finds any of these ("delete
+`<file>` — the platform injects …"); never create or restore one locally,
+even to "match the template" — there is no version of these files that
+belongs in your repo. The one exception checked by diff rather than by
+absence is `CLAUDE.md`'s required section headers — the gate checks all five
+headers from the template are present (the rest of the file is yours to
+extend).
 
 Also do not add a competing `wrangler.json` or `wrangler.toml`, or a
 `.wrangler/` directory — Wrangler's config discovery order (`wrangler.json` >
 `wrangler.jsonc` > `wrangler.toml`) means an unvetted `wrangler.json` would
-silently override the `wrangler.jsonc` the gate approved and the deploy job
-explicitly pins with `--config wrangler.jsonc`. Resource limits inside
-`wrangler.jsonc` itself (container `max_instances`, D1/R2 bindings, DO
-migrations) are also orchestrator-managed — hand-edits to those fields are
-rejected even though the file isn't fully hash-pinned.
+silently take priority over the platform's injected `wrangler.jsonc` at both
+build and the deploy job's explicit `--config wrangler.jsonc` pin.
 
 Everything under `app/` (routes, templates, requirements, your own modules)
 is yours to change freely.

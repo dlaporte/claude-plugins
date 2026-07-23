@@ -154,12 +154,13 @@ git clone <repo URL from the create_app response>
 cd inno-{name}
 ```
 
-The cloned repo already contains the platform template: `wrangler.jsonc`,
-`package.json`, `.github/workflows/deploy.yml` (hands-off), and a
+The cloned repo already contains the platform template: the thin
+`.github/workflows/deploy.yml` caller workflow (hands-off) and a
 **reference implementation** under `app/` + `Dockerfile` (Python/Starlette,
-the tested stack). The gateway itself (`src/gateway/`) is NOT in the repo —
-the platform injects it at build time — so don't create that directory.
-Load the `inno-platform-conventions` skill before writing any application
+the tested stack). Everything else — `src/gateway/`, `package.json`,
+`package-lock.json`, `tsconfig.json`, and `wrangler.jsonc` — is injected by
+the platform worker-side at build time and is NOT in the repo; don't create
+any of them. Load the `inno-platform-conventions` skill before writing any application
 code (stack policy, storage, identity, and the do-not-touch file list), and
 the `inno-containerize` skill before editing the Dockerfile.
 

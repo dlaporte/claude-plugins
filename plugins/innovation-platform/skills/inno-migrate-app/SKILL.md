@@ -70,7 +70,8 @@ order:
 5. **Gate risks** — secrets in the working tree (gitleaks), dependency CVEs
    (`pip-audit` for Python requirements; the Trivy image scan covers
    everything the container installs — CI's `npm audit` only checks the
-   template's own root `package.json`), semgrep OWASP patterns such as
+   platform's injected root `package.json`, never anything under `app/`),
+   semgrep OWASP patterns such as
    string-built HTML or raw SQL formatting.
 6. **What does not carry over** — git history (fresh repo; secrets buried in
    old history become moot, but working-tree secrets do not), custom
@@ -135,12 +136,12 @@ retry or walk away.
 2. `git clone <repo URL from the create_app response>` and work in the
    clone.
 3. Port the code **into `app/`**, replacing the template's example app.
-   Never touch the gate-pinned template files: `package.json`,
-   `package-lock.json`, `tsconfig.json`, the `CLAUDE.md` required headers,
-   or `wrangler.jsonc`'s orchestrator-managed fields — never add a
-   competing `wrangler.json`/`wrangler.toml`/`.wrangler/`, and never create
-   `src/gateway/` (the platform injects the gateway at build time; the repo
-   must not contain it).
+   Never create the platform-injected files — `package.json`,
+   `package-lock.json`, `tsconfig.json`, `src/gateway/`, or `wrangler.jsonc`
+   — the platform injects all of these worker-side at build time, so the
+   repo must contain none of them. Keep the `CLAUDE.md` required headers
+   intact, and never add a competing `wrangler.json`/`wrangler.toml`/
+   `.wrangler/`.
    (`config-integrity` rejects all of these; see `inno-platform-conventions`.)
    Leave `.github/workflows/deploy.yml` as templated too — it is NOT
    gate-pinned (the broker's OIDC `job_workflow_ref` check carries that
