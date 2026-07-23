@@ -13,17 +13,19 @@ built around the davidlaporte.org homelab and other tools.
 
 ```
 /plugin install innovation-platform@davidlaporte
+/plugin install servicenow@davidlaporte
 ```
 
-Note: the first MCP tool call from an installed plugin (e.g.
-`innovation-platform`'s `create_app`) opens a browser window for an Okta
-login — that's expected.
+Note: the first MCP tool call from an installed plugin opens a browser
+window for a login (Okta for `innovation-platform`, ServiceNow OAuth for
+`servicenow`) — that's expected; every call runs as you.
 
 ## Plugins in this marketplace
 
 | Plugin | Description |
 |---|---|
 | [`innovation-platform`](plugins/innovation-platform) | Build and ship apps on the davidlaporte.org Innovation Platform. |
+| [`servicenow`](plugins/servicenow) | Work in ServiceNow as yourself via the snow-mcp server: triage incidents and approvals, drive changes through their state model, order from the service catalog, author knowledge, and report on any table. Six skills adapt to the deployment's read-only mode and tool packages. |
 
 ## Repo layout
 
@@ -34,6 +36,7 @@ plugins/
     .claude-plugin/plugin.json
     .mcp.json
     skills/…/SKILL.md
+  servicenow/                     same shape
 ```
 
 Plugin entries in `marketplace.json` intentionally omit a `version` field
