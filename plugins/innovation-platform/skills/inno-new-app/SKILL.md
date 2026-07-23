@@ -191,6 +191,15 @@ same moves apply in any stack's own idiom):
 - Add pinned dependencies to the stack's manifest (`app/requirements.txt`
   here).
 
+**Rewrite `README.md` — this is required, not optional.** The cloned repo's
+README is inno-template's own ("Use this template…", template internals) and
+describes nothing about this app. Replace it with a **high-level overview of
+the user's app**: what it does, who it's for, and the app's URL. Keep it
+short — a few paragraphs is right; the platform mechanics (identity,
+storage, CI) already live in `CLAUDE.md` and don't belong here. The README
+is the user's file from then on: they can deepen it to whatever level of
+detail they prefer, and later features should keep it truthful.
+
 ## 4. Hand off
 
 Once scaffolding is in place, tell the user the app was created (repo +

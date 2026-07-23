@@ -173,13 +173,19 @@ retry or walk away.
      future Claude session (Claude Code auto-loads it) at code that no
      longer exists. Editing the body is safe — only the headers are
      gate-checked.
-5. Write **`MIGRATION.md`** at the repo root (extra root files pass the
+5. **Rewrite `README.md`** — required, not optional. The scaffold's README
+   is inno-template's own and says nothing about this app. Replace it with
+   a high-level overview of the migrated app (what it does, who it's for,
+   its URL) — drawing on the source repo's README where one exists. Keep
+   it short; the user can deepen it later to whatever detail they prefer.
+   Platform mechanics stay in `CLAUDE.md`, not here.
+6. Write **`MIGRATION.md`** at the repo root (extra root files pass the
    gates): what was ported, what was stripped (auth, dropped services),
    what was rewired (storage), deferred TODOs, and any open blockers with
    suggested next steps. A blocker discovered only mid-port goes into
    `MIGRATION.md` if the app still functions without the blocked piece;
    if it can't, stop and ask the user before continuing.
-6. Leave the source repo untouched; tell the user where it stayed.
+7. Leave the source repo untouched; tell the user where it stayed.
 
 ## Hand off
 
