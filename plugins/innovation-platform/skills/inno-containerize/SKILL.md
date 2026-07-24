@@ -45,7 +45,8 @@ the three checks is allowed; the recommendations are simply known-good.
 
 ## Reference recipe — Python (the platform's tested stack)
 
-This is the template's Dockerfile; it ships with every generated repo.
+This is the template's Dockerfile; it ships in the `inno-template` scaffold a
+container app is created from.
 
 ```dockerfile
 FROM python:3.12-slim          # or the current pinned ref from get_app_contract

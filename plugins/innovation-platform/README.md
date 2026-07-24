@@ -6,7 +6,18 @@ app lifecycle: create (or migrate existing code), write, containerize,
 gate-check, ship, and manage. Apps deploy as one of two **types** behind the
 same identity gateway — a **worker** (its own Cloudflare Worker, JS/TS, the
 default for greenfield apps) or a **container** (any stack, a Dockerfile) —
-chosen at `create_app`.
+chosen at `register_app`.
+
+**Repos are user-owned.** An app is created by **registering a GitHub repo you
+own**. You create a repo from the public `inno-template` ("Use this template" →
+your own account or org, so it lands already scaffolded in your ownership),
+install the platform's GitHub App on it, and the `register_app` MCP tool
+provisions the app's resources and binds them to your repo. `register_app` is a
+two-step call: the first returns the App install link (and points at the
+template for creating the repo); after you install the App, the second call
+finishes and returns your `deploy.yml`. There is no platform-owned repo — the
+repo is yours (any account, public or private), and uninstalling the App unlinks
+and stops the app. (The old `create_app` tool has been retired.)
 
 ## Install
 
@@ -16,7 +27,8 @@ chosen at `create_app`.
 ```
 
 The first tool call against the `inno-platform` MCP server (e.g. from the
-`new-app` skill's `create_app`) opens a browser window for an **Okta login**.
+`inno-new-app` skill's `register_app`) opens a browser window for an **Okta
+login**.
 This is expected — the MCP server authenticates you as yourself so every
 action it takes (creating an app, granting access, stopping or starting one)
 is attributable to your real Okta identity, not a shared service credential.
@@ -24,7 +36,7 @@ is attributable to your real Okta identity, not a shared service credential.
 ## What's in the box
 
 - **`.mcp.json`** — points at `https://inno-platform.davidlaporte.org/mcp`,
-  the platform's remote MCP server (tools: `create_app`, `check_name`,
+  the platform's remote MCP server (tools: `register_app`, `check_name`,
   `list_apps`, `app_status`, `grant_access`, `revoke_access`, `set_app_access`, `stop_app`,
   `start_app`, `request_start`, `transfer_app`, `export_app_data`, `get_app_metrics`, `get_app_usage`, `get_app_logs`, `restart_app`, `get_platform_status`,
   `list_notifications`, `mark_notification_read`, `mark_all_notifications_read`,
@@ -34,10 +46,10 @@ is attributable to your real Okta identity, not a shared service credential.
   There's also a
   web panel with the same capabilities at
   `https://inno-platform.davidlaporte.org`.
-- **`skills/inno-new-app`** — intake -> `create_app` -> clone -> scaffold.
+- **`skills/inno-new-app`** — intake -> create a repo from `inno-template` +
+  install the GitHub App -> `register_app` -> clone -> scaffold.
 - **`skills/inno-migrate-app`** — assess an existing repo (read-only), then
-  provision and port it into a new `inno-{app}`, keeping its stack where
-  the gates allow.
+  register and adapt it **in place**, keeping its stack where the gates allow.
 - **`skills/inno-platform-conventions`** — stack policy (Python/Starlette is
   the tested stack; any stack meeting the contract is fine), escaping,
   the storage client/endpoints, identity via `X-Forwarded-User`, and the

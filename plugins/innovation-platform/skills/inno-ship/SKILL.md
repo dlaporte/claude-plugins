@@ -106,7 +106,7 @@ The `deploy` job (tag runs only) requests a GitHub OIDC token (audience
 `inno-platform-deploy`) and exchanges it with the platform's deploy broker
 for a scoped Cloudflare deploy token. The broker verifies the token's signed
 `job_workflow_ref` claim equals exactly
-`dlaporte/inno-platform/.github/workflows/platform-ci.yml@refs/heads/main`
+`dlaporte/inno-platform-ci/.github/workflows/platform-ci.yml@refs/heads/main`
 and that the triggering ref is `main` or a `v*` tag — a repo whose deploy.yml
 is edited to skip gates, or that runs from a fork/branch, gets `403
 deploy_denied`. There is no code path where removing the gates yields a
@@ -116,7 +116,7 @@ shows it, and the safety sweep's auto-respin rebuilds at exactly that tag.
 On success, report:
 
 ```
-Shipped v<X.Y.Z> — <the app URL, as reported by app_status / create_app>
+Shipped v<X.Y.Z> — <the app URL, as reported by app_status / register_app>
 ```
 
 and note that the app is **Okta-gated** — the first visit prompts an Okta

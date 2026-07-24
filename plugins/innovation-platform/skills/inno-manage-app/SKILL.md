@@ -66,7 +66,9 @@ name before calling**, and tell them the purge date from the response.
 Rejected with `app_unstoppable` if the app is marked unstoppable (an admin
 must turn that off first). There is no un-purge: once the window lapses (or
 an admin purges deliberately), only the repo and history remain, and the name
-becomes reusable via a fresh `create_app`.
+becomes reusable via a fresh registration (`register_app`, see
+`inno-new-app`) — purge also releases the repo binding, so the same repo can
+be registered again.
 
 ## `grant_access({ name, email })` / `revoke_access({ name, email })`
 
@@ -220,7 +222,7 @@ entry here.
 | `export_app_data` | app owner, or `inno-platform-admins` |
 | `transfer_app` | `inno-platform-admins` only (owners ask an admin) |
 | `set_app_access` | app owner, or `inno-platform-admins` (opening gated by `access.allow_open`) |
-| `create_app` | any signed-in Okta user (becomes the owner) |
+| `register_app` | any signed-in Okta user (becomes the owner) |
 | `report_issue` | app owner, or `inno-platform-admins` |
 | `list_issues` / `resolve_issue` / `list_users` / `query_audit` / `get_config` | `inno-platform-admins` only |
 | `set_config` / `remove_config` | admins; users for their own self-service settings |
