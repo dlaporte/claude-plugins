@@ -17,6 +17,13 @@ There is also a web panel at `https://inno-platform.davidlaporte.org` with the
 same capabilities (same API, same authorization) — point users there for
 anything visual: dashboards, notification history, lifecycle timelines.
 
+**Speak the user's language.** Many users are non-technical. Explain in plain
+terms — "access", "a database", "file storage", "your app's address" — and do
+NOT name specific technologies or providers (Cloudflare, D1, R2, Okta,
+Workers) unless the user has expressed technical ability or asks questions
+that reveal it. The technical detail in this skill is for YOUR reasoning, not
+for recitation.
+
 ## The lifecycle (know this before advising anyone)
 
 States: `created` → `deploying` → `active` ⇄ `warned` → `stopped` → *(purged)*.
@@ -188,9 +195,9 @@ deploy).
 
 ## `export_app_data({ name })` — take your data with you
 
-Starts a background build of a downloadable archive: the app's D1 database as
-a SQL dump, every stored file from its bucket, and a `manifest.json` (app
-record, members, effective config). The owner is emailed when it's ready;
+Starts a background build of a downloadable archive: the app's database as a
+SQL dump, every stored file, and a `manifest.json` (app record, members,
+effective config). The owner is emailed when it's ready;
 the archive appears on the app's panel page (Data exports card) and is kept
 for a limited time (default 30 days). Owner or admin only.
 

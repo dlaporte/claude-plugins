@@ -23,6 +23,15 @@ never creates a `dlaporte/inno-{name}` repo on the user's behalf.
 the `inno-migrate-app` skill instead — it registers the existing repo in place
 and adapts it to the contract, no scaffolding-from-template.
 
+**Speak the user's language.** The platform serves a broad userbase including
+non-technical users. When explaining anything to the user, use plain terms —
+"a database", "file storage", "an access group", "your app's address",
+"sign-in" — and do NOT name specific technologies or providers (Cloudflare,
+D1, R2, Okta, Workers, wrangler) unless the user has expressed technical
+ability or asks questions that reveal it. Full precision belongs in the code
+and commits you write, not in explanations; this rule applies to every
+user-facing sentence in this flow.
+
 ## 1. Intake — ask the user for four things
 
 1. **App name** — lowercase letters, digits, hyphens only, 3-29 chars,
@@ -78,8 +87,8 @@ do not pass it until you've actually done this review.
   you cannot grant one, and you must not register the app without it.
 
 Confirm the name, repo, purpose, and members back to the user before going
-further — registration provisions real resources (Okta group, D1 database, R2
-bucket) and binds them to the user's repo.
+further — registration provisions real resources (an access group, a database,
+and file storage) and binds them to the user's repo.
 
 ## 1b. Design the app before registering
 
@@ -94,8 +103,8 @@ recommended base images. Evaluate the user's idea against it before designing; a
 not-supported requirement surfaces HERE, not after registration.
 
 Invoke the **`superpowers:brainstorming`** skill to design the app: what it does,
-its data model (D1 tables / R2 objects), its routes/pages, and its access model
-(who can see and edit). If that skill isn't available in the session, run an
+its data model (what it stores — tables, files), its routes/pages, and its
+access model (who can see and edit). If that skill isn't available in the session, run an
 equivalent inline pass: present the same points as a short written design in the
 conversation and get explicit user approval.
 

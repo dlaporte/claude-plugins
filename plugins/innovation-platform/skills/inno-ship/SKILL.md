@@ -74,7 +74,10 @@ gh run watch    # or poll get_ci_status
 ### On failure — fix quietly, report plainly
 
 The user is not necessarily a developer. **Do not paste raw CI logs, stack
-traces, or job internals into the conversation.** Read the logs yourself
+traces, or job internals into the conversation.** The same goes for
+technology names — say "the security check", "the database", "file storage",
+not Cloudflare/D1/R2/Trivy/wrangler, unless the user has shown technical
+fluency. Read the logs yourself
 (`gh run view <run-id> --log-failed`) but keep that output to yourself. To
 the user, one plain sentence: "The security check found an out-of-date
 dependency — I'm updating it and re-shipping." Fix the **root cause**, push,

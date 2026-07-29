@@ -34,6 +34,10 @@ Scan the existing repo and present a **migration assessment** covering, in
 order:
 
 1. **Stack — keep vs. adapt is the user's decision, informed by your analysis.**
+   Present findings to the user in plain language — name specific technologies
+   (Cloudflare, D1, R2, Okta, wrangler) only if the user has shown technical
+   fluency; the precision below is for your assessment, not recitation.
+
    The platform contract is **HTTP on port 8080** (container) or a Worker
    `fetch` handler, **not a language**: no CI gate checks the language or
    framework. Keeping the existing stack — TypeScript/Express, Go, Ruby,
