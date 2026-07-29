@@ -83,12 +83,18 @@ access here is what actually lets someone past the Okta login on
   rather than silently no-op'ing — surface that to the user.
 - Note: membership grants access to the **app**, not to the platform panel —
   the panel shows people only the apps they own.
+- For an **mcp** app the same group governs access, checked when the user
+  authorizes their MCP client and re-checked on every token refresh.
+  `revoke_access` additionally deletes the user's OAuth grants for the app
+  outright; worst case a revoked user keeps working for the remaining
+  access-token lifetime (≤1h) plus a short gateway cache (≤60s).
 
 ## `app_status({ name })` / `get_app_metrics({ name, days })`
 
-Read-only. `app_status` returns status, owner, URL, last-seen time, last
-deployment, and — when relevant — the stop/purge deadlines and the owner's
-remaining self-service starts. `get_app_metrics` returns per-day requests,
+Read-only. `app_status` returns status, owner, URL (for an **mcp** app this
+is its **MCP endpoint** — the `…/mcp` address an MCP client uses), last-seen
+time, last deployment, and — when relevant — the stop/purge deadlines and the
+owner's remaining self-service starts. `get_app_metrics` returns per-day requests,
 errors, and p50 CPU from Cloudflare analytics.
 
 Deployment statuses: `pending`, `deploying`, `deployed`.
@@ -134,8 +140,10 @@ returns it to the named member list (open: false). Owner or admin only.
 - The named member list is **never modified** — closing always restores
   exactly the configured access. Say so when confirming.
 - Takes effect at each user's **next sign-in**; already-signed-in users keep
-  their session up to 24h. Set expectations when the user asks "why can they
-  still get in?"
+  their session up to 24h. For an **mcp** app "sign-in" is the client's OAuth
+  authorization — a change applies on the user's next authorize or token
+  refresh (≤1h). Set expectations when the user asks "why can they still get
+  in?"
 - `open_access_disallowed` means an admin has restricted open access for
   this app or owner (`access.allow_open`) — a platform admin can change it
   with `set_config`; do not try to work around it by mass grant_access.

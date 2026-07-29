@@ -16,7 +16,8 @@ Four things are checked here, and **all are hard requirements before
 `inno-ship`**:
 
 1. The **safety gates** (CI): config-integrity, secrets, SAST, dependency
-   audit, container build + image CVEs.
+   audit, container build + image CVEs (container apps only — skipped for
+   the worker-shaped `worker` and `mcp` types).
 2. The **guardrails policy** (you): a qualitative read of the app against
    the platform's acceptable-use policy.
 3. The **application contract** (you): the app's conformance to the

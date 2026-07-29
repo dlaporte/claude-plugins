@@ -86,8 +86,8 @@ bucket) and binds them to the user's repo.
 The user deserves to see what they're approving. Before registering, produce and
 present a real design — not a one-line summary buried in a tool-approval prompt.
 
-**Fetch the `get_app_contract` MCP tool first** — it carries the two deployment
-**types** and their requirement deltas (§1.1), the deployment patterns (and what
+**Fetch the `get_app_contract` MCP tool first** — it carries the three deployment
+**types** and their requirement deltas (§1.1–§1.2), the deployment patterns (and what
 the platform does NOT support: background jobs, machine-to-machine APIs,
 guaranteed long-lived connections), the stack policy, and the current
 recommended base images. Evaluate the user's idea against it before designing; a
@@ -102,9 +102,10 @@ conversation and get explicit user approval.
 The design includes three contract-informed choices that are **the user's to
 make, with your recommendation**:
 
-- **Deployment type** — `worker` or `container` (passed to `register_app`;
-  default container server-side, but for a **greenfield** app you recommend and
-  default to **`worker`**):
+- **Deployment type** — `worker`, `container`, or `mcp` (passed to
+  `register_app`; default container server-side, but for a **greenfield** app
+  you recommend and default to **`worker`** — or **`mcp`** when the product is
+  an MCP server):
   - **`worker` (recommend for greenfield):** the app is its own Cloudflare
     Worker (JS/TS) behind the gateway — ms cold starts, no Dockerfile,
     Workers-native bindings. This is the right fit for the common citizen-dev
@@ -114,12 +115,24 @@ make, with your recommendation**:
     dependencies** or system binaries, **long-running / heavy compute**, or a
     port of existing non-JS code (that's `inno-migrate-app`, which defaults to
     container). Absent such a signal, prefer worker.
+  - **`mcp`:** choose when the product is an **MCP server for AI assistants**
+    (Claude Code, claude.ai) rather than a browser UI. Worker-shaped (JS/TS,
+    no Dockerfile): the app serves the MCP **Streamable HTTP** transport at
+    `POST /mcp`, and users add `https://inno-{name}.<domain>/mcp` as an MCP
+    server in their client. **Stateless only** — tools work normally, but
+    server-initiated features (notifications, sampling, elicitation,
+    long-lived subscriptions) do not; if the design needs those, it does not
+    fit this type today — surface that HERE, not after registration. Access
+    is the same Okta member group as the other types (`grant_access` etc.);
+    there is no browser SSO — the platform issues OAuth tokens and the
+    gateway validates them (`get_app_contract` §1.2).
   - State your recommendation and the reason, and go with the user's call.
 - **Deployment pattern** (contract §5): server-rendered is the default for
   internal tools; SPA+API when rich client interactivity is the point — applies
   to either type.
-- **Stack** — follows from the type: a **worker** app is TS/JS (that is what
-  Workers run). A **container** app defaults to Python/Starlette (the tested
+- **Stack** — follows from the type: a **worker** or **mcp** app is TS/JS
+  (that is what Workers run; an mcp app builds on the MCP TypeScript SDK). A
+  **container** app defaults to Python/Starlette (the tested
   container stack, with a working reference app), or the user's chosen stack —
   any language is supported; the container contract is HTTP on port 8080, not a
   language.
@@ -159,9 +172,9 @@ register_app({ name, repo, description, type, members, accept_guardrails: true }
 - `name` — the app name from §1 (drives the hostname).
 - `repo` — the `owner/repo` slug from §2 (a **slug, not a URL**).
 - `type` — from the design decision (§1b): `"worker"` for the greenfield
-  default, `"container"` when the description warranted it. Omit for container.
-  The type is fixed at registration and can't be switched later (register a new
-  app to change it).
+  default, `"container"` when the description warranted it, `"mcp"` for an MCP
+  server. Omit for container. The type is fixed at registration and can't be
+  switched later (register a new app to change it).
 - `accept_guardrails: true` — required; you must have done the §1a review.
 - `members` — optional list of Okta emails.
 
@@ -188,7 +201,9 @@ Okta group + D1 + R2, and binds the repo). It returns text beginning **`App
 
 - `URL (after first deploy): https://inno-{name}.<platform domain>` — **quote
   this from the response, never construct it** (the platform domain is
-  deployment-specific). The URL 404s until the first successful `inno-ship`.
+  deployment-specific). For an **mcp** app the response surfaces the **MCP
+  endpoint** (`…/mcp`) instead — same rule: quote it from the response. The
+  URL 404s until the first successful `inno-ship`.
 - A `.github/workflows/deploy.yml` — the thin caller workflow that wires the
   repo to the platform's reusable CI. The template already ships a `deploy.yml`;
   make sure the one in the repo **matches what `register_app` returned** (in
@@ -228,9 +243,10 @@ cd <repo>
 ```
 
 After call 2, the repo has been **pruned to the deployment type you chose** —
-the template carries both scaffolds and the platform rewrote the repo at
-registration. Both types ship the thin `.github/workflows/deploy.yml` caller
-workflow (hands-off); a **worker** repo has the TS reference (`app/index.ts`), a
+the template carries every scaffold and the platform rewrote the repo at
+registration. All types ship the thin `.github/workflows/deploy.yml` caller
+workflow (hands-off); a **worker** repo has the TS reference (`app/index.ts`),
+an **mcp** repo the MCP-server TS reference (also `app/index.ts`), a
 **container** repo the Python/Starlette reference (`app/` + `Dockerfile` +
 `lib/`). Everything else — `src/gateway/`, `package.json`,
 `package-lock.json`, `tsconfig.json`, and the `wrangler.jsonc` variants — is
@@ -256,6 +272,18 @@ Dockerfile.
   dynamic data as JSON (like the scaffold's `/me`) or use an auto-escaping
   template library. Do NOT create `wrangler.jsonc`/`app-worker.jsonc` — those
   are platform-injected.
+- **`mcp` app:** worker-shaped — everything in the worker bullet applies
+  (entry `app/index.ts`, identity headers, `GET /healthz` as a route,
+  `env.DATA`/`env.FILES`, non-root `app/package.json`, no injected files).
+  Deltas (authoritative: `get_app_contract` §1.2): serve the MCP **Streamable
+  HTTP** transport at `POST /mcp` using the MCP TypeScript SDK's
+  `WebStandardStreamableHTTPServerTransport`, constructed **without a
+  `sessionIdGenerator`** (stateless — every `POST /mcp` self-contained).
+  Implement **no auth of any kind**: the platform is the OAuth Authorization
+  Server and the gateway is the Resource Server — the `Authorization` header
+  never reaches the app, and the `/.well-known/oauth-protected-resource`
+  metadata is served by the platform; never route those paths yourself. No
+  sign-out link (there is no browser session).
 - **`container` app, tested stack (Python):** start from the reference app
   (`app/main.py` + `Dockerfile`) and extend it — don't regenerate from scratch.
 - **`container` app, another stack:** replace `app/` and the `Dockerfile`
@@ -296,6 +324,7 @@ features should keep it truthful.
 ## 5. Hand off
 
 Once scaffolding is in place, tell the user the app was registered (their repo +
-future URL), and that the next steps are: write the app, run
+future URL — for an **mcp** app, the `/mcp` endpoint their MCP client will
+use), and that the next steps are: write the app, run
 `inno-safety-preflight` locally, then `inno-ship`. Don't push anything yet unless
 asked — `inno-new-app`'s job is registration + scaffolding, not deploying.

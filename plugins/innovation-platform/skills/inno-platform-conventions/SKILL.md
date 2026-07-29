@@ -18,7 +18,7 @@ the platform does NOT support, and the CURRENT digest-pinned recommended
 base images. The tool is the live source; never restate contract values from
 memory or hard-code a base-image digest.
 
-## Deployment type: container (below) or worker
+## Deployment types: container (below), worker, or mcp
 
 Most of this skill describes the **`container`** type (a Docker container the
 gateway fronts). The **`worker`** type (the app is its own Cloudflare Worker
@@ -34,10 +34,26 @@ gateway boundary, but three specifics differ — the authoritative deltas are in
 - **Health:** answer `GET /healthz` with 200 as a **route** in your `fetch`
   handler, not a listening port.
 
-Identity (read the header, never build auth), sign-out, ephemerality, the
+The **`mcp`** type is a worker-type app whose consumer is an MCP client
+instead of a browser — every worker delta above applies, plus the deltas in
+**`get_app_contract` §1.2** (authoritative): serve the MCP **Streamable HTTP**
+transport at `POST /mcp` (the MCP TypeScript SDK's
+`WebStandardStreamableHTTPServerTransport`, constructed **without a
+`sessionIdGenerator`** — stateless, so tools work but server-initiated
+features like notifications, sampling, elicitation, and subscriptions do
+not); still answer `GET /healthz`; and there is **no Cloudflare Access and no
+sign-out link** — the platform is the OAuth Authorization Server, the gateway
+is the Resource Server, and the `Authorization` header is consumed before
+your code runs (never route `/.well-known/oauth-protected-resource`
+yourself). Identity is still `X-Forwarded-User` / `X-Forwarded-Groups`,
+resolved from the same Okta member group when the human authorizes their MCP
+client.
+
+Identity (read the header, never build auth), ephemerality, the
 protected/injected files, and the safety-gate discipline below are **identical**
-for both types. The rest of this skill's code examples are the container
-reference; translate them into the `fetch` handler for a worker app.
+across the types (sign-out applies to the browser-facing types only). The rest
+of this skill's code examples are the container reference; translate them into
+the `fetch` handler for a worker or mcp app.
 
 ## Releases: push = checks, tag = deploy
 

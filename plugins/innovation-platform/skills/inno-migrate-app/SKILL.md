@@ -45,7 +45,11 @@ order:
    - **Deployment type** — default **`container`** (keeps any stack). Only raise
      **`worker`** when the source is already JS/TS and reimplementing it as a
      Cloudflare Worker is a deliberate choice the user opts into (closer to a
-     rewrite; see `get_app_contract` §1.1).
+     rewrite; see `get_app_contract` §1.1). If the source is an **MCP server**,
+     raise **`mcp`** — it must be (or become) TS/JS on the MCP TypeScript SDK's
+     Streamable HTTP transport, stateless (see `get_app_contract` §1.2); a
+     Python/other-stack MCP server has no supported migration target today —
+     say so plainly rather than forcing it into a container.
    - **Any deal-breakers?** A hard blocker that makes the platform unable to run
      the app at all — call it out plainly. One known trap: **FastAPI** is
      keepable only if its resolved Starlette version clears `pip-audit`/Trivy
