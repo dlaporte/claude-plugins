@@ -11,7 +11,7 @@ this exact same Dockerfile contract, plus it serves `POST /mcp`. A
 **`function`-type** app (its own Cloudflare Worker behind the gateway)
 has **no Dockerfile** — the container CI gates below are skipped for it, and
 its entry is `app/index.ts`, not a container image (see `get_app_contract`
-§1.1 and `inno-platform-conventions`). If the app is a function, skip this
+§1.1 and `inno-platform-conventions`). If the app is function-shaped (`function` or `mcp-function`), skip this
 skill entirely.
 
 The `container` CI job builds your Dockerfile with **no deploy credentials

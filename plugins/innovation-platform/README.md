@@ -47,7 +47,8 @@ is attributable to your real Okta identity, not a shared service credential.
   `list_notifications`, `mark_notification_read`, `mark_all_notifications_read`,
   `get_platform_docs`, `get_guardrails`, `get_app_contract`, `get_app_security`, `get_ci_status`, `create_support_bundle`,
   self-service `set_config`/`remove_config`,
-  `set_app_connection`/`list_connections`/`remove_app_connection`, and the admin-only `purge_app`,
+  `set_app_connection`/`list_connections`/`remove_app_connection`,
+  `list_user_connections`/`disconnect_user_connection` (connection sessions — yours; an app's for its owner; the fleet for admins), and the admin-only `purge_app`,
   `get_config`, `list_users`, `query_audit`, `sync_gateway_ref`,
   `list_admins`, `grant_admin`, `revoke_admin`, `export_platform_backup`,
   `get_platform_logs`).
@@ -66,7 +67,7 @@ is attributable to your real Okta identity, not a shared service credential.
 - **`skills/inno-containerize`** — **container-type apps only:** the container
   contract for ANY stack (non-root, `EXPOSE 8080`, patched base, CVE-clean)
   with Python/Node/Go recipes; base images digest-pinned from
-  `get_app_contract`. Function-type apps have no Dockerfile and skip this.
+  `get_app_contract`; applies to `mcp-container` too. Function-shaped apps (`function`, `mcp-function`) have no Dockerfile and skip this.
 - **`skills/inno-add-connection`** — for an app that needs to reach an
   external backend **as each individual user** (not one shared app key):
   discovers how the backend signs people in, provisions a Connection with
