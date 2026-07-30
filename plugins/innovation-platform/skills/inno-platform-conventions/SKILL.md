@@ -18,10 +18,10 @@ the platform does NOT support, and the CURRENT digest-pinned recommended
 base images. The tool is the live source; never restate contract values from
 memory or hard-code a base-image digest.
 
-## Deployment types: container (below), worker, or mcp
+## Deployment types: `container` (below), `function`, `mcp-function`, `mcp-container`
 
 Most of this skill describes the **`container`** type (a Docker container the
-gateway fronts). The **`worker`** type (the app is its own Cloudflare Worker
+gateway fronts). The **`function`** type (the app is its own Cloudflare Worker
 behind the *same* gateway) shares everything about identity, releases, and the
 gateway boundary, but three specifics differ — the authoritative deltas are in
 **`get_app_contract` §1.1**:
@@ -34,8 +34,8 @@ gateway boundary, but three specifics differ — the authoritative deltas are in
 - **Health:** answer `GET /healthz` with 200 as a **route** in your `fetch`
   handler, not a listening port.
 
-The **`mcp`** type is a worker-type app whose consumer is an MCP client
-instead of a browser — every worker delta above applies, plus the deltas in
+The **`mcp-function`** type is a function-type app whose consumer is an MCP client
+instead of a browser — every function delta above applies, plus the deltas in
 **`get_app_contract` §1.2** (authoritative): serve the MCP **Streamable HTTP**
 transport at `POST /mcp` (the MCP TypeScript SDK's
 `WebStandardStreamableHTTPServerTransport`, constructed **without a
@@ -49,11 +49,16 @@ yourself). Identity is still `X-Forwarded-User` / `X-Forwarded-Groups`,
 resolved from the same Okta member group when the human authorizes their MCP
 client.
 
+The **`mcp-container`** type serves that same MCP contract from the container
+shape instead — the container baseline below plus `POST /mcp`, for a non-TS/JS
+stack or workloads a Cloudflare Worker can't host. Its deltas are
+**`get_app_contract` §1.3**, and the Dockerfile rules are `inno-containerize`.
+
 Identity (read the header, never build auth), ephemerality, the
 protected/injected files, and the safety-gate discipline below are **identical**
 across the types (sign-out applies to the browser-facing types only). The rest
 of this skill's code examples are the container reference; translate them into
-the `fetch` handler for a worker or mcp app.
+the `fetch` handler for a function or mcp-function app.
 
 ## Releases: push = checks, tag = deploy
 

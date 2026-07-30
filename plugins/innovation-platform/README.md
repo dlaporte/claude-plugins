@@ -4,11 +4,12 @@ Claude Code plugin for the davidlaporte.org Innovation Platform. Bundles the
 `inno-platform` MCP server and seven skills that walk Claude through the whole
 app lifecycle: create (or migrate existing code), write, containerize,
 gate-check, ship, and manage. Apps deploy as one of four **types** behind the
-same identity gateway — a **worker** (its own Cloudflare Worker, JS/TS, the
+same identity gateway — a **function** (its own Cloudflare Worker, JS/TS, the
 default for greenfield apps), a **container** (any stack, a Dockerfile), an
-**mcp-worker** app (an MCP server in its own Worker behind the OAuth gateway),
-or an **mcp-container** app (an MCP server in a Docker container — any
-language — behind the same OAuth gateway) — chosen at `register_app`.
+**mcp-function** app (an MCP server in its own Cloudflare Worker behind the
+OAuth gateway), or an **mcp-container** app (an MCP server in a Docker
+container — any language — behind the same OAuth gateway) — chosen at
+`register_app`.
 
 **Repos are user-owned.** An app is created by **registering a GitHub repo you
 own**. You create a repo from the public `inno-template` ("Use this template" →
@@ -60,7 +61,7 @@ is attributable to your real Okta identity, not a shared service credential.
 - **`skills/inno-containerize`** — **container-type apps only:** the container
   contract for ANY stack (non-root, `EXPOSE 8080`, patched base, CVE-clean)
   with Python/Node/Go recipes; base images digest-pinned from
-  `get_app_contract`. Worker-type apps have no Dockerfile and skip this.
+  `get_app_contract`. Function-type apps have no Dockerfile and skip this.
 - **`skills/inno-safety-preflight`** — run the CI security gates, plus a
   guardrails, application-contract, and `get_app_security` (app-code
   authorization/IDOR) review, before pushing.

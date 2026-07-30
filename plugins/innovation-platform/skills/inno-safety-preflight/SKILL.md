@@ -17,8 +17,8 @@ Four things are checked here, and **all are hard requirements before
 
 1. The **safety gates** (CI): config-integrity, secrets, SAST, dependency
    audit, container build + image CVEs (run for `container` and
-   `mcp-container` apps — skipped for the worker-shaped `worker` and
-   `mcp-worker` types).
+   `mcp-container` apps — skipped for the function-shaped `function` and
+   `mcp-function` types).
 2. The **guardrails policy** (you): a qualitative read of the app against
    the platform's acceptable-use policy.
 3. The **application contract** (you): the app's conformance to the

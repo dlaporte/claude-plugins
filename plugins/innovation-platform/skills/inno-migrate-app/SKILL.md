@@ -38,8 +38,8 @@ order:
    (Cloudflare, D1, R2, Okta, wrangler) only if the user has shown technical
    fluency; the precision below is for your assessment, not recitation.
 
-   The platform contract is **HTTP on port 8080** (container) or a Worker
-   `fetch` handler, **not a language**: no CI gate checks the language or
+   The platform contract is **HTTP on port 8080** (container) or a Cloudflare
+   Worker `fetch` handler (function), **not a language**: no CI gate checks the language or
    framework. Keeping the existing stack — TypeScript/Express, Go, Ruby,
    Python, whatever — is usually the right call and the default bias. Present:
    - **Can the current stack meet the platform requirements?** The container
@@ -47,10 +47,10 @@ order:
      gates (Trivy / `pip-audit` / `npm audit`, semgrep, no committed secrets).
      Most stacks can, as-is.
    - **Deployment type** — default **`container`** (keeps any stack). Only raise
-     **`worker`** when the source is already JS/TS and reimplementing it as a
+     **`function`** when the source is already JS/TS and reimplementing it as a
      Cloudflare Worker is a deliberate choice the user opts into (closer to a
      rewrite; see `get_app_contract` §1.1). If the source is an **MCP server**,
-     raise **`mcp-worker`** for a TS/JS source (MCP TypeScript SDK's Streamable
+     raise **`mcp-function`** for a TS/JS source (MCP TypeScript SDK's Streamable
      HTTP transport, stateless — `get_app_contract` §1.2) or **`mcp-container`**
      for a Python/other-stack source (container contract plus `POST /mcp`,
      stateless — §1.3). CRITICAL for a Python source using FastMCP (the `mcp`
@@ -71,7 +71,7 @@ order:
    List each file/route to remove.
 3. **Persistence to port** — local files and SQLite move to the platform's
    storage (D1 for SQL, R2 for files) reached at `http://storage.internal`
-   (container) or the app's own `env.DATA`/`env.FILES` bindings (worker).
+   (container) or the app's own `env.DATA`/`env.FILES` bindings (function).
    Dependencies the platform cannot provide — Postgres-specific SQL, Redis,
    queues, third-party managed services — are **blockers**: name them, never
    silently drop them.
@@ -146,11 +146,11 @@ merge to `main` once it's ready. Tell the user where the restore point is.
    `inno-platform-conventions` (and `inno-containerize` for a container):
    - App code under **`app/`**; entrypoint listens on **8080** and serves
      **`/healthz`** (container) or is `app/index.ts` exporting a `fetch` handler
-     (worker).
+     (function).
    - **Auth deleted**; identity read from `X-Forwarded-User` (Python container:
      the reference `current_user(request)` helper).
    - **Persistence rewired** to the storage endpoints (container) or the app's
-     `env.DATA`/`env.FILES` bindings (worker).
+     `env.DATA`/`env.FILES` bindings (function).
    - **Dependencies** pinned in the stack's manifest under `app/`, CVE-clean.
    - **Dockerfile** (container) written per `inno-containerize` for the app's
      actual runtime.

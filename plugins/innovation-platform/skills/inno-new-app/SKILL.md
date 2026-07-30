@@ -95,8 +95,8 @@ and file storage) and binds them to the user's repo.
 The user deserves to see what they're approving. Before registering, produce and
 present a real design — not a one-line summary buried in a tool-approval prompt.
 
-**Fetch the `get_app_contract` MCP tool first** — it carries the three deployment
-**types** and their requirement deltas (§1.1–§1.2), the deployment patterns (and what
+**Fetch the `get_app_contract` MCP tool first** — it carries the four deployment
+**types** and their requirement deltas (§1.1–§1.3), the deployment patterns (and what
 the platform does NOT support: background jobs, machine-to-machine APIs,
 guaranteed long-lived connections), the stack policy, and the current
 recommended base images. Evaluate the user's idea against it before designing; a
@@ -111,11 +111,15 @@ conversation and get explicit user approval.
 The design includes three contract-informed choices that are **the user's to
 make, with your recommendation**:
 
-- **Deployment type** — `worker`, `container`, `mcp-worker`, or
+- **Deployment type** — `function`, `container`, `mcp-function`, or
   `mcp-container` (passed to `register_app`; default container server-side,
-  but for a **greenfield** app you recommend and default to **`worker`** — or
-  **`mcp-worker`**/**`mcp-container`** when the product is an MCP server):
-  - **`worker` (recommend for greenfield):** the app is its own Cloudflare
+  but for a **greenfield** app you recommend and default to **`function`** — or
+  **`mcp-function`**/**`mcp-container`** when the product is an MCP server).
+  `function` and `mcp-function` were formerly named `worker` and `mcp-worker`;
+  the cutover is hard, so pass only the four names above — a retired name is
+  refused with a message naming its replacement. The four types:
+
+  - **`function` (recommend for greenfield):** the app is its own Cloudflare
     Worker (JS/TS) behind the gateway — ms cold starts, no Dockerfile,
     Workers-native bindings. This is the right fit for the common citizen-dev
     shape (a small web UI + JSON API in TS/JS).
@@ -123,9 +127,9 @@ make, with your recommendation**:
     for it — an explicit **non-TS/JS stack** (Python, Go, Ruby, …), **native
     dependencies** or system binaries, **long-running / heavy compute**, or a
     port of existing non-JS code (that's `inno-migrate-app`, which defaults to
-    container). Absent such a signal, prefer worker.
-  - **`mcp-worker`** (formerly `mcp`; renamed in platform v0.8.0)**:** choose when the product is an **MCP server for AI assistants**
-    (Claude Code, claude.ai) rather than a browser UI. Worker-shaped (JS/TS,
+    container). Absent such a signal, prefer function.
+  - **`mcp-function`** (named `mcp` before v0.8.0)**:** choose when the product is an **MCP server for AI assistants**
+    (Claude Code, claude.ai) rather than a browser UI. Function-shaped (JS/TS,
     no Dockerfile): the app serves the MCP **Streamable HTTP** transport at
     `POST /mcp`, and users add `https://inno-{name}.<domain>/mcp` as an MCP
     server in their client. **Stateless only** — tools work normally, but
@@ -138,12 +142,12 @@ make, with your recommendation**:
   - **`mcp-container`:** choose when the product is an **MCP server** that
     needs the **container** shape instead — a **non-TS/JS stack** (Python,
     Go, Ruby, …), **native dependencies**, or **heavy/long-running compute**
-    a Worker can't give it. Same MCP contract as `mcp-worker` (Streamable
+    a Cloudflare Worker can't give it. Same MCP contract as `mcp-function` (Streamable
     HTTP at `POST /mcp`, **stateless only** — no notifications, sampling,
     elicitation, or long-lived subscriptions) layered on the container
     baseline: a Dockerfile serving `0.0.0.0:8080`, non-root `USER`, and
     `GET /healthz` (`get_app_contract` §1.3). Same OAuth perimeter and access
-    story as `mcp-worker` — no browser SSO, the platform issues OAuth tokens
+    story as `mcp-function` — no browser SSO, the platform issues OAuth tokens
     and the gateway validates them; access is still the app's Okta member
     group. Default stack: **Python + the official MCP Python SDK** (FastMCP).
     CRITICAL (Python SDK): construct FastMCP with
@@ -163,8 +167,8 @@ make, with your recommendation**:
 - **Deployment pattern** (contract §5): server-rendered is the default for
   internal tools; SPA+API when rich client interactivity is the point — applies
   to either type.
-- **Stack** — follows from the type: a **worker** or **mcp-worker** app is TS/JS
-  (that is what Workers run; an mcp-worker app builds on the MCP TypeScript SDK). A
+- **Stack** — follows from the type: a **function** or **mcp-function** app is TS/JS
+  (that is what Cloudflare Workers run; an mcp-function app builds on the MCP TypeScript SDK). A
   **container** app defaults to Python/Starlette (the tested
   container stack, with a working reference app), or the user's chosen stack —
   any language is supported; the container contract is HTTP on port 8080, not a
@@ -206,8 +210,8 @@ register_app({ name, repo, description, type, members, accept_guardrails: true }
 
 - `name` — the app name from §1 (drives the hostname).
 - `repo` — the `owner/repo` slug from §2 (a **slug, not a URL**).
-- `type` — from the design decision (§1b): `"worker"` for the greenfield
-  default, `"container"` when the description warranted it, `"mcp-worker"` for
+- `type` — from the design decision (§1b): `"function"` for the greenfield
+  default, `"container"` when the description warranted it, `"mcp-function"` for
   an MCP server, `"mcp-container"` for an MCP server that needs the container
   shape. Omit for container. The type is fixed at registration and can't be
   switched later (register a new app to change it).
@@ -237,7 +241,7 @@ Okta group + D1 + R2, and binds the repo). It returns text beginning **`App
 
 - `URL (after first deploy): https://inno-{name}.<platform domain>` — **quote
   this from the response, never construct it** (the platform domain is
-  deployment-specific). For an **mcp-worker** or **mcp-container** app the
+  deployment-specific). For an **mcp-function** or **mcp-container** app the
   response surfaces the **MCP endpoint** (`…/mcp`) instead — same rule: quote
   it from the response. The
   URL 404s until the first successful `inno-ship`.
@@ -282,8 +286,8 @@ cd <repo>
 After call 2, the repo has been **pruned to the deployment type you chose** —
 the template carries every scaffold and the platform rewrote the repo at
 registration. All types ship the thin `.github/workflows/deploy.yml` caller
-workflow (hands-off); a **worker** repo has the TS reference (`app/index.ts`),
-an **mcp-worker** repo the MCP-server TS reference (also `app/index.ts`), a
+workflow (hands-off); a **function** repo has the TS reference (`app/index.ts`),
+an **mcp-function** repo the MCP-server TS reference (also `app/index.ts`), a
 **container** repo the Python/Starlette reference (`app/` + `Dockerfile` +
 `lib/`), and an **mcp-container** repo — nothing: the scaffold is stripped
 wholesale, same as `container` (see the bullet below; there is no template
@@ -297,22 +301,22 @@ or mcp-container app — the `inno-containerize` skill before editing the
 Dockerfile.
 
 **Scaffold by the deployment type you chose in §1b** (fetch `get_app_contract`
-§1.1 for the authoritative worker deltas):
+§1.1 for the authoritative function deltas):
 
-- **`worker` app (greenfield default):** the entry is **`app/index.ts`**
+- **`function` app (greenfield default):** the entry is **`app/index.ts`**
   exporting `export default { fetch(request, env, ctx) }`. The request is
   already Access-verified — read identity from `request.headers`
   (`X-Forwarded-User` / `X-Forwarded-Groups`), serve **`GET /healthz` as a
   route** (200), and reach storage through the app's **own bindings** —
   `env.DATA` (D1), `env.FILES` (R2) — not `storage.internal`. Declare any npm
-  deps in a **non-root** `app/package.json`. The repo is already worker-shaped
+  deps in a **non-root** `app/package.json`. The repo is already function-shaped
   (no Dockerfile, no Python reference — the CI image gates are skipped for this
   type); extend `app/index.ts` rather than re-scaffolding. Never interpolate
   user data into hand-built HTML — even escaped, the SAST gate blocks it; return
   dynamic data as JSON (like the scaffold's `/me`) or use an auto-escaping
   template library. Do NOT create `wrangler.jsonc`/`app-worker.jsonc` — those
   are platform-injected.
-- **`mcp-worker` app:** worker-shaped — everything in the worker bullet applies
+- **`mcp-function` app:** function-shaped — everything in the function bullet applies
   (entry `app/index.ts`, identity headers, `GET /healthz` as a route,
   `env.DATA`/`env.FILES`, non-root `app/package.json`, no injected files).
   Deltas (authoritative: `get_app_contract` §1.2): serve the MCP **Streamable
@@ -336,7 +340,7 @@ Dockerfile.
   baseline (Dockerfile, `0.0.0.0:8080`, non-root `USER`, `GET /healthz`,
   storage via `http://storage.internal`) PLUS the MCP **Streamable HTTP**
   transport at `POST /mcp`, **stateless only** (no `sessionIdGenerator`/session
-  correlation — same restriction as `mcp-worker`). Identity: implement no auth
+  correlation — same restriction as `mcp-function`). Identity: implement no auth
   of your own — the platform is the OAuth Authorization Server, the gateway
   the Resource Server; read `X-Forwarded-User`/`X-Forwarded-Groups` only, and
   never route `/.well-known/oauth-protected-resource` yourself; no sign-out
@@ -356,16 +360,16 @@ rm -f app/.needs-build
 Leaving it in place means `inno-ship` will refuse to deploy — by design.
 
 Typical scaffolding steps for a new feature (Python **container** reference
-shown; a **worker** app does the equivalent inside `app/index.ts`'s `fetch`
+shown; a **function** app does the equivalent inside `app/index.ts`'s `fetch`
 handler — route on the URL, read identity from the request headers, read/write
 `env.DATA`/`env.FILES`):
-- Add routes to `app/main.py` (container) or `app/index.ts` (worker); split into
+- Add routes to `app/main.py` (container) or `app/index.ts` (function); split into
   modules under `app/` as it grows.
 - (Container, Python) add templates under `app/templates/` — never delete the
   directory while the reference Dockerfile is in use (a missing `templates/` is
   a common runtime 500, see `inno-containerize`).
 - Add pinned dependencies to the stack's manifest (`app/requirements.txt` for
-  the Python container; `app/package.json` for a worker or a Node container).
+  the Python container; `app/package.json` for a function or a Node container).
 
 **Rewrite `README.md` — this is required, not optional.** The template's README
 is inno-template's own ("Use this template…", template internals) and describes
@@ -379,7 +383,7 @@ features should keep it truthful.
 ## 5. Hand off
 
 Once scaffolding is in place, tell the user the app was registered (their repo +
-future URL — for an **mcp-worker** or **mcp-container** app, the `/mcp`
+future URL — for an **mcp-function** or **mcp-container** app, the `/mcp`
 endpoint their MCP client will use), and that the next steps are: write the
 app, run
 `inno-safety-preflight` locally, then `inno-ship`. Don't push anything yet unless

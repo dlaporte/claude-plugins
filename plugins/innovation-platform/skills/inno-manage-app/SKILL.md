@@ -90,7 +90,7 @@ access here is what actually lets someone past the Okta login on
   rather than silently no-op'ing — surface that to the user.
 - Note: membership grants access to the **app**, not to the platform panel —
   the panel shows people only the apps they own.
-- For an **mcp-worker** or **mcp-container** app the same group governs
+- For an **mcp-function** or **mcp-container** app the same group governs
   access, checked when the user authorizes their MCP client and re-checked on
   every token refresh.
   `revoke_access` additionally deletes the user's OAuth grants for the app
@@ -99,7 +99,7 @@ access here is what actually lets someone past the Okta login on
 
 ## `app_status({ name })` / `get_app_metrics({ name, days })`
 
-Read-only. `app_status` returns status, owner, URL (for an **mcp-worker** or
+Read-only. `app_status` returns status, owner, URL (for an **mcp-function** or
 **mcp-container** app this is its **MCP endpoint** — the `…/mcp` address an
 MCP client uses), last-seen
 time, last deployment, and — when relevant — the stop/purge deadlines and the
@@ -149,7 +149,7 @@ returns it to the named member list (open: false). Owner or admin only.
 - The named member list is **never modified** — closing always restores
   exactly the configured access. Say so when confirming.
 - Takes effect at each user's **next sign-in**; already-signed-in users keep
-  their session up to 24h. For an **mcp-worker** or **mcp-container** app
+  their session up to 24h. For an **mcp-function** or **mcp-container** app
   "sign-in" is the client's OAuth authorization — a change applies on the
   user's next authorize or token
   refresh (≤1h). Set expectations when the user asks "why can they still get
