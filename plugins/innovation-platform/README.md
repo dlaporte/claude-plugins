@@ -3,12 +3,12 @@
 Claude Code plugin for the davidlaporte.org Innovation Platform. Bundles the
 `inno-platform` MCP server and seven skills that walk Claude through the whole
 app lifecycle: create (or migrate existing code), write, containerize,
-gate-check, ship, and manage. Apps deploy as one of three **types** behind the
+gate-check, ship, and manage. Apps deploy as one of four **types** behind the
 same identity gateway — a **worker** (its own Cloudflare Worker, JS/TS, the
-default for greenfield apps), a **container** (any stack, a Dockerfile), or an
-**mcp** app (a worker-shaped **MCP server** AI assistants connect to at
-`…/mcp`, gated by platform-issued OAuth instead of browser SSO) — chosen at
-`register_app`.
+default for greenfield apps), a **container** (any stack, a Dockerfile), an
+**mcp-worker** app (an MCP server in its own Worker behind the OAuth gateway),
+or an **mcp-container** app (an MCP server in a Docker container — any
+language — behind the same OAuth gateway) — chosen at `register_app`.
 
 **Repos are user-owned.** An app is created by **registering a GitHub repo you
 own**. You create a repo from the public `inno-template` ("Use this template" →
