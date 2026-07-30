@@ -37,8 +37,9 @@ git push origin main
 
 This runs the six gate jobs (`config-integrity`, `secrets`, `sast`, `deps`,
 `container`, plus the policy fetch) and **stops** — the deploy job is
-ref-gated to release tags. For `worker` and `mcp-worker` apps the `container` image
-gates are skipped — those repos have no image to build. Watch with `gh run watch` or the `get_ci_status`
+ref-gated to release tags. The `container` image gates run for `container` and
+`mcp-container` apps; they're skipped for `worker` and `mcp-worker` apps,
+which have no image to build. Watch with `gh run watch` or the `get_ci_status`
 MCP tool. If a gate fails, follow the failure guidance below and re-push;
 never tag on top of red checks.
 

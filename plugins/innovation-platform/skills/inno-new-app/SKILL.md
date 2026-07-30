@@ -111,10 +111,10 @@ conversation and get explicit user approval.
 The design includes three contract-informed choices that are **the user's to
 make, with your recommendation**:
 
-- **Deployment type** — `worker`, `container`, or `mcp-worker` (passed to
-  `register_app`; default container server-side, but for a **greenfield** app
-  you recommend and default to **`worker`** — or **`mcp-worker`** when the product is
-  an MCP server):
+- **Deployment type** — `worker`, `container`, `mcp-worker`, or
+  `mcp-container` (passed to `register_app`; default container server-side,
+  but for a **greenfield** app you recommend and default to **`worker`** — or
+  **`mcp-worker`**/**`mcp-container`** when the product is an MCP server):
   - **`worker` (recommend for greenfield):** the app is its own Cloudflare
     Worker (JS/TS) behind the gateway — ms cold starts, no Dockerfile,
     Workers-native bindings. This is the right fit for the common citizen-dev
@@ -135,6 +135,21 @@ make, with your recommendation**:
     is the same Okta member group as the other types (`grant_access` etc.);
     there is no browser SSO — the platform issues OAuth tokens and the
     gateway validates them (`get_app_contract` §1.2).
+  - **`mcp-container`:** choose when the product is an **MCP server** that
+    needs the **container** shape instead — a **non-TS/JS stack** (Python,
+    Go, Ruby, …), **native dependencies**, or **heavy/long-running compute**
+    a Worker can't give it. Same MCP contract as `mcp-worker` (Streamable
+    HTTP at `POST /mcp`, **stateless only** — no notifications, sampling,
+    elicitation, or long-lived subscriptions) layered on the container
+    baseline: a Dockerfile serving `0.0.0.0:8080`, non-root `USER`, and
+    `GET /healthz` (`get_app_contract` §1.3). Same OAuth perimeter and access
+    story as `mcp-worker` — no browser SSO, the platform issues OAuth tokens
+    and the gateway validates them; access is still the app's Okta member
+    group. Default stack: **Python + the official MCP Python SDK** (FastMCP).
+    Note the idle **cold start**: a sleeping container wakes on request, so
+    expect a seconds-scale delay on the first `POST /mcp` after idle
+    (`sleep_after` default 10m) — mention this if responsiveness matters to
+    the user.
   - State your recommendation and the reason, and go with the user's call.
 - **Deployment pattern** (contract §5): server-rendered is the default for
   internal tools; SPA+API when rich client interactivity is the point — applies
@@ -144,7 +159,9 @@ make, with your recommendation**:
   **container** app defaults to Python/Starlette (the tested
   container stack, with a working reference app), or the user's chosen stack —
   any language is supported; the container contract is HTTP on port 8080, not a
-  language.
+  language. An **mcp-container** app defaults to **Python + the official MCP
+  Python SDK** (FastMCP) — but any language is equally supported, same
+  contract.
 
 Only once the user has approved the design do you proceed. The type and design
 seed the scaffolding in §4.
@@ -181,8 +198,9 @@ register_app({ name, repo, description, type, members, accept_guardrails: true }
 - `name` — the app name from §1 (drives the hostname).
 - `repo` — the `owner/repo` slug from §2 (a **slug, not a URL**).
 - `type` — from the design decision (§1b): `"worker"` for the greenfield
-  default, `"container"` when the description warranted it, `"mcp-worker"` for an MCP
-  server. Omit for container. The type is fixed at registration and can't be
+  default, `"container"` when the description warranted it, `"mcp-worker"` for
+  an MCP server, `"mcp-container"` for an MCP server that needs the container
+  shape. Omit for container. The type is fixed at registration and can't be
   switched later (register a new app to change it).
 - `accept_guardrails: true` — required; you must have done the §1a review.
 - `members` — optional list of Okta emails.
@@ -257,12 +275,15 @@ registration. All types ship the thin `.github/workflows/deploy.yml` caller
 workflow (hands-off); a **worker** repo has the TS reference (`app/index.ts`),
 an **mcp** repo the MCP-server TS reference (also `app/index.ts`), a
 **container** repo the Python/Starlette reference (`app/` + `Dockerfile` +
-`lib/`). Everything else — `src/gateway/`, `package.json`,
-`package-lock.json`, `tsconfig.json`, and the `wrangler.jsonc` variants — is
-injected by the platform at build time and is NOT in the repo; don't create any
-of them. Load the `inno-platform-conventions` skill before writing any
-application code (stack policy, storage, identity, the do-not-touch file list),
-and — for a container app — the `inno-containerize` skill before editing the
+`lib/`), and an **mcp-container** repo — nothing: the scaffold is stripped
+wholesale, same as `container` (see the bullet below; there is no template
+overlay for this type — you write the Dockerfile server yourself). Everything
+else — `src/gateway/`, `package.json`, `package-lock.json`, `tsconfig.json`,
+and the `wrangler.jsonc` variants — is injected by the platform at build time
+and is NOT in the repo; don't create any of them. Load the
+`inno-platform-conventions` skill before writing any application code (stack
+policy, storage, identity, the do-not-touch file list), and — for a container
+or mcp-container app — the `inno-containerize` skill before editing the
 Dockerfile.
 
 **Scaffold by the deployment type you chose in §1b** (fetch `get_app_contract`
@@ -298,6 +319,21 @@ Dockerfile.
 - **`container` app, another stack:** replace `app/` and the `Dockerfile`
   wholesale for that stack, honoring the contract (port 8080, `/healthz`,
   identity headers, the `storage.internal` endpoints, sign-out link).
+- **`mcp-container` app:** no template overlay ships for this type —
+  `scaffold/` is stripped wholesale, exactly like `container` (there is
+  nothing to extend; you write the Dockerfile and the MCP server from
+  scratch). Contract (authoritative: `get_app_contract` §1.3): the container
+  baseline (Dockerfile, `0.0.0.0:8080`, non-root `USER`, `GET /healthz`,
+  storage via `http://storage.internal`) PLUS the MCP **Streamable HTTP**
+  transport at `POST /mcp`, **stateless only** (no `sessionIdGenerator`/session
+  correlation — same restriction as `mcp-worker`). Identity: implement no auth
+  of your own — the platform is the OAuth Authorization Server, the gateway
+  the Resource Server; read `X-Forwarded-User`/`X-Forwarded-Groups` only, and
+  never route `/.well-known/oauth-protected-resource` yourself; no sign-out
+  link (there is no browser session). Default stack: Python + the official MCP
+  Python SDK (FastMCP) — build the container image per `inno-containerize`.
+  Expect a seconds-scale cold start on the first request after the container
+  has been idle (`sleep_after` default 10m).
 
 **Delete the scaffold marker as you build.** The template repo ships
 `app/.needs-build`, which makes CI skip deployment until it's removed. Once you
