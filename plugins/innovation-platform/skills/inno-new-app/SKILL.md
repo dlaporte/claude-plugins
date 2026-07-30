@@ -111,9 +111,9 @@ conversation and get explicit user approval.
 The design includes three contract-informed choices that are **the user's to
 make, with your recommendation**:
 
-- **Deployment type** — `worker`, `container`, or `mcp` (passed to
+- **Deployment type** — `worker`, `container`, or `mcp-worker` (passed to
   `register_app`; default container server-side, but for a **greenfield** app
-  you recommend and default to **`worker`** — or **`mcp`** when the product is
+  you recommend and default to **`worker`** — or **`mcp-worker`** when the product is
   an MCP server):
   - **`worker` (recommend for greenfield):** the app is its own Cloudflare
     Worker (JS/TS) behind the gateway — ms cold starts, no Dockerfile,
@@ -124,7 +124,7 @@ make, with your recommendation**:
     dependencies** or system binaries, **long-running / heavy compute**, or a
     port of existing non-JS code (that's `inno-migrate-app`, which defaults to
     container). Absent such a signal, prefer worker.
-  - **`mcp`:** choose when the product is an **MCP server for AI assistants**
+  - **`mcp-worker`** (formerly `mcp`; renamed in platform v0.8.0)**:** choose when the product is an **MCP server for AI assistants**
     (Claude Code, claude.ai) rather than a browser UI. Worker-shaped (JS/TS,
     no Dockerfile): the app serves the MCP **Streamable HTTP** transport at
     `POST /mcp`, and users add `https://inno-{name}.<domain>/mcp` as an MCP
@@ -139,8 +139,8 @@ make, with your recommendation**:
 - **Deployment pattern** (contract §5): server-rendered is the default for
   internal tools; SPA+API when rich client interactivity is the point — applies
   to either type.
-- **Stack** — follows from the type: a **worker** or **mcp** app is TS/JS
-  (that is what Workers run; an mcp app builds on the MCP TypeScript SDK). A
+- **Stack** — follows from the type: a **worker** or **mcp-worker** app is TS/JS
+  (that is what Workers run; an mcp-worker app builds on the MCP TypeScript SDK). A
   **container** app defaults to Python/Starlette (the tested
   container stack, with a working reference app), or the user's chosen stack —
   any language is supported; the container contract is HTTP on port 8080, not a
@@ -181,7 +181,7 @@ register_app({ name, repo, description, type, members, accept_guardrails: true }
 - `name` — the app name from §1 (drives the hostname).
 - `repo` — the `owner/repo` slug from §2 (a **slug, not a URL**).
 - `type` — from the design decision (§1b): `"worker"` for the greenfield
-  default, `"container"` when the description warranted it, `"mcp"` for an MCP
+  default, `"container"` when the description warranted it, `"mcp-worker"` for an MCP
   server. Omit for container. The type is fixed at registration and can't be
   switched later (register a new app to change it).
 - `accept_guardrails: true` — required; you must have done the §1a review.
@@ -281,7 +281,7 @@ Dockerfile.
   dynamic data as JSON (like the scaffold's `/me`) or use an auto-escaping
   template library. Do NOT create `wrangler.jsonc`/`app-worker.jsonc` — those
   are platform-injected.
-- **`mcp` app:** worker-shaped — everything in the worker bullet applies
+- **`mcp-worker` app:** worker-shaped — everything in the worker bullet applies
   (entry `app/index.ts`, identity headers, `GET /healthz` as a route,
   `env.DATA`/`env.FILES`, non-root `app/package.json`, no injected files).
   Deltas (authoritative: `get_app_contract` §1.2): serve the MCP **Streamable
