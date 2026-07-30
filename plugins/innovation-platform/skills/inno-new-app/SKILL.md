@@ -146,6 +146,15 @@ make, with your recommendation**:
     story as `mcp-worker` — no browser SSO, the platform issues OAuth tokens
     and the gateway validates them; access is still the app's Okta member
     group. Default stack: **Python + the official MCP Python SDK** (FastMCP).
+    CRITICAL (Python SDK): construct FastMCP with
+    `transport_security=TransportSecuritySettings(enable_dns_rebinding_protection=False)`
+    (import from `mcp.server.transport_security`) — FastMCP otherwise auto-enables
+    localhost-only Host validation (its `host` setting defaults to 127.0.0.1 even when
+    uvicorn binds 0.0.0.0) and every gateway-forwarded /mcp request dies with
+    `421 Invalid Host header`. The platform gateway is the identity boundary; rebinding
+    protection only misfires behind it. Also: after deploying a fix to a RUNNING
+    mcp-container app, `restart_app` — a live instance keeps serving the old image
+    until it recycles.
     Note the idle **cold start**: a sleeping container wakes on request, so
     expect a seconds-scale delay on the first `POST /mcp` after idle
     (`sleep_after` default 10m) — mention this if responsiveness matters to
