@@ -128,7 +128,7 @@ and note that the app is **Okta-gated** — the first visit prompts an Okta
 login (Cloudflare Access), and only the owner plus anyone granted access via
 `inno-manage-app`'s `grant_access` can reach it.
 
-For an **mcp** app, report the **MCP endpoint** (`…/mcp`, as returned by
+For an **mcp-worker** or **mcp-container** app, report the **MCP endpoint** (`…/mcp`, as returned by
 `app_status` / `register_app`) instead of a browser URL, and tell the user to
 add it as an MCP server in their client (Claude Code, claude.ai) — the first
 connection runs an OAuth authorization (consent + Okta) rather than a browser

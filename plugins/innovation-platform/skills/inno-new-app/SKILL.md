@@ -370,7 +370,8 @@ features should keep it truthful.
 ## 5. Hand off
 
 Once scaffolding is in place, tell the user the app was registered (their repo +
-future URL — for an **mcp** app, the `/mcp` endpoint their MCP client will
-use), and that the next steps are: write the app, run
+future URL — for an **mcp-worker** or **mcp-container** app, the `/mcp`
+endpoint their MCP client will use), and that the next steps are: write the
+app, run
 `inno-safety-preflight` locally, then `inno-ship`. Don't push anything yet unless
 asked — `inno-new-app`'s job is registration + scaffolding, not deploying.
