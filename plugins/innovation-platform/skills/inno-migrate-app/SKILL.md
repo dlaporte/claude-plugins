@@ -38,8 +38,8 @@ order:
    (Cloudflare, D1, R2, Okta, wrangler) only if the user has shown technical
    fluency; the precision below is for your assessment, not recitation.
 
-   The platform contract is **HTTP on port 8080** (container) or a Worker
-   `fetch` handler, **not a language**: no CI gate checks the language or
+   The platform contract is **HTTP on port 8080** (container) or a Cloudflare
+   Worker `fetch` handler (function), **not a language**: no CI gate checks the language or
    framework. Keeping the existing stack — TypeScript/Express, Go, Ruby,
    Python, whatever — is usually the right call and the default bias. Present:
    - **Can the current stack meet the platform requirements?** The container

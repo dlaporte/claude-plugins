@@ -18,7 +18,7 @@ the platform does NOT support, and the CURRENT digest-pinned recommended
 base images. The tool is the live source; never restate contract values from
 memory or hard-code a base-image digest.
 
-## Deployment types: container (below), function, or mcp-function
+## Deployment types: `container` (below), `function`, `mcp-function`, `mcp-container`
 
 Most of this skill describes the **`container`** type (a Docker container the
 gateway fronts). The **`function`** type (the app is its own Cloudflare Worker
@@ -48,6 +48,11 @@ your code runs (never route `/.well-known/oauth-protected-resource`
 yourself). Identity is still `X-Forwarded-User` / `X-Forwarded-Groups`,
 resolved from the same Okta member group when the human authorizes their MCP
 client.
+
+The **`mcp-container`** type serves that same MCP contract from the container
+shape instead — the container baseline below plus `POST /mcp`, for a non-TS/JS
+stack or workloads a Cloudflare Worker can't host. Its deltas are
+**`get_app_contract` §1.3**, and the Dockerfile rules are `inno-containerize`.
 
 Identity (read the header, never build auth), ephemerality, the
 protected/injected files, and the safety-gate discipline below are **identical**

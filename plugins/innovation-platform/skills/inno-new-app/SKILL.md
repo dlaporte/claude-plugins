@@ -95,8 +95,8 @@ and file storage) and binds them to the user's repo.
 The user deserves to see what they're approving. Before registering, produce and
 present a real design — not a one-line summary buried in a tool-approval prompt.
 
-**Fetch the `get_app_contract` MCP tool first** — it carries the three deployment
-**types** and their requirement deltas (§1.1–§1.2), the deployment patterns (and what
+**Fetch the `get_app_contract` MCP tool first** — it carries the four deployment
+**types** and their requirement deltas (§1.1–§1.3), the deployment patterns (and what
 the platform does NOT support: background jobs, machine-to-machine APIs,
 guaranteed long-lived connections), the stack policy, and the current
 recommended base images. Evaluate the user's idea against it before designing; a
@@ -114,7 +114,11 @@ make, with your recommendation**:
 - **Deployment type** — `function`, `container`, `mcp-function`, or
   `mcp-container` (passed to `register_app`; default container server-side,
   but for a **greenfield** app you recommend and default to **`function`** — or
-  **`mcp-function`**/**`mcp-container`** when the product is an MCP server):
+  **`mcp-function`**/**`mcp-container`** when the product is an MCP server).
+  `function` and `mcp-function` were formerly named `worker` and `mcp-worker`;
+  the cutover is hard, so pass only the four names above — a retired name is
+  refused with a message naming its replacement. The four types:
+
   - **`function` (recommend for greenfield):** the app is its own Cloudflare
     Worker (JS/TS) behind the gateway — ms cold starts, no Dockerfile,
     Workers-native bindings. This is the right fit for the common citizen-dev
@@ -124,7 +128,7 @@ make, with your recommendation**:
     dependencies** or system binaries, **long-running / heavy compute**, or a
     port of existing non-JS code (that's `inno-migrate-app`, which defaults to
     container). Absent such a signal, prefer function.
-  - **`mcp-function`** (formerly `mcp`, then `mcp-worker`)**:** choose when the product is an **MCP server for AI assistants**
+  - **`mcp-function`** (named `mcp` before v0.8.0)**:** choose when the product is an **MCP server for AI assistants**
     (Claude Code, claude.ai) rather than a browser UI. Function-shaped (JS/TS,
     no Dockerfile): the app serves the MCP **Streamable HTTP** transport at
     `POST /mcp`, and users add `https://inno-{name}.<domain>/mcp` as an MCP
