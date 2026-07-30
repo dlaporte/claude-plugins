@@ -37,8 +37,9 @@ git push origin main
 
 This runs the six gate jobs (`config-integrity`, `secrets`, `sast`, `deps`,
 `container`, plus the policy fetch) and **stops** — the deploy job is
-ref-gated to release tags. For `worker` and `mcp-worker` apps the `container` image
-gates are skipped — those repos have no image to build. Watch with `gh run watch` or the `get_ci_status`
+ref-gated to release tags. The `container` image gates run for `container` and
+`mcp-container` apps; they're skipped for `worker` and `mcp-worker` apps,
+which have no image to build. Watch with `gh run watch` or the `get_ci_status`
 MCP tool. If a gate fails, follow the failure guidance below and re-push;
 never tag on top of red checks.
 
@@ -127,7 +128,7 @@ and note that the app is **Okta-gated** — the first visit prompts an Okta
 login (Cloudflare Access), and only the owner plus anyone granted access via
 `inno-manage-app`'s `grant_access` can reach it.
 
-For an **mcp** app, report the **MCP endpoint** (`…/mcp`, as returned by
+For an **mcp-worker** or **mcp-container** app, report the **MCP endpoint** (`…/mcp`, as returned by
 `app_status` / `register_app`) instead of a browser URL, and tell the user to
 add it as an MCP server in their client (Claude Code, claude.ai) — the first
 connection runs an OAuth authorization (consent + Okta) rather than a browser

@@ -6,7 +6,9 @@ description: Use when writing or editing the Dockerfile for an inno-{app} repo. 
 # inno-containerize
 
 **Container-type apps only.** This skill is for the `container` deployment
-type. A **`worker`-type** app (its own Cloudflare Worker behind the gateway)
+type — and applies equally to `mcp-container`: an mcp-container image follows
+this exact same Dockerfile contract, plus it serves `POST /mcp`. A
+**`worker`-type** app (its own Cloudflare Worker behind the gateway)
 has **no Dockerfile** — the container CI gates below are skipped for it, and
 its entry is `app/index.ts`, not a container image (see `get_app_contract`
 §1.1 and `inno-platform-conventions`). If the app is a worker, skip this
