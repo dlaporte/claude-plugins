@@ -50,10 +50,15 @@ order:
      **`worker`** when the source is already JS/TS and reimplementing it as a
      Cloudflare Worker is a deliberate choice the user opts into (closer to a
      rewrite; see `get_app_contract` §1.1). If the source is an **MCP server**,
-     raise **`mcp`** — it must be (or become) TS/JS on the MCP TypeScript SDK's
-     Streamable HTTP transport, stateless (see `get_app_contract` §1.2); a
-     Python/other-stack MCP server has no supported migration target today —
-     say so plainly rather than forcing it into a container.
+     raise **`mcp-worker`** for a TS/JS source (MCP TypeScript SDK's Streamable
+     HTTP transport, stateless — `get_app_contract` §1.2) or **`mcp-container`**
+     for a Python/other-stack source (container contract plus `POST /mcp`,
+     stateless — §1.3). CRITICAL for a Python source using FastMCP (the `mcp`
+     SDK): construct it with
+     `transport_security=TransportSecuritySettings(enable_dns_rebinding_protection=False)`
+     (import from `mcp.server.transport_security`) — FastMCP otherwise
+     auto-enables localhost-only Host validation and every gateway-forwarded
+     `/mcp` request dies with `421 Invalid Host header` (§1.3 records this).
    - **Any deal-breakers?** A hard blocker that makes the platform unable to run
      the app at all — call it out plainly. One known trap: **FastAPI** is
      keepable only if its resolved Starlette version clears `pip-audit`/Trivy

@@ -134,6 +134,12 @@ add it as an MCP server in their client (Claude Code, claude.ai) — the first
 connection runs an OAuth authorization (consent + Okta) rather than a browser
 SSO redirect. Access is still the app's member list.
 
+Container-shape redeploys (`container`, `mcp-container`): a deploy replaces the
+image, but an instance that is actively serving keeps running the OLD image
+until it recycles (idle sleep or `restart_app`). If the user redeployed a fix
+to a busy app and it still shows old behavior, run `restart_app` — the next
+request cold-starts on the new image.
+
 ### Do not curl, dig, or otherwise resolve the hostname to "verify" success
 
 Never look up `inno-{name}.davidlaporte.org` yourself (via `curl`, `dig`,
