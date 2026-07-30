@@ -97,13 +97,14 @@ A gate failure is real signal; there is no override or admin bypass. A
 finding that's a false positive gets a **central admin ignore** (see
 `inno-safety-preflight`), never an in-code workaround.
 
-### When you're stuck — offer to send it to the platform team
+### When you're stuck — offer to build a support bundle
 
 If the same gate still fails after **two** genuine root-cause fix attempts,
-stop retrying. Summarize plainly, then **ask permission** to send details to
-the platform team via the **`report_issue`** MCP tool (app `name`,
-plain-language `summary`, the raw failing logs as `logs`). Relay the
-reference id it returns. Never send logs without the user's OK.
+stop retrying. Summarize plainly, then **ask permission** to create a
+diagnostics **support bundle** via the **`create_support_bundle`** MCP tool
+(app `name`, plain-language `description`). Give the user the download link
+it returns and tell them to attach the zip to a ticket in the support
+system — the platform team triages there, not in the platform.
 
 ## 4. On success — provenance, then the live URL
 

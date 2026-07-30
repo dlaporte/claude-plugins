@@ -241,15 +241,16 @@ entry here.
 | `transfer_app` | `inno-platform-admins` only (owners ask an admin) |
 | `set_app_access` | app owner, or `inno-platform-admins` (opening gated by `access.allow_open`) |
 | `register_app` | any signed-in Okta user (becomes the owner) |
-| `report_issue` | app owner, or `inno-platform-admins` |
-| `list_issues` / `resolve_issue` / `list_users` / `query_audit` / `get_config` | `inno-platform-admins` only |
+| `create_support_bundle` | app owner, or `inno-platform-admins` |
+| `list_users` / `query_audit` / `get_config` | `inno-platform-admins` only |
 | `set_config` / `remove_config` | admins; users for their own self-service settings |
 | `list_notifications` / `mark_notification_read` | scoped to the caller |
 | `get_platform_status` | any signed-in user |
 
-`report_issue({ name, summary, logs })` files a diagnostics issue when a
-deploy is stuck (see the `inno-ship` skill's failure flow) — it stores the logs,
-notifies the admins, and shows up in the panel's Issues view for triage.
+`create_support_bundle({ name, description })` builds a diagnostics zip
+(recent logs, deploys, container state, health/safety findings — no app data)
+behind an authenticated download link. Use it when an app misbehaves; the
+user attaches the zip to a ticket in the support system (RT/ServiceNow).
 
 If you're unsure whether the signed-in user owns an app, call `app_status`
 first — its `forbidden` vs. success response is itself the authorization

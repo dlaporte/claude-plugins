@@ -43,9 +43,9 @@ is attributable to your real Okta identity, not a shared service credential.
   `list_apps`, `app_status`, `grant_access`, `revoke_access`, `set_app_access`, `stop_app`,
   `start_app`, `request_start`, `transfer_app`, `export_app_data`, `get_app_metrics`, `get_app_usage`, `get_app_logs`, `restart_app`, `get_platform_status`,
   `list_notifications`, `mark_notification_read`, `mark_all_notifications_read`,
-  `get_platform_docs`, `get_guardrails`, `get_app_contract`, `get_app_security`, `get_ci_status`, `report_issue`,
+  `get_platform_docs`, `get_guardrails`, `get_app_contract`, `get_app_security`, `get_ci_status`, `create_support_bundle`,
   self-service `set_config`/`remove_config`, and the admin-only `purge_app`,
-  `get_config`, `list_issues`, `resolve_issue`, `list_users`, `query_audit`).
+  `get_config`, `list_users`, `query_audit`).
   There's also a
   web panel with the same capabilities at
   `https://inno-platform.davidlaporte.org`.

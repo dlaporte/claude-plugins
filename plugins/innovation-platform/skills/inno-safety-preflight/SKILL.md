@@ -90,7 +90,8 @@ For each gate, tell the user what happened in THEIR terms:
 
 Diagnose privately (`get_ci_status` annotations or `gh run view --log-failed`);
 don't paste raw logs at the user. After two failed fix attempts on the same
-gate, ask permission to file a `report_issue` for the platform team.
+gate, ask permission to create a `create_support_bundle` for the app and hand
+the user the download link to attach to a support ticket.
 
 ## Done
 
