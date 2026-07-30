@@ -228,8 +228,9 @@ Okta group + D1 + R2, and binds the repo). It returns text beginning **`App
 
 - `URL (after first deploy): https://inno-{name}.<platform domain>` — **quote
   this from the response, never construct it** (the platform domain is
-  deployment-specific). For an **mcp** app the response surfaces the **MCP
-  endpoint** (`…/mcp`) instead — same rule: quote it from the response. The
+  deployment-specific). For an **mcp-worker** or **mcp-container** app the
+  response surfaces the **MCP endpoint** (`…/mcp`) instead — same rule: quote
+  it from the response. The
   URL 404s until the first successful `inno-ship`.
 - A `.github/workflows/deploy.yml` — the thin caller workflow that wires the
   repo to the platform's reusable CI. The template already ships a `deploy.yml`;
@@ -273,7 +274,7 @@ After call 2, the repo has been **pruned to the deployment type you chose** —
 the template carries every scaffold and the platform rewrote the repo at
 registration. All types ship the thin `.github/workflows/deploy.yml` caller
 workflow (hands-off); a **worker** repo has the TS reference (`app/index.ts`),
-an **mcp** repo the MCP-server TS reference (also `app/index.ts`), a
+an **mcp-worker** repo the MCP-server TS reference (also `app/index.ts`), a
 **container** repo the Python/Starlette reference (`app/` + `Dockerfile` +
 `lib/`), and an **mcp-container** repo — nothing: the scaffold is stripped
 wholesale, same as `container` (see the bullet below; there is no template
