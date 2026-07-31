@@ -42,10 +42,13 @@ is attributable to your real Okta identity, not a shared service credential.
   the platform's remote MCP server (tools: `register_app`, `check_name`,
   `list_apps`, `app_status`, `grant_access`, `revoke_access`, `set_app_access`, `stop_app`,
   `start_app`, `request_start`, `transfer_app`, `export_app_data`, `get_app_metrics`, `get_app_usage`, `get_app_logs`, `restart_app`, `get_platform_status`,
+  `link_app_data`, `unlink_app_data`, `list_app_links`,
   `list_notifications`, `mark_notification_read`, `mark_all_notifications_read`,
   `get_platform_docs`, `get_guardrails`, `get_app_contract`, `get_app_security`, `get_ci_status`, `create_support_bundle`,
   self-service `set_config`/`remove_config`, and the admin-only `purge_app`,
-  `get_config`, `list_users`, `query_audit`).
+  `get_config`, `list_users`, `query_audit`, `sync_gateway_ref`,
+  `list_admins`, `grant_admin`, `revoke_admin`, `export_platform_backup`,
+  `get_platform_logs`).
   There's also a
   web panel with the same capabilities at
   `https://inno-platform.davidlaporte.org`.
