@@ -1,9 +1,10 @@
 # innovation-platform
 
 Claude Code plugin for the davidlaporte.org Innovation Platform. Bundles the
-`inno-platform` MCP server and seven skills that walk Claude through the whole
+`inno-platform` MCP server and eight skills that walk Claude through the whole
 app lifecycle: create (or migrate existing code), write, containerize,
-gate-check, ship, and manage. Apps deploy as one of four **types** behind the
+connect to a per-user backend, gate-check, ship, and manage. Apps deploy as
+one of four **types** behind the
 same identity gateway — a **function** (its own Cloudflare Worker, JS/TS, the
 default for greenfield apps), a **container** (any stack, a Dockerfile), an
 **mcp-function** app (an MCP server in its own Cloudflare Worker behind the
@@ -45,7 +46,8 @@ is attributable to your real Okta identity, not a shared service credential.
   `link_app_data`, `unlink_app_data`, `list_app_links`,
   `list_notifications`, `mark_notification_read`, `mark_all_notifications_read`,
   `get_platform_docs`, `get_guardrails`, `get_app_contract`, `get_app_security`, `get_ci_status`, `create_support_bundle`,
-  self-service `set_config`/`remove_config`, and the admin-only `purge_app`,
+  self-service `set_config`/`remove_config`,
+  `set_app_connection`/`list_connections`/`remove_app_connection`, and the admin-only `purge_app`,
   `get_config`, `list_users`, `query_audit`, `sync_gateway_ref`,
   `list_admins`, `grant_admin`, `revoke_admin`, `export_platform_backup`,
   `get_platform_logs`).
@@ -65,6 +67,11 @@ is attributable to your real Okta identity, not a shared service credential.
   contract for ANY stack (non-root, `EXPOSE 8080`, patched base, CVE-clean)
   with Python/Node/Go recipes; base images digest-pinned from
   `get_app_contract`. Function-type apps have no Dockerfile and skip this.
+- **`skills/inno-add-connection`** — for an app that needs to reach an
+  external backend **as each individual user** (not one shared app key):
+  discovers how the backend signs people in, provisions a Connection with
+  `set_app_connection` (a pasted token or the backend's own login), and wires
+  the app to consume it. **`mcp-container`** apps only in v1.
 - **`skills/inno-safety-preflight`** — run the CI security gates, plus a
   guardrails, application-contract, and `get_app_security` (app-code
   authorization/IDOR) review, before pushing.

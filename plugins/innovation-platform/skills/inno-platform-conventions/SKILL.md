@@ -141,7 +141,34 @@ copies of these headers before injecting its own verified values, so there is
 no spoofing surface as long as you don't add one. `"unknown"` is a reasonable
 default only for local dev, never a real auth decision in production code.
 
-### Sign out: one link, no session code
+## Per-user backend access (Connections)
+
+Identity above is about *your app* knowing who's using it. Some apps also need
+to call **another** service *as that same person* — a per-user API or SaaS
+account the app fronts (a departmental system, a niche tool, a dev instance).
+For that, use a **Connection** — never a single hardcoded credential shared by
+every user. The dividing line: if every user of your app would reach the
+backend with the exact same key, that's a plain app secret (set with
+`inno-manage-app`'s `set_config`/`remove_config`), not a Connection; if the
+backend tells your users apart, it's a Connection.
+
+Consume a Connection with the template's `connections.get(name,
+callerAssertion)` helper: read the inbound `X-Caller-Assertion` header off the
+current request and pass it straight through — that's what lets the platform
+hand back a live credential for *that* caller rather than a shared one. Use
+the returned `access_token`/`header` for the one backend call at hand, cache
+it in memory only until its `expires_at`, and never write it to disk or a log
+line. If the call comes back `NotConnected`, relay the `connect_url` it
+returns to the user rather than treating it as a hard failure — a Connection
+is expected to be unlinked until the user completes it once.
+
+Connections are reachable from **`mcp-container`** apps only in v1 — the
+other three types can't consume one yet. Setting one up (discovering how the
+backend signs people in, choosing a pasted-token vs. backend-login strategy,
+and calling `set_app_connection`) is a full workflow of its own: see the
+`inno-add-connection` skill rather than wiring this ad hoc.
+
+## Sign out: one link, no session code
 
 Every app includes a "Sign out" link (footer is fine) pointing at the
 platform-wide Cloudflare Access logout:
