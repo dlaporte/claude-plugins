@@ -25,11 +25,14 @@ Could you register a client with the following:
 - **Grant type:** Authorization Code with PKCE (`S256`), i.e. a "web
   application" or "authorization code" client type — not client-credentials
   and not implicit.
-- **Token endpoint auth method:** {client_auth — e.g. `client_secret_basic`,
-  `client_secret_post`, or "none / public client" if PKCE-only}
+- **Token endpoint auth method:** {token endpoint auth method — e.g.
+  `client_secret_basic`, `client_secret_post`, or "none / public client" if
+  PKCE-only}
 - **Scopes requested:** {scopes — list the minimal set the integration needs}
 - **Refresh tokens:** {yes/no — say yes if the discovery document advertised
-  `refresh_token` support}
+  `refresh_token` support; and if yes, ask whether the backend **rotates** the
+  refresh token on each use, since that decides `config.refresh`
+  (`"static"` vs `"rotating"`)}
 
 Please send back the **client ID** (and **client secret**, if one is issued)
 — ideally via a secure/private channel rather than plain email, since the
@@ -41,6 +44,15 @@ Thanks!
 
 Once the admin returns the `client_id` (and `client_secret`, if any), those
 are the values to pass to `set_app_connection`'s `client_id` / `client_secret`
-arguments alongside the `oauth2_code` config assembled in step 3. Never paste
-the secret back into the conversation after it's been sent to the tool —
-treat it as already consumed.
+arguments alongside the `oauth2_code` config assembled in step 3. When you
+translate the admin's answers into the tool call, note the placeholders above
+use the backend admin's OIDC vocabulary and must be mapped back:
+
+- the **token endpoint auth method** maps to `config.client_auth` as
+  `client_secret_basic` → `"basic"`, `client_secret_post` → `"post"`, and
+  `none` / public client → **omit `client_auth`** (register no secret).
+- the **scopes** go in the **top-level `scopes` arg** of `set_app_connection`
+  (a `string[]`), not inside `config`.
+
+Never paste the secret back into the conversation after it's been sent to the
+tool — treat it as already consumed.

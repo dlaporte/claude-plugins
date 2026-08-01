@@ -168,7 +168,7 @@ backend signs people in, choosing a pasted-token vs. backend-login strategy,
 and calling `set_app_connection`) is a full workflow of its own: see the
 `inno-add-connection` skill rather than wiring this ad hoc.
 
-### Sign out: one link, no session code
+## Sign out: one link, no session code
 
 Every app includes a "Sign out" link (footer is fine) pointing at the
 platform-wide Cloudflare Access logout:

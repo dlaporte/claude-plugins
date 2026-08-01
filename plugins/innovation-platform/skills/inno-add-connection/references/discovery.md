@@ -20,14 +20,15 @@ returns JSON (not a 404/HTML error page), you've confirmed the backend uses
 the sign-in path, and the document itself gives you most of the `oauth2_code`
 config directly:
 
-| Field in the discovery document | Config field |
-| --- | --- |
-| `authorization_endpoint` | `authorize_endpoint` |
-| `token_endpoint` | `token_endpoint` |
-| `token_endpoint_auth_methods_supported` (pick the one you'll use — commonly `client_secret_basic` or `client_secret_post`; `none` means public-client, PKCE-only) | `client_auth` |
-| `code_challenge_methods_supported` includes `S256` | `pkce: true` (prefer this whenever offered) |
-| `scopes_supported` | `scopes` — pick the minimal set the app actually needs, not the whole list |
-| (grant_types_supported includes `refresh_token`) | `refresh: true` |
+| Field in the discovery document | Where it goes | How to translate it |
+| --- | --- | --- |
+| `authorization_endpoint` | `config.authorize_endpoint` | copy as-is |
+| `token_endpoint` | `config.token_endpoint` | copy as-is |
+| `revocation_endpoint` | `config.revocation_endpoint` | copy as-is; **omit if the document doesn't advertise one**. Setting it lets a user's disconnect actually revoke their token at the backend rather than only forgetting it platform-side. |
+| `token_endpoint_auth_methods_supported` | `config.client_auth` | this is an **enum, not a copy**: `client_secret_basic` → `"basic"`, `client_secret_post` → `"post"`. If the only method is `none` (public client, PKCE-only), **omit `client_auth` entirely** and register the client without a secret. If both basic and post are offered, prefer `"basic"`. |
+| `code_challenge_methods_supported` includes `S256` | `config.pkce` | `true` (a boolean — prefer PKCE whenever offered; if the field is absent, default `false`) |
+| `scopes_supported` | the **top-level `scopes` arg** of `set_app_connection` (a `string[]`), *not* `config` | pick the minimal set the app actually needs, not the whole list. Passing `scopes` as a top-level arg is the canonical place — it takes precedence over any `config.scopes` at connect time. |
+| `grant_types_supported` includes `refresh_token` | `config.refresh` | this is an **enum, not a boolean**: set `"static"` (the safe default — most providers return the same refresh token each time), or `"rotating"` **only if** the backend's own docs say it issues a fresh refresh token on every refresh. If `refresh_token` is **absent** from `grant_types_supported`, set `"none"`. |
 
 Report back to the user in plain terms, e.g.: *"Good news — {backend} uses the
 same sign-in as its website, so you'll just log in there once to connect."*

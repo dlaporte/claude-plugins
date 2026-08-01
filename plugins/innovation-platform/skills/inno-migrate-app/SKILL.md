@@ -53,7 +53,10 @@ order:
      raise **`mcp-function`** for a TS/JS source (MCP TypeScript SDK's Streamable
      HTTP transport, stateless — `get_app_contract` §1.2) or **`mcp-container`**
      for a Python/other-stack source (container contract plus `POST /mcp`,
-     stateless — §1.3). CRITICAL for a Python source using FastMCP (the `mcp`
+     stateless — §1.3). **Exception:** if the MCP source needs a per-user
+     **Connection** to a backend (step 2 below), it MUST be `mcp-container`
+     even when the source is TS/JS — `mcp-function` cannot consume a Connection
+     in v1. CRITICAL for a Python source using FastMCP (the `mcp`
      SDK): construct it with
      `transport_security=TransportSecuritySettings(enable_dns_rebinding_protection=False)`
      (import from `mcp.server.transport_security`) — FastMCP otherwise

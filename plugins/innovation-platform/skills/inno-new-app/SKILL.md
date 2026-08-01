@@ -146,11 +146,18 @@ make, with your recommendation**:
     fit this type today — surface that HERE, not after registration. Access
     is the same Okta member group as the other types (`grant_access` etc.);
     there is no browser SSO — the platform issues OAuth tokens and the
-    gateway validates them (`get_app_contract` §1.2).
+    gateway validates them (`get_app_contract` §1.2). **One hard constraint:**
+    if §1 flagged that the app must reach another service *as each person using
+    it* (a per-user **Connection**), this type **cannot** — only
+    `mcp-container` can consume a Connection in v1. Choose `mcp-container`
+    instead; do not land such an app on `mcp-function` and discover the gap
+    after registration (the type is fixed at registration).
   - **`mcp-container`:** choose when the product is an **MCP server** that
     needs the **container** shape instead — a **non-TS/JS stack** (Python,
-    Go, Ruby, …), **native dependencies**, or **heavy/long-running compute**
-    a Cloudflare Worker can't give it. Same MCP contract as `mcp-function` (Streamable
+    Go, Ruby, …), **native dependencies**, **heavy/long-running compute**
+    a Cloudflare Worker can't give it, **or an MCP server that must consume a
+    per-user Connection** (this is the only type that can, in v1 — see
+    `inno-add-connection`). Same MCP contract as `mcp-function` (Streamable
     HTTP at `POST /mcp`, **stateless only** — no notifications, sampling,
     elicitation, or long-lived subscriptions) layered on the container
     baseline: a Dockerfile serving `0.0.0.0:8080`, non-root `USER`, and
@@ -295,11 +302,14 @@ After call 2, the repo has been **pruned to the deployment type you chose** —
 the template carries every scaffold and the platform rewrote the repo at
 registration. All types ship the thin `.github/workflows/deploy.yml` caller
 workflow (hands-off); a **function** repo has the TS reference (`app/index.ts`),
-an **mcp-function** repo the MCP-server TS reference (also `app/index.ts`), a
-**container** repo the Python/Starlette reference (`app/` + `Dockerfile` +
-`lib/`), and an **mcp-container** repo — nothing: the scaffold is stripped
-wholesale, same as `container` (see the bullet below; there is no template
-overlay for this type — you write the Dockerfile server yourself). Everything
+an **mcp-function** repo the MCP-server TS reference (also `app/index.ts`), and
+a **container** repo the Python/Starlette reference (`app/` — incl. `main.py`,
+`storage.py`, `templates/`, `requirements.txt` — plus `Dockerfile` and `lib/`).
+An **mcp-container** repo ships **that same container reference** — it has no
+MCP-specific overlay of its own, so pruning `strip`s only the `scaffold/`
+subtree and leaves the container root in place (see the bullet below; you adapt
+`app/main.py` into your MCP server and **keep `app/storage.py`**, not write from
+scratch). Everything
 else — `src/gateway/`, `package.json`, `package-lock.json`, `tsconfig.json`,
 and the `wrangler.jsonc` variants — is injected by the platform at build time
 and is NOT in the repo; don't create any of them. Load the
@@ -341,10 +351,16 @@ Dockerfile.
 - **`container` app, another stack:** replace `app/` and the `Dockerfile`
   wholesale for that stack, honoring the contract (port 8080, `/healthz`,
   identity headers, the `storage.internal` endpoints, sign-out link).
-- **`mcp-container` app:** no template overlay ships for this type —
-  `scaffold/` is stripped wholesale, exactly like `container` (there is
-  nothing to extend; you write the Dockerfile and the MCP server from
-  scratch). Contract (authoritative: `get_app_contract` §1.3): the container
+- **`mcp-container` app:** no MCP-specific overlay ships for this type, so
+  pruning `strip`s only the `scaffold/` subtree and the repo lands with the
+  **same container Python reference as `container`** — `app/main.py`,
+  `app/storage.py`, `app/templates/`, `app/requirements.txt`, `Dockerfile`,
+  and `lib/`. You **adapt** that reference rather than writing from scratch:
+  replace `app/main.py`'s Starlette demo with your MCP server (Streamable HTTP
+  at `POST /mcp`), keep `app/storage.py` (it carries the storage **and
+  `Connections` helpers** your tools consume — see `inno-add-connection`), and
+  adjust the `Dockerfile` for the MCP entrypoint. Contract (authoritative:
+  `get_app_contract` §1.3): the container
   baseline (Dockerfile, `0.0.0.0:8080`, non-root `USER`, `GET /healthz`,
   storage via `http://storage.internal`) PLUS the MCP **Streamable HTTP**
   transport at `POST /mcp`, **stateless only** (no `sessionIdGenerator`/session
