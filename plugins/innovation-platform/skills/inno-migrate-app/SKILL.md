@@ -68,7 +68,15 @@ order:
 2. **Auth to strip** — login routes, session middleware, password storage, OAuth
    flows. All of it goes: the gateway verifies the user against Okta and injects
    `X-Forwarded-User` / `X-Forwarded-Groups` (see `inno-platform-conventions`).
-   List each file/route to remove.
+   List each file/route to remove. This is about the app's *own* front-door
+   login — a separate thing to look for is auth to a *backend the app calls
+   out to*: if the repo runs its own OAuth flow against some other service,
+   holds a long-lived per-user token for that service, or ships a sidecar
+   whose whole job is minting/refreshing that credential, don't port any of
+   it — that's exactly what a Connection replaces. Flag it in the assessment
+   and point at the `inno-add-connection` skill for Phase 2 instead of
+   carrying the old backend-auth code forward (note: needs the `mcp-container`
+   type, §1's deployment-type bullet).
 3. **Persistence to port** — local files and SQLite move to the platform's
    storage (D1 for SQL, R2 for files) reached at `http://storage.internal`
    (container) or the app's own `env.DATA`/`env.FILES` bindings (function).
@@ -168,6 +176,10 @@ merge to `main` once it's ready. Tell the user where the restore point is.
 5. **Rewrite `README.md`** to describe the migrated app (what it does, who it's
    for, its URL), drawing on the existing README. Platform mechanics stay in
    `CLAUDE.md`, not here.
+6. **Backend auth Phase 1 flagged** — if the assessment (step 2 above) found
+   the app running its own auth against an outside backend, set that up as a
+   Connection now via the `inno-add-connection` skill instead of porting the
+   old code.
 
 ## Hand off
 

@@ -68,6 +68,14 @@ user-facing sentence in this flow.
 4. **Initial members' emails** (optional, can be empty) — Okta emails to grant
    access alongside the owner. The list can be added to later with the
    `inno-manage-app` skill's `grant_access`.
+5. **Does the app need to reach another service *as each person using it*?**
+   Not the app's own sign-in (every app gets that for free) — this is about
+   your app calling out to some *other* system that also tells its own users
+   apart (a departmental system, a niche tool, a per-user account on some
+   outside service). If yes, note it now: today that only works for an MCP
+   server built the container way (affects the type choice in §1b below), and
+   once the app is registered you'll set it up with the `inno-add-connection`
+   skill.
 
 ## 1a. Guardrails check — HARD STOP on conflict
 
@@ -388,3 +396,7 @@ endpoint their MCP client will use), and that the next steps are: write the
 app, run
 `inno-safety-preflight` locally, then `inno-ship`. Don't push anything yet unless
 asked — `inno-new-app`'s job is registration + scaffolding, not deploying.
+
+If §1 flagged that the app needs to reach another service as each person using
+it, do that setup now, before writing the rest of the app: run the
+`inno-add-connection` skill (requires the `mcp-container` type from §1b).
