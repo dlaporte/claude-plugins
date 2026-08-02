@@ -8,7 +8,7 @@
     {
       "name": "innovation-platform",
       "source": "./plugins/innovation-platform",
-      "description": "Build and ship apps on the davidlaporte.org Innovation Platform: create an app via the inno-platform MCP server, scaffold a Starlette container under app/ per platform conventions, containerize it, run the security gates locally before pushing, ship through CI/CD, and manage access to a live app.",
+      "description": "Build and ship apps on the davidlaporte.org Innovation Platform: create an app via the inno-platform MCP server as a function (its own Cloudflare Worker, the greenfield default), a container (any stack), or an MCP server for AI assistants (mcp-function / mcp-container) behind the same identity gateway, write it against the platform's application + app-security contracts, run the security gates before shipping through CI/CD, and manage access to a live app.",
       "category": "development",
       "homepage": "https://github.com/dlaporte/claude-plugins"
     },
