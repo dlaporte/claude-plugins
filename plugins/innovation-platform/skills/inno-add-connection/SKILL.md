@@ -273,12 +273,17 @@ what the app actually imports:
   `get_http_request()` from `fastmcp.server.dependencies` (the same module that
   provides `get_access_token`).
 
-The sample below is written for the official SDK; the two-line swap for
-standalone `fastmcp` is in the comment.
+The sample below is written for the official SDK; the swap for standalone
+`fastmcp` is in the comment at the top of it.
 
 ```python
-from mcp.server.fastmcp import Context           # standalone fastmcp instead:
-from storage import Connections, NotConnected    #   from fastmcp.server.dependencies import get_http_request
+from mcp.server.fastmcp import Context
+from storage import Connections, NotConnected  # template helpers
+
+# On the standalone `fastmcp` package instead? Drop the Context import and the
+# ctx parameter, and get the request from the dependency:
+#   from fastmcp.server.dependencies import get_http_request
+#   request = get_http_request()
 
 connections = Connections()  # points at http://storage.internal by default
 
@@ -286,8 +291,8 @@ connections = Connections()  # points at http://storage.internal by default
 async def list_incidents(ctx: Context) -> dict:
     # X-Caller-Assertion is present on every gateway-forwarded request;
     # header lookup is case-insensitive.
-    request = ctx.request_context.request         # standalone fastmcp instead:
-    caller_assertion = request.headers.get("x-caller-assertion")  # get_http_request().headers.get(...)
+    request = ctx.request_context.request
+    caller_assertion = request.headers.get("x-caller-assertion")
     try:
         cred = await connections.get("crm", caller_assertion)
     except NotConnected as e:
