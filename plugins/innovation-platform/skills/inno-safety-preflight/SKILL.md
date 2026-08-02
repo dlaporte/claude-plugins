@@ -15,10 +15,15 @@ toggles.
 Four things are checked here, and **all are hard requirements before
 `inno-ship`**:
 
-1. The **safety gates** (CI): config-integrity, secrets, SAST, dependency
-   audit, container build + image CVEs (run for `container` and
-   `mcp-container` apps — skipped for the function-shaped `function` and
-   `mcp-function` types).
+1. The **safety gates** (CI) — seven jobs, all `needs:` prerequisites of
+   `deploy`, plus the `policy` job that fetches the admin gate policy:
+   `config-integrity`, `secrets` (gitleaks), `sast` (Semgrep), `deps`
+   (dependency audit), `dep-age` (the dependency-release-age cooldown — see
+   the table below), `container` (build + image CVEs + non-root/`EXPOSE 8080`
+   + a `GET /healthz` smoke test, run for `container` and `mcp-container`
+   apps — the image checks are skipped for the function-shaped `function` and
+   `mcp-function` types), and `scaffold-check` (suppresses deploy while the
+   `app/.needs-build` template marker is still present).
 2. The **guardrails policy** (you): a qualitative read of the app against
    the platform's acceptable-use policy.
 3. The **application contract** (you): the app's conformance to the
@@ -40,14 +45,17 @@ have the whole repo in front of you; this is judgment, not grep.
   CI gate is green.
 
 Then call the `get_app_contract` MCP tool and judge the app against the
-MUSTs — focusing on what CI does NOT enforce mechanically: identity read
+MUSTs — focusing on what CI cannot judge for itself: identity read
 only from the gateway headers with no home-grown auth (R3), a sign-out link
 targeting the team-domain logout (R4), durable state in the platform stores
-rather than local disk or memory (R5/R6), `/healthz` present and cheap (R2),
+rather than local disk or memory (R5/R6),
 and no reliance on unsupported patterns (background work, machine-to-machine
-callers, connections that must survive sleep). A contract violation is the
-same hard stop as a guardrails one: name the requirement, fix or guide the
-fix, re-check.
+callers, connections that must survive sleep). `/healthz` (R2) is
+CI-enforced — the `container` job smoke-tests it — but CI only sees that it
+answers 200 inside the image, so still read it for the parts CI can't:
+cheap, no side effects, and **independent of storage**. A contract violation
+is the same hard stop as a guardrails one: name the requirement, fix or
+guide the fix, re-check.
 
 Finally, for any app with **per-user data, an admin surface, a state-changing
 write, or a call to a paid/external upstream**, call the `get_app_security`
@@ -86,7 +94,8 @@ For each gate, tell the user what happened in THEIR terms:
 | **Likely false positive** | Never work around it in code (renames, string-splitting, suppression comments). Name the exact finding ID and tell the user a platform admin can add a central ignore for it (optionally with an expiry) — it then clears at both the gate and the periodic safety sweep. |
 | `SAFETY GATE DISABLED by platform policy` in the log | Deliberate admin configuration, not a bug. Note it and move on. |
 | config-integrity failure | The repo contains a platform-injected file that must not exist — `src/gateway/`, `package.json`, `package-lock.json`, `tsconfig.json`, or `wrangler.jsonc` (delete it; the platform injects all of these at build time) — or `CLAUDE.md`'s required template headers were altered (revert them; the rest of the file is yours) — or a root-level `.env*`/`.npmrc`/`.yarnrc` slipped in (remove it). Root-only: the app's own `app/package.json` etc. are fine. |
-| container failure | Dockerfile contract problem — hand off to `inno-containerize`. |
+| `dep-age` failure | The **inverse** of a CVE finding — do NOT bump to the newest release, that makes it redder. Either a pinned dependency was published more recently than the platform's cooldown allows (`safety.min_release_age_days`, 0 = off and the default, so this only fires once an admin has enabled it), or the app ships `app/package.json` with no committed, parseable `app/package-lock.json` and there are no exact versions to date at all. Remedies: wait out the cooldown, pin an older vetted version, commit `app/package-lock.json`, or ask a platform admin for an app-scope `safety.min_release_age_days: 0`. |
+| container failure | Dockerfile contract problem, or the built image never answered `GET /healthz` within ~90s — hand off to `inno-containerize`. |
 
 Diagnose privately (`get_ci_status` annotations or `gh run view --log-failed`);
 don't paste raw logs at the user. After two failed fix attempts on the same
