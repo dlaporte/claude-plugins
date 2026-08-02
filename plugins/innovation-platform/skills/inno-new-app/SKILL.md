@@ -100,8 +100,8 @@ and file storage) and binds them to the user's repo.
 
 ## 1b. Design the app before registering
 
-The user deserves to see what they're approving. Before registering, produce and
-present a real design — not a one-line summary buried in a tool-approval prompt.
+Before registering, produce and present a real design. The approval gate at the
+end of this section is a hard one — `register_app` provisions real resources.
 
 **Fetch the `get_app_contract` MCP tool first** — it carries the four deployment
 **types** and their requirement deltas (§1.1–§1.3), the deployment patterns (and what
@@ -112,9 +112,11 @@ not-supported requirement surfaces HERE, not after registration.
 
 Invoke the **`superpowers:brainstorming`** skill to design the app: what it does,
 its data model (what it stores — tables, files), its routes/pages, and its
-access model (who can see and edit). If that skill isn't available in the session, run an
-equivalent inline pass: present the same points as a short written design in the
-conversation and get explicit user approval.
+access model (who can see and edit). If that skill isn't available in the
+session, run an equivalent inline pass over the same points yourself. Either
+way, the design still has to be written into your reply and approved — see
+"Present the design, THEN ask for approval" below; the skill's absence is not a
+reason to skip that.
 
 The design includes three contract-informed choices that are **the user's to
 make, with your recommendation**:
@@ -191,8 +193,35 @@ make, with your recommendation**:
   Python SDK** (FastMCP) — but any language is equally supported, same
   contract.
 
-Only once the user has approved the design do you proceed. The type and design
-seed the scaffolding in §4.
+### Present the design, THEN ask for approval
+
+The user deserves to see what they're approving. **Write the full design into
+your visible reply as a structured section — never a one-line summary buried
+inside a tool-approval prompt.** An approval question that references "the
+design as described" when no design appears in the conversation is a defect,
+not a shortcut: the user cannot approve what they have not seen.
+
+The written design covers, at minimum:
+
+- **What the app does** — in the user's own terms, a short paragraph
+- **Deployment type** and why (and the Connection constraint if §1 flagged it)
+- **Data model** — the tables and files it will store
+- **Routes / pages** — what the user can actually open and do
+- **Access model** — who can see what, and who can edit
+- **Deployment pattern and stack**
+- **Name** (confirmed available via `check_name`) and the exact hostname it
+  produces
+- **Initial members**, if any
+
+Only after that design is in your reply: **stop and get explicit user
+approval** (of the design *and* the name) before §2. Ask the approval question
+in your own words referencing the design the user can now read; put genuinely
+separate decisions (name choice, deployment type, members) in their own
+questions rather than folding them into the approval. Registration provisions
+real resources — an Okta access group, a database, and file storage — and binds
+them to the user's repo; the type is fixed at registration.
+
+The type and design seed the scaffolding in §4.
 
 ## 2. Have the user create the repo from the template
 
@@ -220,7 +249,7 @@ give the user the link it returns, wait for them to install, then call it again.
 ### Call 1 — start registration, get the install link
 
 ```
-register_app({ name, repo, description, type, members, accept_guardrails: true })
+register_app({ name, repo, description, type, members, accept_guardrails: true, connections })
 ```
 
 - `name` — the app name from §1 (drives the hostname).
@@ -232,6 +261,11 @@ register_app({ name, repo, description, type, members, accept_guardrails: true }
   switched later (register a new app to change it).
 - `accept_guardrails: true` — required; you must have done the §1a review.
 - `members` — optional list of Okta emails.
+- `connections` — optional list of names, when §1 step 5 flagged a per-user
+  backend. Pass what you plan to set up; it **creates nothing** (a connection
+  needs a strategy and config only `set_app_connection` can supply) and is
+  echoed back in the response as a reminder to configure each one. A
+  badly-shaped name is noted in the response and never fails the registration.
 
 The first call returns text beginning **`Registration started for "{name}" ←
 {repo}.`** It includes (a) the template link again in case the repo doesn't
