@@ -121,9 +121,35 @@ purpose, and behavior against it. A conflict is a HARD STOP — you must not pas
 `accept_guardrails: true` (which `register_app` requires) until it's clean or the
 user has an explicit admin exception.
 
-Close with an effort summary and the blocker list, then **stop and get explicit
-user approval** (of the plan *and* the name) before Phase 2. If a blocker means
-the app cannot function on the platform at all, say so plainly and stop here.
+### Present the plan, THEN ask for approval
+
+The user deserves to see what they're approving. **Write the full migration
+plan into your visible reply as a structured section — never a one-line
+summary buried inside an approval prompt.** An approval question that
+references "the plan as described" when no plan appears in the conversation
+is a defect, not a shortcut: the user cannot approve what they have not seen.
+
+The written plan covers, at minimum, each assessment product above:
+
+- **Deployment type** and why (and the Connection constraint if it applied)
+- **Auth being stripped** — the specific files/routes removed, and what
+  replaces them (gateway headers; a Connection, if flagged in step 2)
+- **Persistence changes** — what moves to D1/R2, and every blocker by name
+- **Contract adaptations** — port/healthz/non-root/`app/` layout/CLAUDE.md
+- **Gate risks found** — secrets (including git history), CVEs, semgrep hits,
+  files that must be deleted before CI will pass
+- **What does not carry over**
+- **Proposed name** (checked available) and the exact hostname consequence
+- **How the repo is protected** — the branch/restore-point strategy Phase 2
+  will use
+- **Effort summary and open decisions** (read-only default, members, …)
+
+Only after that plan is in your reply: **stop and get explicit user approval**
+(of the plan *and* the name) before Phase 2. Ask the approval question in
+your own words referencing the plan the user can now read; put genuinely
+separate decisions (name choice, read-only default, members) in their own
+questions rather than folding them into the approval. If a blocker means the
+app cannot function on the platform at all, say so plainly and stop here.
 
 ## Phase 2 — Register and adapt in place (only after approval)
 
