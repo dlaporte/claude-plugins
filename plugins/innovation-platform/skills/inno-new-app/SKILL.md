@@ -136,7 +136,7 @@ make, with your recommendation**:
     dependencies** or system binaries, **long-running / heavy compute**, or a
     port of existing non-JS code (that's `inno-migrate-app`, which defaults to
     container). Absent such a signal, prefer function.
-  - **`mcp-function`** (named `mcp` before v0.8.0)**:** choose when the product is an **MCP server for AI assistants**
+  - **`mcp-function` (named `mcp` before v0.8.0):** choose when the product is an **MCP server for AI assistants**
     (Claude Code, claude.ai) rather than a browser UI. Function-shaped (JS/TS,
     no Dockerfile): the app serves the MCP **Streamable HTTP** transport at
     `POST /mcp`, and users add `https://inno-{name}.<domain>/mcp` as an MCP
