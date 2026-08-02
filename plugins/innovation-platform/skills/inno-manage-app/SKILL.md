@@ -1,6 +1,6 @@
 ---
 name: inno-manage-app
-description: Use to share, check on, start, stop, export, open up, or configure a deployed Innovation Platform app via the inno-platform MCP tools (grant_access, revoke_access, set_app_access, app_status, start_app, stop_app, restart_app, request_start, transfer_app (admin-only), export_app_data, get_app_metrics, get_app_logs, set_config). Use when the user wants to give someone access, open an app to everyone with SSO, check deploy status, bring back a stopped app, restart a wedged app, read its logs, reassign ownership (admins), download their app's data, or shut one down.
+description: Use to share, check on, start, stop, export, open up, or configure a deployed Innovation Platform app via the inno-platform MCP tools (grant_access, revoke_access, set_app_access, app_status, start_app, stop_app, restart_app, request_start, transfer_app (admin-only), export_app_data, get_app_metrics, get_app_usage, get_app_logs, set_config, create_support_bundle). Use when the user wants to give someone access, open an app to everyone with SSO, check deploy status, bring back a stopped app, restart a wedged app, read its logs, reassign ownership (admins), download their app's data, or shut one down.
 ---
 
 # inno-manage-app
@@ -224,10 +224,11 @@ deploy), `notify.email.<event>`.
 
 ## Notifications (`list_notifications` / `mark_notification_read`)
 
-The platform's durable event feed — lifecycle transitions, deploys, issues.
-Owners see their own apps' history (kept even after an app is purged);
-admins see everything. Every email the platform sends corresponds to an
-entry here.
+The platform's durable event feed — lifecycle transitions, deploys,
+vulnerability findings (`vulnerable` / `secured`), and health changes
+(`unhealthy` / `recovered`). Owners see their own apps' history (kept even
+after an app is purged); admins see everything. Every email the platform sends
+corresponds to an entry here.
 
 ## Authorization summary
 
@@ -246,6 +247,20 @@ entry here.
 | `set_config` / `remove_config` | admins; users for their own self-service settings |
 | `list_notifications` / `mark_notification_read` | scoped to the caller |
 | `get_platform_status` | any signed-in user |
+| `set_app_connection` / `remove_app_connection` | app owner, or `inno-platform-admins` (see `inno-add-connection`) |
+| `list_connections` | with `app`: that app's owner, or admins. Without `app` (the platform-wide fleet view): admins only |
+| `list_user_connections` | `user` = yourself always; an app's sessions: that app's owner, or admins; anything broader: admins only |
+| `disconnect_user_connection` | the user themselves, or `inno-platform-admins` (an admin disconnect is audited as the admin's action, naming the user) |
+
+The five connection tools are listed for reference — setting a Connection up is
+`inno-add-connection`'s workflow, not this skill's. Two are still useful here as
+support levers on a live app: **`list_user_connections`** answers "is this
+person actually connected?" (read-only, no credential material), and
+**`disconnect_user_connection`** is the fix for "my connection to {backend} is
+stuck — make it ask me again": it revokes that one user's session so the next
+call returns a fresh connect link, leaving the connection configured for
+everyone else. Confirm with the user before calling it; it is not reversible for
+them beyond reconnecting.
 
 `create_support_bundle({ name, description })` builds a diagnostics zip
 (recent logs, deploys, container state, health/safety findings — no app data)
