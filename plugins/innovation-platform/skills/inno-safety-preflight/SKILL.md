@@ -12,6 +12,17 @@ the preflight. Never install or run scanners locally: local results drift
 from CI's and know nothing about centrally-configured ignores or gate
 toggles.
 
+**Know the policy that applies to THIS app before you narrate anything.** Call
+`get_config app=<name>` — the app's owner can read it, no admin needed. It
+gives you the actual `safety.gate.*` toggles, the `safety.min_release_age_days`
+cooldown in force, and any `safety.ignore.*` suppression with its expiry date
+and the note behind it. Read it, don't assume the defaults: a gate an admin
+turned off will simply not appear in the run, and a finding you expect to fail
+may be suppressed until a date that has since passed. Two things this buys
+you — you stop explaining a job that was never going to run, and you can tell
+a user "that CVE is ignored until 2026-09-01, after which this deploy stops
+passing" while there's still time to act.
+
 Four things are checked here, and **all are hard requirements before
 `inno-ship`**:
 
@@ -94,7 +105,7 @@ For each gate, tell the user what happened in THEIR terms:
 | **Likely false positive** | Never work around it in code (renames, string-splitting, suppression comments). Name the exact finding ID and tell the user a platform admin can add a central ignore for it (optionally with an expiry) — it then clears at both the gate and the periodic safety sweep. |
 | `SAFETY GATE DISABLED by platform policy` in the log | Deliberate admin configuration, not a bug. Note it and move on. |
 | config-integrity failure | The repo contains a platform-injected file that must not exist — `src/gateway/`, `package.json`, `package-lock.json`, `tsconfig.json`, or `wrangler.jsonc` (delete it; the platform injects all of these at build time) — or `CLAUDE.md`'s required template headers were altered (revert them; the rest of the file is yours) — or a root-level `.env*`/`.npmrc`/`.yarnrc` slipped in (remove it). Root-only: the app's own `app/package.json` etc. are fine. |
-| `dep-age` failure | The **inverse** of a CVE finding — do NOT bump to the newest release, that makes it redder. Either a pinned dependency was published more recently than the platform's cooldown allows (`safety.min_release_age_days`, 0 = off and the default, so this only fires once an admin has enabled it), or the app ships `app/package.json` with no committed, parseable `app/package-lock.json` and there are no exact versions to date at all. Remedies: wait out the cooldown, pin an older vetted version, commit `app/package-lock.json`, or ask a platform admin for an app-scope `safety.min_release_age_days: 0`. |
+| `dep-age` failure | The **inverse** of a CVE finding — do NOT bump to the newest release, that makes it redder. Either a pinned dependency was published more recently than the platform's cooldown allows (`safety.min_release_age_days`, 0 = off and the default, so this only fires once an admin has enabled it — `get_config app=<name>` tells you the value actually in force and how many days you're short by), or the app ships `app/package.json` with no committed, parseable `app/package-lock.json` and there are no exact versions to date at all. Remedies: wait out the cooldown, pin an older vetted version, commit `app/package-lock.json`, or ask a platform admin for an app-scope `safety.min_release_age_days: 0`. |
 | container failure | Dockerfile contract problem, or the built image never answered `GET /healthz` within ~90s — hand off to `inno-containerize`. |
 
 Diagnose privately (`get_ci_status` annotations or `gh run view --log-failed`);

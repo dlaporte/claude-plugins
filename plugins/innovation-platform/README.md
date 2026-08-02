@@ -47,9 +47,10 @@ is attributable to your real Okta identity, not a shared service credential.
   `list_notifications`, `mark_notification_read`, `mark_all_notifications_read`,
   `get_platform_docs`, `get_guardrails`, `get_app_contract`, `get_app_security`, `get_ci_status`, `create_support_bundle`,
   self-service `set_config`/`remove_config`,
+  `get_config` (scoped — `app=` for an app you manage, `user=` for your own account; the argument-less fleet catalog is admin-only),
   `set_app_connection`/`list_connections`/`remove_app_connection`,
   `list_user_connections`/`disconnect_user_connection` (connection sessions — yours; an app's for its owner; the fleet for admins), and the admin-only `purge_app`,
-  `get_config`, `list_users`, `query_audit`, `sync_gateway_ref`,
+  `list_users`, `query_audit`, `sync_gateway_ref`,
   `list_admins`, `grant_admin`, `revoke_admin`, `export_platform_backup`,
   `get_platform_logs`).
   There's also a
