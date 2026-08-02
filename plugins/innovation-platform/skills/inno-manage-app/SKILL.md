@@ -214,13 +214,38 @@ for a limited time (default 30 days). Owner or admin only.
 
 ## Configuration (`get_config` / `set_config` / `remove_config`)
 
-Admin-only, except each user may set their own self-service settings (e.g.
-`notify.email.enabled` — their personal email on/off switch) at their own
-user scope. Values resolve most-specific-first: **app › user › platform ›
-factory default**. Useful keys: `lifecycle.unstoppable` (app or user scope —
-user scope covers every app that user owns), `start.self_max`,
-`lifecycle.*_days`, `container.sleep_after` (applies on the app's next
-deploy), `notify.email.<event>`.
+Values resolve most-specific-first: **app › user › platform › factory
+default**. Useful keys: `lifecycle.unstoppable` (app or user scope — user
+scope covers every app that user owns), `start.self_max`, `lifecycle.*_days`,
+`container.sleep_after` (applies on the app's next deploy),
+`notify.email.<event>`.
+
+**Reading is scoped, not admin-only.** Three forms:
+
+- `get_config app=<name>` — that app's effective configuration, for anyone who
+  can manage it. **Reach for this before theorizing about platform behavior on
+  a specific app**: which gates actually run on its deploys, how many days it
+  really has before a stop, what an admin changed and why.
+- `get_config user=<email>` — that account's, for the user themselves or an
+  admin.
+- `get_config` with no arguments — the fleet catalog. Admin-only.
+- Passing both `app` and `user` is refused (`bad_request`): an app's chain
+  already resolves through its owner's user scope, so the combination has no
+  single meaning.
+
+Each line carries the effective value, its source (`factory` / `platform` /
+`user` / `app`), whether **this caller** may change it, and the override chain
+beneath it — who set each override and the note they left. An app's own
+`safety.ignore.*` suppressions appear here too, with their expiry state, which
+is how an owner learns why a finding stopped failing their build. They are
+read-only on this surface for everyone; adding or lifting one is an admin act
+on the panel's Platform screen.
+
+**Writing** is admin-only, with one exception: every user may set their own
+**Notifications** settings — `notify.email.enabled` (the personal master
+switch) and any `notify.email.<event>` — at their own user scope. So "stop
+emailing me about deploys but keep the purge warnings" is self-service. Those
+same keys at app or platform scope stay admin-only.
 
 ## Notifications (`list_notifications` / `mark_notification_read`)
 
@@ -243,8 +268,9 @@ corresponds to an entry here.
 | `set_app_access` | app owner, or `inno-platform-admins` (opening gated by `access.allow_open`) |
 | `register_app` | any signed-in Okta user (becomes the owner) |
 | `create_support_bundle` | app owner, or `inno-platform-admins` |
-| `list_users` / `query_audit` / `get_config` | `inno-platform-admins` only |
-| `set_config` / `remove_config` | admins; users for their own self-service settings |
+| `list_users` / `query_audit` | `inno-platform-admins` only |
+| `get_config` | `app=`: that app's owner, or admins. `user=`: the user themselves, or admins. No arguments (the fleet catalog): admins only |
+| `set_config` / `remove_config` | admins; users for their own Notifications settings, at their own user scope |
 | `list_notifications` / `mark_notification_read` | scoped to the caller |
 | `get_platform_status` | any signed-in user |
 | `set_app_connection` / `remove_app_connection` | app owner, or `inno-platform-admins` (see `inno-add-connection`) |
