@@ -1,14 +1,29 @@
 # Connections skills (Phase 2) — design + plan
 
+> **HISTORICAL DESIGN DOCUMENT — not current documentation.**
+> Written: 2026-08-01 · Outcome: IMPLEMENTED-AS-DESCRIBED (shipped in PR #4)
+> Live docs: `skills/inno-add-connection/SKILL.md` and its
+> `references/{discovery,oauth-client-request}.md`;
+> `skills/inno-platform-conventions/SKILL.md` § "Per-user backend access
+> (Connections)". Platform-side: `docs/APP-CONTRACT.md` § 2.2, served by the
+> `get_app_contract` MCP tool.
+>
+> Nothing below is maintained. Where it disagrees with the shipped skills, the
+> skills are right.
+
 **Date:** 2026-08-01
-**Status:** proposed → implementing
+**Status:** IMPLEMENTED-AS-DESCRIBED (PR #4) — every path in the File plan
+below exists; the two `references/` files that section marks optional both
+shipped. *(This line read "proposed → implementing" and was never updated.)*
 **Deliverable:** teach a user's Claude Code, through the innovation-platform
 plugin skills, to add a per-user backend **Connection** to an app it is
 building or migrating — including auto-discovering the backend's auth mechanism
 — in plain language for a broad, mixed-technical population.
-**Depends on:** the platform Connections capability (self-service, app-scoped,
-merged to `dlaporte/inno-platform` main) and the `connections.get()` client-library
-helper landing in `dlaporte/inno-template`.
+**Depended on:** the platform Connections capability (self-service, app-scoped,
+merged to `dlaporte/inno-platform` main) and the `connections.get()`
+client-library helper in `dlaporte/inno-template` — which **shipped**, in the
+template's clients (`lib/storage.js` and `app/storage.py`); the contract states
+it un-hedged.
 
 ## Why
 
@@ -146,6 +161,9 @@ The platform code (done); function-shape/sso-container support; the house
 `token_exchange` strategies (not built).
 
 ## File plan
+
+*All of these shipped in PR #4 — the NEW/MODIFY markers are the plan's, not a
+description of outstanding work.*
 
 ```
 plugins/innovation-platform/skills/inno-add-connection/SKILL.md      NEW

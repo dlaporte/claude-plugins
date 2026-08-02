@@ -43,3 +43,8 @@ Plugin entries in `marketplace.json` intentionally omit a `version` field
 (and each plugin's own `plugin.json` omits it too), so every commit to this
 repo is treated as a new version and rolls out to installed users
 automatically.
+
+## License
+
+MIT — see [LICENSE](LICENSE). Applies to everything in this repo, both
+plugins included.

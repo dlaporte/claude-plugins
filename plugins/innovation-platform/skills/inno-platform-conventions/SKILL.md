@@ -86,6 +86,20 @@ stack) gates fail the build otherwise. One known trap, informational not
 prohibitive: older **FastAPI** pins drag in a CVE-bearing Starlette line —
 check that the lockfile resolves a clean version before committing to it.
 
+**Node apps: commit `app/package-lock.json` too.** Nothing requires it while
+the platform's dependency-release-age cooldown is off — which is the default
+(`safety.min_release_age_days: 0`) — but the moment an admin raises that
+setting at platform scope, an app shipping `app/package.json` with no
+committed, parseable `app/package-lock.json` **fails the `dep-age` gate**:
+ranges have no single publish date to check, and the deploy job re-resolves
+them fresh, so the requested cooldown cannot be applied at all. That change
+reds the next deploy of every app in that state at once, and committing the
+lockfile is the per-app remedy (an app-scope `safety.min_release_age_days: 0`
+override from an admin is the other). Commit it now and the setting is a
+non-event. Note this is the app's OWN lockfile under `app/`; a lockfile at
+the **repo root** is a platform-injected build input and is rejected by the
+`config-integrity` gate.
+
 ## Rendering: escape by default, never string-built HTML
 
 Whatever the framework, **never build HTML with string interpolation or
@@ -134,7 +148,11 @@ in `storage.py`, or directly:
 user = request.headers.get("x-forwarded-user", "unknown")
 ```
 
-`X-Forwarded-Groups` carries a comma-separated group list (e.g.
+`X-Forwarded-Email` carries the same email as `X-Forwarded-User` — the
+gateway injects both, so either one works and neither is more authoritative;
+read `X-Forwarded-User` by default and treat `X-Forwarded-Email` as its alias
+if you see it in a request dump. `X-Forwarded-Groups` carries a
+comma-separated group list (e.g.
 `inno-{app}-users`). **Never implement login pages, sessions, password
 storage, or an "auth disabled" dev path** — the gateway strips any inbound
 copies of these headers before injecting its own verified values, so there is
@@ -161,6 +179,16 @@ it in memory only until its `expires_at`, and never write it to disk or a log
 line. If the call comes back `NotConnected`, relay the `connect_url` it
 returns to the user rather than treating it as a hard failure — a Connection
 is expected to be unlinked until the user completes it once.
+
+Two other seam responses are **not** the user's problem and must not be shown
+as one:
+
+- **`503`** — the connection has been disabled by its owner or a platform
+  admin. Transient: the backend is paused, the user's connection is not
+  revoked. Treat it like any other transient seam failure and retry later.
+- **`429 rate_limited`** — the seam's abuse brake, sustained calling past
+  120/minute per (app, user). Back off and retry; don't relay a
+  `connect_url`, and don't ask the user to reconnect.
 
 Connections are reachable from **`mcp-container`** apps only in v1 — the
 other three types can't consume one yet. Setting one up (discovering how the

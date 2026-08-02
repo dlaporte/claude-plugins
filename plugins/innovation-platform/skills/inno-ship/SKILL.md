@@ -35,8 +35,9 @@ git commit -m "<short, why-focused message>"
 git push origin main
 ```
 
-This runs the six gate jobs (`config-integrity`, `secrets`, `sast`, `deps`,
-`container`, plus the policy fetch) and **stops** — the deploy job is
+This runs the seven gate jobs (`config-integrity`, `secrets`, `sast`, `deps`,
+`dep-age`, `container`, `scaffold-check`) plus the `policy` fetch that resolves
+the admin gate configuration, and then **stops** — the deploy job is
 ref-gated to release tags. The `container` image gates run for `container` and
 `mcp-container` apps; they're skipped for `function` and `mcp-function` apps,
 which have no image to build. Watch with `gh run watch` or the `get_ci_status`
@@ -90,7 +91,9 @@ and cut the next patch tag (a tag is immutable — never force-move one).
 | `secrets` | gitleaks found a committed credential | rotate + scrub history |
 | `sast` | semgrep OWASP finding in `app/` | `inno-platform-conventions` (escaping, SQL) |
 | `deps` | CVE in `app/requirements.txt` or a prod npm dep | bump the pinned dep |
-| `container` | Trivy CVE, root user, or missing `EXPOSE 8080` | `inno-containerize` |
+| `dep-age` | a pinned dep is **too new** for the platform's release-age cooldown (`safety.min_release_age_days`; off by default, so this only fires once an admin enabled it), or `app/package.json` ships with no committed, parseable `app/package-lock.json` so there is nothing to date | **not** a version bump — bumping to the newest release makes it worse. Wait out the cooldown, pin an older vetted version, commit `app/package-lock.json`, or ask a platform admin for an app-scope `safety.min_release_age_days: 0` |
+| `container` | Trivy CVE, root user, missing `EXPOSE 8080`, or the image never answered `GET /healthz` | `inno-containerize` |
+| `scaffold-check` | not a failure — it suppresses `deploy` while `app/.needs-build` exists (see §0) | build the app, remove the marker |
 | `deploy` fails with `app_stopped` | the app was stopped by the lifecycle (or deliberately) — **stopped apps cannot be deployed** | `inno-manage-app`: `start_app` first, then re-tag |
 
 A gate failure is real signal; there is no override or admin bypass. A
@@ -113,9 +116,10 @@ The `deploy` job (tag runs only) requests a GitHub OIDC token (audience
 for a scoped Cloudflare deploy token. The broker verifies the token's signed
 `job_workflow_ref` claim equals exactly
 `dlaporte/inno-platform-ci/.github/workflows/platform-ci.yml@refs/heads/main`
-and that the triggering ref is `main` or a `v*` tag — a repo whose deploy.yml
-is edited to skip gates, or that runs from a fork/branch, gets `403
-deploy_denied`. There is no code path where removing the gates yields a
+and that the triggering ref is a `refs/tags/v*` release tag — the broker
+issues deploy tokens for tags only, so a request from a main push, a branch,
+or a fork gets `403 deploy_denied`, as does a repo whose deploy.yml is edited
+to skip gates. There is no code path where removing the gates yields a
 working deploy. The release tag is recorded on the deployment — the platform
 shows it, and the safety sweep's auto-respin rebuilds at exactly that tag.
 

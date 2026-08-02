@@ -6,6 +6,11 @@ conversation — two `WebFetch` calls and, at most, one unauthenticated API
 request. Nothing here sends any of the user's credentials; every request in
 this recipe is anonymous.
 
+**Tooling note:** step 1 uses `WebFetch` (it reads a JSON *body*). Step 2 reads
+a response **header**, which `WebFetch` does not return — it hands back
+processed page content only. Step 2 therefore needs a raw HTTP call via `Bash`
+(`curl`), as shown there.
+
 Let `{base}` be the backend's root address (e.g. `https://api.example.com`).
 
 ## 1. Try the two standard discovery documents
@@ -39,9 +44,19 @@ tickets," not the raw scope string) before moving to provisioning.
 
 If neither `.well-known` document resolves, make **one** unauthenticated
 request to a representative API path on the backend (something you'd expect
-to require auth — a list or "me" endpoint is ideal) and inspect the response.
-Do not send any credentials — the point is to see how the backend tells an
-anonymous caller it needs auth.
+to require auth — a list or "me" endpoint is ideal) and inspect the response
+**headers**. Use `curl` from `Bash`, not `WebFetch` — the answer here is a
+header, and `WebFetch` returns processed body content:
+
+```bash
+curl -sS -m 10 -D - -o /dev/null "{base}/<a-path-that-requires-auth>"
+```
+
+`-D -` dumps the status line and response headers to stdout; `-o /dev/null`
+discards the body. Stay on `GET` (many APIs reject `HEAD` with a 405 and no
+`WWW-Authenticate` at all). Do not send any credentials — the point is to see
+how the backend tells an anonymous caller it needs auth. Then branch on what
+came back:
 
 - **`WWW-Authenticate: Bearer ...`** (look for a `realm` and possibly an
   `error="invalid_token"` or scope hint) — the backend expects a bearer

@@ -125,7 +125,7 @@ user has an explicit admin exception.
 
 The user deserves to see what they're approving. **Write the full migration
 plan into your visible reply as a structured section — never a one-line
-summary buried inside an approval prompt.** An approval question that
+summary buried inside a tool-approval prompt.** An approval question that
 references "the plan as described" when no plan appears in the conversation
 is a defect, not a shortcut: the user cannot approve what they have not seen.
 
@@ -161,9 +161,12 @@ capture a restore point — a branch or tag on the pre-migration commit
 merge to `main` once it's ready. Tell the user where the restore point is.
 
 1. **Register the repo (two calls).** Call
-   `register_app({ name, repo, description, type, members, accept_guardrails: true })`
+   `register_app({ name, repo, description, type, members, accept_guardrails: true, connections })`
    with the app name from Phase 1 and the user's existing `owner/repo` slug (a
-   **slug, not a URL**). The first call returns text beginning
+   **slug, not a URL**). Pass `connections` only if step 2's assessment found
+   per-user backend auth to replace — a list of the names you plan to set up.
+   It creates nothing (only `set_app_connection` can); the response echoes it
+   back as a reminder to configure each one. The first call returns text beginning
    `Registration started …` with an **App install link** — give it to the user
    and have them **install the platform GitHub App** on the account/org that
    owns the repo, scoped to that repository. (The repo already exists, so ignore

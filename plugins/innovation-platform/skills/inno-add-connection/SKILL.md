@@ -148,6 +148,37 @@ no cooperation from anyone else.
 
 ## 4. Provision the Connection
 
+### Present the configuration, THEN ask for approval
+
+`set_app_connection` is a **create-or-replace upsert**, not a create. A call
+naming an `app`+`connection` that already exists overwrites its label,
+strategy, config, client id, and scopes with whatever you pass — no
+confirmation from the platform, no merge. On a live connection that means you
+can silently retarget or break something the app's users are connecting
+through right now: their stored credentials are **not** deleted by this call,
+so they stay in place while the definition around them changes, and they were
+minted against the old backend.
+
+So before you call it, **write into your visible reply** what you are about to
+write and what it touches — the same rule `inno-new-app` §1b and
+`inno-migrate-app` Phase 1 apply to `register_app`:
+
+- The `app` and `connection` name, and — checked with **`list_connections`
+  first** — whether a connection by that name **already exists**. If it does,
+  say plainly that this replaces the existing definition, and what changes.
+- The backend this points at (its address in plain terms) and the strategy:
+  a token the user pastes, or signing in on the backend's own site.
+- Whether a `client_secret` is being sent (say *that* it is — never the value).
+- The blast radius, in the user's terms: a brand-new connection affects nobody
+  until people connect; **replacing** an existing one affects everyone already
+  connected through it, and a changed strategy or backend address means they
+  will have to disconnect and reconnect.
+
+Then stop and get an explicit yes. Don't fold it into the tool-approval prompt
+— the user cannot approve what they have not seen.
+
+### Make the call
+
 Call the `set_app_connection` MCP tool:
 
 ```
@@ -203,35 +234,65 @@ it's been sent.
 them, not just the field you're changing (omitting `scopes`, for instance,
 silently clears it). The exceptions: `client_secret` and `disabled` are safe
 to omit — an omitted `client_secret` keeps the stored one, and an omitted
-`disabled` leaves the enabled/paused state as-is. To see or remove a
-Connection, the platform also has `list_connections` and
-`remove_app_connection`.
+`disabled` leaves the enabled/paused state as-is.
+
+`list_connections` shows the app's configured Connections (definitions only,
+never credential material) — use it before any re-call, per the approval gate
+above.
+
+**`remove_app_connection` is the destructive one, and it is not the pause
+switch.** It deletes the definition **and every credential the app's users
+have already stored for it** — nothing is orphaned, and nothing is recoverable:
+new connect attempts are refused, and each user has to connect again from
+scratch once a replacement definition exists. Compare `disabled: true` above,
+which keeps every stored credential and resumes on re-enable. If the goal is
+"stop this for now," that is the pause switch; reach for removal only when the
+connection is genuinely going away, and confirm with the user by name first
+(it is idempotent, so a repeat call is a harmless no-op — but the first one
+already took the credentials).
 
 ## 5. Wire the app to consume it
 
-In the app's code, use the template's `Connections` helper (from `storage.py`
-in a Python container, `storage.js` in a JS one) rather than talking to the
-backend directly with a stored key. The whole trick is passing through **this
-request's** `X-Caller-Assertion` header — that header is what lets the platform
-hand back a credential for *the calling user* rather than a shared one.
+In the app's code, use the template's `Connections` helper (from
+`app/storage.py` in a Python container, `lib/storage.js` in a JS one) rather
+than talking to the backend directly with a stored key. The whole trick is
+passing through **this request's** `X-Caller-Assertion` header — that header is
+what lets the platform hand back a credential for *the calling user* rather
+than a shared one.
 
-**Reading the header inside an MCP tool (Python + FastMCP — the mcp-container
-default stack).** A FastMCP tool isn't handed the raw HTTP request as an
-argument, so reach for it through FastMCP's request-context dependency
-(`get_http_request`, from the same `fastmcp.server.dependencies` module that
-provides `get_access_token`):
+**Reading the header inside an MCP tool.** A tool function isn't handed the raw
+HTTP request as an argument, so you reach for it through the server's request
+context — and the accessor differs by package, so pick the one that matches
+what the app actually imports:
+
+- **The official MCP Python SDK** (`mcp`) — the default stack `inno-new-app`
+  recommends for `mcp-container`, and where `mcp.server.transport_security`
+  comes from. Declare a `Context` parameter on the tool; the inbound request
+  hangs off it as `ctx.request_context.request`.
+- **The standalone `fastmcp` package** — no `Context` parameter needed: call
+  `get_http_request()` from `fastmcp.server.dependencies` (the same module that
+  provides `get_access_token`).
+
+The sample below is written for the official SDK; the swap for standalone
+`fastmcp` is in the comment at the top of it.
 
 ```python
-from fastmcp.server.dependencies import get_http_request
+from mcp.server.fastmcp import Context
 from storage import Connections, NotConnected  # template helpers
+
+# On the standalone `fastmcp` package instead? Drop the Context import and the
+# ctx parameter, and get the request from the dependency:
+#   from fastmcp.server.dependencies import get_http_request
+#   request = get_http_request()
 
 connections = Connections()  # points at http://storage.internal by default
 
 @mcp.tool()
-async def list_incidents() -> dict:
+async def list_incidents(ctx: Context) -> dict:
     # X-Caller-Assertion is present on every gateway-forwarded request;
     # header lookup is case-insensitive.
-    caller_assertion = get_http_request().headers.get("x-caller-assertion")
+    request = ctx.request_context.request
+    caller_assertion = request.headers.get("x-caller-assertion")
     try:
         cred = await connections.get("crm", caller_assertion)
     except NotConnected as e:
@@ -243,11 +304,8 @@ async def list_incidents() -> dict:
     # ... make the backend call with `token`; keep it in memory only ...
 ```
 
-(If you're on the official MCP Python SDK's FastMCP rather than the standalone
-`fastmcp` package, the same inbound header is reachable from the tool's request
-context — read `x-caller-assertion` there and pass it through identically. In a
-JS container, `connections.get(name, callerAssertion)` takes the assertion you
-read off `request.headers` in your `POST /mcp` handler.)
+(In a JS container, `connections.get(name, callerAssertion)` takes the
+assertion you read off `request.headers` in your `POST /mcp` handler.)
 
 Rules that hold regardless of language:
 
@@ -264,6 +322,18 @@ Rules that hold regardless of language:
   *"You're not connected to {backend} yet — open {connect_url} to link your
   account, then try again."* That's the one time this flow surfaces a URL
   instead of a plain-language sentence — it's a real link the user must click.
+- **`NotConnected` is not the only non-success branch, and the other two are
+  not the user's fault** — don't send either of them down the connect-link
+  path:
+  - **`503`** — the Connection has been **paused** (`disabled`) by its owner or
+    a platform admin. Transient: the backend is switched off, the user's own
+    connection is intact. Treat it like any other temporary seam failure and
+    retry later; tell the user the connection is paused right now, not that
+    they need to reconnect.
+  - **`429 rate_limited`** — the seam's abuse brake, sustained calling past
+    **120 requests/minute per (app, user)**. Back off and retry. If a tool
+    trips this in normal use, the tool is calling the seam per backend request
+    instead of caching the credential in memory until `expires_at`.
 - Add a small `whoami` / status tool so the user (and you, while testing) can
   confirm the Connection is live and see which backend identity it resolves to,
   without needing to exercise a real feature first.
@@ -276,6 +346,32 @@ on the backend's own page (`oauth2_code`) or paste the token they generated
 runs as them, automatically — nothing to repeat per session. Confirm it
 worked using the `whoami`/status affordance from step 5 before calling the
 feature done.
+
+### Debugging: who is actually connected
+
+Two MCP tools read and reset the *sessions* — the per-user side — and you don't
+need any app code to use them. Prefer them over inferring state from a failing
+tool call:
+
+- **`list_user_connections`** — who has connected their account to which
+  backend: user, app/connection, label, and the connected / last-used /
+  expires timestamps. Never any credential material. This is the fastest
+  answer to "did my connect actually land?", and it works before the app's own
+  `whoami` tool exists. `user` = **yourself** is always allowed (alone, or with
+  `app` to narrow to one app); `app` alone gives that app's sessions **to its
+  owner** (or an admin), who can add a `user` to narrow it further. Note it is
+  distinct from `list_connections`, which lists the backend **definitions** an
+  app has configured.
+- **`disconnect_user_connection`** (`user`, `app`, `connection`) — revokes one
+  session: best-effort revocation at the backend, then the stored credential is
+  deleted. Consent memory is kept, so reconnecting won't re-prompt for consent.
+  This is the lever for "my connection is stuck — make it ask me again". The
+  user themselves or a platform admin can call it, and an **admin disconnect is
+  audited as the admin's action naming the affected user**. Idempotent. It
+  touches **one** user's session only — the connection stays configured for
+  everyone else (that is what makes it the right tool, rather than
+  `remove_app_connection`, which takes the definition and every user's
+  credential with it).
 
 ## References
 

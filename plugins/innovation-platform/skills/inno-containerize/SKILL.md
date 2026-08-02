@@ -16,9 +16,10 @@ skill entirely.
 
 The `container` CI job builds your Dockerfile with **no deploy credentials
 present** (an app author fully controls this build's inputs, and nothing of
-platform value is reachable from it), then runs three checks: a Trivy image
+platform value is reachable from it), then runs four checks: a Trivy image
 scan (HIGH/CRITICAL, `--ignore-unfixed`, hard fail), a non-root-user
-assertion, and an `EXPOSE 8080` assertion. All three must pass before
+assertion, an `EXPOSE 8080` assertion, and a **`GET /healthz` smoke test**
+against the built image. All four must pass before
 `deploy` (which needs `container` to have succeeded) will run.
 `wrangler deploy` rebuilds the same Dockerfile a second time at deploy
 time, so a Dockerfile that only works "sometimes" will eventually break a
@@ -36,14 +37,19 @@ deploy that passed CI.
 3. **CVE-clean image** — patch the base's OS packages in the build
    (`apt-get upgrade` / `apk upgrade`) so the Trivy gate passes; a stock
    base commonly ships fixable CVEs that have nothing to do with your code.
-4. **`GET /healthz` → 200** — reserved for platform health monitoring
-   (CI does not probe it today; platform features bind to it without
-   notice). Keep it cheap and storage-independent.
+4. **`GET /healthz` → 200** — a **hard CI gate**, not a nicety. The
+   `container` job runs the built image (`docker run -d -p 8080:8080`) and
+   polls `/healthz` 18 times with a 5s sleep (~90s); if nothing answers 200
+   it dumps the container logs and fails the job, which fails `deploy`. The
+   platform's runtime health probe binds to the same endpoint after deploy
+   (immediately on each green deploy, then daily). Keep it cheap and
+   **storage-independent** — a slow app boot is legitimate, a `/healthz`
+   that waits on storage is not. Never stub it as a TODO.
 
 **Base image: call the `get_app_contract` MCP tool for the platform's
 current digest-pinned recommended bases (python/node/go) — never hard-code
 a digest from this skill, documentation, or memory.** Any base that passes
-the three checks is allowed; the recommendations are simply known-good.
+these checks is allowed; the recommendations are simply known-good.
 
 ## Reference recipe — Python (the platform's tested stack)
 
@@ -106,7 +112,7 @@ docker build -t app-under-test .
 docker inspect --format='{{.Config.User}}' app-under-test        # must not be empty/root/0
 docker inspect --format='{{json .Config.ExposedPorts}}' app-under-test | grep '8080/tcp'
 docker run -d -p 8080:8080 --name app-under-test-run app-under-test
-curl -sf http://localhost:8080/healthz
+curl -sf http://localhost:8080/healthz                           # the CI smoke gate, in one shot
 docker rm -f app-under-test-run
 ```
 
