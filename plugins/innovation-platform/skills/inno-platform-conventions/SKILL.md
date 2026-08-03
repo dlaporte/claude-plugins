@@ -260,7 +260,13 @@ even to "match the template" — there is no version of these files that
 belongs in your repo. The one exception checked by diff rather than by
 absence is `CLAUDE.md`'s required section headers — the gate checks all five
 headers from the template are present (the rest of the file is yours to
-extend).
+extend). **Those five headers are type-specific** — a `function`/`mcp-function`
+app's headers differ from a `container`/`mcp-container` app's (e.g.
+"Persistence (use your bindings)" vs "Persistence (use the storage client)";
+"Function contract" vs "Container contract"). If you're hand-authoring
+`CLAUDE.md` (see `inno-new-app`'s empty-repo path), copy
+`scaffold/<type>/CLAUDE.md` — never the root/container one — or the gate fails
+on a header mismatch even though the content is otherwise fine.
 
 Also do not add a competing `wrangler.json` or `wrangler.toml`, or a
 `.wrangler/` directory — Wrangler's config discovery order (`wrangler.json` >

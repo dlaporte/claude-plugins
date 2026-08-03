@@ -36,6 +36,11 @@ login**.
 This is expected — the MCP server authenticates you as yourself so every
 action it takes (creating an app, granting access, stopping or starting one)
 is attributable to your real Okta identity, not a shared service credential.
+**If the connector was NOT already authorized when your Claude Code session
+started, authorizing it mid-session (e.g. via `/mcp`) is not enough** — the
+MCP client enumerates tools at startup, so `inno-platform`'s tools stay
+uncallable even after `claude mcp list` shows it `✔ Connected`. Restart the
+session once authorization completes; only then are the tools callable.
 
 ## What's in the box
 

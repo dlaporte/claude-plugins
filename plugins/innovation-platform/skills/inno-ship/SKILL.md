@@ -139,6 +139,17 @@ add it as an MCP server in their client (Claude Code, claude.ai) — the first
 connection runs an OAuth authorization (consent + Okta) rather than a browser
 SSO redirect. Access is still the app's member list.
 
+**On a brand-new app's first-ever deploy, warn about the propagation window
+when you hand over the URL/endpoint — don't just paste a bare link.** The same
+DNS propagation window covered below (up to roughly a minute) applies to the
+*user's* first click, not just to an agent-run lookup. Say something like:
+"it can take up to a minute to resolve — if it doesn't load on the first try,
+wait a minute before retrying rather than refreshing or re-clicking
+repeatedly." Repeated clicks inside that window are exactly what get the
+negative (NXDOMAIN) result cached on the user's own machine for minutes, even
+after the app is actually live. This caveat doesn't apply to redeploys of an
+already-live app — the hostname already resolves.
+
 Container-shape redeploys (`container`, `mcp-container`): a deploy replaces the
 image, but an instance that is actively serving keeps running the OLD image
 until it recycles (idle sleep or `restart_app`). If the user redeployed a fix
@@ -165,3 +176,16 @@ The `deploy` job's success/failure and the `app_status` MCP tool's
 deployment timestamp are the authoritative, side-effect-free signals — use
 those. If the user wants to see the app for themselves, let them visit it
 in their own browser; don't pre-check it for them.
+
+### The first health probe after a brand-new app's deploy can also be transiently wrong
+
+Same propagation-window reasoning as the DNS caveat above, applied to the
+platform's own health signal: right after a clean first-ever deploy, the
+post-deploy health probe can fire before the deployment has fully propagated
+and briefly report `unhealthy (HTTP 500)` even though the app's `/healthz` is
+a static 200. Don't treat that first probe as authoritative — it's not real
+signal yet. `restart_app` does **not** re-fire the probe or update the
+deployment record (it only redeploys the current worker version), so it will
+not clear a stale-looking `unhealthy`. To get a fresh health signal, re-run
+the deploy (e.g. `gh run rerun` on the tag run) or wait for the platform's
+daily probe.

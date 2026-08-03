@@ -10,7 +10,11 @@ repo **they own** from the platform template -> install the platform GitHub App
 -> `register_app` provisions + binds it -> clone + scaffold. Requires the
 `inno-platform` MCP server (ships with this plugin's `.mcp.json`) to be
 connected. The first call to any `inno-platform` tool triggers an Okta browser
-login — that's expected, not an error; wait for it to complete.
+login — that's expected, not an error; wait for it to complete. **If the
+connector wasn't already authorized when the session started, waiting isn't
+enough** — mid-session authorization alone does not expose the tools (the MCP
+client enumerates tools at startup); the user must authorize it AND you must
+restart the session before calling any `inno-platform` tool.
 
 **The repo is the USER's.** There is no platform-owned repo model anymore. The
 user creates a GitHub repo in **their own** account or org from the public
@@ -321,6 +325,13 @@ Okta group + D1 + R2, and binds the repo). It returns text beginning **`App
 - **`repo_mismatch`** — a partially-finished registration exists for this name
   with a *different* repo; finish it with the original repo, or start over with
   a consistent `repo`.
+- **Repo wasn't template-derived** (call 2's response reports something like
+  "scaffold not applied" / the repo shows none of the type-specific scaffold
+  described in §4 after call 2 finishes) — the user registered a repo that
+  didn't come from §2's "Use this template" flow (a blank GitHub "New
+  repository" is the common way this happens), so the server had nothing to
+  prune. This is not an error to retry — treat it as the empty-repo path in
+  §4 below.
 - **`registration_disabled`** — an admin has turned off self-service
   registration; a platform admin must re-enable it (`registration.enabled`).
 - Any other non-empty error — surface it verbatim rather than retrying blindly.
@@ -352,6 +363,21 @@ policy, storage, identity, the do-not-touch file list), and — for a container
 or mcp-container app — the `inno-containerize` skill before editing the
 Dockerfile.
 
+**If the repo wasn't template-derived, there's nothing to prune — author the
+layout by hand.** A repo created via GitHub's blank "New repository" flow
+(instead of §2's "Use this template") arrives with no scaffold, so call 2
+leaves it as-is. Recognize this early — the repo is missing the type-specific
+files described below — and hand-author the full layout by copying from the
+template's `scaffold/<type>/` overlay (`CLAUDE.md`, `app/index.ts` or
+`app/main.py`, `README.md`), plus `.gitignore`, and write
+`.github/workflows/deploy.yml` from call 2's response. **Copy the type-specific
+`CLAUDE.md`, never the container/root one** — the `config-integrity` gate
+checks five required section headers, and those headers differ by type (e.g.
+"Persistence (use your bindings)" for `function`/`mcp-function` vs
+"Persistence (use the storage client)" for `container`/`mcp-container`;
+"Function contract" vs "Container contract") — using the wrong type's headers
+fails the gate.
+
 **Scaffold by the deployment type you chose in §1b** (fetch `get_app_contract`
 §1.1 for the authoritative function deltas):
 
@@ -367,7 +393,11 @@ Dockerfile.
   user data into hand-built HTML — even escaped, the SAST gate blocks it; return
   dynamic data as JSON (like the scaffold's `/me`) or use an auto-escaping
   template library. Do NOT create `wrangler.jsonc`/`app-worker.jsonc` — those
-  are platform-injected.
+  are platform-injected. Include the required **sign-out link** (R4) — same as
+  the container reference: a static link to the team-domain logout, its URL
+  sourced from `get_platform_status`'s `Sign-out URL` (see
+  `inno-platform-conventions`'s "Sign out" section for the exact convention);
+  nothing in this type's scaffold provides it for you.
 - **`mcp-function` app:** function-shaped — everything in the function bullet applies
   (entry `app/index.ts`, identity headers, `GET /healthz` as a route,
   `env.DATA`/`env.FILES`, non-root `app/package.json`, no injected files).
