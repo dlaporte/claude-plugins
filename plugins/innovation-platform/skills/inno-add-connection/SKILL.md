@@ -1,6 +1,6 @@
 ---
 name: inno-add-connection
-description: Use when an app needs to reach an external backend AS EACH INDIVIDUAL USER — a per-user API or SaaS account the app fronts (a departmental system, a niche tool, a dev instance) — rather than with one shared app key. Discovers how people sign in to that backend, provisions a Connection with set_app_connection (a pasted token or the backend's own login), and wires the app to consume it. mcp-container apps only in v1.
+description: Use when an app needs to reach an external backend AS EACH INDIVIDUAL USER — a per-user API or SaaS account the app fronts (a departmental system, a niche tool, a dev instance) — rather than with one shared app key. Discovers how people sign in to that backend, provisions a Connection with set_app_connection (a pasted token, the backend's own login, or a per-user client ID/secret pair), and wires the app to consume it. mcp-container apps only in v1.
 ---
 
 # inno-add-connection
@@ -73,6 +73,14 @@ day-to-day. Offer it as a short choice, not open-ended jargon:
   paste path even though people normally log in on the website.
 - **"They create a token or key in their account settings and paste it
   somewhere"** — the paste-a-token path.
+- **"They create an API client — an ID and a secret, two values — in the
+  backend's portal"** — the paste-a-pair path (`oauth2_client_creds`). Some
+  backends (HPE Aruba Central / GreenLake is the canonical example) have no
+  browser login for APIs and no single token to paste: each user mints their
+  own *API client* in the portal, gets a client ID + client secret pair, and
+  the platform uses that pair to fetch short-lived tokens for them
+  automatically. The tell: the backend's API docs say the only way to get a
+  token is POSTing the pair to a token URL.
 - **"I'm not sure"** — probe for the answer instead of guessing. Fetch the
   backend's discovery documents and make one unauthenticated request to read
   how it responds; see `references/discovery.md` for the exact recipe (which
@@ -88,8 +96,8 @@ day-to-day. Offer it as a short choice, not open-ended jargon:
 
 ## 3. Choose the strategy and fill in the configuration
 
-Two strategies. Prefer the first whenever the backend supports it — it needs
-no cooperation from anyone else.
+Three strategies. Prefer the first whenever the backend supports it — it
+needs no cooperation from anyone else.
 
 - **`secret_form`** (preferred, zero-admin) — the backend issues
   user-generatable tokens (a personal access token / API key created in
@@ -112,6 +120,30 @@ no cooperation from anyone else.
   answer to the "where do you create that token?" question from step 2.) No
   client registration, no backend admin involved — the user creates their own
   token and pastes it once.
+
+- **`oauth2_client_creds`** (also zero-admin) — the backend's only token flow
+  is POSTing a client ID + secret pair to a token URL, and each user can mint
+  their **own** pair in the backend's portal (a "personal API client").
+  Config:
+  ```
+  { token_endpoint, client_auth?, scopes?, extra_token_params?, help_text }
+  ```
+  - `token_endpoint` — the URL the pair is POSTed to (e.g. Aruba Central:
+    `https://sso.common.cloud.hpe.com/as/token.oauth2`).
+  - `client_auth` — `"post"` (default, credentials in the form body) or
+    `"basic"`; omit unless the docs say otherwise.
+  - `help_text` is **strongly recommended** for the same reason as
+    `secret_form`'s: it's the only instruction shown above the two paste
+    boxes. E.g. *"Create a personal API client under Manage → API in your
+    HPE GreenLake account, then paste its Client ID and Client Secret here."*
+  Each user pastes their own pair on the platform's connect form; the
+  platform test-mints a token before saving (a bad pair is rejected on the
+  spot) and silently fetches fresh tokens as they expire. **No callback URL
+  registration, no `client_id`/`client_secret` args, ever** — the tool
+  refuses definition-level credentials for this strategy, because the pair
+  belongs to each user, not to the app. If what the user has is ONE pair
+  everyone would share (a service account made by an admin), that's not this
+  — that's the shared-key case step 1 already excluded.
 
 - **`oauth2_code`** — the backend has real user login and you can get (or the
   user can self-register) an OAuth client for it. Config:
@@ -168,7 +200,9 @@ write and what it touches — the same rule `inno-new-app` §1b and
   say plainly that this replaces the existing definition, and what changes.
 - The backend this points at (its address in plain terms) and the strategy:
   a token the user pastes, or signing in on the backend's own site.
-- Whether a `client_secret` is being sent (say *that* it is — never the value).
+- Whether a `client_secret` is being sent (say *that* it is — never the
+  value). Never applicable for `oauth2_client_creds`: there is no
+  definition-level secret to send, and the tool refuses one.
 - The blast radius, in the user's terms: a brand-new connection affects nobody
   until people connect; **replacing** an existing one affects everyone already
   connected through it, and a changed strategy or backend address means they
@@ -192,12 +226,15 @@ set_app_connection({ app, connection, label, strategy, config,
   `connections.get(...)` later.
 - `label` — a human-readable name shown back to the user when they connect
   (e.g. "Acme CRM").
-- `strategy` — `"secret_form"` or `"oauth2_code"` from step 3.
+- `strategy` — `"secret_form"`, `"oauth2_code"`, or `"oauth2_client_creds"`
+  from step 3.
 - `config` — the shape from step 3.
-- `client_id` / `client_secret` — only for `oauth2_code`.
-- `scopes` — optional `string[]`, the OAuth scopes to request (only meaningful
-  for `oauth2_code`). This top-level arg is the canonical place for scopes and
-  wins over any `config.scopes`; pass the minimal set the app needs.
+- `client_id` / `client_secret` — only for `oauth2_code`. Refused for
+  `oauth2_client_creds` (each user pastes their own pair at connect time).
+- `scopes` — optional `string[]`, the OAuth scopes to request (meaningful for
+  `oauth2_code` and `oauth2_client_creds`). This top-level arg is the
+  canonical place for scopes and wins over any `config.scopes`; pass the
+  minimal set the app needs.
 - `disabled` — optional `boolean`. Set `true` to register the connection in a
   **paused** state (the seam returns "unavailable" for all users until you
   re-enable it); omit or `false` for the normal case. Pausing is a reversible
@@ -340,9 +377,10 @@ Rules that hold regardless of language:
 
 ## 6. Verify
 
-After shipping, have the user open the connect link once: they either sign in
-on the backend's own page (`oauth2_code`) or paste the token they generated
-(`secret_form`). From then on, every tool call the app makes to that backend
+After shipping, have the user open the connect link once: they sign in on the
+backend's own page (`oauth2_code`), paste the token they generated
+(`secret_form`), or paste their API client's ID and secret
+(`oauth2_client_creds`). From then on, every tool call the app makes to that backend
 runs as them, automatically — nothing to repeat per session. Confirm it
 worked using the `whoami`/status affordance from step 5 before calling the
 feature done.

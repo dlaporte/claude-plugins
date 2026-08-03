@@ -35,6 +35,18 @@ config directly:
 | `scopes_supported` | the **top-level `scopes` arg** of `set_app_connection` (a `string[]`), *not* `config` | pick the minimal set the app actually needs, not the whole list. Passing `scopes` as a top-level arg is the canonical place — it takes precedence over any `config.scopes` at connect time. |
 | `grant_types_supported` includes `refresh_token` | `config.refresh` | this is an **enum, not a boolean**: set `"static"` (the safe default — most providers return the same refresh token each time), or `"rotating"` **only if** the backend's own docs say it issues a fresh refresh token on every refresh. If `refresh_token` is **absent** from `grant_types_supported`, set `"none"`. |
 
+One reading of this document changes the strategy outright:
+`grant_types_supported` of **only** `["client_credentials"]` — no
+`authorization_code` at all (Aruba Central / HPE GreenLake's AS metadata is
+exactly this shape). That backend has no user sign-in flow to delegate to;
+if each user can create their own API client in its portal, use
+**`oauth2_client_creds`** instead: copy `token_endpoint` as-is, map
+`token_endpoint_auth_methods_supported` the same way as above (into the
+optional `config.client_auth`, default `"post"`), ignore
+`authorization_endpoint`/`revocation_endpoint`/`pkce`/`refresh` (none apply),
+and skip client registration entirely — no callback URL, no definition-level
+client_id/client_secret.
+
 Report back to the user in plain terms, e.g.: *"Good news — {backend} uses the
 same sign-in as its website, so you'll just log in there once to connect."*
 Confirm the scopes you intend to request in plain language ("read your
