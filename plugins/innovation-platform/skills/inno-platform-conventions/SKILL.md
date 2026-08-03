@@ -166,9 +166,10 @@ to call **another** service *as that same person* — a per-user API or SaaS
 account the app fronts (a departmental system, a niche tool, a dev instance).
 For that, use a **Connection** — never a single hardcoded credential shared by
 every user. The dividing line: if every user of your app would reach the
-backend with the exact same key, that's a plain app secret (set with
-`inno-manage-app`'s `set_config`/`remove_config`), not a Connection; if the
-backend tells your users apart, it's a Connection.
+backend with the exact same key, that's a plain app secret — a **Variable**
+(`inno-manage-app`'s `set_app_variable`, or the app page's Variables tab),
+delivered to your code as an ordinary environment variable — not a
+Connection; if the backend tells your users apart, it's a Connection.
 
 Consume a Connection with the template's `connections.get(name,
 callerAssertion)` helper: read the inbound `X-Caller-Assertion` header off the

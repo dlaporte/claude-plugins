@@ -1,6 +1,6 @@
 ---
 name: inno-manage-app
-description: Use to share, check on, start, stop, export, open up, or configure a deployed Innovation Platform app via the inno-platform MCP tools (grant_access, revoke_access, set_app_access, app_status, start_app, stop_app, restart_app, request_start, transfer_app (admin-only), export_app_data, get_app_metrics, get_app_usage, get_app_logs, set_config, create_support_bundle). Use when the user wants to give someone access, open an app to everyone with SSO, check deploy status, bring back a stopped app, restart a wedged app, read its logs, reassign ownership (admins), download their app's data, or shut one down.
+description: Use to share, check on, start, stop, export, open up, or configure a deployed Innovation Platform app via the inno-platform MCP tools (grant_access, revoke_access, set_app_access, app_status, start_app, stop_app, restart_app, request_start, transfer_app (admin-only), export_app_data, get_app_metrics, get_app_usage, get_app_logs, set_config, set_app_variable/list_app_variables/remove_app_variable, create_support_bundle). Use when the user wants to give someone access, open an app to everyone with SSO, check deploy status, bring back a stopped app, restart a wedged app, read its logs, set an environment variable or API key for their app, reassign ownership (admins), download their app's data, or shut one down.
 ---
 
 # inno-manage-app
@@ -247,6 +247,37 @@ switch) and any `notify.email.<event>` — at their own user scope. So "stop
 emailing me about deploys but keep the purge warnings" is self-service. Those
 same keys at app or platform scope stay admin-only.
 
+## Variables (`set_app_variable` / `list_app_variables` / `remove_app_variable`)
+
+Per-app **environment variables** — the sanctioned home for an APP-level
+secret (one API key every user of the app shares) or plain config (a base
+URL, a flag). Owner-or-admin, fully self-service. The platform encrypts the
+value at rest and pushes it onto the app's deployed script, so the app's
+code just reads `process.env.NAME` / `os.environ["NAME"]` — no helper, no
+platform SDK. Don't confuse this with `set_config` (a fixed registry of
+platform-behavior settings that never reaches app code) or with Connections
+(per-USER credentials — if the backend tells the app's users apart, it's a
+Connection, see `inno-add-connection`).
+
+Things to relay to the user in plain terms:
+
+- `set_app_variable {app, name, value, secret?}` — names look like env vars
+  (`SENDGRID_API_KEY`); values up to 4 KB; up to 32 per app. **Hidden by
+  default**: the value is write-only and never shown again, anywhere — tell
+  the user that before sending it, and never echo it back into the chat.
+  Pass `secret: false` only for genuinely non-sensitive config the user
+  wants readable later.
+- **A change lands right away** — and on a container app it briefly restarts
+  the app (that's the delivery mechanism, not a malfunction). If the app has
+  never deployed, the value applies automatically on its first deploy.
+- Refused while a deploy is running (`app_deploying`) — wait it out and
+  retry; and refused entirely until the platform's encryption key is set
+  (`variables_disabled` — an admin-side precondition, not an argument
+  problem).
+- `list_app_variables {app}` — names, hidden/visible, who set each and when;
+  hidden values never appear. `remove_app_variable {app, name}` removes the
+  deployed copy first, then the record; idempotent.
+
 ## Notifications (`list_notifications` / `mark_notification_read`)
 
 The platform's durable event feed — lifecycle transitions, deploys,
@@ -271,6 +302,7 @@ corresponds to an entry here.
 | `list_users` / `query_audit` | `inno-platform-admins` only |
 | `get_config` | `app=`: that app's owner, or admins. `user=`: the user themselves, or admins. No arguments (the fleet catalog): admins only |
 | `set_config` / `remove_config` | admins; users for their own Notifications settings, at their own user scope |
+| `set_app_variable` / `list_app_variables` / `remove_app_variable` | app owner, or `inno-platform-admins` |
 | `list_notifications` / `mark_notification_read` | scoped to the caller |
 | `get_platform_status` | any signed-in user |
 | `set_app_connection` / `remove_app_connection` | app owner, or `inno-platform-admins` (see `inno-add-connection`) |

@@ -42,9 +42,10 @@ Check all three before doing anything else:
   sees or does *their own* things — the backend itself tells users apart. If
   every user of your app would use the exact same key/token to reach the
   backend (one shared service account), that's **not** a Connection — it's a
-  plain app secret. Point the user at `inno-platform-conventions` (which draws
-  this same line) and `inno-manage-app`'s `set_config`/`remove_config` instead,
-  and stop here.
+  plain app secret, which belongs in the app's **Variables**
+  (`inno-manage-app`'s `set_app_variable`, or the Variables tab on the app's
+  page; the app reads it as an ordinary environment variable). Point the
+  user there and stop here.
 - **The app is `mcp-container`.** Only container-shaped MCP apps can reach the
   platform's Connections seam in v1. If the app is `function`, `mcp-function`,
   or plain `container`, say plainly that this app type can't consume a
