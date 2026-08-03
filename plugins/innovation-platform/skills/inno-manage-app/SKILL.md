@@ -251,10 +251,12 @@ same keys at app or platform scope stay admin-only.
 
 Per-app **environment variables** — the sanctioned home for an APP-level
 secret (one API key every user of the app shares) or plain config (a base
-URL, a flag). Owner-or-admin, fully self-service. The platform encrypts the
+URL, a flag). Owner-or-admin, fully self-service; the panel twin is the
+**Variables** tab on the app's page. The platform encrypts the
 value at rest and pushes it onto the app's deployed script, so the app's
-code just reads `process.env.NAME` / `os.environ["NAME"]` — no helper, no
-platform SDK. Don't confuse this with `set_config` (a fixed registry of
+code just reads it from its environment — `os.environ["NAME"]` /
+`process.env.NAME` in a container app, `env.NAME` off the fetch handler's
+`env` in a function-shape app — no helper, no platform SDK. Don't confuse this with `set_config` (a fixed registry of
 platform-behavior settings that never reaches app code) or with Connections
 (per-USER credentials — if the backend tells the app's users apart, it's a
 Connection, see `inno-add-connection`).
@@ -269,7 +271,10 @@ Things to relay to the user in plain terms:
   wants readable later.
 - **A change lands right away** — and on a container app it briefly restarts
   the app (that's the delivery mechanism, not a malfunction). If the app has
-  never deployed, the value applies automatically on its first deploy.
+  never deployed, the value applies automatically on its first deploy. One
+  legacy caveat: a container app last deployed before the Variables facility
+  existed needs one redeploy before container-side values reach its
+  environment.
 - Refused while a deploy is running (`app_deploying`) — wait it out and
   retry; and refused entirely until the platform's encryption key is set
   (`variables_disabled` — an admin-side precondition, not an argument

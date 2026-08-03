@@ -159,6 +159,19 @@ copies of these headers before injecting its own verified values, so there is
 no spoofing surface as long as you don't add one. `"unknown"` is a reasonable
 default only for local dev, never a real auth decision in production code.
 
+## Configuration & secrets (Variables)
+
+App-level values — one API key the whole app shares, a base URL, a feature
+flag — are **Variables**: set once with `set_app_variable` (or the app
+page's Variables tab), delivered to your running code as ordinary
+environment variables. Read them the normal way for your shape:
+`os.environ["MY_KEY"]` / `process.env.MY_KEY` in a container app,
+`env.MY_KEY` off the fetch handler's `env` in a function-shape worker.
+Never commit them (`gitleaks` fails the build on the full history) and
+never build a settings page to collect them. Hidden values (the default)
+are write-only after saving; a change lands right away and briefly
+restarts a container app.
+
 ## Per-user backend access (Connections)
 
 Identity above is about *your app* knowing who's using it. Some apps also need
@@ -193,7 +206,8 @@ as one:
 
 Connections are reachable from **`mcp-container`** apps only in v1 — the
 other three types can't consume one yet. Setting one up (discovering how the
-backend signs people in, choosing a pasted-token vs. backend-login strategy,
+backend signs people in, choosing among the three strategies — a pasted
+token, the backend's own login, or a per-user client ID/secret pair —
 and calling `set_app_connection`) is a full workflow of its own: see the
 `inno-add-connection` skill rather than wiring this ad hoc.
 
@@ -279,7 +293,10 @@ The gate also rejects root-level `.env` / `.env.*` files (wrangler loads
 them at deploy time and adopts unset keys — a committed
 `CLOUDFLARE_API_BASE_URL` would redirect API calls, deploy token included)
 and `.npmrc` / `.yarnrc(.yml)` (unpinned package-manager inputs to the
-deploy's `npm ci`). Keep secrets and local env out of the repo entirely.
+deploy's `npm ci`). Keep secrets and local env out of the repo entirely —
+an app-level key or config value belongs in a **Variable**
+(`set_app_variable`, or the app page's Variables tab), delivered to your
+code as a real environment variable.
 
 Everything under `app/` (routes, templates, requirements, your own modules)
 is yours to change freely.

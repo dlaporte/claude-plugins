@@ -54,7 +54,8 @@ session once authorization completes; only then are the tools callable.
   self-service `set_config`/`remove_config`,
   `get_config` (scoped — `app=` for an app you manage, `user=` for your own account; the argument-less fleet catalog is admin-only),
   `set_app_connection`/`list_connections`/`remove_app_connection`,
-  `list_user_connections`/`disconnect_user_connection` (connection sessions — yours; an app's for its owner; the fleet for admins), and the admin-only `purge_app`,
+  `list_user_connections`/`disconnect_user_connection` (connection sessions — yours; an app's for its owner; the fleet for admins),
+  `set_app_variable`/`list_app_variables`/`remove_app_variable` (per-app environment variables — owner-or-admin; hidden values are write-only), and the admin-only `purge_app`,
   `list_users`, `query_audit`, `sync_gateway_ref`,
   `list_admins`, `grant_admin`, `revoke_admin`, `export_platform_backup`,
   `get_platform_logs`).
@@ -77,15 +78,17 @@ session once authorization completes; only then are the tools callable.
 - **`skills/inno-add-connection`** — for an app that needs to reach an
   external backend **as each individual user** (not one shared app key):
   discovers how the backend signs people in, provisions a Connection with
-  `set_app_connection` (a pasted token or the backend's own login), and wires
+  `set_app_connection` (a pasted token, the backend's own login, or a
+  per-user client ID/secret pair), and wires
   the app to consume it. **`mcp-container`** apps only in v1.
 - **`skills/inno-safety-preflight`** — run the CI security gates, plus a
   guardrails, application-contract, and `get_app_security` (app-code
   authorization/IDOR) review, before pushing.
 - **`skills/inno-ship`** — commit, push to `main`, watch CI, report the live URL.
 - **`skills/inno-manage-app`** — grant/revoke access, check status and metrics,
-  stop or start an app, and read its notifications. Idle apps are warned,
-  stopped, then purged on a config-driven clock; any traffic resets it.
+  stop, start, or restart an app, read its logs and notifications, set its
+  environment variables / API keys, and build support bundles. Idle apps are
+  warned, stopped, then purged on a config-driven clock; any traffic resets it.
 
 ## How the platform enforces security
 

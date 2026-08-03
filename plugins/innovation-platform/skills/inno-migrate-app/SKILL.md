@@ -93,11 +93,15 @@ order:
    `CLAUDE.md` and adapt its body).
 5. **Gate risks** — secrets **anywhere in git history** (gitleaks scans the full
    history, and this is the *same* repo — history is not left behind, so a
-   secret buried in an old commit still fails and must be scrubbed AND rotated),
+   secret buried in an old commit still fails and must be scrubbed AND rotated
+   — the rotated value then goes into an app Variable, never back in the repo),
    dependency CVEs (`pip-audit`, Trivy), semgrep OWASP patterns such as
    string-built HTML or raw SQL formatting, and any platform-injected file that
    must NOT be committed (a root `package.json`/`package-lock.json`/`tsconfig.json`,
-   `src/gateway/`, any `wrangler.*` config, `.env*`/`.npmrc`).
+   `src/gateway/`, any `wrangler.*` config, `.env*`/`.npmrc`). Inventory
+   every value the app reads from its environment or a `.env` file — each
+   becomes an app **Variable** (`set_app_variable`) after registration,
+   delivered back to the code as a real env var; nothing stays in the repo.
 6. **What does not carry over** — custom domains, background jobs/cron, and any
    always-on/websocket assumptions.
 7. **Proposed app name** — lowercase letters/digits/hyphens, 3-29 chars,
@@ -199,12 +203,15 @@ merge to `main` once it's ready. Tell the user where the restore point is.
      stack — only the headers are gate-checked).
    - **Remove any forbidden files** flagged in Phase 1 (root
      `package.json`/lockfile/`tsconfig.json`, `src/gateway/`, `wrangler.*`,
-     `.env*`, `.npmrc`/`.yarnrc`).
+     `.env*`, `.npmrc`/`.yarnrc`). The `.env` values move to app
+     **Variables** (`set_app_variable`) — the code keeps reading the same
+     environment names, so this is usually a zero-code change.
    - Delete `app/.needs-build` if the repo carries one (CI skips deploys while
      it's present).
 4. **Secrets in history** — because this is the same repo, a credential in any
    past commit still trips the `secrets` gate. Rotate it (a history rewrite
-   alone doesn't un-leak it) and scrub it from history before shipping.
+   alone doesn't un-leak it), scrub it from history before shipping, and set
+   the rotated value as an app **Variable** — never re-commit it.
 5. **Rewrite `README.md`** to describe the migrated app (what it does, who it's
    for, its URL), drawing on the existing README. Platform mechanics stay in
    `CLAUDE.md`, not here.

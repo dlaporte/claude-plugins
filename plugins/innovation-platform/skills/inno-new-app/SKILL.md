@@ -36,7 +36,7 @@ ability or asks questions that reveal it. Full precision belongs in the code
 and commits you write, not in explanations; this rule applies to every
 user-facing sentence in this flow.
 
-## 1. Intake — ask the user for four things
+## 1. Intake — ask the user for five things
 
 1. **App name** — lowercase letters, digits, hyphens only, 3-29 chars,
    starting with a letter. This drives the app's **hostname** on the platform
@@ -480,3 +480,8 @@ asked — `inno-new-app`'s job is registration + scaffolding, not deploying.
 If §1 flagged that the app needs to reach another service as each person using
 it, do that setup now, before writing the rest of the app: run the
 `inno-add-connection` skill (requires the `mcp-container` type from §1b).
+
+If the app needs an app-level key or config value instead (one API key the
+whole app shares, a base URL), set it after registration with
+`set_app_variable` — it reaches the app as a plain environment variable.
+Never put it in the repo; gitleaks fails the build on the full history.

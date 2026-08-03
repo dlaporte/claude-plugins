@@ -21,9 +21,11 @@ WebFetch {base}/.well-known/oauth-authorization-server
 ```
 
 Try both — some backends serve one, some the other, some neither. If either
-returns JSON (not a 404/HTML error page), you've confirmed the backend uses
-the sign-in path, and the document itself gives you most of the `oauth2_code`
-config directly:
+returns JSON (not a 404/HTML error page), you've confirmed the backend
+speaks OAuth — but read `grant_types_supported` before concluding it has a
+user sign-in path (a client-credentials-only document routes to a different
+strategy; see below). When `authorization_code` is offered, the document
+gives you most of the `oauth2_code` config directly:
 
 | Field in the discovery document | Where it goes | How to translate it |
 | --- | --- | --- |
@@ -47,10 +49,14 @@ optional `config.client_auth`, default `"post"`), ignore
 and skip client registration entirely — no callback URL, no definition-level
 client_id/client_secret.
 
-Report back to the user in plain terms, e.g.: *"Good news — {backend} uses the
-same sign-in as its website, so you'll just log in there once to connect."*
-Confirm the scopes you intend to request in plain language ("read your
-tickets," not the raw scope string) before moving to provisioning.
+Report back to the user in plain terms, matched to the strategy the document
+routed you to. For the sign-in path (`oauth2_code`): *"Good news — {backend}
+uses the same sign-in as its website, so you'll just log in there once to
+connect."* — and confirm the scopes you intend to request in plain language
+("read your tickets," not the raw scope string) before moving to
+provisioning. For the client-credentials-only shape (`oauth2_client_creds`):
+*"{backend} works with API clients — you'll create one in your own {backend}
+account and paste its ID and secret once; the platform handles the rest."*
 
 ## 2. No discovery document? Read `WWW-Authenticate` from an unauthenticated hit
 

@@ -88,7 +88,7 @@ and cut the next patch tag (a tag is immutable — never force-move one).
 | Failing job | Likely cause | Fix via |
 |---|---|---|
 | `config-integrity` | repo contains a platform-injected file that must not exist — `src/gateway/`, `package.json`, `package-lock.json`, `tsconfig.json`, or `wrangler.jsonc` (delete it; the platform injects all of these at build time) — or added a stray `wrangler.json`/`.wrangler/` or a root-level `.env*`/`.npmrc`/`.yarnrc` | `inno-platform-conventions` |
-| `secrets` | gitleaks found a committed credential | rotate + scrub history |
+| `secrets` | gitleaks found a committed credential | rotate + scrub history, then set the new value as an app Variable (`set_app_variable`) |
 | `sast` | semgrep OWASP finding in `app/` | `inno-platform-conventions` (escaping, SQL) |
 | `deps` | CVE in `app/requirements.txt` or a prod npm dep | bump the pinned dep |
 | `dep-age` | a pinned dep is **too new** for the platform's release-age cooldown (`safety.min_release_age_days`; off by default, so this only fires once an admin enabled it), or `app/package.json` ships with no committed, parseable `app/package-lock.json` so there is nothing to date | **not** a version bump — bumping to the newest release makes it worse. Wait out the cooldown, pin an older vetted version, commit `app/package-lock.json`, or ask a platform admin for an app-scope `safety.min_release_age_days: 0` |

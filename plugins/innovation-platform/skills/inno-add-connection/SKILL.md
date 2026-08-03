@@ -200,7 +200,8 @@ write and what it touches — the same rule `inno-new-app` §1b and
   first** — whether a connection by that name **already exists**. If it does,
   say plainly that this replaces the existing definition, and what changes.
 - The backend this points at (its address in plain terms) and the strategy:
-  a token the user pastes, or signing in on the backend's own site.
+  a token the user pastes, signing in on the backend's own site, or pasting
+  their own API client ID + secret pair.
 - Whether a `client_secret` is being sent (say *that* it is — never the
   value). Never applicable for `oauth2_client_creds`: there is no
   definition-level secret to send, and the tool refuses one.

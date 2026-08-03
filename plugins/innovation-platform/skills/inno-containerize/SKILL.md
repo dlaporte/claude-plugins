@@ -51,6 +51,13 @@ current digest-pinned recommended bases (python/node/go) — never hard-code
 a digest from this skill, documentation, or memory.** Any base that passes
 these checks is allowed; the recommendations are simply known-good.
 
+**Runtime config never lives in the image.** App-level values (API keys,
+base URLs) arrive as real environment variables from the platform's
+Variables facility (`set_app_variable` / the app page's Variables tab) —
+never `ENV`/`ARG` a secret into the committed Dockerfile: the image is
+built in CI from the repo, so a baked-in value is a committed one, and
+gitleaks fails the build.
+
 ## Reference recipe — Python (the platform's tested stack)
 
 This is the template's Dockerfile; it ships in the `inno-template` scaffold a
