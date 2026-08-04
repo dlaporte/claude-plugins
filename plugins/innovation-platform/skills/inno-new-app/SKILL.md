@@ -1,6 +1,6 @@
 ---
 name: inno-new-app
-description: Use when the user wants to create a new app on the Innovation Platform ("new app", "create an app", "start a project on inno-platform"). Guides intake, has the user create a repo from the inno-template and install the platform GitHub App, calls register_app to provision + bind it, then scaffolds app/ per platform-conventions.
+description: Use when the user wants to create a new app on the Innovation Platform ("new app", "create an app", "start a project on inno-platform"). Guides intake, creates a repo from the inno-template in the user's own account, has them install the platform GitHub App, calls register_app to provision + bind it, then scaffolds app/ per platform-conventions.
 ---
 
 # inno-new-app
@@ -40,10 +40,20 @@ client enumerates tools at startup); the user must authorize it AND you must
 restart the session before calling any `inno-platform` tool.
 
 **The repo is the USER's.** There is no platform-owned repo model anymore. The
-user creates a GitHub repo in **their own** account or org from the public
-`inno-template`, installs the platform's GitHub App on it, and `register_app`
+repo lives in the user's **own** account or org, created from the public
+`inno-template`, with the platform's GitHub App installed on it; `register_app`
 finishes the job. The old `create_app` tool no longer exists, and the platform
 never creates a `dlaporte/inno-{name}` repo on the user's behalf.
+
+**What is genuinely user-only.** Exactly two steps in this flow require the user
+personally: **installing the platform GitHub App** (§3 — a third-party token
+cannot install a GitHub App on someone's account) and any **browser SSO login**.
+Everything else — creating the repo, cloning, scaffolding, committing, pushing,
+tagging, setting variables — you can do with the user's own authenticated CLI
+and MCP tools. Never tell the user something "can't be done from here" unless it
+is one of those two. Where the reason is judgment rather than capability, say
+which: setting a *secret* variable is a **should not** (it would put the secret
+in the conversation transcript), not a **cannot**.
 
 **Already have an existing repo?** If the user wants to put a repo/codebase they
 *already* have on the platform (not create a fresh one from the template), use
@@ -250,11 +260,29 @@ them to the user's repo; the type is fixed at registration.
 
 The type and design seed the scaffolding in §4.
 
-## 2. Have the user create the repo from the template
+## 2. Create the repo from the template
 
-The user creates the repo — you cannot do it for them (the platform has no
-create-on-behalf path, and the repo must land in the user's own ownership).
-Walk them through it in plain steps:
+The repo must land in the **user's own** ownership — the platform has no
+create-on-behalf path and never creates a repo itself. That constrains *whose
+account* it lands in, not *who runs the command*.
+
+**Preferred: do it for them with `gh`.** Run `gh auth status`; an authenticated
+account with `repo` scope is the user's **own** credential, so a repo it creates
+lands in their ownership exactly as the browser path does. Confirm the name and
+visibility with them, then:
+
+```sh
+gh repo create {owner}/{repo} --template dlaporte/inno-template --private
+```
+
+- Suggest `inno-{name}`; public or private is fine — check an existing `inno-*`
+  repo of theirs (`gh repo view … --json isPrivate`) and match it rather than
+  assuming.
+- Template copying is **asynchronous**: an immediate `git clone` can land an
+  empty repo. Poll `git fetch` until `origin/main` exists before checking out.
+
+**Fallback: walk them through the browser** — when `gh` is absent or
+unauthenticated, the account it holds is not theirs, or they simply prefer it:
 
 1. Open **`https://github.com/dlaporte/inno-template/generate`** — GitHub's
    "Use this template" page for the public `inno-template`. (You can also reach
