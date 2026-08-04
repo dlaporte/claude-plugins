@@ -39,10 +39,26 @@ plugins/
   servicenow/                     same shape
 ```
 
-Plugin entries in `marketplace.json` intentionally omit a `version` field
-(and each plugin's own `plugin.json` omits it too), so every commit to this
-repo is treated as a new version and rolls out to installed users
-automatically.
+## Versioning
+
+Each plugin declares a `version` in its own `plugin.json`, and **any change
+under `plugins/<name>/` must bump it in the same commit** — CI fails the PR
+otherwise. See [CLAUDE.md](CLAUDE.md) for which component to bump.
+
+That version is how updates are delivered: Claude Code caches an installed
+plugin under `…/cache/<marketplace>/<plugin>/<version>/` and records it in
+`installed_plugins.json`, so content shipped under a version a user already
+has may never reach them.
+
+Entries in `marketplace.json` carry no version of their own — `plugin.json` is
+the single source of truth, and `claude plugin tag` validates that the two
+agree whenever both are present.
+
+> Earlier revisions of this repo deliberately omitted the field, on the theory
+> that every commit would then roll out automatically. In practice installs
+> went stale for weeks unnoticed, and an opaque content hash was all
+> `claude plugin list` could show — nothing a user could compare against
+> anything. Hence the explicit version, and the CI gate that keeps it honest.
 
 ## License
 
