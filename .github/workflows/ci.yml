@@ -1,0 +1,109 @@
+name: CI
+
+# Two jobs, both cheap and dependency-free (jq is preinstalled on the runner):
+# manifests must be well-formed, and any change to a plugin must come with a
+# version bump for that plugin.
+#
+# Why the bump is a HARD gate rather than a convention: delivery is keyed on
+# the declared version. Claude Code caches an installed plugin at
+# ~/.claude/plugins/cache/<marketplace>/<plugin>/<version>/ and records that
+# version in installed_plugins.json, so shipping edited content under a
+# version a user already has can leave them on the old build with no signal
+# that anything changed. Every edit under plugins/<name>/ ships to users —
+# skills, README, .mcp.json alike — so every edit needs a new version, down to
+# a typo fix (a user still has to RECEIVE the typo fix).
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  manifests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Every plugin.json is well-formed and semver-versioned
+        run: |
+          set -euo pipefail
+          fail=0
+          for manifest in plugins/*/.claude-plugin/plugin.json; do
+            plugin="$(basename "$(dirname "$(dirname "$manifest")")")"
+            if ! jq empty "$manifest" 2>/dev/null; then
+              echo "::error file=$manifest::not valid JSON"
+              fail=1; continue
+            fi
+            for field in name version description; do
+              if [ "$(jq -r --arg f "$field" 'has($f)' "$manifest")" != "true" ]; then
+                echo "::error file=$manifest::missing required field \"$field\""
+                fail=1
+              fi
+            done
+            name="$(jq -r '.name // ""' "$manifest")"
+            if [ "$name" != "$plugin" ]; then
+              echo "::error file=$manifest::name \"$name\" does not match its directory \"$plugin\""
+              fail=1
+            fi
+            # MAJOR.MINOR.PATCH only. The Innovation Platform compares this
+            # value server-side (compareSemver in inno-platform's src/util.ts),
+            # and it returns "unparseable" for anything else — a pre-release or
+            # v-prefixed version here would read to the platform as a plugin
+            # that failed to report its version at all.
+            version="$(jq -r '.version // ""' "$manifest")"
+            if ! printf '%s' "$version" | grep -Eq '^[0-9]+\.[0-9]+\.[0-9]+$'; then
+              echo "::error file=$manifest::version \"$version\" is not a plain MAJOR.MINOR.PATCH triple"
+              fail=1
+            fi
+          done
+          [ "$fail" -eq 0 ] || exit 1
+          echo "All plugin manifests OK."
+
+  version-bump:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          fetch-depth: 0   # need the base commit to diff against
+
+      - name: A touched plugin must declare a new version
+        env:
+          BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+        run: |
+          set -euo pipefail
+          base="$BASE_SHA"
+          # A first push to a branch (or an initial commit) reports an all-zero
+          # "before" SHA with nothing to diff against — nothing to enforce.
+          if [ -z "$base" ] || [ "$base" = "0000000000000000000000000000000000000000" ]; then
+            echo "No base commit to compare against — skipping."
+            exit 0
+          fi
+          git fetch --no-tags --depth=50 origin "$base" 2>/dev/null || true
+
+          fail=0
+          for dir in plugins/*/; do
+            plugin="$(basename "$dir")"
+            changed="$(git diff --name-only "$base" HEAD -- "$dir" || true)"
+            [ -n "$changed" ] || continue
+
+            manifest="$dir.claude-plugin/plugin.json"
+            new="$(jq -r '.version // ""' "$manifest" 2>/dev/null || echo "")"
+            # Absent at the base = the plugin is newly versioned (or new), which
+            # is itself a bump.
+            old="$(git show "$base:$manifest" 2>/dev/null | jq -r '.version // ""' 2>/dev/null || echo "")"
+
+            if [ "$new" = "$old" ]; then
+              echo "::error file=$manifest::\"$plugin\" changed but its version is still $new — bump it. Delivery is keyed on this value, so users already on $new may never receive these changes."
+              echo "  changed files:"
+              printf '    %s\n' $changed
+              fail=1
+            else
+              echo "OK: $plugin ${old:-(unversioned)} -> $new"
+            fi
+          done
+          [ "$fail" -eq 0 ] || exit 1
