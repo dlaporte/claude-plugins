@@ -5,6 +5,29 @@ description: Use when the user has an EXISTING repo or codebase they want on the
 
 # inno-migrate-app
 
+## Version gate — do this first
+
+Before anything else in this skill, read the `version` field of
+`../../.claude-plugin/plugin.json` (relative to this skill's own directory) and
+pass it to the `get_platform_status` MCP tool as `plugin_version`.
+
+The platform holds the minimum plugin version it accepts and does the
+comparison. If the `Plugin:` line comes back **OUTDATED**, or says the version
+was not reported or unreadable, STOP and tell the user to run:
+
+```
+claude plugin marketplace update davidlaporte
+claude plugin update innovation-platform@davidlaporte
+```
+
+then restart Claude Code and start again. Do not continue on a stale plugin:
+its guidance may describe platform behavior that no longer exists, and skills
+added since their build are simply absent — this check is the only thing that
+will tell them so.
+
+If there is no `Plugin:` line at all, the gate is not armed on this platform.
+Carry on.
+
 An existing repo now deploys **in place**. You register the user's **own** repo
 with the `register_app` MCP tool and make that same repo satisfy the platform
 contract — there is no porting into a freshly provisioned `inno-{app}` repo and

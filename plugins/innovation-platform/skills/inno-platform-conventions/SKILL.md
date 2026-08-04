@@ -5,6 +5,29 @@ description: Use when writing or reviewing code inside an inno-{app} repo's app/
 
 # inno-platform-conventions
 
+## Version gate — do this first
+
+Before anything else in this skill, read the `version` field of
+`../../.claude-plugin/plugin.json` (relative to this skill's own directory) and
+pass it to the `get_platform_status` MCP tool as `plugin_version`.
+
+The platform holds the minimum plugin version it accepts and does the
+comparison. If the `Plugin:` line comes back **OUTDATED**, or says the version
+was not reported or unreadable, STOP and tell the user to run:
+
+```
+claude plugin marketplace update davidlaporte
+claude plugin update innovation-platform@davidlaporte
+```
+
+then restart Claude Code and start again. Do not continue on a stale plugin:
+its guidance may describe platform behavior that no longer exists, and skills
+added since their build are simply absent — this check is the only thing that
+will tell them so.
+
+If there is no `Plugin:` line at all, the gate is not armed on this platform.
+Carry on.
+
 The Innovation Platform deploys a Cloudflare Workers gateway (Durable
 Object + Container) in front of your app. The gateway is a platform-pinned
 build input — injected into your repo at build time, not vendored — and
