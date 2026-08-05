@@ -1,6 +1,6 @@
 {
   "name": "innovation-platform",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Build and ship apps on the davidlaporte.org Innovation Platform: create an app via the inno-platform MCP server as a function (its own Cloudflare Worker, the greenfield default), a container (any stack), or an MCP server for AI assistants (mcp-function / mcp-container) behind the same identity gateway, write it against the platform's application + app-security contracts, run the security gates before shipping through CI/CD, and manage access to a live app.",
   "author": {
     "name": "David LaPorte"

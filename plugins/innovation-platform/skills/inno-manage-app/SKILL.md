@@ -275,8 +275,8 @@ same keys at app or platform scope stay admin-only.
 Per-app **environment variables** — the sanctioned home for an APP-level
 secret (one API key every user of the app shares) or plain config (a base
 URL, a flag). Owner-or-admin, fully self-service; the panel twin is the
-**Variables** tab on the app's page. The platform encrypts the
-value at rest and pushes it onto the app's deployed script, so the app's
+**Variables** tab on the app's page. The platform pushes the
+value onto the app's deployed script, so the app's
 code just reads it from its environment — `os.environ["NAME"]` /
 `process.env.NAME` in a container app, `env.NAME` off the fetch handler's
 `env` in a function-shape app — no helper, no platform SDK. Don't confuse this with `set_config` (a fixed registry of
@@ -292,6 +292,14 @@ Things to relay to the user in plain terms:
   the user that before sending it, and never echo it back into the chat.
   Pass `secret: false` only for genuinely non-sensitive config the user
   wants readable later.
+- **A hidden value is delivered, not kept.** The platform hands it to
+  Cloudflare as a real Worker secret and then discards its own copy — it
+  holds the value only while delivery is pending (an app that hasn't
+  deployed yet). Two consequences worth telling the user: the value can
+  never be shown again (that was already true), and if a secret is ever lost
+  outside the platform's control it has to be set again rather than
+  recovered. Nothing the platform does causes that — deploys, stop/start,
+  restarts and CVE respins all preserve it.
 - **A change lands right away** — and on a container app it briefly restarts
   the app (that's the delivery mechanism, not a malfunction). If the app has
   never deployed, the value applies automatically on its first deploy. One
@@ -303,8 +311,9 @@ Things to relay to the user in plain terms:
   (`variables_disabled` — an admin-side precondition, not an argument
   problem).
 - `list_app_variables {app}` — names, hidden/visible, who set each and when;
-  hidden values never appear. `remove_app_variable {app, name}` removes the
-  deployed copy first, then the record; idempotent.
+  hidden values never appear, and each hidden one reports which state it is
+  in (`delivered` or `pending delivery`). `remove_app_variable {app, name}`
+  removes the deployed copy first, then the record; idempotent.
 
 ## Notifications (`list_notifications` / `mark_notification_read`)
 
