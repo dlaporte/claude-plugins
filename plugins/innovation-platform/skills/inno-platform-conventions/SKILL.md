@@ -217,6 +217,31 @@ line. If the call comes back `NotConnected`, relay the `connect_url` it
 returns to the user rather than treating it as a hard failure — a Connection
 is expected to be unlinked until the user completes it once.
 
+`ConnectionLocked` (a subclass of `NotConnected`, so an existing
+`catch (e) { if (e instanceof NotConnected) … }` still catches it) means
+something different and needs different copy: the credential EXISTS, but this
+MCP client's authorization predates the user's encryption key, so the platform
+cannot open it. **Do not tell the user to reconnect the backend** — connecting
+stores a credential, while only a NEW authorization writes the key into the
+grant, so reconnecting succeeds and changes nothing and the user loops. Tell
+them to **re-authorize this MCP client** (in Claude: `/mcp`, then
+re-authenticate that server; removing and re-adding it usually is not enough,
+because the client reuses its cached grant). Branch on it if you can:
+
+```js
+try {
+  const cred = await connections.get("servicenow", callerAssertion);
+} catch (e) {
+  if (e instanceof ConnectionLocked) {
+    return "Re-authorize this connector (/mcp → re-authenticate) and try again.";
+  }
+  if (e instanceof NotConnected) {
+    return `Connect your account first: ${e.connectUrl}`;
+  }
+  throw e;
+}
+```
+
 Two other seam responses are **not** the user's problem and must not be shown
 as one:
 

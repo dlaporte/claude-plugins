@@ -179,7 +179,10 @@ needs no cooperation from anyone else.
   docs), where:
   - `client_auth` is `"post"` or `"basic"` — **omit it entirely** for a
     public (secret-less) client.
-  - `pkce` is a boolean (prefer `true`).
+  - `pkce` — **omit it.** PKCE is on unless you pass an explicit `false`
+    (platform v0.11.2+), and an explicit `false` is a real downgrade the
+    platform flags back at you. Only set it after a connect attempt actually
+    fails because the backend rejects `code_challenge`.
   - `refresh` is one of `"static"` (default), `"rotating"`, or `"none"` — see
     `references/discovery.md` for which to pick.
   - `revocation_endpoint` is **optional but worth setting** when the backend
@@ -237,6 +240,24 @@ Then stop and get an explicit yes. Don't fold it into the tool-approval prompt
 — the user cannot approve what they have not seen.
 
 ### Make the call
+
+> **Re-running this on an EXISTING connection is destructive.** If the
+> strategy or any endpoint a credential is sent to changes —
+> `authorize_endpoint`, `token_endpoint`, `revocation_endpoint`, `probe_url` —
+> the platform deletes every user's stored credential for that connection and
+> notifies them to reconnect. That is deliberate: stored credentials must
+> never start flowing to an endpoint the user never consented to. But it means
+> **iterating on a live connection's config costs your users a reconnect each
+> time.** Get the endpoints right before the first call (that is what the
+> approval step above is for); if you must correct one later, tell the user
+> that everyone connected will have to reconnect, and expect the tool's
+> response to report how many credentials it invalidated. Re-supplying an
+> unchanged config is free — the cascade compares values, not calls.
+>
+> Users are shown the destination **hostname** on the connect page, so an
+> endpoint that doesn't visibly match the backend they expect will (rightly)
+> make them stop. Endpoints are also recorded in the audit log and visible to
+> platform admins fleet-wide.
 
 Call the `set_app_connection` MCP tool:
 

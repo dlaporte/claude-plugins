@@ -343,9 +343,14 @@ The five connection tools are listed for reference — setting a Connection up i
 support levers on a live app: **`list_user_connections`** answers "is this
 person actually connected?" (read-only, no credential material), and
 **`disconnect_user_connection`** is the fix for "my connection to {backend} is
-stuck — make it ask me again": it revokes that one user's session so the next
-call returns a fresh connect link, leaving the connection configured for
-everyone else. Confirm with the user before calling it; it is not reversible for
+stuck — make it ask me again": it deletes that one user's stored credential so
+the next call returns a fresh connect link, leaving the connection configured
+for everyone else. **Local only** — it never revokes the credential at the
+backend, in any context, including a user targeting their own session. (The
+credential is sealed to the user, and the key needed to read the token being
+revoked rides a browser session, which an MCP call does not have.) If the user
+needs the backend to actually invalidate it, they must disconnect from the
+Connections tab on their account page instead. Confirm with the user before calling it; it is not reversible for
 them beyond reconnecting.
 
 `create_support_bundle({ name, description })` builds a diagnostics zip
