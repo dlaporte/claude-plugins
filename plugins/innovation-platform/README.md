@@ -5,12 +5,12 @@ Claude Code plugin for the davidlaporte.org Innovation Platform. Bundles the
 app lifecycle: create (or migrate existing code), write, containerize,
 connect to a per-user backend, gate-check, ship, and manage. Apps deploy as
 one of four **types** behind the
-same identity gateway — a **function** (its own Cloudflare Worker, JS/TS, the
-default for greenfield apps), a **container** (any stack, a Dockerfile), an
-**mcp-function** app (an MCP server in its own Cloudflare Worker behind the
-OAuth gateway), or an **mcp-container** app (an MCP server in a Docker
-container — any language — behind the same OAuth gateway) — chosen at
-`register_app`.
+same identity gateway: a **container** (any stack, a Dockerfile, and the type
+`register_app` defaults to when none is given), a **function** (its own
+Cloudflare Worker, JS/TS), an **mcp-function** app (an MCP server in its own
+Cloudflare Worker behind the OAuth gateway), or an **mcp-container** app (an
+MCP server in a Docker container, any language, behind the same OAuth
+gateway). The type is chosen at `register_app`.
 
 **Repos are user-owned.** An app is created by **registering a GitHub repo you
 own**. You create a repo from the public `inno-template` ("Use this template" →
@@ -55,7 +55,8 @@ session once authorization completes; only then are the tools callable.
   `get_config` (scoped — `app=` for an app you manage, `user=` for your own account; the argument-less fleet catalog is admin-only),
   `set_app_connection`/`list_connections`/`remove_app_connection`,
   `list_user_connections`/`disconnect_user_connection` (connection sessions — yours; an app's for its owner; the fleet for admins),
-  `set_app_variable`/`list_app_variables`/`remove_app_variable` (per-app environment variables — owner-or-admin; hidden values are write-only), and the admin-only `purge_app`,
+  `set_app_variable`/`list_app_variables`/`remove_app_variable` (per-app environment variables — owner-or-admin; hidden values are write-only), and the admin-only `rebuild_app`
+  (redeploy an app's released code at its live tag), `purge_app`,
   `list_users`, `query_audit`, `sync_gateway_ref`,
   `list_admins`, `grant_admin`, `revoke_admin`, `export_platform_backup`,
   `get_platform_logs`).
@@ -93,13 +94,16 @@ session once authorization completes; only then are the tools callable.
 ## How the platform enforces security
 
 The plugin's skills *guide* you toward compliant code, but nothing here is
-trusted — enforcement happens server-side. Every push to `main` in an
-`inno-{app}` repo runs the platform's reusable CI workflow, which an app
-author cannot edit or bypass (only the thin caller `deploy.yml` in their own
-repo is editable, and stripping it just means the reusable workflow never
-runs). That workflow gates the deploy behind config-integrity, secret
-scanning, SAST, dependency auditing, and container/image scanning — all of
-which must pass before a deploy token is even requested. At deploy time, the
+trusted: enforcement happens server-side. An app's repo belongs to the user,
+under any account and with any name they like, and every push to `main` there
+runs the platform's reusable CI workflow, which an app author cannot edit or
+bypass (only the thin caller `deploy.yml` in their own repo is editable, and
+stripping it just means the reusable workflow never runs). A push to `main`
+runs the gates and deploys nothing. Only pushing a `v*` release tag reaches
+the deploy job, and it runs the same gates first. That workflow gates the
+deploy behind config-integrity, secret scanning, SAST, dependency auditing,
+and container/image scanning, all of which must pass before a deploy token is
+even requested. At deploy time, the
 platform's broker independently verifies the GitHub OIDC token's signed
 `job_workflow_ref` claim to confirm the run actually executed the platform's
 exact reusable workflow from `main` before minting a narrowly-scoped
