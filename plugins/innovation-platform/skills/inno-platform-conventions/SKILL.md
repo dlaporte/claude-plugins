@@ -296,9 +296,12 @@ actually useful later instead of a wall of noise.
 The injected `wrangler.jsonc` (not a file in your repo — see below) pins
 `vars.ENVIRONMENT` to `"production"` for every deploy. That's what keeps the
 gateway in real-identity mode; `"dev"` would flip it into mock-identity mode
-(trusts `X-Mock-User`/`X-Mock-Groups` headers, skips Access JWT verification)
-— an authentication bypass — and the `config-integrity` gate rejects any
-deployed app whose `ENVIRONMENT` isn't `production`. This is fully
+(trusts `X-Mock-User`/`X-Mock-Groups` headers, skips Access JWT verification),
+an authentication bypass. No gate re-checks the value: `config-integrity`
+stopped inspecting `ENVIRONMENT` when `wrangler.jsonc` stopped being
+app-owned. What keeps it honest now is that the gate rejects ANY wrangler
+config in your repo, so no file is left in which to set it, and `ENVIRONMENT`
+is a reserved Variable name that `set_app_variable` refuses. This is fully
 platform-managed now: you have no `wrangler.jsonc` to edit, so there's
 nothing for you to configure or accidentally flip here.
 
@@ -320,22 +323,36 @@ them may exist in your repo at all**:
 The `config-integrity` gate fails outright if it finds any of these ("delete
 `<file>` — the platform injects …"); never create or restore one locally,
 even to "match the template" — there is no version of these files that
-belongs in your repo. The one exception checked by diff rather than by
-absence is `CLAUDE.md`'s required section headers — the gate checks all five
+belongs in your repo. The one exception, checked by content rather than by
+absence, is `CLAUDE.md`'s required section headers: the gate checks that five
 headers from the template are present (the rest of the file is yours to
-extend). **Those five headers are type-specific** — a `function`/`mcp-function`
-app's headers differ from a `container`/`mcp-container` app's (e.g.
-"Persistence (use your bindings)" vs "Persistence (use the storage client)";
-"Function contract" vs "Container contract"). If you're hand-authoring
-`CLAUDE.md` (see `inno-new-app`'s empty-repo path), copy
-`scaffold/<type>/CLAUDE.md` — never the root/container one — or the gate fails
-on a header mismatch even though the content is otherwise fine.
+extend). **The header check is type-blind.** Three headers are required of
+every app, whatever its type: `## Innovation Platform App`, `## Identity (do
+not build auth)`, and `## What CI enforces`. The remaining two are variant
+pairs, and ANY member of a pair satisfies the gate: `## Persistence (use the
+storage client)` or `## Persistence (use your bindings)`, and `## Container
+contract` or `## Function contract` (the legacy `## Worker contract` still
+passes too). The gate never asks the broker what type your app is, so a
+container app carrying the function headers passes, and the reverse passes as
+well. If you're hand-authoring `CLAUDE.md` (see `inno-new-app`'s empty-repo
+path), copy the template's version for your runtime: `scaffold/function/CLAUDE.md`
+or `scaffold/mcp-function/CLAUDE.md` in `inno-template` for those two types,
+and `inno-template`'s root `CLAUDE.md` for `container` and `mcp-container`.
+Those are the only three: there is no `scaffold/container/`, because the
+container files ARE the template root.
 
 Also do not add a competing `wrangler.json` or `wrangler.toml`, or a
 `.wrangler/` directory — Wrangler's config discovery order (`wrangler.json` >
 `wrangler.jsonc` > `wrangler.toml`) means an unvetted `wrangler.json` would
 silently take priority over the platform's injected `wrangler.jsonc` at both
 build and the deploy job's explicit `--config wrangler.jsonc` pin.
+
+A `scaffold/` directory is rejected too. Registration prunes the template's
+deployment-type scaffolds out of your repo, so a surviving `scaffold/` means
+the repo is carrying both variants' files. There is one exception: while
+`app/.needs-build` is present the directory is allowed, which is what keeps a
+freshly generated, not-yet-registered repo's first CI run green. Deleting that
+marker to start building re-arms the check, so delete `scaffold/` with it.
 
 The gate also rejects root-level `.env` / `.env.*` files (wrangler loads
 them at deploy time and adopts unset keys — a committed
