@@ -40,9 +40,17 @@ skill entirely.
 The `container` CI job builds your Dockerfile with **no deploy credentials
 present** (an app author fully controls this build's inputs, and nothing of
 platform value is reachable from it), then runs four checks: a Trivy image
-scan (HIGH/CRITICAL, `--ignore-unfixed`, hard fail), a non-root-user
-assertion, an `EXPOSE 8080` assertion, and a **`GET /healthz` smoke test**
-against the built image. All four must pass before
+scan, a non-root-user assertion, an `EXPOSE 8080` assertion, and a
+**`GET /healthz` smoke test** against the built image. The Trivy scan is
+policy-toggleable per app (`safety.gate.trivy`, admin-set): when enabled it
+hard-fails on HIGH/CRITICAL findings that have a fix available
+(`--severity HIGH,CRITICAL --ignore-unfixed`); when disabled the scan step
+is skipped and the job prints a loud `SAFETY GATE DISABLED` warning instead.
+The other three checks are not policy-toggleable and always run. A
+CycloneDX SBOM of the built image is generated and uploaded to the broker
+regardless of the Trivy gate's setting: it is inventory that feeds the
+daily safety sweep, so disabling the gate does not stop the platform from
+seeing what is in the image. Every check that runs must pass before
 `deploy` (which needs `container` to have succeeded) will run.
 `wrangler deploy` rebuilds the same Dockerfile a second time at deploy
 time, so a Dockerfile that only works "sometimes" will eventually break a
