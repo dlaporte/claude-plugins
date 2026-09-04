@@ -139,7 +139,8 @@ access here is what actually lets someone past the Okta login on
   apps. The cascade is best-effort per consumer, so a consumer whose Okta
   removal fails is logged and left out of that list while the source revoke
   still stands. Relay the list, and treat it as the immediate report rather
-  than the only record: `access_revoked` audit rows carry a `cascade_from`
+  than the only record: the consumer apps' `access_revoked` audit rows carry a
+  `cascade_from`
   field naming the source app, and `list_app_links` enumerates the consumers
   at any time.
 

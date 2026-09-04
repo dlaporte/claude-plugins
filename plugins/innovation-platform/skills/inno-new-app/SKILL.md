@@ -317,7 +317,9 @@ register_app({ app, repo, description, type, members, accept_guardrails: true, c
   `app`: the two variable tools, `set_app_variable` and `remove_app_variable`,
   use `name` for the *variable's* name, not the app.
 - `repo` — the `owner/repo` slug from §2 (a **slug, not a URL**). `app` and
-  `repo` are the only two the schema requires; everything below is optional.
+  `repo` are the only two the schema requires; everything below is optional to
+  the schema, though the handler still refuses the call without
+  `accept_guardrails: true`.
 - `type` — from the design decision (§1b): `"function"` for the greenfield
   default, `"container"` when the description warranted it, `"mcp-function"` for
   an MCP server, `"mcp-container"` for an MCP server that needs the container

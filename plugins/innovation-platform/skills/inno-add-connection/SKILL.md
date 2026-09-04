@@ -297,7 +297,7 @@ set_app_connection({ app, connection, label, strategy, config,
 The tool gates the caller to owner-or-admin, checks every endpoint against an
 SSRF denylist, and validates the config shape for the chosen strategy. That
 check is **syntactic, never a DNS lookup**: the URL must be `https://`, and the
-hostname must not be `localhost`, end in `.internal` or `.local`, or be an IP
+hostname must not be `localhost`, end in `.internal` or `.local`, or be a blocked IP
 literal. Every bracketed IPv6 literal is blocked outright, IPv4-mapped forms
 like `[::ffff:127.0.0.1]` included, and an IPv4 literal is blocked when it
 falls in loopback, private, carrier-grade-NAT, link-local, multicast, or
