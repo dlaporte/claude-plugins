@@ -298,13 +298,16 @@ The tool gates the caller to owner-or-admin, checks every endpoint against an
 SSRF denylist, and validates the config shape for the chosen strategy. That
 check is **syntactic, never a DNS lookup**: the URL must be `https://`, and the
 hostname must not be `localhost`, end in `.internal` or `.local`, or be an IP
-literal in loopback, private, carrier-grade-NAT, link-local, or multicast
-space. A public hostname that happens to resolve to a private address is not
-caught, so read the endpoint you were handed rather than treating the gate as
-proof it is external. If it rejects the call, read the message it returns —
-it's meant to be actionable (a non-public
-endpoint, a missing field, a bad strategy/config pairing) — fix the specific
-thing named and retry. Two responses that are **not** rejections, so don't
+literal. Every bracketed IPv6 literal is blocked outright, IPv4-mapped forms
+like `[::ffff:127.0.0.1]` included, and an IPv4 literal is blocked when it
+falls in loopback, private, carrier-grade-NAT, link-local, multicast, or
+another reserved range (`0.0.0.0/8`, `192.0.0.0/16`, `198.18.0.0/15` and
+`240.0.0.0/4` among them). A public hostname that happens to resolve to a
+private address is not caught, so read the endpoint you were handed rather than
+treating the gate as proof it is external. If it rejects the call, read the
+message it returns — it's meant to be actionable (a non-public endpoint, a
+missing field, a bad strategy/config pairing) — fix the specific thing named
+and retry. Two responses that are **not** rejections, so don't
 retry blindly:
 
 - **"set CONNECTIONS_ENC_KEY on the platform first"** — a real precondition,
@@ -436,20 +439,23 @@ Rules that hold regardless of language:
     instead of caching the credential in memory until `expires_at`.
   - **`not_connected` carrying `locked: true`** — the credential exists, but
     this call could not reach the user's own sealing key. It means "connected,
-    and locked right now", not "never connected". The template clients raise
-    `ConnectionLocked`, a subclass of `NotConnected` with the same
-    `connect_url` field, so an existing `except NotConnected` / `catch (e) { if
-    (e instanceof NotConnected) ... }` block keeps working unchanged. Two
-    situations produce it: the MCP client authorized the app **before** the
-    user's first connection, or the user's sealing key was reset after they
-    last connected. **The fix is re-authorizing the MCP client**, never
+    and locked right now", not "never connected". The two template clients
+    surface it differently. The JS client raises `ConnectionLocked`, a subclass
+    of `NotConnected` with the same `connect_url` field, so an existing `catch
+    (e) { if (e instanceof NotConnected) ... }` block keeps working unchanged.
+    The Python client has no locked subclass: it raises plain `NotConnected`,
+    so `except NotConnected` already catches it, but the exception alone will
+    not tell you which of the two cases you are in. Two situations produce it:
+    the MCP client authorized the app **before** the user's first connection,
+    or the user's sealing key was reset after they last connected. **The fix is re-authorizing the MCP client**, never
     `connect_url`: in Claude, run `/mcp` and re-authenticate that server.
     Removing and re-adding the connector is usually not enough, because the
     client reuses its cached OAuth grant and no new authorization happens. Do
     **not** tell the user to reconnect the backend: connecting stores a
     credential, only a new authorization writes the key into the grant, so they
     loop, connecting over and over while the app reports the same thing. The
-    platform also notifies the affected user directly, once per app.
+    platform also notifies the affected user directly, once per app per day
+    (the flag that suppresses repeats expires after 24 hours).
 - Add a small `whoami` / status tool so the user (and you, while testing) can
   confirm the Connection is live and see which backend identity it resolves to,
   without needing to exercise a real feature first.

@@ -39,18 +39,22 @@ toggles.
 `get_config app=<name>` — the app's owner can read it, no admin needed. It
 gives you the actual `safety.gate.*` toggles, the `safety.min_release_age_days`
 cooldown in force, and any `safety.ignore.<semgrep|trivy|deps>.<id>`
-suppression. An ignore's VALUE is its expiry date (`YYYY-MM-DD`, honored
+suppression written at this app's own scope, platform-wide ones being withheld
+by design. An ignore's VALUE is its expiry date (`YYYY-MM-DD`, honored
 through that day; empty means it never expires), and `get_config` spells the
 live state out on the row: suppressing until that date, suppressing with no
 expiry, or expired and no longer suppressing. The provenance lines under it
 name the admin who set it and whatever note they left. Read it, don't assume
 the defaults: a gate an admin turned off still runs as a job and reports
-success, early-exiting with a loud `SAFETY GATE DISABLED` warning instead of
-scanning anything, and a finding you expect to fail may be suppressed until a
-date that has since passed. Two things this buys you: you stop reading a green
-gate as proof that a scan actually happened, and you can tell a user "that CVE
-is ignored until 2026-12-31, after which this deploy stops passing" while
-there's still time to act.
+success, logging a loud `SAFETY GATE DISABLED` warning instead of scanning. For
+`gitleaks`, `semgrep` and `deps` that means nothing is scanned at all. The
+`trivy` toggle is narrower, because it skips only the image CVE scan: the
+container job still builds the image, uploads the SBOM, and asserts a non-root
+user and `EXPOSE 8080`. And a finding you expect to fail may be suppressed
+until a date that has since passed. Two things this buys you: you stop reading
+a green gate as proof that a scan actually happened, and you can tell a user
+"that CVE is ignored until 2026-12-31, after which this deploy stops passing"
+while there's still time to act.
 
 Four things are checked here, and **all are hard requirements before
 `inno-ship`**:
@@ -141,7 +145,7 @@ For each gate, tell the user what happened in THEIR terms:
 | **Real finding** (SAST/deps/CVE) | Show the file:line if the annotations came through. If they didn't, open the run link yourself (or run `gh run view --log-failed` when the user has `gh` authenticated) and read the failing step. Explain the risk in one sentence, fix it (or guide the fix), re-push. |
 | **Likely false positive** | Never work around it in code (renames, string-splitting, suppression comments). Name the exact finding ID and tell the user a platform admin can add a central ignore for it (`safety.ignore.<tool>.<id>`, where the value is the expiry date, or empty for none), which clears it at both the gate and the periodic safety sweep. A `secrets` finding is the exception: gitleaks has no central ignore family, because its fingerprints are commit-bound and rebase-fragile. Its supported suppression surface is a `.gitleaksignore` committed in the app's own repo, and an entry there is sanctioned, not an in-code workaround. |
 | `SAFETY GATE DISABLED by platform policy` in the log | Deliberate admin configuration, not a bug. Note it and move on. |
-| config-integrity failure | Something in the repo is a file the platform injects at build time, or one it forbids outright. Delete `src/gateway/`, a root `package.json`/`package-lock.json`/`tsconfig.json`, or `wrangler.jsonc`. Delete any competing wrangler config (`wrangler.json`, `wrangler.toml`) or a `.wrangler/` directory: wrangler's config discovery would let either outrank the vetted file. Delete a `scaffold/` directory, which registration prunes out of app repos, unless `app/.needs-build` is still present (the check is waived until that marker goes). Remove a root-level `.env*`, `.npmrc`, `.yarnrc`, or `.yarnrc.yml`; a `.env`'s values move into app Variables with `set_app_variable`. If instead `CLAUDE.md`'s required template headers were altered, revert them (the rest of the file is yours). All of this is root-only: the app's own `app/package.json` and friends are fine. |
+| config-integrity failure | Something in the repo is a file the platform injects at build time, or one it forbids outright. Delete `src/gateway/`, a root `package.json`/`package-lock.json`/`tsconfig.json`, or `wrangler.jsonc`. Delete any competing wrangler config (`wrangler.json`, `wrangler.toml`), which wrangler's config discovery could let outrank the vetted file, and a `.wrangler/` directory, whose `deploy/config.json` can redirect the deploy to an unvetted config entirely. Delete a `scaffold/` directory, which registration prunes out of app repos, unless `app/.needs-build` is still present (the check is waived until that marker goes). Remove a root-level `.env*`, `.npmrc`, `.yarnrc`, or `.yarnrc.yml`; a `.env`'s values move into app Variables with `set_app_variable`. If instead `CLAUDE.md`'s required template headers were altered, revert them (the rest of the file is yours). All of this is root-only: the app's own `app/package.json` and friends are fine. |
 | `dep-age` failure | The **inverse** of a CVE finding — do NOT bump to the newest release, that makes it redder. Either a pinned dependency was published more recently than the platform's cooldown allows (`safety.min_release_age_days`, 0 = off and the default, so this only fires once an admin has enabled it — `get_config app=<name>` tells you the value actually in force and how many days you're short by), or the app ships `app/package.json` with no committed, parseable `app/package-lock.json` and there are no exact versions to date at all. Remedies: wait out the cooldown, pin an older vetted version, commit `app/package-lock.json`, or ask a platform admin for an app-scope `safety.min_release_age_days: 0`. |
 | container failure | Dockerfile contract problem, or the built image never answered `GET /healthz` within ~90s — hand off to `inno-containerize`. |
 

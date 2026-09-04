@@ -91,7 +91,8 @@ room on a start** — that trade-off (taking down something running) is the
 user's to initiate, unprompted.
 
 `start_app` also refuses with **`app_unlinked`**: the platform's GitHub App has
-been uninstalled from the app's repo, so the repository link is severed. No
+been uninstalled from the app's repo, or the repo has been deselected from the
+installation's repository list, so the repository link is severed. No
 admin can fix this from the platform side. The remedy is the repo owner
 reinstalling the platform GitHub App on the repo, waiting for the re-link
 notification, then starting the app. `request_start` refuses the same way and
@@ -135,10 +136,14 @@ access here is what actually lets someone past the Okta login on
   connected backend. The platform audits this as `connection_cascade_revoked`.
 - The revoke **cascades to consumer apps**: every app that reads this app's
   data through a link removes the same user too, and the response names those
-  apps. Relay that list to the caller. It is the only place they learn which
-  other apps the person just lost.
+  apps. The cascade is best-effort per consumer, so a consumer whose Okta
+  removal fails is logged and left out of that list while the source revoke
+  still stands. Relay the list, and treat it as the immediate report rather
+  than the only record: `access_revoked` audit rows carry a `cascade_from`
+  field naming the source app, and `list_app_links` enumerates the consumers
+  at any time.
 
-## `app_status({ app })` / `get_app_metrics({ app, days, hours })`
+## `app_status({ app })` / `get_app_metrics({ app, days?, hours? })`
 
 Read-only. `app_status` returns status, owner, URL (for an **mcp-function** or
 **mcp-container** app this is its **MCP endpoint** — the `…/mcp` address an
