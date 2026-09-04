@@ -187,9 +187,12 @@ needs no cooperation from anyone else.
     `references/discovery.md` for which to pick.
   - `revocation_endpoint` is **optional but worth setting** when the backend
     (or its discovery document) advertises one: it's where the platform calls
-    to revoke a user's token at the backend when they disconnect. Omit it and
-    a disconnect still forgets the token platform-side, but **never revokes it
-    at the backend** — the credential stays live there until it expires.
+    to revoke a user's token at the backend when they disconnect from the
+    **Connections tab on their account page**. That is the only disconnect that
+    ever calls it. The `disconnect_user_connection` MCP tool is local only and
+    never revokes upstream, whoever calls it. Omit the endpoint and every
+    disconnect only forgets the token platform-side: the credential stays live
+    at the backend until it expires.
 
   `scopes` is **not** part of `config` — pass it as a **top-level arg** of
   `set_app_connection` (a `string[]`; see step 4). The client must be
@@ -211,12 +214,16 @@ needs no cooperation from anyone else.
 
 `set_app_connection` is a **create-or-replace upsert**, not a create. A call
 naming an `app`+`connection` that already exists overwrites its label,
-strategy, config, client id, and scopes with whatever you pass — no
-confirmation from the platform, no merge. On a live connection that means you
-can silently retarget or break something the app's users are connecting
-through right now: their stored credentials are **not** deleted by this call,
-so they stay in place while the definition around them changes, and they were
-minted against the old backend.
+strategy, config, and scopes with whatever you pass — no confirmation from the
+platform, no merge. `client_id` and `client_secret` are the two exceptions:
+omit either and the stored value is preserved (the upsert COALESCEs both), so a
+partial update cannot blank the client credentials by accident. On a live
+connection this still means you can silently retarget or break something the
+app's users are connecting through right now. A change to the strategy, or to
+any endpoint a credential is sent to, deletes every user's stored credential
+for the connection (see the warning under "Make the call"); any other change
+leaves those credentials in place while the definition around them moves, and
+they were minted against the old backend.
 
 So before you call it, **write into your visible reply** what you are about to
 write and what it touches — the same rule `inno-new-app` §1b and
@@ -287,10 +294,15 @@ set_app_connection({ app, connection, label, strategy, config,
   switch, **not** a per-user credential wipe — stored credentials are kept and
   resume when re-enabled. Calling again with the opposite value flips it.
 
-The tool gates the caller to owner-or-admin, SSRF-validates every endpoint
-(must resolve to a public HTTPS address — no internal/loopback targets), and
-validates the config shape for the chosen strategy. If it rejects the call,
-read the message it returns — it's meant to be actionable (a non-public
+The tool gates the caller to owner-or-admin, checks every endpoint against an
+SSRF denylist, and validates the config shape for the chosen strategy. That
+check is **syntactic, never a DNS lookup**: the URL must be `https://`, and the
+hostname must not be `localhost`, end in `.internal` or `.local`, or be an IP
+literal in loopback, private, carrier-grade-NAT, link-local, or multicast
+space. A public hostname that happens to resolve to a private address is not
+caught, so read the endpoint you were handed rather than treating the gate as
+proof it is external. If it rejects the call, read the message it returns —
+it's meant to be actionable (a non-public
 endpoint, a missing field, a bad strategy/config pairing) — fix the specific
 thing named and retry. Two responses that are **not** rejections, so don't
 retry blindly:
@@ -315,9 +327,10 @@ it's been sent.
 `set_app_connection` for the same `app`+`connection` overwrites `label`,
 `strategy`, `config`, and `scopes` with whatever you pass — so resend all of
 them, not just the field you're changing (omitting `scopes`, for instance,
-silently clears it). The exceptions: `client_secret` and `disabled` are safe
-to omit — an omitted `client_secret` keeps the stored one, and an omitted
-`disabled` leaves the enabled/paused state as-is.
+silently clears it). The exceptions: `client_id`, `client_secret`, and
+`disabled` are safe to omit. An omitted `client_id` or `client_secret` keeps
+the stored value, and an omitted `disabled` leaves the enabled/paused state
+as-is.
 
 `list_connections` shows the app's configured Connections (definitions only,
 never credential material) — use it before any re-call, per the approval gate
@@ -395,6 +408,10 @@ Rules that hold regardless of language:
 - **Pass the real inbound assertion, never a fabricated one.** Read it off the
   current request and pass it straight through; don't hardcode, cache across
   users, or invent one.
+- **Never persist or log the assertion itself.** Echo it onto the seam call and
+  drop it. It carries the user's encrypted sealing key, so an assertion written
+  to a database row or a log line becomes an artifact that, combined with
+  platform secrets, opens that user's credentials on every app.
 - On success you get back a live credential for *that* user — an
   `access_token` (or a ready-made `header`, depending on strategy) plus an
   `expires_at`. Use it for the one backend call you're about to make; cache it
@@ -405,8 +422,8 @@ Rules that hold regardless of language:
   *"You're not connected to {backend} yet — open {connect_url} to link your
   account, then try again."* That's the one time this flow surfaces a URL
   instead of a plain-language sentence — it's a real link the user must click.
-- **`NotConnected` is not the only non-success branch, and the other two are
-  not the user's fault** — don't send either of them down the connect-link
+- **`NotConnected` is not the only non-success branch, and the other three are
+  not the user's fault** — don't send any of them down the connect-link
   path:
   - **`503`** — the Connection has been **paused** (`disabled`) by its owner or
     a platform admin. Transient: the backend is switched off, the user's own
@@ -417,6 +434,22 @@ Rules that hold regardless of language:
     **120 requests/minute per (app, user)**. Back off and retry. If a tool
     trips this in normal use, the tool is calling the seam per backend request
     instead of caching the credential in memory until `expires_at`.
+  - **`not_connected` carrying `locked: true`** — the credential exists, but
+    this call could not reach the user's own sealing key. It means "connected,
+    and locked right now", not "never connected". The template clients raise
+    `ConnectionLocked`, a subclass of `NotConnected` with the same
+    `connect_url` field, so an existing `except NotConnected` / `catch (e) { if
+    (e instanceof NotConnected) ... }` block keeps working unchanged. Two
+    situations produce it: the MCP client authorized the app **before** the
+    user's first connection, or the user's sealing key was reset after they
+    last connected. **The fix is re-authorizing the MCP client**, never
+    `connect_url`: in Claude, run `/mcp` and re-authenticate that server.
+    Removing and re-adding the connector is usually not enough, because the
+    client reuses its cached OAuth grant and no new authorization happens. Do
+    **not** tell the user to reconnect the backend: connecting stores a
+    credential, only a new authorization writes the key into the grant, so they
+    loop, connecting over and over while the app reports the same thing. The
+    platform also notifies the affected user directly, once per app.
 - Add a small `whoami` / status tool so the user (and you, while testing) can
   confirm the Connection is live and see which backend identity it resolves to,
   without needing to exercise a real feature first.
@@ -446,9 +479,16 @@ tool call:
   owner** (or an admin), who can add a `user` to narrow it further. Note it is
   distinct from `list_connections`, which lists the backend **definitions** an
   app has configured.
-- **`disconnect_user_connection`** (`user`, `app`, `connection`) — revokes one
-  session: best-effort revocation at the backend, then the stored credential is
-  deleted. Consent memory is kept, so reconnecting won't re-prompt for consent.
+- **`disconnect_user_connection`** (`user`, `app`, `connection`) — deletes one
+  user's stored credential for one backend. It is **local only**: it never
+  revokes the credential at the backend, in any context, including a user
+  disconnecting their own session. Credentials are sealed to the user
+  personally, and the key needed to read the token being revoked rides only a
+  browser session, which an MCP call does not have. To revoke upstream as well,
+  the user disconnects from the **Connections tab on their account page**.
+  Consent memory is kept, so a reconnect won't re-prompt for consent under
+  `connections.consent: remember`. On the platform default `always` the consent
+  page shows on every connect anyway, so keeping the memory changes nothing.
   This is the lever for "my connection is stuck — make it ask me again". The
   user themselves or a platform admin can call it, and an **admin disconnect is
   audited as the admin's action naming the affected user**. Idempotent. It
