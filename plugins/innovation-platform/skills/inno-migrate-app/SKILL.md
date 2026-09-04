@@ -197,7 +197,7 @@ merge to `main` once it's ready. Tell the user where the restore point is.
    `register_app({ app, repo, description, type, members, accept_guardrails: true, connections })`
    with the app name from Phase 1 in `app` (the wire parameter is `app`, not
    `name`) and the user's existing `owner/repo` slug in `repo` (a **slug, not a
-   URL**). Those two are the only required parameters. Pass `connections` only
+   URL**). Those two are the only two the schema requires. Pass `connections` only
    if step 2's assessment found
    per-user backend auth to replace — a list of the names you plan to set up.
    It creates nothing (only `set_app_connection` can); the response echoes it
@@ -217,7 +217,7 @@ merge to `main` once it's ready. Tell the user where the restore point is.
    platform re-dispatches it for security respins). The `with:` block matters
    most in a migration: without it the reusable workflow derives the app name
    from the repository name with any `inno-` prefix removed, and a migrated repo
-   rarely happens to be named `inno-{name}`. The broker resolves the real app
+   rarely happens to be named `{name}` or `inno-{name}`. The broker resolves the real app
    from the signed repository id and refuses the run with `app_mismatch` when
    the asserted name disagrees. It is a thin caller — editing
    it can't bypass any gate (the broker's OIDC `job_workflow_ref` check enforces

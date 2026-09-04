@@ -48,10 +48,12 @@ hard-fails on HIGH/CRITICAL findings that have a fix available
 is skipped and the job prints a loud `SAFETY GATE DISABLED` warning instead.
 The other three checks are not policy-toggleable and always run. A
 CycloneDX SBOM of the built image is generated and uploaded to the broker
-regardless of the Trivy gate's setting: it is inventory that feeds the
-daily safety sweep, so disabling the gate does not stop the platform from
-seeing what is in the image. Every check that runs must pass before
-`deploy` (which needs `container` to have succeeded) will run.
+regardless of the Trivy gate's setting. A gate-disabled app sits outside
+image-vulnerability policy entirely, at this gate and in the daily safety
+sweep alike, which skips apps whose gate is off. The SBOM is captured
+anyway so that re-enabling the gate restores sweep coverage immediately,
+with no new deploy needed to regenerate it. Every check that runs must
+pass before `deploy` (which needs `container` to have succeeded) will run.
 `wrangler deploy` rebuilds the same Dockerfile a second time at deploy
 time, so a Dockerfile that only works "sometimes" will eventually break a
 deploy that passed CI.

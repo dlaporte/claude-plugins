@@ -313,7 +313,9 @@ register_app({ app, repo, description, type, members, accept_guardrails: true, c
 ```
 
 - `app` — the app name from §1 (drives the hostname). The wire parameter is
-  `app`; there is no `name` parameter on any platform tool.
+  `app`; no tool names the target app `name`. Every tool takes the app as
+  `app`: the two variable tools, `set_app_variable` and `remove_app_variable`,
+  use `name` for the *variable's* name, not the app.
 - `repo` — the `owner/repo` slug from §2 (a **slug, not a URL**). `app` and
   `repo` are the only two the schema requires; everything below is optional.
 - `type` — from the design decision (§1b): `"function"` for the greenfield
@@ -364,9 +366,10 @@ Okta group + D1 + R2, and binds the repo). It returns text beginning **`App
   removed. That derived name is asserted to the broker, which resolves the real
   app from the signed repository id and refuses the run with `app_mismatch` when
   the two disagree. The template's file therefore works only when the repo is
-  named exactly `inno-{name}`; the returned snippet carries the explicit
-  `with: app: {name}` input and is correct for any repo name, so write it in
-  every case. This is a real step, not a hands-off one. Keep the
+  named `{name}` or `inno-{name}`; any other name needs the returned snippet,
+  which carries the explicit `with: app: {name}` input and is correct for any
+  repo name, so write it in every case. This is a real step, not a hands-off
+  one. Keep the
   `workflow_dispatch` trigger (the platform re-dispatches it for security
   respins).
 
@@ -399,7 +402,8 @@ Okta group + D1 + R2, and binds the repo). It returns text beginning **`App
   registered on the platform by someone else, and only that first user may bind
   more repos under it. The message names who holds it: ask them or a platform
   admin to register on the user's behalf, or use a repo under an account of
-  the user's own.
+  the user's own. Platform admins bypass this check, so an admin can register
+  under a shared-org account directly without going through the first user.
 - **`repo_mismatch`** — a partially-finished registration exists for this name
   with a *different* repo; finish it with the original repo, or start over with
   a consistent `repo`.
@@ -466,7 +470,7 @@ Copy `CLAUDE.md` rather than writing one: the `config-integrity` gate checks
 five required section headers. **The check is type-blind.** Three headers are
 required of every app whatever its type: `## Innovation Platform App`,
 `## Identity (do not build auth)`, and `## What CI enforces`. The remaining two
-are variant pairs, and any member of a pair satisfies the gate:
+are variant groups, and any member of a group satisfies the gate:
 `## Persistence (use the storage client)` or `## Persistence (use your
 bindings)`, and `## Container contract` or `## Function contract` (the legacy
 `## Worker contract` still passes too). So a container app carrying the
