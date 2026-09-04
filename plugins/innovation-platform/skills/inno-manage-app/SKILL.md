@@ -61,13 +61,16 @@ States: `created` → `deploying` → `active` ⇄ `warned` → `stopped` → *(
   infrastructure, database, and files permanently deleted. The GitHub repo,
   audit history, and notification history survive purge.
 - All of these windows are platform config, overridable per app or per user.
-  **Unstoppable** apps (admin-set) are exempt from the idle clock entirely.
+  **Pinned** apps (admin-set) are exempt from the idle clock entirely. Pinned
+  apps are still stopped by the safety sweep when a vulnerability goes
+  unfixed past the grace period (unless an admin turns `safety.stop_pinned`
+  off for them); a stopped pinned app keeps its data.
 
 The platform **deliberately** reclaims resources from idle apps. That is a
 cost-control policy, not a malfunction to work around. **Never offer to
 schedule or automate keep-alive traffic** — no cron pings, no periodic
 anything. If an app should genuinely never expire, that's the admin-set
-`lifecycle.unstoppable` config, not an engineering workaround.
+`lifecycle.pinned` config, not an engineering workaround.
 
 ## `start_app({ name })` — bring back a stopped app
 
@@ -93,7 +96,7 @@ Detaches the app's domain now: it stops serving, can't be deployed, and its
 30-day purge countdown begins. Everything is intact and `start_app` fully
 reverses it until the window closes — but **always confirm with the user by
 name before calling**, and tell them the purge date from the response.
-Rejected with `app_unstoppable` if the app is marked unstoppable (an admin
+Rejected with `app_pinned` if the app is marked pinned (an admin
 must turn that off first). There is no un-purge: once the window lapses (or
 an admin purges deliberately), only the repo and history remain, and the name
 becomes reusable via a fresh registration (`register_app`, see
@@ -238,7 +241,7 @@ for a limited time (default 30 days). Owner or admin only.
 ## Configuration (`get_config` / `set_config` / `remove_config`)
 
 Values resolve most-specific-first: **app › user › platform › factory
-default**. Useful keys: `lifecycle.unstoppable` (app or user scope — user
+default**. Useful keys: `lifecycle.pinned` (app or user scope — user
 scope covers every app that user owns), `start.self_max`, `lifecycle.*_days`,
 `container.sleep_after` (applies on the app's next deploy),
 `notify.email.<event>`.
