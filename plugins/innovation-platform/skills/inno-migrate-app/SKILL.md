@@ -121,7 +121,9 @@ order:
    dependency CVEs (`pip-audit`, Trivy), semgrep OWASP patterns such as
    string-built HTML or raw SQL formatting, and any platform-injected file that
    must NOT be committed (a root `package.json`/`package-lock.json`/`tsconfig.json`,
-   `src/gateway/`, any `wrangler.*` config, `.env*`/`.npmrc`). Inventory
+   `src/gateway/`, any `wrangler.*` config, a `.wrangler/` directory,
+   `.env*`, `.npmrc`/`.yarnrc(.yml)`, and a `scaffold/` directory, which is
+   rejected unless `app/.needs-build` is still present). Inventory
    every value the app reads from its environment or a `.env` file — each
    becomes an app **Variable** (`set_app_variable`) after registration,
    delivered back to the code as a real env var; nothing stays in the repo.
@@ -129,7 +131,11 @@ order:
    always-on/websocket assumptions.
 7. **Proposed app name** — lowercase letters/digits/hyphens, 3-29 chars,
    starting with a letter; a few names are reserved server-side, so have a
-   fallback. The name drives the app's hostname `inno-{name}.<platform domain>`
+   fallback. A name ending in **`-app`** is rejected as well: the server
+   returns `invalid_name` for `todo-app`, so propose `todo` instead. A repo
+   called `something-app` makes that suffix an easy reflex, so drop it rather
+   than carrying the repo name across. The name drives the app's hostname
+   `inno-{name}.<platform domain>`
    (quote the exact URL from `register_app`'s response — never construct it);
    it is independent of the repo name.
    **Check the name with the `check_name` MCP tool (read-only) before you
@@ -188,9 +194,11 @@ capture a restore point — a branch or tag on the pre-migration commit
 merge to `main` once it's ready. Tell the user where the restore point is.
 
 1. **Register the repo (two calls).** Call
-   `register_app({ name, repo, description, type, members, accept_guardrails: true, connections })`
-   with the app name from Phase 1 and the user's existing `owner/repo` slug (a
-   **slug, not a URL**). Pass `connections` only if step 2's assessment found
+   `register_app({ app, repo, description, type, members, accept_guardrails: true, connections })`
+   with the app name from Phase 1 in `app` (the wire parameter is `app`, not
+   `name`) and the user's existing `owner/repo` slug in `repo` (a **slug, not a
+   URL**). Those two are the only required parameters. Pass `connections` only
+   if step 2's assessment found
    per-user backend auth to replace — a list of the names you plan to set up.
    It creates nothing (only `set_app_connection` can); the response echoes it
    back as a reminder to configure each one. The first call returns text beginning
@@ -206,7 +214,12 @@ merge to `main` once it's ready. Tell the user where the restore point is.
    `register_app` returned it (an existing non-template repo won't have one). It
    references `dlaporte/inno-platform-ci/.github/workflows/platform-ci.yml@main`
    and passes `with: app: {name}`; keep its `workflow_dispatch` trigger (the
-   platform re-dispatches it for security respins). It is a thin caller — editing
+   platform re-dispatches it for security respins). The `with:` block matters
+   most in a migration: without it the reusable workflow derives the app name
+   from the repository name with any `inno-` prefix removed, and a migrated repo
+   rarely happens to be named `inno-{name}`. The broker resolves the real app
+   from the signed repository id and refuses the run with `app_mismatch` when
+   the asserted name disagrees. It is a thin caller — editing
    it can't bypass any gate (the broker's OIDC `job_workflow_ref` check enforces
    provenance), only break the deploy.
 3. **Make the repo contract-compliant** — in place, per
@@ -226,7 +239,8 @@ merge to `main` once it's ready. Tell the user where the restore point is.
      stack — only the headers are gate-checked).
    - **Remove any forbidden files** flagged in Phase 1 (root
      `package.json`/lockfile/`tsconfig.json`, `src/gateway/`, `wrangler.*`,
-     `.env*`, `.npmrc`/`.yarnrc`). The `.env` values move to app
+     `.wrangler/`, `scaffold/`, `.env*`, `.npmrc`/`.yarnrc`). The `.env` values
+     move to app
      **Variables** (`set_app_variable`) — the code keeps reading the same
      environment names, so this is usually a zero-code change.
    - Delete `app/.needs-build` if the repo carries one (CI skips deploys while

@@ -76,7 +76,9 @@ user-facing sentence in this flow.
    domain (`inno-{name}.<domain>`), so keep it short and DNS-safe. It is NOT
    the repo name — the repo name is the user's choice (see below). A handful of
    names are reserved server-side — `check_name` reports those, so don't
-   enumerate or guess.
+   enumerate or guess. A name ending in **`-app`** is rejected as well: the
+   server returns `invalid_name` for `todo-app`, so propose `todo` instead.
+   Steer the user off that suffix before you check the name.
 
    **Verify availability before you settle on a name — never recommend or
    confirm a name without checking it first.** Call the **`check_name`** MCP
@@ -84,9 +86,10 @@ user-facing sentence in this flow.
    name it reports as **available**. If it comes back in-use, reserved, or
    invalid, ask the user for a different one; if it's the caller's *own*
    existing app, tell them that (a stopped app is brought back with
-   `start_app`, not by re-registering it). `list_apps` shows only the caller's
-   own apps, so it can't confirm a name is free platform-wide — use
-   `check_name`.
+   `start_app`, not by re-registering it). `list_apps` shows the caller's own
+   apps, and every app on the platform only when the caller is a platform
+   admin. For an ordinary user it therefore cannot prove a name is free
+   platform-wide: use `check_name`.
 
    **Active-app limit.** `check_name` also warns when the user is at their
    active-app limit ("you are at your active-app limit (N of M)") — at the cap,
@@ -163,8 +166,10 @@ make, with your recommendation**:
   but for a **greenfield** app you recommend and default to **`function`** — or
   **`mcp-function`**/**`mcp-container`** when the product is an MCP server).
   `function` and `mcp-function` were formerly named `worker` and `mcp-worker`;
-  the cutover is hard, so pass only the four names above — a retired name is
-  refused with a message naming its replacement. The four types:
+  the cutover is hard, so pass only the four names above. `type` is a schema
+  enum, so on the MCP surface a retired name never reaches the tool: it fails
+  argument validation with a plain enum error that does not name the
+  replacement. The four types:
 
   - **`function` (recommend for greenfield):** the app is its own Cloudflare
     Worker (JS/TS) behind the gateway — ms cold starts, no Dockerfile,
@@ -304,11 +309,13 @@ give the user the link it returns, wait for them to install, then call it again.
 ### Call 1 — start registration, get the install link
 
 ```
-register_app({ name, repo, description, type, members, accept_guardrails: true, connections })
+register_app({ app, repo, description, type, members, accept_guardrails: true, connections })
 ```
 
-- `name` — the app name from §1 (drives the hostname).
-- `repo` — the `owner/repo` slug from §2 (a **slug, not a URL**).
+- `app` — the app name from §1 (drives the hostname). The wire parameter is
+  `app`; there is no `name` parameter on any platform tool.
+- `repo` — the `owner/repo` slug from §2 (a **slug, not a URL**). `app` and
+  `repo` are the only two the schema requires; everything below is optional.
 - `type` — from the design decision (§1b): `"function"` for the greenfield
   default, `"container"` when the description warranted it, `"mcp-function"` for
   an MCP server, `"mcp-container"` for an MCP server that needs the container
@@ -350,12 +357,18 @@ Okta group + D1 + R2, and binds the repo). It returns text beginning **`App
   it from the response. The
   URL 404s until the first successful `inno-ship`.
 - A `.github/workflows/deploy.yml` — the thin caller workflow that wires the
-  repo to the platform's reusable CI. The template already ships a `deploy.yml`;
-  make sure the one in the repo **matches what `register_app` returned** (in
-  particular its `with: app: {name}` input and the
-  `dlaporte/inno-platform-ci/.github/workflows/platform-ci.yml@main` reference)
-  — write/adjust it from the response if needed. Keep its `workflow_dispatch`
-  trigger (the platform re-dispatches it for security respins).
+  repo to the platform's reusable CI. **Overwrite the repo's copy with the
+  snippet the response returned.** The template ships a `deploy.yml` too, but it
+  carries no `with:` block at all, so the reusable workflow falls back to
+  deriving the app name from the repository name with any `inno-` prefix
+  removed. That derived name is asserted to the broker, which resolves the real
+  app from the signed repository id and refuses the run with `app_mismatch` when
+  the two disagree. The template's file therefore works only when the repo is
+  named exactly `inno-{name}`; the returned snippet carries the explicit
+  `with: app: {name}` input and is correct for any repo name, so write it in
+  every case. This is a real step, not a hands-off one. Keep the
+  `workflow_dispatch` trigger (the platform re-dispatches it for security
+  respins).
 
 ### Reading register_app's responses — branch, don't assume
 
@@ -364,18 +377,34 @@ Okta group + D1 + R2, and binds the repo). It returns text beginning **`App
 - **`App "{name}" registered …`** — call 2 succeeded; proceed to §4.
 - **`guardrails_not_accepted`** — you didn't pass `accept_guardrails: true`; do
   the §1a review, then pass it.
-- **`invalid_name` / reserved** — pick another name (you should have caught this
-  with `check_name`).
+- **`invalid_name` / reserved** — the name broke the shape rule, hit a reserved
+  word, or ended in `-app`; pick another (you should have caught this with
+  `check_name`).
+- **`name_unavailable`** — an app with that name already exists and is not the
+  caller's own partial registration; pick another name.
+- **`invalid_type`** — `type` was not one of the four preset names. On the MCP
+  surface a retired name (`worker`, `mcp-worker`, `mcp`) fails schema validation
+  before it ever gets this far.
 - **`invalid_repo`** — `repo` wasn't a valid `owner/repo` slug (you passed a URL
   or a bare name); fix it.
+- **`too_many_members`** — `members` held more than 50 emails. Register with a
+  shorter list and add the rest afterward with `grant_access`.
 - **`app_limit_reached`** — the user is at their active-app limit; resolve per
   §1 (offer `stop_app` with confirmation, or an admin raises the limit).
-- **`repo_already_registered` / `repo_id_conflict`** — that GitHub repo is
-  already bound to an app (one repo binds to at most one app). Use a different
-  repo, or manage the existing app via `inno-manage-app`.
+- **`repo_already_registered`** — that GitHub repo is already bound to an app
+  (one repo binds to at most one app). Use a different repo, or manage the
+  existing app via `inno-manage-app`. (`repo_id_conflict` is the audit action
+  the platform records for this refusal; callers never see it as an error code.)
+- **`repo_owner_claimed`** — repositories under that GitHub account are already
+  registered on the platform by someone else, and only that first user may bind
+  more repos under it. The message names who holds it: ask them or a platform
+  admin to register on the user's behalf, or use a repo under an account of
+  the user's own.
 - **`repo_mismatch`** — a partially-finished registration exists for this name
   with a *different* repo; finish it with the original repo, or start over with
   a consistent `repo`.
+- **`github_app_not_configured`** — the platform's GitHub App isn't set up on
+  this deployment; nobody can register until an admin configures it.
 - **Repo wasn't template-derived** (call 2's response reports something like
   "scaffold not applied" / the repo shows none of the type-specific scaffold
   described in §4 after call 2 finishes) — the user registered a repo that
@@ -397,7 +426,8 @@ cd <repo>
 After call 2, the repo has been **pruned to the deployment type you chose** —
 the template carries every scaffold and the platform rewrote the repo at
 registration. All types ship the thin `.github/workflows/deploy.yml` caller
-workflow (hands-off); a **function** repo has the TS reference (`app/index.ts`),
+workflow, which you overwrite with call 2's snippet per §3; a
+**function** repo has the TS reference (`app/index.ts`),
 an **mcp-function** repo the MCP-server TS reference (also `app/index.ts`), and
 a **container** repo the Python/Starlette reference (`app/` — incl. `main.py`,
 `storage.py`, `templates/`, `requirements.txt` — plus `Dockerfile` and `lib/`).
@@ -418,16 +448,30 @@ Dockerfile.
 layout by hand.** A repo created via GitHub's blank "New repository" flow
 (instead of §2's "Use this template") arrives with no scaffold, so call 2
 leaves it as-is. Recognize this early — the repo is missing the type-specific
-files described below — and hand-author the full layout by copying from the
-template's `scaffold/<type>/` overlay (`CLAUDE.md`, `app/index.ts` or
-`app/main.py`, `README.md`), plus `.gitignore`, and write
-`.github/workflows/deploy.yml` from call 2's response. **Copy the type-specific
-`CLAUDE.md`, never the container/root one** — the `config-integrity` gate
-checks five required section headers, and those headers differ by type (e.g.
-"Persistence (use your bindings)" for `function`/`mcp-function` vs
-"Persistence (use the storage client)" for `container`/`mcp-container`;
-"Function contract" vs "Container contract") — using the wrong type's headers
-fails the gate.
+files described below — and hand-author the full layout out of `inno-template`,
+then write `.github/workflows/deploy.yml` from call 2's response. Where you copy
+from depends on the type, because only two of the four have an overlay
+directory:
+
+- **`function` / `mcp-function`:** copy `scaffold/function/` or
+  `scaffold/mcp-function/`. Each carries `CLAUDE.md`, `README.md`, and an
+  `app/` (`index.ts`, plus `package.json` and its lockfile for
+  `mcp-function`). Take `.gitignore` from the template root.
+- **`container` / `mcp-container`:** there is no `scaffold/container/`, because
+  the container files ARE the template root. Copy those: `Dockerfile`,
+  `.dockerignore`, `lib/`, `app/main.py`, `app/storage.py`, `app/templates/`,
+  `app/requirements.txt`, the root `CLAUDE.md`, `README.md`, and `.gitignore`.
+
+Copy `CLAUDE.md` rather than writing one: the `config-integrity` gate checks
+five required section headers. **The check is type-blind.** Three headers are
+required of every app whatever its type: `## Innovation Platform App`,
+`## Identity (do not build auth)`, and `## What CI enforces`. The remaining two
+are variant pairs, and any member of a pair satisfies the gate:
+`## Persistence (use the storage client)` or `## Persistence (use your
+bindings)`, and `## Container contract` or `## Function contract` (the legacy
+`## Worker contract` still passes too). So a container app carrying the
+function headers passes and the reverse passes as well. Copy your own type's
+version anyway, so the body describes the runtime this app actually has.
 
 **Scaffold by the deployment type you chose in §1b** (fetch `get_app_contract`
 §1.1 for the authoritative function deltas):
