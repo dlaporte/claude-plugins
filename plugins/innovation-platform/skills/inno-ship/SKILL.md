@@ -64,8 +64,11 @@ the admin gate configuration, and then **stops** — the deploy job is
 ref-gated to release tags. The `container` image gates run for `container` and
 `mcp-container` apps; they're skipped for `function` and `mcp-function` apps,
 which have no image to build. Watch with `gh run watch` or the `get_ci_status`
-MCP tool. If a gate fails, follow the failure guidance below and re-push;
-never tag on top of red checks.
+MCP tool. `get_ci_status` returns the run status, each job's conclusion, and
+the run link; its file:line annotations are best effort and normally
+unavailable for a registered app, so diagnose from the run link or
+`gh run view --log-failed` when they are missing. If a gate fails, follow the
+failure guidance below and re-push; never tag on top of red checks.
 
 ## 2. Cut the release — this is the deploy
 
@@ -110,7 +113,7 @@ and cut the next patch tag (a tag is immutable — never force-move one).
 
 | Failing job | Likely cause | Fix via |
 |---|---|---|
-| `config-integrity` | repo contains a platform-injected file that must not exist — `src/gateway/`, `package.json`, `package-lock.json`, `tsconfig.json`, or `wrangler.jsonc` (delete it; the platform injects all of these at build time) — or added a stray `wrangler.json`/`.wrangler/` or a root-level `.env*`/`.npmrc`/`.yarnrc` | `inno-platform-conventions` |
+| `config-integrity` | repo contains a platform-injected file that must not exist (`src/gateway/`, a root `package.json`/`package-lock.json`/`tsconfig.json`, or `wrangler.jsonc`; the platform injects all of these at build time), a stray `wrangler.json`/`wrangler.toml`/`.wrangler/`, a root-level `.env*`/`.npmrc`/`.yarnrc`/`.yarnrc.yml`, or a `scaffold/` directory that survived registration's prune (rejected as soon as `app/.needs-build` is gone) | `inno-platform-conventions` |
 | `secrets` | gitleaks found a committed credential | rotate + scrub history, then set the new value as an app Variable (`set_app_variable`) |
 | `sast` | semgrep OWASP finding in `app/` | `inno-platform-conventions` (escaping, SQL) |
 | `deps` | CVE in `app/requirements.txt` or a prod npm dep | bump the pinned dep |
@@ -121,14 +124,16 @@ and cut the next patch tag (a tag is immutable — never force-move one).
 
 A gate failure is real signal; there is no override or admin bypass. A
 finding that's a false positive gets a **central admin ignore** (see
-`inno-safety-preflight`), never an in-code workaround.
+`inno-safety-preflight`), never an in-code workaround. Gitleaks is the one
+exception: it has no central ignore family, so a false-positive `secrets`
+finding is suppressed with a `.gitleaksignore` entry in the app's own repo.
 
 ### When you're stuck — offer to build a support bundle
 
 If the same gate still fails after **two** genuine root-cause fix attempts,
 stop retrying. Summarize plainly, then **ask permission** to create a
 diagnostics **support bundle** via the **`create_support_bundle`** MCP tool
-(app `name`, plain-language `description`). Give the user the download link
+(`app`, plus a plain-language `description`). Give the user the download link
 it returns and tell them to attach the zip to a ticket in the support
 system — the platform team triages there, not in the platform.
 
