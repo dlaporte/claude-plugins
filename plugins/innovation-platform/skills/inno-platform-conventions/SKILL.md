@@ -30,8 +30,9 @@ Carry on.
 
 The Innovation Platform deploys a Cloudflare Workers gateway (Durable
 Object + Container) in front of your app. The gateway is a platform-pinned
-build input — injected into your repo at build time, not vendored — and
-policed by CI; your job is everything under `app/`. These rules are not
+build input (the deploy job builds it from the promoted platform source, outside
+your checkout; it is never vendored into your repo) and policed by CI; your job
+is everything under `app/`. These rules are not
 style preferences — each one maps to a CI gate that will fail the deploy.
 
 **Fetch the `get_app_contract` MCP tool before writing app code.** It serves
@@ -143,8 +144,10 @@ attacker-influenced input (anyone who can reach the gateway with a valid Okta
 session controls their own email string, and it flows straight into your
 pages), so unescaped interpolation is a stored/reflected-XSS gate: the
 `sast` job's semgrep OWASP scan (which covers the whole repository except the
-platform-owned root `src/`, so your Dockerfile, `.github/workflows/deploy.yml`
-and any root-level script are scanned too) and human review both reject it.
+platform-owned root `src/` and the directories semgrep skips by default at any
+depth, `test/`, `tests/`, `build/`, `dist/`, `vendor/` and `node_modules/`; your
+Dockerfile, `.github/workflows/deploy.yml` and any root-level script are
+scanned too) and human review both reject it.
 Use your stack's auto-escaping template engine. In the Python reference,
 `Jinja2Templates(directory="templates")` autoescapes by default — route all
 dynamic content through
@@ -199,8 +202,15 @@ open-access visitor; any finer role (an editor, a staff view, an in-app admin)
 needs your own role store keyed on `X-Forwarded-User`. On an open
 `mcp-function` or `mcp-container` app the header can be empty for a non-member
 who was just admitted: treat empty as "not a member", never as an error.
+The narrowing reaches an MCP app (`mcp-function`, `mcp-container`)
+immediately, because the platform narrows its groups before the gateway sees
+them. A browser SSO app (`container`, `function`) gets it only at its next
+deploy on the v0.14.3 gateway; until then it still receives every `inno-`
+group the caller holds, so an older live app you are debugging may show extra
+groups.
 
-The gateway also sets three proxy headers you may trust: `X-Forwarded-Host`
+From an app's first deploy on the v0.14.3 gateway, the gateway also sets three
+proxy headers you may trust: `X-Forwarded-Host`
 (the hostname the request arrived on; build links from it),
 `X-Forwarded-Proto` (always `https`) and `X-Forwarded-For` (the client address
 from Cloudflare's edge, removed when unknown). It deletes `Forwarded` and
@@ -386,9 +396,11 @@ Also do not add a competing `wrangler.json` or `wrangler.toml`, or a
 `.wrangler/` directory. Wrangler's config discovery order (`wrangler.json` >
 `wrangler.jsonc` > `wrangler.toml`) means an unvetted `wrangler.json` would
 silently take priority over the platform's injected `wrangler.jsonc` anywhere
-discovery decides which config to read. The deploy job pins `--config
-wrangler.jsonc`, which is a hard override of discovery and of redirects, so it
-is not something a committed file beats. The gate rejection is the independent
+discovery decides which config to read. The deploy job pins every wrangler
+call to an explicit config (`--config "$GW/wrangler.jsonc"` for the gateway,
+which it builds in its own directory outside your checkout, and `--config
+app-worker.jsonc` for a function app's own Worker), which is a hard override of
+discovery and of redirects, so it is not something a committed file beats. The gate rejection is the independent
 belt to that pin: it is what still holds if the pin is ever dropped.
 
 A `scaffold/` directory is rejected too. Registration prunes the template's
