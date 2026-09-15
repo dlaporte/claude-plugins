@@ -15,13 +15,18 @@ gateway). The type is chosen at `register_app`.
 **Repos are user-owned.** An app is created by **registering a GitHub repo you
 own**. You create a repo from the public `inno-template` ("Use this template" →
 your own account or org, so it lands already scaffolded in your ownership),
-install the platform's GitHub App on it, and the `register_app` MCP tool
-provisions the app's resources and binds them to your repo. `register_app` is a
-two-step call: the first returns the App install link (and points at the
-template for creating the repo); after you install the App, the second call
-finishes and returns your `deploy.yml`. There is no platform-owned repo — the
-repo is yours (any account, public or private), and uninstalling the App unlinks
-and stops the app. (The old `create_app` tool has been retired.)
+and the `register_app` MCP tool provisions the app's resources and binds them
+to your repo. `register_app` is a two-call flow with two steps in between: the
+first call returns a proof-of-control file (a path under `.inno-platform/` and
+its exact contents) plus the platform GitHub App's install link (and points at
+the template for creating the repo); you commit that file on the repo's DEFAULT
+branch and install the App on the repo; the second call, with the same
+arguments, verifies both, finishes, and returns your `deploy.yml`. Installing
+the App proves the platform can see the repo; the committed file proves you can
+change it, and registration refuses with `repo_control_unproven` until it is
+there. There is no platform-owned repo: the repo is yours (any account, public
+or private), and uninstalling the App unlinks and stops the app. (The old
+`create_app` tool has been retired.)
 
 ## Install
 
@@ -57,14 +62,15 @@ session once authorization completes; only then are the tools callable.
   `list_user_connections`/`disconnect_user_connection` (connection sessions — yours; an app's for its owner; the fleet for admins),
   `set_app_variable`/`list_app_variables`/`remove_app_variable` (per-app environment variables — owner-or-admin; hidden values are write-only), and the admin-only `rebuild_app`
   (redeploy an app's released code at its live tag), `purge_app`,
-  `list_users`, `query_audit`, `sync_gateway_ref`,
+  `revoke_sessions` (end one person's panel sessions everywhere), `list_users`, `query_audit`, `sync_gateway_ref`,
   `list_admins`, `grant_admin`, `revoke_admin`, `export_platform_backup`,
   `get_platform_logs`).
   There's also a
   web panel with the same capabilities at
   `https://inno-platform.davidlaporte.org`.
-- **`skills/inno-new-app`** — intake -> create a repo from `inno-template` +
-  install the GitHub App -> `register_app` -> clone -> scaffold.
+- **`skills/inno-new-app`**: intake -> create a repo from `inno-template` ->
+  `register_app` (first call) -> clone, commit the proof file, and install the
+  GitHub App -> `register_app` (second call) -> pull -> scaffold.
 - **`skills/inno-migrate-app`** — assess an existing repo (read-only), then
   register and adapt it **in place**, keeping its stack where the gates allow.
 - **`skills/inno-platform-conventions`** — stack policy (Python/Starlette is
@@ -85,10 +91,12 @@ session once authorization completes; only then are the tools callable.
 - **`skills/inno-safety-preflight`** — run the CI security gates, plus a
   guardrails, application-contract, and `get_app_security` (app-code
   authorization/IDOR) review, before pushing.
-- **`skills/inno-ship`** — commit, push to `main`, watch CI, report the live URL.
+- **`skills/inno-ship`**: push, wait for the safety checks, cut the `v*` release
+  tag that deploys, and report the live URL.
 - **`skills/inno-manage-app`** — grant/revoke access, check status and metrics,
   stop, start, or restart an app, read its logs and notifications, set its
-  environment variables / API keys, and build support bundles. Idle apps are
+  environment variables / API keys, and build support bundles (up to 5 per app in
+  any 24 hours). Idle apps are
   warned, stopped, then purged on a config-driven clock; any traffic resets it.
 
 ## How the platform enforces security
@@ -102,13 +110,14 @@ stripping it just means the reusable workflow never runs). A push to `main`
 runs the gates and deploys nothing. Only pushing a `v*` release tag reaches
 the deploy job, and it runs the same gates first. That workflow gates the
 deploy behind config-integrity, secret scanning, SAST, dependency auditing,
-and container/image scanning, all of which must pass before a deploy token is
-even requested. At deploy time, the
+the dependency release-age cooldown, and container/image scanning, all of which
+must pass before a deploy token is even requested, and a container deploy ships
+the exact image those gates scanned, pinned by digest, never a second build. At deploy time, the
 platform's broker independently verifies the GitHub OIDC token's signed
 `job_workflow_ref` claim to confirm the run actually executed the platform's
 exact reusable workflow from `main` before minting a narrowly-scoped
-Cloudflare deploy token; a forked or gate-stripped workflow gets a `403
-deploy_denied` and never reaches Cloudflare. In short: skills guide, CI
+Cloudflare deploy token; a forked or gate-stripped workflow gets a
+`403 deploy_denied:workflow` and never reaches Cloudflare. In short: skills guide, CI
 validates, and the deploy broker enforces provenance — so only code that
 went through the platform's own CI can ever end up live at
 `https://inno-{app}.davidlaporte.org`.
