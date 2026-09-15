@@ -50,6 +50,20 @@ marker just to force a release of an empty scaffold.
 test -f app/.needs-build && echo "BLOCKED: app/.needs-build present — build the app first" || echo "OK: no scaffold marker"
 ```
 
+For a function-shaped app (`function`, `mcp-function`), also confirm the
+lockfile. The push-to-main checks do not reliably catch its absence (the
+dependency audit resolves a throwaway lockfile), but the tag deploy refuses
+without it:
+
+```bash
+if [ -f app/package.json ] && [ ! -f app/package-lock.json ]; then echo "BLOCKED: commit app/package-lock.json (run npm install inside app/)"; else echo "OK: lockfile present, or no app/package.json"; fi
+```
+
+Then run `(cd app && npm ci --ignore-scripts)`: it fails on a lockfile out of
+sync with `app/package.json`, exactly as the deploy does. Every package the
+code imports must be declared in `app/package.json`, because the deploy
+installs nothing at the repo root.
+
 ## 1. Commit, push, and wait for green checks
 
 ```bash
@@ -99,6 +113,11 @@ the tagged commit and then deploys.
 gh run watch    # or poll get_ci_status
 ```
 
+If you poll `get_ci_status` instead, wait at least 30 seconds between calls.
+Platform tools are capped at 60 calls a minute per user, shared by every agent
+that user runs; past the cap every tool answers `rate_limited`. Wait a minute
+and retry; never retry in a tight loop.
+
 ### On failure — fix quietly, report plainly
 
 The user is not necessarily a developer. **Do not paste raw CI logs, stack
@@ -113,14 +132,21 @@ and cut the next patch tag (a tag is immutable — never force-move one).
 
 | Failing job | Likely cause | Fix via |
 |---|---|---|
-| `config-integrity` | repo contains a platform-injected file that must not exist (`src/gateway/`, a root `package.json`/`package-lock.json`/`tsconfig.json`, or `wrangler.jsonc`; the platform injects all of these at build time), a stray `wrangler.json`/`wrangler.toml`/`.wrangler/`, a root-level `.env*`/`.npmrc`/`.yarnrc`/`.yarnrc.yml`, or a `scaffold/` directory that survived registration's prune (rejected as soon as `app/.needs-build` is gone) | `inno-platform-conventions` |
+| `config-integrity` | the repo carries a platform-owned or forbidden path, or `CLAUDE.md` lacks a required header. Forbidden: any file under a repo-root `src/` (the platform owns `src/` and injects its gateway there), a root `package.json`/`package-lock.json`/`tsconfig.json`, a root `wrangler.*` config or `.wrangler/` directory, a `.npmrc` at ANY depth (`app/.npmrc` included), a root `.env*`/`.yarnrc`/`.yarnrc.yml`/`.pnpmfile.cjs`/`pnpm-workspace.yaml`/`bunfig.toml`, or a `scaffold/` directory that survived registration's prune (rejected as soon as `app/.needs-build` is gone). The failure message names each path | move app code under `app/` (for example `app/src/`) and delete the rest; see `inno-platform-conventions` |
 | `secrets` | gitleaks found a committed credential | rotate + scrub history, then set the new value as an app Variable (`set_app_variable`) |
-| `sast` | semgrep OWASP finding in `app/` | `inno-platform-conventions` (escaping, SQL) |
+| `sast` | semgrep OWASP finding anywhere in the repo except the repo-root `src/`: `app/`, the Dockerfile, and root-level scripts or tools all count (the log names the file). A `secrets: inherit` line in `.github/workflows/deploy.yml` (older template copies carry one) is a blocking finding too | `inno-platform-conventions` (escaping, SQL); for `secrets: inherit`, delete the line (the platform workflow needs no caller secrets) |
 | `deps` | CVE in `app/requirements.txt` or a prod npm dep | bump the pinned dep |
 | `dep-age` | a pinned dep is **too new** for the platform's release-age cooldown (`safety.min_release_age_days`; off by default, so this only fires once an admin enabled it), or `app/package.json` ships with no committed, parseable `app/package-lock.json` so there is nothing to date | **not** a version bump — bumping to the newest release makes it worse. Wait out the cooldown, pin an older vetted version, commit `app/package-lock.json`, or ask a platform admin for an app-scope `safety.min_release_age_days: 0` |
-| `container` | Trivy CVE, root user, missing `EXPOSE 8080`, or the image never answered `GET /healthz` | `inno-containerize` |
+| `container` | Trivy CVE, a root user (including `root:<gid>` or `0:<gid>`, or a named `USER` that resolves to uid 0 or has no `/etc/passwd` entry in the image), missing `EXPOSE 8080`, or the image never answered `GET /healthz` | `inno-containerize` |
 | `scaffold-check` | not a failure — it suppresses `deploy` while `app/.needs-build` exists (see §0) | build the app, remove the marker |
 | `deploy` fails with `app_stopped` | the app was stopped by the lifecycle (or deliberately) — **stopped apps cannot be deployed** | `inno-manage-app`: `start_app` first, then re-tag |
+| `deploy` fails with `Missing app/package-lock.json` (function-shaped apps) | `app/package.json` exists but no lockfile is committed; the deploy installs only from a committed lockfile and never resolves ranges fresh | run `npm install` inside `app/`, commit `app/package-lock.json`, push, cut the next patch tag |
+| `deploy` fails in `npm ci`, or the bundle step reports `Could not resolve "<package>"` (function-shaped apps) | the lockfile no longer matches `app/package.json`, or the code imports a package not declared there (the deploy installs nothing at the repo root) | declare the package in `app/package.json`, run `npm install` inside `app/`, commit both files, cut the next patch tag |
+| `deploy` fails with `app_not_deployable` | the app was stopped, or its repo lost the platform GitHub App, while this deploy was starting | if the repo was unlinked, have the user reinstall the GitHub App on it first (re-linking leaves the app stopped); then `start_app` (`inno-manage-app`) and cut the next patch tag |
+| `deploy` fails at finalize with `app_not_deploying` | the app was stopped or purged while the deploy ran; nothing went live | `app_status` to see which; if stopped, `start_app`, then cut the next patch tag |
+| `deploy` fails with `No scanned image recorded` (container apps) | the platform has no record of the image this run's `container` job scanned (that job's best-effort SBOM upload failed, or the record could not be read), so the deploy cannot prove which image passed the gates | re-run the whole tag run (`gh run rerun <run-id>`); if it repeats, stop and offer a support bundle |
+| `deploy` fails with `Image mismatch`, or finalize refuses `image_mismatch` (container apps) | the image handed to the deploy job is not the one the gates scanned; this is never a code bug. Check that `.github/workflows/deploy.yml` still matches `register_app`'s snippet (one `platform` job, nothing that uploads an artifact named `inno-scanned-image`) | restore `deploy.yml` if it drifted, then re-run the whole tag run; if it repeats, stop and offer a support bundle |
+| `policy` fails with `Invalid app name` | the `with: app:` value in `deploy.yml` is not a valid app name | restore `deploy.yml` from `register_app`'s snippet, push, re-tag |
 
 A gate failure is real signal; there is no override or admin bypass. A
 finding that's a false positive gets a **central admin ignore** (see
@@ -136,6 +162,10 @@ diagnostics **support bundle** via the **`create_support_bundle`** MCP tool
 (`app`, plus a plain-language `description`). Give the user the download link
 it returns and tell them to attach the zip to a ticket in the support
 system — the platform team triages there, not in the platform.
+The platform allows 5 support bundles per app per rolling 24 hours; past that,
+`create_support_bundle` answers `bundle_limit_reached`. Each bundle snapshots
+the same 24 hours of logs, so attach the most recent existing bundle instead of
+retrying.
 
 ## 4. On success — provenance, then the live URL
 
@@ -150,6 +180,9 @@ or a fork gets `403 deploy_denied`, as does a repo whose deploy.yml is edited
 to skip gates. There is no code path where removing the gates yields a
 working deploy. The release tag is recorded on the deployment — the platform
 shows it, and the safety sweep's auto-respin rebuilds at exactly that tag.
+For a container app the deploy also refuses unless the image it pushes is
+exactly the one the `container` job scanned (checked by image id, then pinned
+by digest), so what the gates approved is what runs.
 
 On success, report:
 
@@ -215,5 +248,6 @@ a static 200. Don't treat that first probe as authoritative — it's not real
 signal yet. `restart_app` does **not** re-fire the probe or update the
 deployment record (it only redeploys the current worker version), so it will
 not clear a stale-looking `unhealthy`. To get a fresh health signal, re-run
-the deploy (e.g. `gh run rerun` on the tag run) or wait for the platform's
-daily probe.
+the whole tag run (`gh run rerun <run-id>`, without `--job`: a container deploy
+needs the image that same run's `container` job scanned, and that image is kept
+for only one day) or wait for the platform's daily probe.
