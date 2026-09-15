@@ -59,10 +59,23 @@ without it:
 if [ -f app/package.json ] && [ ! -f app/package-lock.json ]; then echo "BLOCKED: commit app/package-lock.json (run npm install inside app/)"; else echo "OK: lockfile present, or no app/package.json"; fi
 ```
 
-Then run `(cd app && npm ci --ignore-scripts)`: it fails on a lockfile out of
-sync with `app/package.json`, exactly as the deploy does. Every package the
-code imports must be declared in `app/package.json`, because the deploy
-installs nothing at the repo root.
+Then, only when `app/package.json` exists, install from the lockfile exactly as
+the deploy does: `npm ci` fails on a lockfile out of sync with
+`app/package.json`. A function app with no `app/package.json` has no
+dependencies and nothing to install; do not create one to satisfy npm. The
+install creates `app/node_modules/`, which must be gitignored before §1's
+`git add -A` (template repos already ignore it; a migrated repo may not):
+
+```bash
+if [ -f app/package.json ]; then
+  (cd app && npm ci --ignore-scripts) && { git check-ignore -q app/node_modules/ || echo "BLOCKED: add node_modules/ to .gitignore before git add -A"; }
+else
+  echo "OK: no app/package.json, so nothing to install"
+fi
+```
+
+Every package the code imports must be declared in `app/package.json`, because
+the deploy installs nothing at the repo root.
 
 ## 1. Commit, push, and wait for green checks
 
@@ -129,12 +142,15 @@ fluency. Read the logs yourself
 the user, one plain sentence: "The security check found an out-of-date
 dependency — I'm updating it and re-shipping." Fix the **root cause**, push,
 and cut the next patch tag (a tag is immutable — never force-move one).
+The exception is a fix that moves or deletes the user's own files or edits
+their workflow config: where a row below says to ask, ask before changing
+anything.
 
 | Failing job | Likely cause | Fix via |
 |---|---|---|
-| `config-integrity` | the repo carries a platform-owned or forbidden path, or `CLAUDE.md` lacks a required header. Forbidden: any file under a repo-root `src/` (the platform owns `src/` and injects its gateway there), a root `package.json`/`package-lock.json`/`tsconfig.json`, a root `wrangler.*` config or `.wrangler/` directory, a `.npmrc` at ANY depth (`app/.npmrc` included), a root `.env*`/`.yarnrc`/`.yarnrc.yml`/`.pnpmfile.cjs`/`pnpm-workspace.yaml`/`bunfig.toml`, or a `scaffold/` directory that survived registration's prune (rejected as soon as `app/.needs-build` is gone). The failure message names each path | move app code under `app/` (for example `app/src/`) and delete the rest; see `inno-platform-conventions` |
+| `config-integrity` | the repo carries a platform-owned or forbidden path, or `CLAUDE.md` lacks a required header. Forbidden: any file under a repo-root `src/` (the platform owns `src/`: its gateway was bundled from there, and the deploy wipes it), a root `package.json`/`package-lock.json`/`tsconfig.json`, a root `wrangler.*` config or `.wrangler/` directory, a `.npmrc` at ANY depth (`app/.npmrc` included), a root `.env*`/`.yarnrc`/`.yarnrc.yml`/`.pnpmfile.cjs`/`pnpm-workspace.yaml`/`bunfig.toml`, or a `scaffold/` directory that survived registration's prune (rejected as soon as `app/.needs-build` is gone). The failure message names each path | **stop and ask; this is not a quiet fix.** Files under `src/` and a root `package.json` can be the user's own code: show the user every flagged path first. Only with their okay, move author code and manifests under `app/` (for example `app/src/`), update the Dockerfile `COPY` paths and the code's imports to match, and delete only what they confirm is not theirs (such as `src/gateway/` or `src/node_modules/`). Never move or delete author code unprompted before a tagged deploy. See `inno-platform-conventions` |
 | `secrets` | gitleaks found a committed credential | rotate + scrub history, then set the new value as an app Variable (`set_app_variable`) |
-| `sast` | semgrep OWASP finding anywhere in the repo except the repo-root `src/`: `app/`, the Dockerfile, and root-level scripts or tools all count (the log names the file). A `secrets: inherit` line in `.github/workflows/deploy.yml` (older template copies carry one) is a blocking finding too | `inno-platform-conventions` (escaping, SQL); for `secrets: inherit`, delete the line (the platform workflow needs no caller secrets) |
+| `sast` | semgrep OWASP finding anywhere in the repo except the repo-root `src/` and semgrep's default-ignored directories (`test/`, `tests/`, `build/`, `dist/`, `vendor/`, `node_modules/`, at any depth): `app/`, the Dockerfile, workflow files, and root-level scripts or tools all count (the log names the file). A `secrets: inherit` line in `.github/workflows/deploy.yml` (older template copies carry one) is a blocking finding too | `inno-platform-conventions` (escaping, SQL); for `secrets: inherit`, tell the user and, with their okay, delete the line (the platform workflow needs no caller secrets) |
 | `deps` | CVE in `app/requirements.txt` or a prod npm dep | bump the pinned dep |
 | `dep-age` | a pinned dep is **too new** for the platform's release-age cooldown (`safety.min_release_age_days`; off by default, so this only fires once an admin enabled it), or `app/package.json` ships with no committed, parseable `app/package-lock.json` so there is nothing to date | **not** a version bump — bumping to the newest release makes it worse. Wait out the cooldown, pin an older vetted version, commit `app/package-lock.json`, or ask a platform admin for an app-scope `safety.min_release_age_days: 0` |
 | `container` | Trivy CVE, a root user (including `root:<gid>` or `0:<gid>`, or a named `USER` that resolves to uid 0 or has no `/etc/passwd` entry in the image), missing `EXPOSE 8080`, or the image never answered `GET /healthz` | `inno-containerize` |
