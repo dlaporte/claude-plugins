@@ -1,6 +1,6 @@
 ---
 name: inno-new-app
-description: Use when the user wants to create a new app on the Innovation Platform ("new app", "create an app", "start a project on inno-platform"). Guides intake, creates a repo from the inno-template in the user's own account, has them install the platform GitHub App, calls register_app to provision + bind it, then scaffolds app/ per platform-conventions.
+description: Use when the user wants to create a new app on the Innovation Platform ("new app", "create an app", "start a project on inno-platform"). Guides intake, creates a repo from the inno-template in the user's own account, calls register_app, commits the proof-of-control file it names and has them install the platform GitHub App, calls register_app again to provision + bind it, then scaffolds app/ per platform-conventions.
 ---
 
 # inno-new-app
@@ -29,8 +29,9 @@ If there is no `Plugin:` line at all, the gate is not armed on this platform.
 Carry on.
 
 Creates a new Innovation Platform app end to end: intake -> the user creates a
-repo **they own** from the platform template -> install the platform GitHub App
--> `register_app` provisions + binds it -> clone + scaffold. Requires the
+repo **they own** from the platform template -> `register_app` (first call)
+-> commit the proof-of-control file it names + install the platform GitHub App
+-> `register_app` (second call) provisions + binds it -> pull + scaffold. Requires the
 `inno-platform` MCP server (ships with this plugin's `.mcp.json`) to be
 connected. The first call to any `inno-platform` tool triggers an Okta browser
 login — that's expected, not an error; wait for it to complete. **If the
@@ -48,9 +49,9 @@ never creates a `dlaporte/inno-{name}` repo on the user's behalf.
 **What is genuinely user-only.** Exactly two steps in this flow require the user
 personally: **installing the platform GitHub App** (§3 — a third-party token
 cannot install a GitHub App on someone's account) and any **browser SSO login**.
-Everything else — creating the repo, cloning, scaffolding, committing, pushing,
-tagging, setting variables — you can do with the user's own authenticated CLI
-and MCP tools. Never tell the user something "can't be done from here" unless it
+Everything else (creating the repo, committing the registration proof file,
+cloning, scaffolding, committing, pushing, tagging, setting variables) you can
+do with the user's own authenticated CLI and MCP tools. Never tell the user something "can't be done from here" unless it
 is one of those two. Where the reason is judgment rather than capability, say
 which: setting a *secret* variable is a **should not** (it would put the secret
 in the conversation transcript), not a **cannot**.
@@ -84,7 +85,11 @@ user-facing sentence in this flow.
    confirm a name without checking it first.** Call the **`check_name`** MCP
    tool (read-only; provisions nothing) on the candidate. Only proceed with a
    name it reports as **available**. If it comes back in-use, reserved, or
-   invalid, ask the user for a different one; if it's the caller's *own*
+   invalid, ask the user for a different one. If it says the name **was
+   recently purged and is held until** a UTC time, it belonged to an app purged
+   within the last seven days and nobody, admins included, can register it
+   before then (`register_app` refuses it as `name_quarantined`): offer a
+   different name or wait. If it's the caller's *own*
    existing app, tell them that (a stopped app is brought back with
    `start_app`, not by re-registering it). `list_apps` shows the caller's own
    apps, and every app on the platform only when the caller is a platform
@@ -104,7 +109,8 @@ user-facing sentence in this flow.
    from the template (§2). The **owner is the user's** account or org, and the
    repo name is **their choice** — suggest `inno-{name}` for familiarity, but it
    is not required and can be anything. The repo may be public or private.
-3. **One-line purpose** — becomes the app's `description`.
+3. **One-line purpose**: becomes the app's `description` (at most 500
+   characters; the tool schema rejects a longer one).
 4. **Initial members' emails** (optional, can be empty) — Okta emails to grant
    access alongside the owner. The list can be added to later with the
    `inno-manage-app` skill's `grant_access`.
@@ -249,7 +255,12 @@ The written design covers, at minimum:
 - **Deployment type** and why (and the Connection constraint if §1 flagged it)
 - **Data model** — the tables and files it will store
 - **Routes / pages** — what the user can actually open and do
-- **Access model** — who can see what, and who can edit
+- **Access model**: who can see what, and who can edit. The platform manages
+  only membership: `X-Forwarded-Groups` carries at most this app's own
+  `inno-{name}-users` (a member) and `inno-{name}-open` (a caller who reached an
+  open app), never the platform admin group or any other app's groups. Any
+  finer role (an editor, an admin view) needs the app's own role table keyed on
+  `X-Forwarded-User`; do not design around reading other groups from the header.
 - **Deployment pattern and stack**
 - **Name** (confirmed available via `check_name`) and the exact hostname it
   produces
@@ -303,10 +314,12 @@ Note the resulting `owner/repo` slug — that's the `repo` argument for
 
 ## 3. Register the app (two calls)
 
-`register_app` is a **two-step** flow with an App install in between. Call it,
-give the user the link it returns, wait for them to install, then call it again.
+`register_app` is a **two-step** flow with two things in between: committing a
+proof-of-control file to the repo, and the App install. Call it, commit the
+proof file it names, give the user the install link, wait for them to install,
+then call it again.
 
-### Call 1 — start registration, get the install link
+### Call 1: start registration, commit the proof file, get the install link
 
 ```
 register_app({ app, repo, description, type, members, accept_guardrails: true, connections })
@@ -334,24 +347,63 @@ register_app({ app, repo, description, type, members, accept_guardrails: true, c
   badly-shaped name is noted in the response and never fails the registration.
 
 The first call returns text beginning **`Registration started for "{name}" ←
-{repo}.`** It includes (a) the template link again in case the repo doesn't
-exist yet, and (b) an **App install link** (`https://github.com/apps/…/installations/new?state=…`).
-**Give the user the install link verbatim** and ask them to:
+{repo}.`** It carries, in this order: (a) the template link again, in case the
+repo doesn't exist yet; (b) a **proof-of-control file**: a `path:` under
+`.inno-platform/` and the exact `contents:` (a 64-character hex string), with a
+sample command; and (c) an **App install link**
+(`https://github.com/apps/…/installations/new?state=…`).
+
+**Commit the proof file first.** Installing the GitHub App proves the platform
+can SEE the repo; this file proves the caller can CHANGE it, and nothing binds
+until it checks out. Use the path and contents exactly as the response prints
+them; never derive or shorten them. Commit it on the repository's **default
+branch** (`main` for a template copy) and push:
+
+```bash
+git clone <the user's repo>   # skip if §2 already cloned it; wait until origin/main exists (template copying is asynchronous)
+cd <repo>
+mkdir -p .inno-platform
+printf '%s\n' '<contents from the response>' > '<path from the response>'
+git add '<path from the response>'
+git commit -m "platform registration proof"
+git push origin HEAD
+```
+
+This is not a user-only step: do it with the user's own authenticated `git` or
+`gh`. Only when you have no write credential for the repo, walk the user through
+GitHub's web UI (**Add file** > **Create new file**, the exact path as the file
+name, the exact contents, committed directly to the default branch).
+Surrounding whitespace (such as the newline `printf` adds) is tolerated;
+everything else must match exactly. Leave the file in place: call 2 re-checks it
+immediately before provisioning. After that nothing reads it again, and keeping
+it is harmless. The push may start a CI run in the repo; it deploys nothing (the
+app isn't built yet), so there is nothing to act on in its result.
+
+**Then give the user the install link verbatim** and ask them to:
 
 1. Open it, and **install the platform GitHub App** on the account/org that owns
-   `repo`, granting it access to that repository (repo-only access is fine — they
-   can scope it to just this repo).
-2. Save the configuration; GitHub redirects them to the platform's verification
-   page confirming the repo is verified.
+   `repo`, granting it access to that repository (repo-only access is fine; they
+   can scope it to just this repo). If the App is already installed there with
+   access to this repo (including "All repositories"), they can skip the link:
+   call 2 verifies access directly.
+2. Save the configuration. GitHub redirects them to the platform's verification
+   page, which says **Repository verified** once the App can reach the repo AND
+   the proof file matches. If it says **Proof file not found**, the file is
+   missing, on the wrong branch, or has the wrong contents: fix it, then reopen
+   the link or simply run call 2 (it re-checks without the redirect).
 
-The link expires in 24 hours.
+The link expires in 24 hours. Re-running `register_app` while the registration
+is still pending reuses it, with the same proof path; once it has expired, the
+response names a NEW proof path, and that new file is the one to commit.
 
-### Call 2 — finish provisioning, get the deploy.yml
+### Call 2: finish provisioning, get the deploy.yml
 
-Once the user confirms they've installed the App, call `register_app` **again
-with the same arguments**. This finishes the job server-side (prunes the
-template scaffold to the chosen type via the installation token, provisions the
-Okta group + D1 + R2, and binds the repo). It returns text beginning **`App
+Once the proof file is pushed to the default branch AND the user confirms
+they've installed the App (or the App already covered the repo), call
+`register_app` **again with the same arguments**. This re-checks the proof file,
+then finishes the job server-side (prunes the template scaffold to the chosen
+type in a new commit on `main`, pushed via the installation token, provisions
+the Okta group + D1 + R2, and binds the repo). It returns text beginning **`App
 "{name}" registered from {repo}`** and containing:
 
 - `URL (after first deploy): https://inno-{name}.<platform domain>` — **quote
@@ -373,12 +425,19 @@ Okta group + D1 + R2, and binds the repo). It returns text beginning **`App
   repo name, so write it in every case. This is a real step, not a hands-off
   one. Keep the
   `workflow_dispatch` trigger (the platform re-dispatches it for security
-  respins).
+  respins). The snippet has no `secrets:` line, and the file must not gain one:
+  `secrets: inherit` is a blocking finding for the `sast` gate, and the
+  platform workflow needs no caller secrets.
 
 ### Reading register_app's responses — branch, don't assume
 
-- **`Registration started …`** — call 1 succeeded; hand over the install link
-  and wait (above).
+- **`Registration started …`** on call 1: commit the proof file, hand over the
+  install link, and wait (above). The same text on call 2 means the platform
+  still cannot see the repo through the App (not installed yet, installed
+  without access to this repo, or a transient GitHub failure), or the 24-hour
+  registration expired. Compare the proof `path:` with the one you committed:
+  if it changed, commit the new file. Then have the user install the App on the
+  repo (or widen its repository access) and call again.
 - **`App "{name}" registered …`** — call 2 succeeded; proceed to §4.
 - **`guardrails_not_accepted`** — you didn't pass `accept_guardrails: true`; do
   the §1a review, then pass it.
@@ -392,6 +451,33 @@ Okta group + D1 + R2, and binds the repo). It returns text beginning **`App
   before it ever gets this far.
 - **`invalid_repo`** — `repo` wasn't a valid `owner/repo` slug (you passed a URL
   or a bare name); fix it.
+- **`repo_control_unproven`**: the App can reach the repo, but the
+  proof-of-control file is missing from its default branch or its contents
+  don't match. The error text repeats the exact path and contents: commit that
+  file (call 1 above) and call again. It can come back at call 2 even after the
+  setup page said verified, because call 2 re-checks the file right before
+  provisioning, so never delete it early.
+- **`name_quarantined`**: the name belonged to an app purged within the last
+  seven days and is held until the UTC time the message names. There is no
+  admin bypass: pick another name (check it with `check_name`), or wait until
+  that time.
+- **`repo_unreachable`**: between verification and call 2 the platform GitHub
+  App lost access to the repo. Have the user reinstall the App on the repo, then
+  call again.
+- **`repo_identity_changed`**: the repo was renamed, transferred to another
+  account, or deleted and recreated after it was verified. Confirm the repo's
+  current `owner/repo` slug with the user and call again with it; a new slug
+  starts a fresh registration with a new proof file and a new install link
+  (have the user open that link and save). The stale verification can keep
+  answering this (or `Registration started …` for the new slug when the App
+  was already installed) for up to about a day; if it repeats, tell the user
+  registration can finish once that window passes rather than calling in a
+  loop.
+- **`invalid_member_email`**: one of `members` is not a plain email address.
+  Fix or drop it and call again.
+- **`upstream_error`** (could not re-check the repository with GitHub): a
+  transient GitHub failure during call 2's re-check. Wait a moment and call
+  again with the same arguments.
 - **`too_many_members`** — `members` held more than 50 emails. Register with a
   shorter list and add the rest afterward with `grant_access`.
 - **`app_limit_reached`** — the user is at their active-app limit; resolve per
@@ -422,12 +508,21 @@ Okta group + D1 + R2, and binds the repo). It returns text beginning **`App
   registration; a platform admin must re-enable it (`registration.enabled`).
 - Any other non-empty error — surface it verbatim rather than retrying blindly.
 
-## 4. Clone and scaffold
+## 4. Pull and scaffold
+
+You cloned the repo in §3 to commit the proof file. Call 2 then pushed the
+platform's scaffold prune to `main` as a new commit from the server side, so
+bring the clone up to date before touching anything (a push from the stale
+clone would be rejected as non-fast-forward):
 
 ```bash
-git clone <the user's repo>     # e.g. git@github.com:<owner>/<repo>.git
 cd <repo>
+git pull --ff-only   # picks up the registration's "scaffold: <type>" commit, if it applied one
 ```
+
+If the proof file was committed through GitHub's web UI instead, clone now:
+`git clone <the user's repo>` (e.g. `git@github.com:<owner>/<repo>.git`), then
+`cd <repo>`.
 
 After call 2, the repo has been **pruned to the deployment type you chose** —
 the template carries every scaffold and the platform rewrote the repo at
@@ -442,9 +537,12 @@ MCP-specific overlay of its own, so pruning `strip`s only the `scaffold/`
 subtree and leaves the container root in place (see the bullet below; you adapt
 `app/main.py` into your MCP server and **keep `app/storage.py`**, not write from
 scratch). Everything
-else — `src/gateway/`, `package.json`, `package-lock.json`, `tsconfig.json`,
-and the `wrangler.jsonc` variants — is injected by the platform at build time
-and is NOT in the repo; don't create any of them. Load the
+else is platform-owned and must NOT be in the repo: all of a repo-root `src/`
+(the platform injects its gateway there, and the `config-integrity` gate fails
+a repo carrying any file under it; an `app/src/` of your own is fine), the
+repo-root `package.json`, `package-lock.json` and `tsconfig.json`, any
+`wrangler.*` config, and a `.npmrc` at any depth (including `app/.npmrc`).
+Don't create any of them. Load the
 `inno-platform-conventions` skill before writing any application code (stack
 policy, storage, identity, the do-not-touch file list), and — for a container
 or mcp-container app — the `inno-containerize` skill before editing the
@@ -487,8 +585,16 @@ version anyway, so the body describes the runtime this app actually has.
   already Access-verified — read identity from `request.headers`
   (`X-Forwarded-User` / `X-Forwarded-Groups`), serve **`GET /healthz` as a
   route** (200), and reach storage through the app's **own bindings** —
-  `env.DATA` (D1), `env.FILES` (R2) — not `storage.internal`. Declare any npm
-  deps in a **non-root** `app/package.json`. The repo is already function-shaped
+  `env.DATA` (D1), `env.FILES` (R2) — not `storage.internal`. Declare every
+  npm package the code imports in a **non-root** `app/package.json`, and commit
+  the `app/package-lock.json` that `npm install` (run inside `app/`) produces,
+  kept in sync with `package.json`. The deploy installs with
+  `npm ci --ignore-scripts` inside `app/` and fails without a lockfile or with a
+  stale one, and it installs nothing at the repo root, so an import not declared
+  in `app/package.json` fails to bundle (for example
+  `Could not resolve "hono"`). The push-to-main safety checks do not catch a
+  missing lockfile (the dependency audit generates a throwaway one); only the
+  tag deploy fails. The repo is already function-shaped
   (no Dockerfile, no Python reference — the CI image gates are skipped for this
   type); extend `app/index.ts` rather than re-scaffolding. Never interpolate
   user data into hand-built HTML — even escaped, the SAST gate blocks it; return
@@ -501,7 +607,9 @@ version anyway, so the body describes the runtime this app actually has.
   nothing in this type's scaffold provides it for you.
 - **`mcp-function` app:** function-shaped — everything in the function bullet applies
   (entry `app/index.ts`, identity headers, `GET /healthz` as a route,
-  `env.DATA`/`env.FILES`, non-root `app/package.json`, no injected files).
+  `env.DATA`/`env.FILES`, non-root `app/package.json` with its committed
+  `app/package-lock.json` kept in sync (the scaffold ships both), no injected
+  files).
   Deltas (authoritative: `get_app_contract` §1.2): serve the MCP **Streamable
   HTTP** transport at `POST /mcp` using the MCP TypeScript SDK's
   `WebStandardStreamableHTTPServerTransport`, constructed **without a
@@ -559,6 +667,9 @@ handler — route on the URL, read identity from the request headers, read/write
   a common runtime 500, see `inno-containerize`).
 - Add pinned dependencies to the stack's manifest (`app/requirements.txt` for
   the Python container; `app/package.json` for a function or a Node container).
+  For a function or mcp-function app, also run `npm install` inside `app/` and
+  commit the updated `app/package-lock.json` in the same commit (see the
+  function bullet above).
 
 **Rewrite `README.md` — this is required, not optional.** The template's README
 is inno-template's own ("Use this template…", template internals) and describes
@@ -575,8 +686,9 @@ Once scaffolding is in place, tell the user the app was registered (their repo +
 future URL — for an **mcp-function** or **mcp-container** app, the `/mcp`
 endpoint their MCP client will use), and that the next steps are: write the
 app, run
-`inno-safety-preflight` locally, then `inno-ship`. Don't push anything yet unless
-asked — `inno-new-app`'s job is registration + scaffolding, not deploying.
+`inno-safety-preflight` locally, then `inno-ship`. Beyond the registration
+proof file (§3), don't push anything yet unless asked: `inno-new-app`'s job is
+registration + scaffolding, not deploying.
 
 If §1 flagged that the app needs to reach another service as each person using
 it, do that setup now, before writing the rest of the app: run the
