@@ -272,7 +272,9 @@ returns it to the named member list (open: false). Owner or admin only.
   access, not just current members.
 - While an app is open, a person who is not a member reaches it carrying only
   `inno-{app}-open` in `X-Forwarded-Groups` (the header never carries the
-  platform admin group or other apps' groups). App code that admits only
+  platform admin group or other apps' groups: immediately for an MCP app, and
+  for a browser SSO app from its next deploy on platform v0.14.3). App code
+  that admits only
   `inno-{app}-users` will refuse them, so check the app before promising that
   opening it lets everyone in.
 - Closing an app that an open consumer app reads through a data link revokes
