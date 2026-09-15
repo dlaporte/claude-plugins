@@ -83,8 +83,9 @@ changed in between: pin the base to the digest `get_app_contract` serves.
 
    Everything else is refused: `root` or any uid 0, an unset `USER`, a signed
    uid (`+0`), an empty user part (`:1000`), a name missing from
-   `/etc/passwd`, a name on more than one line or on a line with leading or
-   trailing blanks, a uid field that is not a plain number, a uid above
+   `/etc/passwd`, a name on more than one line (or on a line with leading
+   blanks, or with blanks inside the name field), a uid field that is not a
+   plain number, a uid above
    2147483647, and a named user in an image with no readable `/etc/passwd`.
    The platform enforces this exact rule from platform v0.14.4 (contract
    version 13); earlier releases refuse a subset of these. On `scratch` or any
@@ -190,7 +191,9 @@ never runs the image to resolve the user: it reads `/etc/passwd` straight off
 the image, maps NUL bytes before reading, and hands the name to `awk` through
 the environment. It has no comments and no `!` outside single quotes, so it
 pastes cleanly into bash, zsh, or an interactive zsh. The last three commands
-are the `/healthz` smoke gate in one shot.
+are the `/healthz` smoke gate in one shot. If `docker build` fails, fix that
+first: the checks below read the last image that built, and with no image at
+all they print a misleading root `FAIL`.
 
 ```bash
 docker build -t app-under-test .
@@ -222,7 +225,7 @@ if [ -z "$why" ]; then
                     else print field }')"
             case "$uid" in
               none) why="matches no /etc/passwd entry" ;;
-              ambiguous) why="matches /etc/passwd ambiguously (more than one line, or a line with leading or trailing blanks)" ;;
+              ambiguous) why="matches /etc/passwd ambiguously (on more than one line, or on a line with leading blanks, or with blanks inside the name field)" ;;
               malformed) why="matches an /etc/passwd line whose uid field is not a plain number" ;;
             esac
           fi ;;
