@@ -71,8 +71,9 @@ changed in between: pin the base to the digest `get_app_contract` serves.
    gateway forwards traffic there regardless. Binding `127.0.0.1` is the
    classic "works locally, unreachable in the container" bug.
 2. **Non-root `USER` before `CMD`**: the gate reads `Config.User` and refuses
-   an empty value, `root`, `0`, and any `root:<group>` or `0:<group>` form.
-   When `USER` names an account rather than a number, the gate resolves it
+   an empty value, `root`, `0`, and any `root:<group>` or `0:<group>` form,
+   and it reads uids as numbers, so a zero-padded uid (`00`, `0000:0`) is root
+   too. When `USER` names an account rather than a number, the gate resolves it
    against the image's own `/etc/passwd` (copied out of the image, never run)
    and refuses a name that maps to uid 0, a name with no entry there, and an
    image with no readable `/etc/passwd`. On `scratch` or any base without a
@@ -174,7 +175,9 @@ CMD ["/server"]                # must bind 0.0.0.0:8080 and serve /healthz
 ```bash
 docker build -t app-under-test .
 # Non-root, decided the way the CI gate decides it: refuse empty/root/0/root:*/0:*,
-# and resolve a named USER against the image's own /etc/passwd (never running it).
+# resolve a named USER against the image's own /etc/passwd (never running it),
+# and strip leading zeros from the uid (as a string, not shell arithmetic) before
+# refusing uid 0.
 user="$(docker inspect --format='{{.Config.User}}' app-under-test)"
 case "$user" in
   0|root|0:*|root:*|"") uid=0 ;;
@@ -187,7 +190,8 @@ case "$user" in
       *) uid="${user%%:*}" ;;
     esac ;;
 esac
-if [ -n "$uid" ] && [ "$uid" != "0" ]; then echo "OK: User='$user' runs as uid $uid"; else echo "FAIL: User='$user' is root or has no /etc/passwd entry"; fi
+uid_norm="$(printf '%s' "$uid" | sed 's/^0*//')"; [ -z "$uid_norm" ] && uid_norm=0
+if [ -n "$uid" ] && [ "$uid_norm" != "0" ]; then echo "OK: User='$user' runs as uid $uid"; else echo "FAIL: User='$user' is root or has no /etc/passwd entry"; fi
 docker inspect --format='{{json .Config.ExposedPorts}}' app-under-test | grep '8080/tcp'
 docker run -d -p 8080:8080 --name app-under-test-run app-under-test
 curl -sf http://localhost:8080/healthz                           # the CI smoke gate, in one shot
