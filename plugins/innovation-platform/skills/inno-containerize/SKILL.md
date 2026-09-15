@@ -71,9 +71,10 @@ changed in between: pin the base to the digest `get_app_contract` serves.
    gateway forwards traffic there regardless. Binding `127.0.0.1` is the
    classic "works locally, unreachable in the container" bug.
 2. **Non-root `USER` before `CMD`**: the gate reads `Config.User` and refuses
-   an empty value, `root`, `0`, and any `root:<group>` or `0:<group>` form,
-   and it reads uids as numbers, so a zero-padded uid (`00`, `0000:0`) is root
-   too. When `USER` names an account rather than a number, the gate resolves it
+   an empty value, `root`, `0`, and any `root:<group>` or `0:<group>` form.
+   A zero-padded uid (`00`, `0000:0`) is root too: Docker runs it as uid 0, and
+   the gate refuses it from platform v0.14.4. When `USER` names an account
+   rather than a number, the gate resolves it
    against the image's own `/etc/passwd` (copied out of the image, never run)
    and refuses a name that maps to uid 0, a name with no entry there, and an
    image with no readable `/etc/passwd`. On `scratch` or any base without a
@@ -112,9 +113,10 @@ built in CI from the repo, so a baked-in value is a committed one, and
 gitleaks fails the build.
 
 **The Dockerfile is scanned too.** The `sast` gate runs semgrep over the whole
-repository except the repo-root `src/`, because the docker build context is
-the repo root: the Dockerfile and any root-level file it `COPY`s are checked,
-not only `app/`.
+repository except the repo-root `src/` and semgrep's default-ignored
+directories (`test/`, `tests/`, `build/`, `dist/`, `vendor/`, `node_modules/`,
+at any depth), because the docker build context is the repo root: the
+Dockerfile and any root-level file it `COPY`s are checked, not only `app/`.
 
 ## Reference recipe — Python (the platform's tested stack)
 
@@ -177,13 +179,13 @@ docker build -t app-under-test .
 # Non-root, decided the way the CI gate decides it: refuse empty/root/0/root:*/0:*,
 # resolve a named USER against the image's own /etc/passwd (never running it),
 # and strip leading zeros from the uid (as a string, not shell arithmetic) before
-# refusing uid 0.
+# refusing uid 0 (CI refuses zero-padded uids from platform v0.14.4).
 user="$(docker inspect --format='{{.Config.User}}' app-under-test)"
 case "$user" in
   0|root|0:*|root:*|"") uid=0 ;;
   *)
     case "${user%%:*}" in
-      *[!0-9]*|"")
+      *[^0-9]*|"")
         docker rm -f uidprobe >/dev/null 2>&1; docker create --name uidprobe app-under-test >/dev/null
         uid="$(docker cp uidprobe:/etc/passwd - 2>/dev/null | tar -xO 2>/dev/null | awk -F: -v u="${user%%:*}" '$1 == u { print $3; exit }')"
         docker rm -f uidprobe >/dev/null ;;
