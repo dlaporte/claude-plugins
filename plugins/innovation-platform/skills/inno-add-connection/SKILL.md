@@ -41,6 +41,13 @@ Requires the `inno-platform` MCP server (ships with this plugin's `.mcp.json`).
 If this is the first call against it this session, expect a browser Okta
 login — that's expected, not an error.
 
+Every platform tool call counts against one budget of **60 calls a minute per
+signed-in person**, shared by every agent and session they run. Past it, any
+tool answers `rate_limited`: wait a full minute, then retry once. This skill
+never needs anywhere near that many calls, so hitting it means something is
+looping (or several subagents are calling at once); stop and reconsider rather
+than retrying.
+
 **Speak the user's language.** Match the rest of this plugin: use plain terms
 with the user — "connect your app to {backend} as each person," "sign in to
 {backend} once," "a token you create in your {backend} account and paste in."
@@ -229,9 +236,12 @@ So before you call it, **write into your visible reply** what you are about to
 write and what it touches — the same rule `inno-new-app` §1b and
 `inno-migrate-app` Phase 1 apply to `register_app`:
 
-- The `app` and `connection` name, and — checked with **`list_connections`
-  first** — whether a connection by that name **already exists**. If it does,
-  say plainly that this replaces the existing definition, and what changes.
+- The `app` and `connection` name, and, checked with **`list_connections`
+  first**, whether a connection by that name **already exists**. If it does,
+  say plainly that this replaces the existing definition and what changes.
+  Read its `sinks=` field (the addresses credentials actually go to today) and
+  `connected=` count (how many people hold a credential that a change of
+  address would delete) rather than trusting its `label`.
 - The backend this points at (its address in plain terms) and the strategy:
   a token the user pastes, signing in on the backend's own site, or pasting
   their own API client ID + secret pair.
@@ -240,8 +250,10 @@ write and what it touches — the same rule `inno-new-app` §1b and
   definition-level secret to send, and the tool refuses one.
 - The blast radius, in the user's terms: a brand-new connection affects nobody
   until people connect; **replacing** an existing one affects everyone already
-  connected through it, and a changed strategy or backend address means they
-  will have to disconnect and reconnect.
+  connected through it. A changed strategy or backend address makes the
+  platform delete every user's stored credential and saved consent for it and
+  notify each connected user, so they all have to connect again (and are shown
+  the new destination first).
 
 Then stop and get an explicit yes. Don't fold it into the tool-approval prompt
 — the user cannot approve what they have not seen.
@@ -261,10 +273,21 @@ Then stop and get an explicit yes. Don't fold it into the tool-approval prompt
 > response to report how many credentials it invalidated. Re-supplying an
 > unchanged config is free — the cascade compares values, not calls.
 >
-> Users are shown the destination **hostname** on the connect page, so an
-> endpoint that doesn't visibly match the backend they expect will (rightly)
-> make them stop. Endpoints are also recorded in the audit log and visible to
-> platform admins fleet-wide.
+> Users are shown the destination **hostname** before their credential goes
+> anywhere, so an endpoint that doesn't visibly match the backend they expect
+> will (rightly) make them stop. The paste forms (`secret_form`,
+> `oauth2_client_creds`) name it on every visit. For `oauth2_code` the
+> disclosure page shows on every connect under the platform default
+> `connections.consent: always`, and until the user's first successful connect
+> under `remember` or `never` (the two now behave identically). A change to the
+> strategy or to any credential endpoint clears every user's saved consent,
+> so everyone sees the new destination before reaching it, and anyone in the
+> middle of connecting is stopped with "This connection changed" and has to
+> start again. Endpoints are also recorded in the audit log and visible to
+> platform admins fleet-wide, and a credential host that no connection on the
+> platform was using before raises a notification to the platform admins.
+> That is routine oversight, not a fault: a legitimate new backend simply
+> shows up in their feed once.
 
 Call the `set_app_connection` MCP tool:
 
@@ -307,7 +330,7 @@ private address is not caught, so read the endpoint you were handed rather than
 treating the gate as proof it is external. If it rejects the call, read the
 message it returns — it's meant to be actionable (a non-public endpoint, a
 missing field, a bad strategy/config pairing) — fix the specific thing named
-and retry. Two responses that are **not** rejections, so don't
+and retry. Three responses that are **not** rejections, so don't
 retry blindly:
 
 - **"set CONNECTIONS_ENC_KEY on the platform first"** — a real precondition,
@@ -320,6 +343,22 @@ retry blindly:
   concurrent refreshes for one user can race into a spurious disconnect. This
   means the call **succeeded** (rotating is supported) — treat it as a flag to
   relay, not a failure to retry.
+- **A `NOTE:` that users type their credentials at one site but stored
+  tokens are sent to another.** For `oauth2_code` only, when `token_endpoint`
+  or `revocation_endpoint` is on a different domain from `authorize_endpoint`.
+  The call **succeeded**, and the platform recorded the split in the audit log;
+  the note repeats on every later write of the same configuration. Some real
+  backends split this way (Google signs people in at accounts.google.com and
+  issues tokens at oauth2.googleapis.com), and it is also exactly what a
+  configuration built to collect users' tokens looks like. Do not treat it as
+  an error and do not quietly change endpoints to make it go away. Tell the
+  user plainly that the sign-in page and the token address are on different
+  sites, and confirm both addresses against the backend's own documentation
+  before anyone connects. On shared hosting and SaaS domains (for example
+  `service-now.com`, `okta.com`, `auth0.com`, `workers.dev`, `herokuapp.com`,
+  `amazonaws.com`) the platform compares the full hostname, so
+  `dev1.service-now.com` and `dev2.service-now.com` count as different sites
+  and raise the note.
 
 Tell the user in plain terms what just got stored (the backend's address and
 how the app will reach it, kept encrypted on the platform) — **never echo a
@@ -433,8 +472,10 @@ Rules that hold regardless of language:
     connection is intact. Treat it like any other temporary seam failure and
     retry later; tell the user the connection is paused right now, not that
     they need to reconnect.
-  - **`429 rate_limited`** — the seam's abuse brake, sustained calling past
-    **120 requests/minute per (app, user)**. Back off and retry. If a tool
+  - **`429 rate_limited`** (with `Retry-After: 60`): the seam's abuse brake,
+    sustained calling past roughly **120 requests/minute per (app, user)**. It
+    is counted per Cloudflare location, so treat the number as approximate,
+    never as a quota. Wait the `Retry-After` interval, then retry. If a tool
     trips this in normal use, the tool is calling the seam per backend request
     instead of caching the credential in memory until `expires_at`.
   - **`not_connected` carrying `locked: true`** — the credential exists, but
@@ -465,10 +506,12 @@ Rules that hold regardless of language:
 After shipping, have the user open the connect link once: they sign in on the
 backend's own page (`oauth2_code`), paste the token they generated
 (`secret_form`), or paste their API client's ID and secret
-(`oauth2_client_creds`). From then on, every tool call the app makes to that backend
-runs as them, automatically — nothing to repeat per session. Confirm it
-worked using the `whoami`/status affordance from step 5 before calling the
-feature done.
+(`oauth2_client_creds`). For `oauth2_code` they must finish that sign-in in
+the same browser that opened the connect link; a login completed anywhere else
+is refused ("Finish in the browser you started in") and nothing is stored.
+From then on, every tool call the app makes to that backend runs as them,
+automatically, with nothing to repeat per session. Confirm it worked using the
+`whoami`/status affordance from step 5 before calling the feature done.
 
 ### Debugging: who is actually connected
 
@@ -492,9 +535,14 @@ tool call:
   personally, and the key needed to read the token being revoked rides only a
   browser session, which an MCP call does not have. To revoke upstream as well,
   the user disconnects from the **Connections tab on their account page**.
-  Consent memory is kept, so a reconnect won't re-prompt for consent under
-  `connections.consent: remember`. On the platform default `always` the consent
-  page shows on every connect anyway, so keeping the memory changes nothing.
+  Consent memory is kept, so under `connections.consent: remember` (or
+  `never`, which now behaves exactly like `remember`) a reconnect to an
+  `oauth2_code` connection skips the disclosure page the user has already seen.
+  On the platform default `always` that page shows on every connect anyway,
+  and the paste forms of the other two strategies name the destination on
+  every visit, so keeping the memory changes nothing there. Saved consent is
+  cleared for every user whenever the connection's strategy or credential
+  endpoints change.
   This is the lever for "my connection is stuck — make it ask me again". The
   user themselves or a platform admin can call it, and an **admin disconnect is
   audited as the admin's action naming the affected user**. Idempotent. It
@@ -502,6 +550,40 @@ tool call:
   everyone else (that is what makes it the right tool, rather than
   `remove_app_connection`, which takes the definition and every user's
   credential with it).
+
+### Debugging: what the connect page is telling you
+
+The connect link opens a platform page, and each failure it can show has one
+meaning. Read the page title the user reports before changing anything:
+
+- **"Not available"** ("That connection is not available to you"). One answer,
+  on purpose, for four different causes: the app name is wrong, the
+  connection name is wrong, the connection is paused (`disabled`), or the
+  person is not a member of the app. The page will not say which. Check in
+  this order: `list_connections` for the app (does that connection name exist,
+  and is it enabled), then whether the person has access to the app
+  (`grant_access` if not). Never tell the user the backend is down.
+- **"Too many requests"** (HTTP 429, `Retry-After: 60`). The connect pages
+  share a budget of 60 requests a minute per person with the platform panel's
+  live reads. Wait a minute, then start again from the chat.
+- **"Account inactive"** (HTTP 401). The person's Okta account is suspended or
+  deprovisioned. Nothing about the connection can fix that.
+- **"Finish in the browser you started in"** (`oauth2_code` only). The backend
+  login was completed in a different browser, or a different browser profile,
+  from the one that opened the connect link. Open the connect link again and
+  finish the whole sign-in in that same browser.
+- **"This connection changed"**. The connection's strategy or a credential
+  endpoint was changed while the person was connecting, so nothing was sent.
+  Start again from the chat to see the current destination.
+- **"Connection not stored"**. The person's stored credential changed while
+  they were connecting (their access was revoked, or another connect attempt
+  finished first), so nothing from this attempt was kept. Check with
+  `list_user_connections` whether a credential is on file and whether the
+  person still has access, then start again from the chat if it is not.
+
+The last three are audited `connection_connect_refused` with the reason
+(`browser_mismatch`, `endpoint_changed` or `sink_changed_after_exchange`,
+`revoked_mid_exchange`), which a platform admin can read with `query_audit`.
 
 ## References
 
