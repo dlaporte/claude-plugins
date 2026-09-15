@@ -61,7 +61,9 @@ Four things are checked here, and **all are hard requirements before
 
 1. The **safety gates** (CI) — seven jobs, all `needs:` prerequisites of
    `deploy`, plus the `policy` job that fetches the admin gate policy:
-   `config-integrity`, `secrets` (gitleaks), `sast` (Semgrep), `deps`
+   `config-integrity`, `secrets` (gitleaks), `sast` (Semgrep, over the whole
+   repository except the platform-owned root `src/`: `app/`, the Dockerfile,
+   `.github/workflows/deploy.yml` and root scripts), `deps`
    (dependency audit), `dep-age` (the dependency-release-age cooldown — see
    the table below), `container` (build + image CVEs + non-root/`EXPOSE 8080`
    + a `GET /healthz` smoke test, run for `container` and `mcp-container`
@@ -110,12 +112,20 @@ MCP tool and review the app's code against it. CI's scanners catch injection
 patterns and known-vulnerable deps, but the highest-impact app bug —
 **authorization / IDOR** — is invisible to them: verify every query for
 user-owned data is scoped by the caller's `X-Forwarded-User` (not by an id
-from the request), privileged surfaces gate on an `inno-` group, values bind
+from the request), privileged surfaces gate on a role the app keeps itself
+(keyed on `X-Forwarded-User`; `X-Forwarded-Groups` carries only the app's own
+`inno-{app}-users` and `inno-{app}-open`, so it can tell a member from an
+open-access visitor and nothing finer), values bind
 in SQL, output is escaped, and expensive actions are bounded per caller. A
 real authorization hole is a hard stop — fix or guide the fix before
 `inno-ship`. (A stateless single-view tool can skip this.)
 
 ## 2. Push and watch the gates
+
+Before pushing, look at `.github/workflows/deploy.yml`. If it has a
+`secrets: inherit` line (repos made from older copies of the template do), the
+`sast` gate will fail on it: tell the user, and with their okay delete that
+line as part of this push. Nothing else in the file changes.
 
 ```bash
 git add -A && git commit -m "<why-focused message>"   # if uncommitted work
@@ -132,7 +142,11 @@ Nothing deploys from this push. Watch the run either way:
   unavailable and points at the run link instead. Narrate from the job
   conclusions and that link when that happens.
   Poll every ~30s while `in_progress`; narrate transitions ("secrets ✓,
-  container still building…").
+  container still building…"). Platform tool calls are capped at 60 a minute
+  per signed-in user, shared by every agent that user runs; a call over the
+  cap answers `rate_limited`. Polling every ~30s is well inside it, but if you
+  see `rate_limited`, make no platform call for a full minute, and never poll
+  the same run from several subagents at once.
 - **gh CLI (if authenticated):** `gh run watch` from the repo.
 
 ## 3. Translate the results — this is the actual product
@@ -144,19 +158,28 @@ For each gate, tell the user what happened in THEIR terms:
 | All green | "All safety gates passed — `/inno-ship` when you're ready to release." |
 | **Real finding** (SAST/deps/CVE) | Show the file:line if the annotations came through. If they didn't, open the run link yourself (or run `gh run view --log-failed` when the user has `gh` authenticated) and read the failing step. Explain the risk in one sentence, fix it (or guide the fix), re-push. |
 | **Likely false positive** | Never work around it in code (renames, string-splitting, suppression comments). Name the exact finding ID and tell the user a platform admin can add a central ignore for it (`safety.ignore.<tool>.<id>`, where the value is the expiry date, or empty for none), which clears it at both the gate and the periodic safety sweep. A `secrets` finding is the exception: gitleaks has no central ignore family, because its fingerprints are commit-bound and rebase-fragile. Its supported suppression surface is a `.gitleaksignore` committed in the app's own repo, and an entry there is sanctioned, not an in-code workaround. |
+| `yaml.github-actions.security.secrets-inherit` finding on `.github/workflows/deploy.yml` | A real fix, not a false positive: delete the `secrets: inherit` line from `deploy.yml`. The platform's reusable workflow needs no inherited secrets (it uses only the automatic `GITHUB_TOKEN` and OIDC), and repos made from older copies of the template carry that line. Keep the `workflow_dispatch` trigger. |
 | `SAFETY GATE DISABLED by platform policy` in the log | Deliberate admin configuration, not a bug. Note it and move on. |
-| config-integrity failure | Something in the repo is a file the platform injects at build time, or one it forbids outright. Delete `src/gateway/`, a root `package.json`/`package-lock.json`/`tsconfig.json`, or `wrangler.jsonc`. Delete any competing wrangler config (`wrangler.json`, `wrangler.toml`), which wrangler's config discovery could let outrank the vetted file, and a `.wrangler/` directory, whose `deploy/config.json` can redirect the deploy to an unvetted config entirely. Delete a `scaffold/` directory, which registration prunes out of app repos, unless `app/.needs-build` is still present (the check is waived until that marker goes). Remove a root-level `.env*`, `.npmrc`, `.yarnrc`, or `.yarnrc.yml`; a `.env`'s values move into app Variables with `set_app_variable`. If instead `CLAUDE.md`'s required template headers were altered, revert them (the rest of the file is yours). All of this is root-only: the app's own `app/package.json` and friends are fine. |
-| `dep-age` failure | The **inverse** of a CVE finding — do NOT bump to the newest release, that makes it redder. Either a pinned dependency was published more recently than the platform's cooldown allows (`safety.min_release_age_days`, 0 = off and the default, so this only fires once an admin has enabled it — `get_config app=<name>` tells you the value actually in force and how many days you're short by), or the app ships `app/package.json` with no committed, parseable `app/package-lock.json` and there are no exact versions to date at all. Remedies: wait out the cooldown, pin an older vetted version, commit `app/package-lock.json`, or ask a platform admin for an app-scope `safety.min_release_age_days: 0`. |
-| container failure | Dockerfile contract problem, or the built image never answered `GET /healthz` within ~90s — hand off to `inno-containerize`. |
+| config-integrity failure | Something in the repo is a file the platform injects at build time, or one it forbids outright. Delete anything under a root `src/` directory (the platform owns all of `src/`, not just `src/gateway/`; move author code into `app/`), a root `package.json`/`package-lock.json`/`tsconfig.json`, or `wrangler.jsonc`. Delete any competing wrangler config (`wrangler.json`, `wrangler.toml`, an env variant), which wrangler's config discovery could let outrank the vetted file, and a `.wrangler/` directory, whose `deploy/config.json` can redirect the deploy to an unvetted config entirely. Delete a `scaffold/` directory, which registration prunes out of app repos, unless `app/.needs-build` is still present (the check is waived until that marker goes). Remove a root-level `.env*` and any root package manager config (`.npmrc`, `.yarnrc`, `.yarnrc.yml`, `.pnpmfile.cjs`, `pnpm-workspace.yaml`, `bunfig.toml`); a `.env`'s values move into app Variables with `set_app_variable`. Remove every `.npmrc` at any depth, `app/.npmrc` included: npm expands environment variables into it, so it is rejected wherever it sits. If instead `CLAUDE.md`'s required template headers were altered, revert them (the rest of the file is yours). A message that the gate "could not fully inspect the app tree" means a committed directory it could not read; fix or remove that path. Everything else under `app/` (an `app/package.json`, an `app/.yarnrc.yml`, an `app/src/`) is yours and fine. |
+| `dep-age` failure | The **inverse** of a CVE finding: do NOT bump to the newest release, that makes it redder. Either a pinned dependency was published more recently than the platform's cooldown allows (`safety.min_release_age_days`, 0 = off and the default, so this only fires once an admin has enabled it; `get_config app=<name>` tells you the value actually in force and how many days you're short by), or the app ships `app/package.json` with no committed, parseable `app/package-lock.json` and there are no exact versions to date at all. Remedies: wait out the cooldown, pin an older vetted version, commit `app/package-lock.json`, or ask a platform admin for an app-scope `safety.min_release_age_days: 0`. Separately from this gate, a function-shaped app's release fails without a committed `app/package-lock.json` whatever the cooldown says (platform v0.14.2). |
+| container failure | Dockerfile contract problem, or the built image never answered `GET /healthz` within ~90s; hand off to `inno-containerize`. For a non-root failure: the gate refuses an unset `USER`, `root`, `0`, and any `0:<gid>` or `root:<group>` form, and a named user must resolve in the image's own `/etc/passwd` to a uid other than 0 (a named `USER` in an image with no readable `/etc/passwd` fails closed, so use a numeric uid such as `USER 65532` on scratch-style images). The image this job scans on the tag run is the exact image that ships: the deploy job pushes it by digest and never rebuilds the Dockerfile. |
 
 Diagnose privately (the `get_ci_status` run link and job conclusions, its
 annotations when they come through, or `gh run view --log-failed` if the user
 has `gh` authenticated); don't paste raw logs at the user. After two failed
 fix attempts on the same gate, ask permission to create a
 `create_support_bundle` for the app and hand the user the download link to
-attach to a support ticket.
+attach to a support ticket. Each app is limited to 5 bundles in any rolling
+24 hours: if the tool answers `bundle_limit_reached`, do not retry; point the
+user at a bundle already created (they cover the same recent window), or wait
+for the oldest to age out.
 
 ## Done
 
-End with a clear verdict: **"Safe to ship"** (gates green + guardrails clean
-→ point at `/inno-ship`) or **"Not yet"** with the specific blockers listed.
+End with a clear verdict: **"Safe to ship"** (gates green and guardrails
+clean, and, for a `function` or `mcp-function` app that has
+`app/package.json`, a committed `app/package-lock.json` in step with it; point
+at `/inno-ship`) or **"Not yet"** with the specific blockers listed. Check that
+lockfile yourself before saying "Safe to ship": the push-time `deps` gate
+builds a throwaway lockfile when none is committed, so its green does not
+prove the tagged deploy, which runs `npm ci` and fails without one.
