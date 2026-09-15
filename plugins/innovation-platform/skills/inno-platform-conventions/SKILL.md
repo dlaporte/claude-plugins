@@ -56,6 +56,11 @@ gateway boundary, but three specifics differ — the authoritative deltas are in
   and no cross-app reach; a binding is a handle to the app's *own* resources.
 - **Health:** answer `GET /healthz` with 200 as a **route** in your `fetch`
   handler, not a listening port.
+- **Dependencies:** declare every npm package your Worker imports in
+  `app/package.json` and commit `app/package-lock.json` beside it. The deploy
+  runs `npm ci --ignore-scripts` inside `app/` and fails without the lockfile,
+  and nothing is installed at the repo root, so an undeclared bare import
+  fails the bundle.
 
 The **`mcp-function`** type is a function-type app whose consumer is an MCP client
 instead of a browser — every function delta above applies, plus the deltas in
@@ -104,24 +109,31 @@ an app to Starlette in either direction.
 Whatever the stack: pin dependencies in its own manifest under `app/`
 (`requirements.txt` for the Python reference — the template's copy is the
 source for its pins; `package.json` for Node; `go.mod` for Go; …) and keep
-them CVE-clean — the `deps` (pip-audit, Python) and `container` (Trivy, any
-stack) gates fail the build otherwise. One known trap, informational not
+them CVE-clean: the `deps` gate (pip-audit over `app/requirements.txt`,
+`npm audit` over `app/package.json`) and the `container` gate (Trivy, any
+stack) fail the build otherwise. One known trap, informational not
 prohibitive: older **FastAPI** pins drag in a CVE-bearing Starlette line —
 check that the lockfile resolves a clean version before committing to it.
 
-**Node apps: commit `app/package-lock.json` too.** Nothing requires it while
-the platform's dependency-release-age cooldown is off — which is the default
-(`safety.min_release_age_days: 0`) — but the moment an admin raises that
-setting at platform scope, an app shipping `app/package.json` with no
-committed, parseable `app/package-lock.json` **fails the `dep-age` gate**:
-ranges have no single publish date to check, and the deploy job re-resolves
-them fresh, so the requested cooldown cannot be applied at all. That change
-reds the next deploy of every app in that state at once, and committing the
-lockfile is the per-app remedy (an app-scope `safety.min_release_age_days: 0`
-override from an admin is the other). Commit it now and the setting is a
-non-event. Note this is the app's OWN lockfile under `app/`; a lockfile at
-the **repo root** is a platform-injected build input and is rejected by the
-`config-integrity` gate.
+**Node apps: commit `app/package-lock.json`, and declare every import.** For a
+function-shaped app (`function`, `mcp-function`) that ships
+`app/package.json`, a committed `app/package-lock.json` is required outright
+since platform v0.14.2: the deploy job installs with `npm ci` and fails the
+release naming the file when the lockfile is missing, and fails again if it is
+out of step with `app/package.json`. A push to main does NOT catch this,
+because the `deps` gate builds a throwaway lockfile to audit when none is
+committed, so the preflight goes green and only the tagged deploy fails.
+Regenerate the lockfile with `npm install` inside `app/` whenever you change
+dependencies, and commit both files together. Every package your Worker
+imports by bare name must be listed in `app/package.json` itself: nothing is
+installed at the repo root any more, so an import that used to resolve by
+accident now fails the bundle. For a container app the deploy does not require
+the lockfile, but commit it anyway: while an admin has the release-age
+cooldown on (`safety.min_release_age_days` above 0), an app shipping
+`app/package.json` with no committed, parseable `app/package-lock.json` fails
+the `dep-age` gate, because ranges have no single publish date to check. That
+app-owned lockfile under `app/` is fine; a lockfile at the **repo root** is a
+platform-injected build input and the `config-integrity` gate rejects it.
 
 ## Rendering: escape by default, never string-built HTML
 
@@ -130,7 +142,9 @@ concatenation** — the current user's identity (`X-Forwarded-User`) is
 attacker-influenced input (anyone who can reach the gateway with a valid Okta
 session controls their own email string, and it flows straight into your
 pages), so unescaped interpolation is a stored/reflected-XSS gate: the
-`sast` job's semgrep OWASP scan on `app/` and human review both reject it.
+`sast` job's semgrep OWASP scan (which covers the whole repository except the
+platform-owned root `src/`, so your Dockerfile, `.github/workflows/deploy.yml`
+and any root-level script are scanned too) and human review both reject it.
 Use your stack's auto-escaping template engine. In the Python reference,
 `Jinja2Templates(directory="templates")` autoescapes by default — route all
 dynamic content through
@@ -174,13 +188,31 @@ user = request.headers.get("x-forwarded-user", "unknown")
 `X-Forwarded-Email` carries the same email as `X-Forwarded-User` — the
 gateway injects both, so either one works and neither is more authoritative;
 read `X-Forwarded-User` by default and treat `X-Forwarded-Email` as its alias
-if you see it in a request dump. `X-Forwarded-Groups` carries a
-comma-separated group list (e.g.
-`inno-{app}-users`). **Never implement login pages, sessions, password
-storage, or an "auth disabled" dev path** — the gateway strips any inbound
-copies of these headers before injecting its own verified values, so there is
-no spoofing surface as long as you don't add one. `"unknown"` is a reasonable
-default only for local dev, never a real auth decision in production code.
+if you see it in a request dump.
+
+`X-Forwarded-Groups` carries at most two groups, both this app's own:
+`inno-{app}-users` when the caller is a member and `inno-{app}-open` when they
+reached an open app through its open-access twin. Since contract version 12
+(platform v0.14.3) it never carries the platform admin group, another app's
+groups, or any other `inno-` group, so use it only to tell a member from an
+open-access visitor; any finer role (an editor, a staff view, an in-app admin)
+needs your own role store keyed on `X-Forwarded-User`. On an open
+`mcp-function` or `mcp-container` app the header can be empty for a non-member
+who was just admitted: treat empty as "not a member", never as an error.
+
+The gateway also sets three proxy headers you may trust: `X-Forwarded-Host`
+(the hostname the request arrived on; build links from it),
+`X-Forwarded-Proto` (always `https`) and `X-Forwarded-For` (the client address
+from Cloudflare's edge, removed when unknown). It deletes `Forwarded` and
+drops the Cloudflare Access session cookies. Every other header, including
+`X-Real-IP`, `True-Client-IP` and `X-Forwarded-Port`, reaches you exactly as
+the client sent it: never use one for identity, origin or an access decision.
+
+**Never implement login pages, sessions, password storage, or an "auth
+disabled" dev path**: the gateway strips inbound copies of the headers it owns
+before injecting its own verified values, so there is no spoofing surface as
+long as you don't add one. `"unknown"` is a reasonable default only for local
+dev, never a real auth decision in production code.
 
 ## Configuration & secrets (Variables)
 
@@ -248,9 +280,10 @@ as one:
 - **`503`** — the connection has been disabled by its owner or a platform
   admin. Transient: the backend is paused, the user's connection is not
   revoked. Treat it like any other transient seam failure and retry later.
-- **`429 rate_limited`** — the seam's abuse brake, sustained calling past
-  120/minute per (app, user). Back off and retry; don't relay a
-  `connect_url`, and don't ask the user to reconnect.
+- **`429 rate_limited`**: the seam's abuse brake, sustained calling past
+  120/minute per (app, user). Wait the `Retry-After` interval (60 seconds)
+  before retrying; don't relay a `connect_url`, and don't ask the user to
+  reconnect.
 
 Connections are reachable from **`mcp-container`** apps only in v1 — the
 other three types can't consume one yet. Setting one up (discovering how the
@@ -293,11 +326,14 @@ actually useful later instead of a wall of noise.
 
 ## Keep `ENVIRONMENT=production`
 
-The injected `wrangler.jsonc` (not a file in your repo — see below) pins
-`vars.ENVIRONMENT` to `"production"` for every deploy. That's what keeps the
-gateway in real-identity mode; `"dev"` would flip it into mock-identity mode
-(trusts `X-Mock-User`/`X-Mock-Groups` headers, skips Access JWT verification),
-an authentication bypass. No gate re-checks the value: `config-integrity`
+The injected `wrangler.jsonc` (not a file in your repo, see below) pins
+`vars.ENVIRONMENT` to `"production"` for every deploy. The gateway's
+mock-identity mode (which trusts `X-Mock-User`/`X-Mock-Groups` and skips
+Access JWT verification) exists only for the platform's own local tests: it
+needs `ENVIRONMENT` set to `"dev"` plus a separate local-only switch, and since
+platform v0.14.3 the deploy templater refuses any gateway config that deploys
+either, so a deployed gateway cannot mint a mock identity. No app-side gate
+re-checks the value: `config-integrity`
 stopped inspecting `ENVIRONMENT` when `wrangler.jsonc` stopped being
 app-owned. What keeps it honest now is that the gate rejects ANY wrangler
 config at your repo root (the scan reads the root directory, it does not
@@ -311,8 +347,12 @@ nothing for you to configure or accidentally flip here.
 The platform injects several files worker-side at build time, and **none of
 them may exist in your repo at all**:
 
-- `src/gateway/` — the Worker code doing JWT verification, request routing,
-  and the storage proxy.
+- `src/`, all of it, at the repo root. The platform owns that directory (the
+  gateway was bundled from `src/gateway/`), and anything of yours under it (a
+  source file, `src/node_modules/`, `src/package.json`, `src/tsconfig.json`)
+  could shadow the gateway's dependencies, so the gate fails the repo with a
+  "delete src/" message naming what it found. Put your code under `app/`; an
+  `app/src/` directory is yours and fine.
 - `package.json` and its lockfile (`package-lock.json`) — **at the repo
   root**. Your app's own build files under `app/` (a Node app's
   `app/package.json`, etc.) are yours and fine.
@@ -360,13 +400,19 @@ first run. It buys that one gate and nothing else. Deleting that marker to
 start building re-arms the check, so delete `scaffold/` with it.
 
 The gate also rejects root-level `.env` / `.env.*` files (wrangler loads
-them at deploy time and adopts unset keys — a committed
+them at deploy time and adopts unset keys, so a committed
 `CLOUDFLARE_API_BASE_URL` would redirect API calls, deploy token included)
-and `.npmrc` / `.yarnrc(.yml)` (unpinned package-manager inputs to the
-deploy's `npm ci`). Keep secrets and local env out of the repo entirely —
-an app-level key or config value belongs in a **Variable**
-(`set_app_variable`, or the app page's Variables tab), delivered to your
-code as a real environment variable.
+and every package manager's project config at the repo root: `.npmrc`,
+`.yarnrc`, `.yarnrc.yml`, `.pnpmfile.cjs`, `pnpm-workspace.yaml` and
+`bunfig.toml`. A `.npmrc` is rejected at **any** depth, `app/.npmrc`
+included: npm reads the `.npmrc` of the directory it runs in and expands
+`${VAR}` from the environment into it, which makes it a
+credential-exfiltration channel. The other package managers' files are
+allowed inside `app/`. Install from the public registry and never commit a
+`.npmrc` anywhere. Keep secrets and local env out of the repo entirely: an
+app-level key or config value belongs in a **Variable** (`set_app_variable`,
+or the app page's Variables tab), delivered to your code as a real
+environment variable.
 
 Everything under `app/` (routes, templates, requirements, your own modules)
 is yours to change freely.
