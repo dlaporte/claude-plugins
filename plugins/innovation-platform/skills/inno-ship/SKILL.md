@@ -142,9 +142,9 @@ fluency. Read the logs yourself
 the user, one plain sentence: "The security check found an out-of-date
 dependency — I'm updating it and re-shipping." Fix the **root cause**, push,
 and cut the next patch tag (a tag is immutable — never force-move one).
-The exception is a fix that moves or deletes the user's own files or edits
-their workflow config: where a row below says to ask, ask before changing
-anything.
+The exception: before any fix that moves, deletes or replaces the user's
+files, or edits anything under `.github/workflows/`, show the user the change
+and ask first, whether or not the row below says so.
 
 | Failing job | Likely cause | Fix via |
 |---|---|---|
@@ -153,7 +153,7 @@ anything.
 | `sast` | semgrep OWASP finding anywhere in the repo except the repo-root `src/` and semgrep's default-ignored directories (`test/`, `tests/`, `build/`, `dist/`, `vendor/`, `node_modules/`, at any depth): `app/`, the Dockerfile, workflow files, and root-level scripts or tools all count (the log names the file). A `secrets: inherit` line in `.github/workflows/deploy.yml` (older template copies carry one) is a blocking finding too | `inno-platform-conventions` (escaping, SQL); for `secrets: inherit`, tell the user and, with their okay, delete the line (the platform workflow needs no caller secrets) |
 | `deps` | CVE in `app/requirements.txt` or a prod npm dep | bump the pinned dep |
 | `dep-age` | a pinned dep is **too new** for the platform's release-age cooldown (`safety.min_release_age_days`; off by default, so this only fires once an admin enabled it), or `app/package.json` ships with no committed, parseable `app/package-lock.json` so there is nothing to date | **not** a version bump — bumping to the newest release makes it worse. Wait out the cooldown, pin an older vetted version, commit `app/package-lock.json`, or ask a platform admin for an app-scope `safety.min_release_age_days: 0` |
-| `container` | Trivy CVE, a root user (including `root:<gid>` or `0:<gid>`, or a named `USER` that resolves to uid 0 or has no `/etc/passwd` entry in the image), missing `EXPOSE 8080`, or the image never answered `GET /healthz` | `inno-containerize` |
+| `container` | Trivy CVE, a `USER` the non-root gate refuses (the gate accepts only a plain uid 1 to 2147483647 or a portable name on one clean `/etc/passwd` line; see `inno-containerize` item 2), missing `EXPOSE 8080`, or the image never answered `GET /healthz` | `inno-containerize` |
 | `scaffold-check` | not a failure — it suppresses `deploy` while `app/.needs-build` exists (see §0) | build the app, remove the marker |
 | `deploy` fails with `app_stopped` | the app was stopped by the lifecycle (or deliberately) — **stopped apps cannot be deployed** | `inno-manage-app`: `start_app` first, then re-tag |
 | `deploy` fails with `Missing app/package-lock.json` (function-shaped apps) | `app/package.json` exists but no lockfile is committed; the deploy installs only from a committed lockfile and never resolves ranges fresh | run `npm install` inside `app/`, commit `app/package-lock.json`, push, cut the next patch tag |
@@ -161,8 +161,8 @@ anything.
 | `deploy` fails with `app_not_deployable` | the app was stopped, or its repo lost the platform GitHub App, while this deploy was starting | if the repo was unlinked, have the user reinstall the GitHub App on it first (re-linking leaves the app stopped); then `start_app` (`inno-manage-app`) and cut the next patch tag |
 | `deploy` fails at finalize with `app_not_deploying` | the app was stopped or purged while the deploy ran; nothing went live | `app_status` to see which; if stopped, `start_app`, then cut the next patch tag |
 | `deploy` fails with `No scanned image recorded` (container apps) | the platform has no record of the image this run's `container` job scanned (that job's best-effort SBOM upload failed, or the record could not be read), so the deploy cannot prove which image passed the gates | re-run the whole tag run (`gh run rerun <run-id>`); if it repeats, stop and offer a support bundle |
-| `deploy` fails with `Image mismatch`, or finalize refuses `image_mismatch` (container apps) | the image handed to the deploy job is not the one the gates scanned; this is never a code bug. Check that `.github/workflows/deploy.yml` still matches `register_app`'s snippet (one `platform` job, nothing that uploads an artifact named `inno-scanned-image`) | restore `deploy.yml` if it drifted, then re-run the whole tag run; if it repeats, stop and offer a support bundle |
-| `policy` fails with `Invalid app name` | the `with: app:` value in `deploy.yml` is not a valid app name | restore `deploy.yml` from `register_app`'s snippet, push, re-tag |
+| `deploy` fails with `Image mismatch`, or finalize refuses `image_mismatch` (container apps) | the image handed to the deploy job is not the one the gates scanned; this is never a code bug. Check that `.github/workflows/deploy.yml` still matches `register_app`'s snippet (one `platform` job, nothing that uploads an artifact named `inno-scanned-image`) | show the user how `deploy.yml` differs from the snippet; with their okay restore it, push, and cut the next patch tag (a re-run of the old tag reuses the old workflow file); if `deploy.yml` already matches, re-run the whole tag run; if it repeats, stop and offer a support bundle |
+| `policy` fails with `Invalid app name` | the `with: app:` value in `deploy.yml` is not a valid app name | with the user's okay, correct the `with: app:` value (or restore `register_app`'s snippet), push, cut the next patch tag |
 
 A gate failure is real signal; there is no override or admin bypass. A
 finding that's a false positive gets a **central admin ignore** (see
