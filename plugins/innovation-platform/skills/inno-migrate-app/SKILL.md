@@ -37,8 +37,8 @@ This differs from `inno-new-app` only in the starting point: new-app has the
 user create a fresh repo from `inno-template`; here the user already has a repo.
 If their repo is **already built to the platform contract** (app code under
 `app/`, a `CLAUDE.md` with the required headers, `/healthz`, identity from the
-gateway headers), migration is just: install the platform GitHub App on it and
-`register_app`. If it's an **arbitrary app** not written for the platform, you
+gateway headers), migration is just: `register_app`, commit the proof file it
+names, install the platform GitHub App on the repo, and `register_app` again. If it's an **arbitrary app** not written for the platform, you
 assess it, then adapt it in place before shipping.
 
 Requires the `inno-platform` MCP server (ships with this plugin). The first tool
@@ -91,10 +91,14 @@ order:
      (older pins drag in CVE-bearing `starlette 0.46.x` — check the lockfile).
    Note the entrypoint, framework, and listen port so you can adapt them to
    8080 + `/healthz`.
-2. **Auth to strip** — login routes, session middleware, password storage, OAuth
+2. **Auth to strip**: login routes, session middleware, password storage, OAuth
    flows. All of it goes: the gateway verifies the user against Okta and injects
    `X-Forwarded-User` / `X-Forwarded-Groups` (see `inno-platform-conventions`).
-   List each file/route to remove. This is about the app's *own* front-door
+   List each file/route to remove. Keep the app's own **authorization** (who may
+   edit what), rewired to key on `X-Forwarded-User`: `X-Forwarded-Groups`
+   carries only this app's `inno-{name}-users` and `inno-{name}-open`, never the
+   platform admin group, another app's groups, or the repo's existing role
+   groups, so existing role checks cannot move onto that header. This is about the app's *own* front-door
    login — a separate thing to look for is auth to a *backend the app calls
    out to*: if the repo runs its own OAuth flow against some other service,
    holds a long-lived per-user token for that service, or ships a sidecar
@@ -114,18 +118,31 @@ order:
    under `app/`; a root `CLAUDE.md` carrying the platform's required section
    headers (config-integrity checks these — copy `dlaporte/inno-template`'s
    `CLAUDE.md` and adapt its body).
-5. **Gate risks** — secrets **anywhere in git history** (gitleaks scans the full
-   history, and this is the *same* repo — history is not left behind, so a
-   secret buried in an old commit still fails and must be scrubbed AND rotated
-   — the rotated value then goes into an app Variable, never back in the repo),
-   dependency CVEs (`pip-audit`, Trivy), semgrep OWASP patterns such as
-   string-built HTML or raw SQL formatting, and any platform-injected file that
-   must NOT be committed (a root `package.json`/`package-lock.json`/`tsconfig.json`,
-   `src/gateway/`, any `wrangler.*` config, a `.wrangler/` directory,
-   `.env*`, `.npmrc`/`.yarnrc(.yml)`, and a `scaffold/` directory, which is
-   rejected unless `app/.needs-build` is still present). Inventory
-   every value the app reads from its environment or a `.env` file — each
-   becomes an app **Variable** (`set_app_variable`) after registration,
+5. **Gate risks**: secrets **anywhere in git history** (gitleaks scans the full
+   history, and this is the *same* repo: history is not left behind, so a
+   secret buried in an old commit still fails and must be scrubbed AND rotated;
+   the rotated value then goes into an app Variable, never back in the repo),
+   dependency CVEs (`pip-audit`, Trivy), and semgrep OWASP patterns such as
+   string-built HTML or raw SQL formatting. **Semgrep scans the whole repository
+   except the repo-root `src/`**, not just `app/`: root-level scripts, tools,
+   tests and the Dockerfile all count, so a migrated repo's non-app files can
+   fail the gate too. Then list every path the `config-integrity` gate rejects:
+   - **anything under a repo-root `src/`** (the platform owns `src/` and injects
+     its gateway there). A repo whose code lives in `src/` must move it, for
+     example to `app/src/`;
+   - the repo-root `package.json`, `package-lock.json` and `tsconfig.json`
+     (your own under `app/` are fine);
+   - a `wrangler.*` config or a `.wrangler/` directory at the repo root;
+   - a `.npmrc` at **any** depth, `app/.npmrc` included (npm expands
+     environment variables into it);
+   - at the repo root only: `.env` / `.env.*`, `.yarnrc`, `.yarnrc.yml`,
+     `.pnpmfile.cjs`, `pnpm-workspace.yaml`, `bunfig.toml` (the same files
+     under `app/` are allowed, except `.npmrc`);
+   - a `scaffold/` directory, which is rejected unless `app/.needs-build` is
+     still present.
+
+   Inventory every value the app reads from its environment or a `.env` file:
+   each becomes an app **Variable** (`set_app_variable`) after registration,
    delivered back to the code as a real env var; nothing stays in the repo.
 6. **What does not carry over** — custom domains, background jobs/cron, and any
    always-on/websocket assumptions.
@@ -140,7 +157,11 @@ order:
    it is independent of the repo name.
    **Check the name with the `check_name` MCP tool (read-only) before you
    propose it.** Only put forward a name it reports as **available**; if it's
-   in-use/reserved/invalid, pick another; if it's the caller's own existing app,
+   in-use/reserved/invalid, pick another; if it reports the name **was recently
+   purged and is held until** a UTC time, it belonged to an app purged in the
+   last seven days and nobody, admins included, can register it before then:
+   pick another or wait (`register_app` refuses it as `name_quarantined`); if
+   it's the caller's own existing app,
    surface that (a stopped app is brought back with `start_app`, not by
    re-registering). **If `check_name` warns the user is at their active-app
    limit**, resolve that first: show their apps (`list_apps`) and offer — with
@@ -173,8 +194,10 @@ The written plan covers, at minimum, each assessment product above:
   files that must be deleted before CI will pass
 - **What does not carry over**
 - **Proposed name** (checked available) and the exact hostname consequence
-- **How the repo is protected** — the branch/restore-point strategy Phase 2
-  will use
+- **How the repo is protected**: the branch/restore-point strategy Phase 2
+  will use, and the one small commit registration itself needs on the default
+  branch (a proof-of-control file under `.inno-platform/`), so the user approves
+  that write in advance
 - **Effort summary and open decisions** (read-only default, members, …)
 
 Only after that plan is in your reply: **stop and get explicit user approval**
@@ -193,25 +216,46 @@ capture a restore point — a branch or tag on the pre-migration commit
 (`git branch pre-inno-migration`), or do the adaptation on a feature branch and
 merge to `main` once it's ready. Tell the user where the restore point is.
 
-1. **Register the repo (two calls).** Call
+1. **Register the repo (two calls, with a proof file between them).** Call
    `register_app({ app, repo, description, type, members, accept_guardrails: true, connections })`
    with the app name from Phase 1 in `app` (the wire parameter is `app`, not
    `name`) and the user's existing `owner/repo` slug in `repo` (a **slug, not a
-   URL**). Those two are the only two the schema requires. Pass `connections` only
-   if step 2's assessment found
-   per-user backend auth to replace — a list of the names you plan to set up.
-   It creates nothing (only `set_app_connection` can); the response echoes it
-   back as a reminder to configure each one. The first call returns text beginning
-   `Registration started …` with an **App install link** — give it to the user
-   and have them **install the platform GitHub App** on the account/org that
-   owns the repo, scoped to that repository. (The repo already exists, so ignore
-   the response's "create from template" note.) Once they've installed it, call
+   URL**). Those two are the only two the schema requires. Pass `connections`
+   only if step 2's assessment found per-user backend auth to replace: a list of
+   the names you plan to set up. It creates nothing (only `set_app_connection`
+   can); the response echoes it back as a reminder to configure each one. The
+   repo already exists, so ignore the response's "create it first from the
+   platform template" note.
+
+   The first call returns text beginning `Registration started …` with two
+   things to act on, in this order:
+   - a **proof-of-control file**: an exact `path:` under `.inno-platform/` and
+     exact `contents:`. Commit that file, with exactly those contents, on the
+     repo's **default branch** and push it. The default branch may not be
+     `main`; `gh repo view <owner/repo> --json defaultBranchRef -q .defaultBranchRef.name`
+     names it. The restore-point branch or a migration feature branch does not
+     count: the platform reads only the default branch. If that branch is
+     protected against direct pushes, land the file through a pull request
+     merged into it. Do this with the user's own `git` or `gh`; it is not a
+     user-only step. Leave the file in place: call 2 re-checks it.
+   - an **App install link**: give it to the user and have them **install the
+     platform GitHub App** on the account/org that owns the repo, scoped to that
+     repository. If the App already covers the repo (including "All
+     repositories"), they can skip the link.
+
+   Once the proof file is on the default branch and the App is installed, call
    `register_app` **again with the same arguments**; the second call binds the
-   repo and returns the app URL and a `deploy.yml`. Branch on the response the
-   same way `inno-new-app` §3 documents (`repo_already_registered`,
-   `app_limit_reached`, `repo_mismatch`, `guardrails_not_accepted`, …).
+   repo and returns the app URL and a `deploy.yml`. If the repo carries a
+   top-level `scaffold/` directory, call 2 may delete it in a server-side commit
+   on `main`, so `git pull` before editing. Branch on the response the same way
+   `inno-new-app` §3 documents (`repo_control_unproven`, `name_quarantined`,
+   `repo_already_registered`, `repo_owner_claimed`, `app_limit_reached`,
+   `repo_mismatch`, `guardrails_not_accepted`, …).
 2. **Add the caller workflow.** Write `.github/workflows/deploy.yml` exactly as
-   `register_app` returned it (an existing non-template repo won't have one). It
+   `register_app` returned it (an existing non-template repo won't have one; if
+   the repo already has one, replace it, and never keep a `secrets: inherit`
+   line: it is a blocking `sast` finding, and the platform workflow needs no
+   caller secrets). It
    references `dlaporte/inno-platform-ci/.github/workflows/platform-ci.yml@main`
    and passes `with: app: {name}`; keep its `workflow_dispatch` trigger (the
    platform re-dispatches it for security respins). The `with:` block matters
@@ -228,20 +272,35 @@ merge to `main` once it's ready. Tell the user where the restore point is.
      **`/healthz`** (container) or is `app/index.ts` exporting a `fetch` handler
      (function).
    - **Auth deleted**; identity read from `X-Forwarded-User` (Python container:
-     the reference `current_user(request)` helper).
+     the reference `current_user(request)` helper), and any in-app roles kept
+     in the app's own store keyed on that email (Phase 1 step 2). If the app
+     trusts proxy headers (a proxy-fix middleware, a trust-proxy setting, or a
+     server's proxy-headers flag), trust only `X-Forwarded-For`,
+     `X-Forwarded-Host` and `X-Forwarded-Proto`, which the gateway sets itself;
+     `X-Real-IP`, `True-Client-IP` and `X-Forwarded-Port` stay caller-controlled
+     and must never feed identity, origin or access decisions.
    - **Persistence rewired** to the storage endpoints (container) or the app's
      `env.DATA`/`env.FILES` bindings (function).
    - **Dependencies** pinned in the stack's manifest under `app/`, CVE-clean.
+     A function-shaped app (`function`, `mcp-function`) must declare every
+     package it imports in `app/package.json` and commit a matching
+     `app/package-lock.json` (run `npm install` inside `app/`): the deploy
+     installs only from that lockfile with `npm ci`, refuses when it is missing,
+     and installs nothing at the repo root, so an import the repo used to
+     satisfy from a root `package.json` fails to bundle.
    - **Dockerfile** (container) written per `inno-containerize` for the app's
      actual runtime.
    - A root **`CLAUDE.md`** carrying the required section headers (copy
      `dlaporte/inno-template`'s and rewrite the body to describe this app's real
      stack — only the headers are gate-checked).
-   - **Remove any forbidden files** flagged in Phase 1 (root
-     `package.json`/lockfile/`tsconfig.json`, `src/gateway/`, `wrangler.*`,
-     `.wrangler/`, `scaffold/`, `.env*`, `.npmrc`/`.yarnrc`). The `.env` values
-     move to app
-     **Variables** (`set_app_variable`) — the code keeps reading the same
+   - **Remove or move every forbidden path** flagged in Phase 1: move code out
+     of a repo-root `src/` (for example to `app/src/`, updating the
+     Dockerfile's `COPY` paths) and delete whatever remains there; delete the
+     root `package.json`/`package-lock.json`/`tsconfig.json`, any root
+     `wrangler.*` config, `.wrangler/`, `scaffold/`, every `.npmrc` at any
+     depth, and the root `.env*`, `.yarnrc`, `.yarnrc.yml`, `.pnpmfile.cjs`,
+     `pnpm-workspace.yaml` and `bunfig.toml`. The `.env` values move to app
+     **Variables** (`set_app_variable`); the code keeps reading the same
      environment names, so this is usually a zero-code change.
    - Delete `app/.needs-build` if the repo carries one (CI skips deploys while
      it's present).
@@ -260,7 +319,8 @@ merge to `main` once it's ready. Tell the user where the restore point is.
 ## Hand off
 
 End the same way `inno-new-app` does: the next steps are `inno-safety-preflight`
-locally, then `inno-ship` — don't commit or push unless asked. If gates fail
+locally, then `inno-ship`. Beyond the registration proof file, don't commit or
+push unless asked. If gates fail
 after pushing, map the failing job through `inno-ship`'s table. If the user
 abandons the migration after registering, point at `inno-manage-app` (`stop_app`)
 so the app winds down; uninstalling the GitHub App also unlinks and stops it.
