@@ -386,10 +386,11 @@ contract`, `## Function contract`, or the legacy `## Worker contract`, which
 still passes. The gate never asks the broker what type your app is, so a
 container app carrying the function headers passes, and the reverse passes as
 well. If you're hand-authoring `CLAUDE.md` (see `inno-new-app`'s empty-repo
-path), copy the template's version for your runtime: `scaffold/function/CLAUDE.md`
-or `scaffold/mcp-function/CLAUDE.md` in `inno-template` for those two types,
-and `inno-template`'s root `CLAUDE.md` for `container` and `mcp-container`.
-Those are the only three: there is no `scaffold/container/`, because the
+path), copy the template's version for your runtime: `scaffold/function/CLAUDE.md`,
+`scaffold/mcp-function/CLAUDE.md`, or `scaffold/mcp-container/CLAUDE.md`
+(platform v0.14.5) in `inno-template` for those three types, and
+`inno-template`'s root `CLAUDE.md` for `container`.
+Those are the only four: there is no `scaffold/container/`, because the
 container files ARE the template root.
 
 Also do not add a competing `wrangler.json` or `wrangler.toml`, or a

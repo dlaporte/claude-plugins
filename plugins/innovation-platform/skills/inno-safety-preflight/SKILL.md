@@ -1,6 +1,6 @@
 ---
 name: inno-safety-preflight
-description: Use when the user wants their inno-{app} checked before shipping ("run the safety preflight", "is this safe to ship?", "check my app"). Pushes to main — which runs the platform's REAL safety gates and deploys nothing — then narrates the results with realtime guidance, plus a guardrails policy review. A failure or guardrails violation is a hard stop before inno-ship.
+description: Use when the user wants their inno-{app} checked before shipping ("run the safety preflight", "is this safe to ship?", "check my app"). Pushes to the default branch, which runs the platform's REAL safety gates and deploys nothing, then narrates the results with realtime guidance, plus a guardrails policy review. A failure or guardrails violation is a hard stop before inno-ship.
 ---
 
 # inno-safety-preflight
@@ -28,12 +28,12 @@ will tell them so.
 If there is no `Plugin:` line at all, the gate is not armed on this platform.
 Carry on.
 
-Deploys are release-driven on this platform: **a push to main runs every
-safety gate and deploys nothing**. That run — on the platform's own runners,
-with the exact pinned tool versions and the admin-configured gate policy — IS
-the preflight. Never install or run scanners locally: local results drift
-from CI's and know nothing about centrally-configured ignores or gate
-toggles.
+Deploys are release-driven on this platform: **a push to the default branch
+runs every safety gate and deploys nothing**. That run, on the platform's
+own runners, with the exact pinned tool versions and the admin-configured
+gate policy, IS the preflight. Never install or run scanners locally: local
+results drift from CI's and know nothing about centrally-configured ignores
+or gate toggles.
 
 **Know the policy that applies to THIS app before you narrate anything.** Call
 `get_config app=<name>` — the app's owner can read it, no admin needed. It
@@ -131,7 +131,7 @@ line as part of this push. Nothing else in the file changes.
 
 ```bash
 git add -A && git commit -m "<why-focused message>"   # if uncommitted work
-git push origin main
+git push origin HEAD
 ```
 
 Nothing deploys from this push. Watch the run either way:

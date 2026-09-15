@@ -119,13 +119,11 @@ order:
    patched base image (container; see `inno-containerize`); app code arranged
    under `app/`; a root `CLAUDE.md` carrying the platform's required section
    headers (config-integrity checks these — copy `dlaporte/inno-template`'s
-   `CLAUDE.md` and adapt its body). Also check the repo's **default branch**:
-   if it is not `main`, raise it as an open decision in the plan. The
-   `deploy.yml` that `register_app` returns runs the safety checks only on
-   pushes to `main` (a `v*` tag still deploys), registration's scaffold prune
-   reads `main`, and `inno-safety-preflight` and `inno-ship` push to `main`.
-   Renaming the default branch to `main` is the simple path; the choice is the
-   user's.
+   `CLAUDE.md` and adapt its body). The repo's **default branch** needs no
+   special handling: registration's scaffold prune and the `deploy.yml` that
+   `register_app` returns both target the repo's actual default branch,
+   whatever it is named (platform v0.14.5), and `inno-safety-preflight` and
+   `inno-ship` push to that same branch.
 5. **Gate risks**: secrets **anywhere in git history** (gitleaks scans the full
    history, and this is the *same* repo: history is not left behind, so a
    secret buried in an old commit still fails and must be scrubbed AND rotated;
@@ -225,8 +223,7 @@ The written plan covers, at minimum, each assessment product above:
   will use, and the one small commit registration itself needs on the default
   branch (a proof-of-control file under `.inno-platform/`), so the user approves
   that write in advance
-- **Effort summary and open decisions** (read-only default, members, a
-  non-`main` default branch, …)
+- **Effort summary and open decisions** (read-only default, members, …)
 
 Only after that plan is in your reply: **stop and get explicit user approval**
 (of the plan *and* the name) before Phase 2. Ask the approval question in
@@ -276,10 +273,10 @@ merge to `main` once it's ready. Tell the user where the restore point is.
    `register_app` **again with the same arguments**; the second call binds the
    repo and returns the app URL and a `deploy.yml`. If the repo carries a
    top-level `scaffold/` directory, call 2 may delete it in a server-side commit
-   on `main`, so `git pull` before editing. Branch on the response the same way
-   `inno-new-app` §3 documents (`repo_control_unproven`, `name_quarantined`,
-   `repo_already_registered`, `repo_owner_claimed`, `app_limit_reached`,
-   `repo_mismatch`, `guardrails_not_accepted`, …).
+   on the repo's default branch, so `git pull` before editing. Branch on the
+   response the same way `inno-new-app` §3 documents (`repo_control_unproven`,
+   `name_quarantined`, `repo_already_registered`, `repo_owner_claimed`,
+   `app_limit_reached`, `repo_mismatch`, `guardrails_not_accepted`, …).
 2. **Add the caller workflow.** Write `.github/workflows/deploy.yml` exactly as
    `register_app` returned it. If the repo already has a `deploy.yml`, never
    overwrite it silently: rename or retire it only as the approved plan says,

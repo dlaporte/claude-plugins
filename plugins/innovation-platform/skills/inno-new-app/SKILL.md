@@ -542,11 +542,11 @@ workflow, which you overwrite with call 2's snippet per §3; a
 an **mcp-function** repo the MCP-server TS reference (also `app/index.ts`), and
 a **container** repo the Python/Starlette reference (`app/` — incl. `main.py`,
 `storage.py`, `templates/`, `requirements.txt` — plus `Dockerfile` and `lib/`).
-An **mcp-container** repo ships **that same container reference** — it has no
-MCP-specific overlay of its own, so pruning `strip`s only the `scaffold/`
-subtree and leaves the container root in place (see the bullet below; you adapt
-`app/main.py` into your MCP server and **keep `app/storage.py`**, not write from
-scratch). Everything
+An **mcp-container** repo ships **its own overlay** (`scaffold/mcp-container/`,
+platform v0.14.5): a stateless FastMCP starter for `app/main.py`, plus its own
+`README.md`, `CLAUDE.md`, and `app/requirements.txt`, applied over the
+container root (see the bullet below); `Dockerfile`, `lib/`, and
+`app/storage.py` stay as the container reference's. Everything
 else is platform-owned and must NOT be in the repo: all of a repo-root `src/`
 (its gateway was bundled from there and the deploy wipes it, and the
 `config-integrity` gate fails a repo carrying any file under it; an `app/src/`
@@ -565,16 +565,21 @@ layout by hand.** A repo created via GitHub's blank "New repository" flow
 leaves it as-is. Recognize this early — the repo is missing the type-specific
 files described below — and hand-author the full layout out of `inno-template`,
 then write `.github/workflows/deploy.yml` from call 2's response. Where you copy
-from depends on the type, because only two of the four have an overlay
+from depends on the type, because three of the four have an overlay
 directory:
 
 - **`function` / `mcp-function`:** copy `scaffold/function/` or
   `scaffold/mcp-function/`. Each carries `CLAUDE.md`, `README.md`, and an
   `app/` (`index.ts`, plus `package.json` and its lockfile for
   `mcp-function`). Take `.gitignore` from the template root.
-- **`container` / `mcp-container`:** there is no `scaffold/container/`, because
-  the container files ARE the template root. Copy those: `Dockerfile`,
-  `.dockerignore`, `lib/`, `app/main.py`, `app/storage.py`, `app/templates/`,
+- **`mcp-container`:** copy `scaffold/mcp-container/` (platform v0.14.5):
+  `CLAUDE.md`, `README.md`, `app/main.py`, and `app/requirements.txt`. Fill
+  in the rest from the template root, which the overlay does not carry:
+  `Dockerfile`, `.dockerignore`, `lib/`, `app/storage.py`, and `.gitignore`
+  (skip `app/templates/`, which this type has no use for).
+- **`container`:** there is no `scaffold/container/`, because the container
+  files ARE the template root. Copy those: `Dockerfile`, `.dockerignore`,
+  `lib/`, `app/main.py`, `app/storage.py`, `app/templates/`,
   `app/requirements.txt`, the root `CLAUDE.md`, `README.md`, and `.gitignore`.
 
 Copy `CLAUDE.md` rather than writing one: the `config-integrity` gate checks
@@ -636,27 +641,36 @@ version anyway, so the body describes the runtime this app actually has.
 - **`container` app, another stack:** replace `app/` and the `Dockerfile`
   wholesale for that stack, honoring the contract (port 8080, `/healthz`,
   identity headers, the `storage.internal` endpoints, sign-out link).
-- **`mcp-container` app:** no MCP-specific overlay ships for this type, so
-  pruning `strip`s only the `scaffold/` subtree and the repo lands with the
-  **same container Python reference as `container`** — `app/main.py`,
-  `app/storage.py`, `app/templates/`, `app/requirements.txt`, `Dockerfile`,
-  and `lib/`. You **adapt** that reference rather than writing from scratch:
-  replace `app/main.py`'s Starlette demo with your MCP server (Streamable HTTP
-  at `POST /mcp`), keep `app/storage.py` (it carries the storage **and
-  `Connections` helpers** your tools consume — see `inno-add-connection`), and
-  adjust the `Dockerfile` for the MCP entrypoint. Contract (authoritative:
-  `get_app_contract` §1.3): the container
-  baseline (Dockerfile, `0.0.0.0:8080`, non-root `USER`, `GET /healthz`,
-  storage via `http://storage.internal`) PLUS the MCP **Streamable HTTP**
-  transport at `POST /mcp`, **stateless only** (no `sessionIdGenerator`/session
-  correlation — same restriction as `mcp-function`). Identity: implement no auth
-  of your own — the platform is the OAuth Authorization Server, the gateway
-  the Resource Server; read `X-Forwarded-User`/`X-Forwarded-Groups` only, and
-  never route `/.well-known/oauth-protected-resource` yourself; no sign-out
-  link (there is no browser session). Default stack: Python + the official MCP
-  Python SDK (FastMCP) — build the container image per `inno-containerize`.
-  Expect a seconds-scale cold start on the first request after the container
-  has been idle (`sleep_after` default 10m).
+- **`mcp-container` app:** the template's `scaffold/mcp-container/` overlay
+  (platform v0.14.5) ships a stateless FastMCP starter for this type, so
+  pruning applies that overlay's `.scaffold-remove` (it deletes
+  `app/templates/`, which this type has no use for) then moves the overlay's
+  `app/main.py`, `README.md`, `CLAUDE.md`, and `app/requirements.txt` onto
+  the container root; `Dockerfile`, `lib/`, and `app/storage.py` stay as the
+  container reference's. `app/main.py` already speaks Streamable HTTP at
+  `POST /mcp` with two example tools (`whoami`, `echo`) and already answers
+  non-POST `/mcp` requests with 405: extend it rather than adapting a
+  Starlette demo into an MCP server. `app/storage.py` carries the storage
+  **and `Connections` helpers** your tools consume, see
+  `inno-add-connection`. Contract (authoritative: `get_app_contract` §1.3):
+  the container baseline (Dockerfile, `0.0.0.0:8080`, non-root `USER`,
+  `GET /healthz`, storage via `http://storage.internal`) PLUS the MCP
+  **Streamable HTTP** transport at `POST /mcp`, **stateless only** (no
+  `sessionIdGenerator`/session correlation, same restriction as
+  `mcp-function`). The starter already constructs FastMCP with
+  `transport_security=TransportSecuritySettings(enable_dns_rebinding_protection=False)`;
+  keep it that way. Removing it re-enables FastMCP's localhost-only Host
+  check, and every gateway-forwarded `/mcp` request then fails with
+  `421 Invalid Host header`, since the gateway proxies with this app's public
+  Host header, not localhost. Identity: implement no auth of your own, the
+  platform is the OAuth Authorization Server, the gateway is the Resource
+  Server; read `X-Forwarded-User`/`X-Forwarded-Groups` only, and never route
+  `/.well-known/oauth-protected-resource` yourself; no sign-out link (there
+  is no browser session). Default stack: Python plus the official MCP Python
+  SDK (FastMCP), pinned below `mcp` 2 in `app/requirements.txt` (2 renamed
+  the `FastMCP` API the starter uses); build the container image per
+  `inno-containerize`. Expect a seconds-scale cold start on the first
+  request after the container has been idle (`sleep_after` default 10m).
 
 **Delete the scaffold marker as you build.** The template repo ships
 `app/.needs-build`, which makes CI skip deployment until it's removed. Once you

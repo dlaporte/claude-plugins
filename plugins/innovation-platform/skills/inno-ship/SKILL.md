@@ -28,10 +28,10 @@ will tell them so.
 If there is no `Plugin:` line at all, the gate is not armed on this platform.
 Carry on.
 
-Deploys are **release-driven**: a push to main runs the safety gates and
-deploys nothing; **tagging a `v*` release is what deploys**. This skill makes
-that seamless — for a less-technical user, "shipping" is one conversation and
-the versioning just happens.
+Deploys are **release-driven**: a push to the default branch runs the safety
+gates and deploys nothing; **tagging a `v*` release is what deploys**. This
+skill makes that seamless: for a less-technical user, "shipping" is one
+conversation and the versioning just happens.
 
 Run `inno-safety-preflight` first if it hasn't passed in this session. Its
 verdict covers BOTH the safety gates and the guardrails policy review — if
@@ -51,7 +51,7 @@ test -f app/.needs-build && echo "BLOCKED: app/.needs-build present — build th
 ```
 
 For a function-shaped app (`function`, `mcp-function`), also confirm the
-lockfile. The push-to-main checks do not reliably catch its absence (the
+lockfile. The push checks do not reliably catch its absence (the
 dependency audit resolves a throwaway lockfile), but the tag deploy refuses
 without it:
 
@@ -82,7 +82,7 @@ the deploy installs nothing at the repo root.
 ```bash
 git add -A
 git commit -m "<short, why-focused message>"
-git push origin main
+git push origin HEAD
 ```
 
 This runs the seven gate jobs (`config-integrity`, `secrets`, `sast`, `deps`,
@@ -191,11 +191,12 @@ for a scoped Cloudflare deploy token. The broker verifies the token's signed
 `job_workflow_ref` claim equals exactly
 `dlaporte/inno-platform-ci/.github/workflows/platform-ci.yml@refs/heads/main`
 and that the triggering ref is a `refs/tags/v*` release tag — the broker
-issues deploy tokens for tags only, so a request from a main push, a branch,
-or a fork gets `403 deploy_denied`, as does a repo whose deploy.yml is edited
-to skip gates. There is no code path where removing the gates yields a
-working deploy. The release tag is recorded on the deployment — the platform
-shows it, and the safety sweep's auto-respin rebuilds at exactly that tag.
+issues deploy tokens for tags only, so a request from a push to the default
+branch, a push to any other branch, or a fork gets `403 deploy_denied`, as
+does a repo whose deploy.yml is edited to skip gates. There is no code path
+where removing the gates yields a working deploy. The release tag is recorded
+on the deployment: the platform shows it, and the safety sweep's auto-respin
+rebuilds at exactly that tag.
 For a container app the deploy also refuses unless the image it pushes is
 exactly the one the `container` job scanned (checked by image id, then pinned
 by digest), so what the gates approved is what runs.
