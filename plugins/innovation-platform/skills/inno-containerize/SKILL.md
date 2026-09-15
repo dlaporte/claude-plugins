@@ -70,16 +70,26 @@ changed in between: pin the base to the digest `get_app_contract` serves.
    inspects `Config.ExposedPorts` for literally `"8080/tcp"`, and the
    gateway forwards traffic there regardless. Binding `127.0.0.1` is the
    classic "works locally, unreachable in the container" bug.
-2. **Non-root `USER` before `CMD`**: the gate reads `Config.User` and refuses
-   an empty value, `root`, `0`, and any `root:<group>` or `0:<group>` form.
-   A zero-padded uid (`00`, `0000:0`) is root too: Docker runs it as uid 0, and
-   the gate refuses it from platform v0.14.4. When `USER` names an account
-   rather than a number, the gate resolves it
-   against the image's own `/etc/passwd` (copied out of the image, never run)
-   and refuses a name that maps to uid 0, a name with no entry there, and an
-   image with no readable `/etc/passwd`. On `scratch` or any base without a
-   passwd file, use a numeric non-zero uid (`USER 65532`). Switch user *after*
-   your last root-requiring `RUN`.
+2. **Non-root `USER` before `CMD`**: the gate is an allowlist. It checks the
+   part of `Config.User` before any `:` (the group is not checked) and accepts
+   exactly two forms:
+   - a plain decimal uid from 1 to 2147483647, such as `USER 1000` or
+     `USER 65532:65532` (leading zeros count as Docker counts them, so
+     `USER 00` is uid 0);
+   - a user name made only of letters, digits, `.`, `_` and `-`, not starting
+     with `-`, that appears on exactly one line of the image's own
+     `/etc/passwd` (copied out of the image, never run), where that line's uid
+     field is plain digits from 1 to 2147483647.
+
+   Everything else is refused: `root` or any uid 0, an unset `USER`, a signed
+   uid (`+0`), an empty user part (`:1000`), a name missing from
+   `/etc/passwd`, a name on more than one line or on a line with leading or
+   trailing blanks, a uid field that is not a plain number, a uid above
+   2147483647, and a named user in an image with no readable `/etc/passwd`.
+   The platform enforces this exact rule from platform v0.14.4 (contract
+   version 13); earlier releases refuse a subset of these. On `scratch` or any
+   base without a passwd file, use a numeric uid (`USER 65532`). Switch user
+   *after* your last root-requiring `RUN`.
 3. **CVE-clean image** — patch the base's OS packages in the build
    (`apt-get upgrade` / `apk upgrade`) so the Trivy gate passes; a stock
    base commonly ships fixable CVEs that have nothing to do with your code.
@@ -174,29 +184,60 @@ CMD ["/server"]                # must bind 0.0.0.0:8080 and serve /healthz
 
 ## Local sanity check before pushing
 
+The block below builds the image, then decides the non-root rule exactly the
+way the CI gate does (item 2 above) and prints one `OK:` or `FAIL:` line. It
+never runs the image to resolve the user: it reads `/etc/passwd` straight off
+the image, maps NUL bytes before reading, and hands the name to `awk` through
+the environment. It has no comments and no `!` outside single quotes, so it
+pastes cleanly into bash, zsh, or an interactive zsh. The last three commands
+are the `/healthz` smoke gate in one shot.
+
 ```bash
 docker build -t app-under-test .
-# Non-root, decided the way the CI gate decides it: refuse empty/root/0/root:*/0:*,
-# resolve a named USER against the image's own /etc/passwd (never running it),
-# and strip leading zeros from the uid (as a string, not shell arithmetic) before
-# refusing uid 0 (CI refuses zero-padded uids from platform v0.14.4).
-user="$(docker inspect --format='{{.Config.User}}' app-under-test)"
-case "$user" in
-  0|root|0:*|root:*|"") uid=0 ;;
-  *)
-    case "${user%%:*}" in
-      *[^0-9]*|"")
-        docker rm -f uidprobe >/dev/null 2>&1; docker create --name uidprobe app-under-test >/dev/null
-        uid="$(docker cp uidprobe:/etc/passwd - 2>/dev/null | tar -xO 2>/dev/null | awk -F: -v u="${user%%:*}" '$1 == u { print $3; exit }')"
-        docker rm -f uidprobe >/dev/null ;;
-      *) uid="${user%%:*}" ;;
-    esac ;;
-esac
-uid_norm="$(printf '%s' "$uid" | sed 's/^0*//')"; [ -z "$uid_norm" ] && uid_norm=0
-if [ -n "$uid" ] && [ "$uid_norm" != "0" ]; then echo "OK: User='$user' runs as uid $uid"; else echo "FAIL: User='$user' is root or has no /etc/passwd entry"; fi
+user="$(docker inspect --format='{{.Config.User}}' app-under-test | tr '\000' '\001')"
+u="${user%%:*}"; uid=""; why=""
+case "$user" in 0|root|0:*|root:*|"") why="runs as root" ;; esac
+if [ -z "$why" ]; then
+  case "$u" in
+    "") why="has an empty user part, which Docker runs as uid 0" ;;
+    *[^0123456789]*)
+      case "$u" in
+        -*|*[^ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._-]*)
+          why="is neither a plain uid nor a portable user name" ;;
+        *)
+          docker rm -f uidprobe >/dev/null 2>&1
+          docker create --name uidprobe app-under-test >/dev/null 2>&1
+          pw="$(docker cp uidprobe:/etc/passwd - 2>/dev/null | tar -xO 2>/dev/null | tr '\000' '\001')"
+          docker rm -f uidprobe >/dev/null 2>&1
+          if [ -z "$pw" ]; then
+            why="cannot be resolved: the image has no readable /etc/passwd"
+          else
+            uid="$(printf '%s\n' "$pw" | U="$u" LC_ALL=C awk -F: '
+              { line = $0; sub(/^[^!-~]+/, "", line); sub(/[^!-~]+$/, "", line)
+                split(line, f, ":"); if (f[1] == ENVIRON["U"]) loose++
+                if ($1 == ENVIRON["U"]) { exact++; field = $3 } }
+              END { if (loose == 0 && exact == 0) print "none"
+                    else if (loose != 1 || exact != 1) print "ambiguous"
+                    else if (field !~ /^[0-9]+$/) print "malformed"
+                    else print field }')"
+            case "$uid" in
+              none) why="matches no /etc/passwd entry" ;;
+              ambiguous) why="matches /etc/passwd ambiguously (more than one line, or a line with leading or trailing blanks)" ;;
+              malformed) why="matches an /etc/passwd line whose uid field is not a plain number" ;;
+            esac
+          fi ;;
+      esac ;;
+    *) uid="$u" ;;
+  esac
+fi
+n="$(printf '%s' "$uid" | sed 's/^0*//')"
+if [ -z "$why" ] && [ -z "$n" ]; then why="resolves to uid 0"; fi
+if [ -z "$why" ] && { [ "${#n}" -gt 10 ] || [ "$n" -gt 2147483647 ]; }; then why="resolves to a uid above 2147483647"; fi
+shown="$(printf '%s' "$user" | LC_ALL=C tr -c ' -~' '?')"
+if [ -z "$why" ]; then echo "OK: User='$shown' runs as uid $n"; else echo "FAIL: User='$shown' $why"; fi
 docker inspect --format='{{json .Config.ExposedPorts}}' app-under-test | grep '8080/tcp'
 docker run -d -p 8080:8080 --name app-under-test-run app-under-test
-curl -sf http://localhost:8080/healthz                           # the CI smoke gate, in one shot
+curl -sf http://localhost:8080/healthz
 docker rm -f app-under-test-run
 ```
 
