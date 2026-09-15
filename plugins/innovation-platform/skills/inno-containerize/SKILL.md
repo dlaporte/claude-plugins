@@ -61,7 +61,7 @@ job loads it, refuses unless its id matches the id the `container` job
 recorded with the platform, pushes it, and pins the deployment to its digest.
 Nothing rebuilds your Dockerfile at deploy time. Each run still builds its own
 image, though, so the tag run's scan can see a different image than the
-push-to-main preflight did when the base tag floats or upstream packages
+push preflight did when the base tag floats or upstream packages
 changed in between: pin the base to the digest `get_app_contract` serves.
 
 ## The contract — identical for every stack

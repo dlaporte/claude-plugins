@@ -79,6 +79,13 @@ the deploy installs nothing at the repo root.
 
 ## 1. Commit, push, and wait for green checks
 
+**Confirm the branch before pushing.** The `deploy.yml` `register_app` handed
+back triggers gates only on pushes to the repository's default branch (a `v*`
+tag deploys from any branch). Compare `git branch --show-current` against
+`gh repo view --json defaultBranchRef --jq .defaultBranchRef.name`; if they
+differ, do not push blind, tell the user the gates only run on the default
+branch, and ask whether to switch to it or merge there first.
+
 ```bash
 git add -A
 git commit -m "<short, why-focused message>"
@@ -92,10 +99,14 @@ ref-gated to release tags. The `container` image gates run for `container` and
 `mcp-container` apps; they're skipped for `function` and `mcp-function` apps,
 which have no image to build. Watch with `gh run watch` or the `get_ci_status`
 MCP tool. `get_ci_status` returns the run status, each job's conclusion, and
-the run link; its file:line annotations are best effort and normally
-unavailable for a registered app, so diagnose from the run link or
-`gh run view --log-failed` when they are missing. If a gate fails, follow the
-failure guidance below and re-push; never tag on top of red checks.
+the run link; its first line also names the branch and commit ("... on
+`<branch>`, commit `<sha>`"), and with no `run_id` it returns only the LATEST
+`deploy.yml` run, so before trusting a green or red result, check that
+commit (or branch) against `git rev-parse --short HEAD` to confirm it is this
+push and not an older, unrelated run. Its file:line annotations are best
+effort and normally unavailable for a registered app, so diagnose from the
+run link or `gh run view --log-failed` when they are missing. If a gate
+fails, follow the failure guidance below and re-push; never tag on top of red checks.
 
 ## 2. Cut the release — this is the deploy
 

@@ -91,8 +91,8 @@ the `fetch` handler for a function or mcp-function app.
 
 ## Releases: push = checks, tag = deploy
 
-A push to main runs the platform's safety gates and deploys NOTHING — push
-work-in-progress freely; that run is the safety preflight
+A push to the default branch runs the platform's safety gates and deploys
+NOTHING: push work-in-progress freely; that run is the safety preflight
 (`inno-safety-preflight` narrates it). Deploys happen only when a `v*`
 release tag is pushed (`inno-ship` handles versioning + tagging).
 
@@ -121,9 +121,9 @@ function-shaped app (`function`, `mcp-function`) that ships
 `app/package.json`, a committed `app/package-lock.json` is required outright
 since platform v0.14.2: the deploy job installs with `npm ci` and fails the
 release naming the file when the lockfile is missing, and fails again if it is
-out of step with `app/package.json`. A push to main does NOT catch this,
-because the `deps` gate builds a throwaway lockfile to audit when none is
-committed, so the preflight goes green and only the tagged deploy fails.
+out of step with `app/package.json`. A push to the default branch does NOT
+catch this, because the `deps` gate builds a throwaway lockfile to audit
+when none is committed, so the preflight goes green and only the tagged deploy fails.
 Regenerate the lockfile with `npm install` inside `app/` whenever you change
 dependencies, and commit both files together. Every package your Worker
 imports by bare name must be listed in `app/package.json` itself: nothing is

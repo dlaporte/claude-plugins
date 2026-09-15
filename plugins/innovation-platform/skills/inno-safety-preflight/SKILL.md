@@ -129,6 +129,12 @@ Before pushing, look at `.github/workflows/deploy.yml`. If it has a
 `sast` gate will fail on it: tell the user, and with their okay delete that
 line as part of this push. Nothing else in the file changes.
 
+Also confirm the branch: the workflow's trigger only runs gates on pushes to
+the repository's default branch. Compare `git branch --show-current` against
+`gh repo view --json defaultBranchRef --jq .defaultBranchRef.name`; if they
+differ, do not push blind, tell the user the gates only run on the default
+branch, and ask whether to switch to it or merge there first.
+
 ```bash
 git add -A && git commit -m "<why-focused message>"   # if uncommitted work
 git push origin HEAD
@@ -137,7 +143,11 @@ git push origin HEAD
 Nothing deploys from this push. Watch the run either way:
 
 - **MCP (no gh needed):** call `get_ci_status` with the app name — it returns
-  the run status, the run link, and each gate's conclusion. It also tries for
+  the run status, the run link, and each gate's conclusion. Its first line
+  also names the branch and commit the run is for; with no `run_id` it
+  returns only the latest `deploy.yml` run, so check that commit (or branch)
+  against `git rev-parse --short HEAD` before narrating a green or red
+  result as the answer for this push, not a stale one. It also tries for
   file:line failure annotations, but those are best effort: reading them needs
   the GitHub Checks API, and the platform's GitHub App deliberately omits that
   permission, so for a registered app the tool reports the findings as

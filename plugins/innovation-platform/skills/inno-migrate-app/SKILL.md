@@ -238,8 +238,9 @@ app cannot function on the platform at all, say so plainly and stop here.
 Before adapting anything, make sure the repo's current state is safe to fall
 back to: confirm the working tree is committed and pushed (`git status`), and
 capture a restore point — a branch or tag on the pre-migration commit
-(`git branch pre-inno-migration`), or do the adaptation on a feature branch and
-merge to `main` once it's ready. Tell the user where the restore point is.
+(`git branch pre-inno-migration`), or do the adaptation on a feature branch
+and merge to the default branch once it's ready. Tell the user where the
+restore point is.
 
 1. **Register the repo (two calls, with a proof file between them).** Call
    `register_app({ app, repo, description, type, members, accept_guardrails: true, connections })`

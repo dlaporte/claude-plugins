@@ -412,8 +412,9 @@ Once the proof file is pushed to the default branch AND the user confirms
 they've installed the App (or the App already covered the repo), call
 `register_app` **again with the same arguments**. This re-checks the proof file,
 then finishes the job server-side (prunes the template scaffold to the chosen
-type in a new commit on `main`, pushed via the installation token, provisions
-the Okta group + D1 + R2, and binds the repo). It returns text beginning **`App
+type in a new commit on the repo's default branch, pushed via the
+installation token, provisions the Okta group + D1 + R2, and binds the
+repo). It returns text beginning **`App
 "{name}" registered from {repo}`** and containing:
 
 - `URL (after first deploy): https://inno-{name}.<platform domain>` — **quote
@@ -521,9 +522,9 @@ the Okta group + D1 + R2, and binds the repo). It returns text beginning **`App
 ## 4. Pull and scaffold
 
 You cloned the repo in §3 to commit the proof file. Call 2 then pushed the
-platform's scaffold prune to `main` as a new commit from the server side, so
-bring the clone up to date before touching anything (a push from the stale
-clone would be rejected as non-fast-forward):
+platform's scaffold prune to the repo's default branch as a new commit from
+the server side, so bring the clone up to date before touching anything (a
+push from the stale clone would be rejected as non-fast-forward):
 
 ```bash
 cd <repo>
@@ -608,7 +609,7 @@ version anyway, so the body describes the runtime this app actually has.
   `npm ci --ignore-scripts` inside `app/` and fails without a lockfile or with a
   stale one, and it installs nothing at the repo root, so an import not declared
   in `app/package.json` fails to bundle (for example
-  `Could not resolve "hono"`). The push-to-main safety checks do not reliably
+  `Could not resolve "hono"`). The push safety checks do not reliably
   catch a missing lockfile (the dependency audit generates a throwaway one, and
   only the release-age cooldown flags it, when an admin has enabled that), so
   usually only the tag deploy fails. The repo is already function-shaped
