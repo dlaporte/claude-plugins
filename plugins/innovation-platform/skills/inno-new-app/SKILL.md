@@ -258,7 +258,9 @@ The written design covers, at minimum:
 - **Access model**: who can see what, and who can edit. The platform manages
   only membership: `X-Forwarded-Groups` carries at most this app's own
   `inno-{name}-users` (a member) and `inno-{name}-open` (a caller who reached an
-  open app), never the platform admin group or any other app's groups. Any
+  open app), never the platform admin group or any other app's groups (for an
+  SSO app from its first deploy on the v0.14.3 gateway onward; MCP apps get the
+  narrowed header immediately). Any
   finer role (an editor, an admin view) needs the app's own role table keyed on
   `X-Forwarded-User`; do not design around reading other groups from the header.
 - **Deployment pattern and stack**
@@ -360,8 +362,9 @@ them; never derive or shorten them. Commit it on the repository's **default
 branch** (`main` for a template copy) and push:
 
 ```bash
-git clone <the user's repo>   # skip if §2 already cloned it; wait until origin/main exists (template copying is asynchronous)
+git clone <the user's repo>   # skip if §2 already cloned it
 cd <repo>
+git fetch origin && git checkout main && git pull --ff-only   # fails until the template copy has landed: wait and retry
 mkdir -p .inno-platform
 printf '%s\n' '<contents from the response>' > '<path from the response>'
 git add '<path from the response>'
@@ -377,7 +380,11 @@ Surrounding whitespace (such as the newline `printf` adds) is tolerated;
 everything else must match exactly. Leave the file in place: call 2 re-checks it
 immediately before provisioning. After that nothing reads it again, and keeping
 it is harmless. The push may start a CI run in the repo; it deploys nothing (the
-app isn't built yet), so there is nothing to act on in its result.
+app isn't built yet), so there is nothing to act on in its result. Never commit
+the proof on an empty clone (template copying is asynchronous, so
+`git checkout main` fails until `origin/main` exists) and never force-push it:
+a forced push over the template copy wipes the scaffold, and call 2 then has
+nothing to prune.
 
 **Then give the user the install link verbatim** and ask them to:
 
@@ -390,7 +397,10 @@ app isn't built yet), so there is nothing to act on in its result.
    page, which says **Repository verified** once the App can reach the repo AND
    the proof file matches. If it says **Proof file not found**, the file is
    missing, on the wrong branch, or has the wrong contents: fix it, then reopen
-   the link or simply run call 2 (it re-checks without the redirect).
+   the link or simply run call 2 (it re-checks without the redirect). If it
+   says **GitHub App installed** instead (GitHub's configure flow, for an
+   account that already had the App), that page carries no registration: just
+   run call 2.
 
 The link expires in 24 hours. Re-running `register_app` while the registration
 is still pending reuses it, with the same proof path; once it has expired, the
@@ -538,8 +548,9 @@ subtree and leaves the container root in place (see the bullet below; you adapt
 `app/main.py` into your MCP server and **keep `app/storage.py`**, not write from
 scratch). Everything
 else is platform-owned and must NOT be in the repo: all of a repo-root `src/`
-(the platform injects its gateway there, and the `config-integrity` gate fails
-a repo carrying any file under it; an `app/src/` of your own is fine), the
+(its gateway was bundled from there and the deploy wipes it, and the
+`config-integrity` gate fails a repo carrying any file under it; an `app/src/`
+of your own is fine), the
 repo-root `package.json`, `package-lock.json` and `tsconfig.json`, any
 `wrangler.*` config, and a `.npmrc` at any depth (including `app/.npmrc`).
 Don't create any of them. Load the
@@ -585,16 +596,17 @@ version anyway, so the body describes the runtime this app actually has.
   already Access-verified — read identity from `request.headers`
   (`X-Forwarded-User` / `X-Forwarded-Groups`), serve **`GET /healthz` as a
   route** (200), and reach storage through the app's **own bindings** —
-  `env.DATA` (D1), `env.FILES` (R2) — not `storage.internal`. Declare every
+  `env.DATA` (D1), `env.FILES` (R2), not `storage.internal`. Declare every
   npm package the code imports in a **non-root** `app/package.json`, and commit
   the `app/package-lock.json` that `npm install` (run inside `app/`) produces,
   kept in sync with `package.json`. The deploy installs with
   `npm ci --ignore-scripts` inside `app/` and fails without a lockfile or with a
   stale one, and it installs nothing at the repo root, so an import not declared
   in `app/package.json` fails to bundle (for example
-  `Could not resolve "hono"`). The push-to-main safety checks do not catch a
-  missing lockfile (the dependency audit generates a throwaway one); only the
-  tag deploy fails. The repo is already function-shaped
+  `Could not resolve "hono"`). The push-to-main safety checks do not reliably
+  catch a missing lockfile (the dependency audit generates a throwaway one, and
+  only the release-age cooldown flags it, when an admin has enabled that), so
+  usually only the tag deploy fails. The repo is already function-shaped
   (no Dockerfile, no Python reference — the CI image gates are skipped for this
   type); extend `app/index.ts` rather than re-scaffolding. Never interpolate
   user data into hand-built HTML — even escaped, the SAST gate blocks it; return
