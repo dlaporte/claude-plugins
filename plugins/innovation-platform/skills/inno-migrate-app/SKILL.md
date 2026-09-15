@@ -160,6 +160,11 @@ order:
    fails the `sast` gate; the fix is to drop the line or pass only the named
    secrets that workflow needs.
 
+   Also list every `.semgrepignore` file and `# nosemgrep` comment in the repo.
+   From platform v0.14.4 (contract version 13) the `sast` gate deletes every
+   `.semgrepignore` before it scans and ignores `# nosemgrep`, so whatever they
+   hid becomes a finding: list those findings and plan to fix them.
+
    Inventory every value the app reads from its environment or a `.env` file:
    each becomes an app **Variable** (`set_app_variable`) after registration,
    delivered back to the code as a real env var; nothing stays in the repo.
