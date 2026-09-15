@@ -54,9 +54,15 @@ sweep alike, which skips apps whose gate is off. The SBOM is captured
 anyway so that re-enabling the gate restores sweep coverage immediately,
 with no new deploy needed to regenerate it. Every check that runs must
 pass before `deploy` (which needs `container` to have succeeded) will run.
-`wrangler deploy` rebuilds the same Dockerfile a second time at deploy
-time, so a Dockerfile that only works "sometimes" will eventually break a
-deploy that passed CI.
+
+The image the gates scanned is the image that ships. On a `v*` tag run the
+`container` job saves that exact image as a workflow artifact; the `deploy`
+job loads it, refuses unless its id matches the id the `container` job
+recorded with the platform, pushes it, and pins the deployment to its digest.
+Nothing rebuilds your Dockerfile at deploy time. Each run still builds its own
+image, though, so the tag run's scan can see a different image than the
+push-to-main preflight did when the base tag floats or upstream packages
+changed in between: pin the base to the digest `get_app_contract` serves.
 
 ## The contract — identical for every stack
 
@@ -64,9 +70,14 @@ deploy that passed CI.
    inspects `Config.ExposedPorts` for literally `"8080/tcp"`, and the
    gateway forwards traffic there regardless. Binding `127.0.0.1` is the
    classic "works locally, unreachable in the container" bug.
-2. **Non-root `USER` before `CMD`** — the gate inspects
-   `docker inspect --format='{{.Config.User}}'` and fails on
-   empty/`root`/`0`. Switch user *after* your last root-requiring `RUN`.
+2. **Non-root `USER` before `CMD`**: the gate reads `Config.User` and refuses
+   an empty value, `root`, `0`, and any `root:<group>` or `0:<group>` form.
+   When `USER` names an account rather than a number, the gate resolves it
+   against the image's own `/etc/passwd` (copied out of the image, never run)
+   and refuses a name that maps to uid 0, a name with no entry there, and an
+   image with no readable `/etc/passwd`. On `scratch` or any base without a
+   passwd file, use a numeric non-zero uid (`USER 65532`). Switch user *after*
+   your last root-requiring `RUN`.
 3. **CVE-clean image** — patch the base's OS packages in the build
    (`apt-get upgrade` / `apk upgrade`) so the Trivy gate passes; a stock
    base commonly ships fixable CVEs that have nothing to do with your code.
@@ -78,6 +89,14 @@ deploy that passed CI.
    (immediately on each green deploy, then daily). Keep it cheap and
    **storage-independent** — a slow app boot is legitimate, a `/healthz`
    that waits on storage is not. Never stub it as a TODO.
+5. **Keep build inputs where the gates allow them.** Put the app's code and
+   manifests under `app/` (an `app/src/` is fine); a repo-root `src/` is
+   platform-owned and the `config-integrity` gate fails any file in it. Never
+   commit a `.npmrc` anywhere, `app/.npmrc` included, even for a container
+   build that would use it: npm expands environment variables into it, so the
+   gate rejects it at every depth. Other package-manager config
+   (`.yarnrc.yml`, `pnpm-workspace.yaml`, `bunfig.toml`) is allowed under
+   `app/` but not at the repo root.
 
 **Base image: call the `get_app_contract` MCP tool for the platform's
 current digest-pinned recommended bases (python/node/go) — never hard-code
@@ -90,6 +109,11 @@ Variables facility (`set_app_variable` / the app page's Variables tab) —
 never `ENV`/`ARG` a secret into the committed Dockerfile: the image is
 built in CI from the repo, so a baked-in value is a committed one, and
 gitleaks fails the build.
+
+**The Dockerfile is scanned too.** The `sast` gate runs semgrep over the whole
+repository except the repo-root `src/`, because the docker build context is
+the repo root: the Dockerfile and any root-level file it `COPY`s are checked,
+not only `app/`.
 
 ## Reference recipe — Python (the platform's tested stack)
 
@@ -149,7 +173,21 @@ CMD ["/server"]                # must bind 0.0.0.0:8080 and serve /healthz
 
 ```bash
 docker build -t app-under-test .
-docker inspect --format='{{.Config.User}}' app-under-test        # must not be empty/root/0
+# Non-root, decided the way the CI gate decides it: refuse empty/root/0/root:*/0:*,
+# and resolve a named USER against the image's own /etc/passwd (never running it).
+user="$(docker inspect --format='{{.Config.User}}' app-under-test)"
+case "$user" in
+  0|root|0:*|root:*|"") uid=0 ;;
+  *)
+    case "${user%%:*}" in
+      *[!0-9]*|"")
+        docker rm -f uidprobe >/dev/null 2>&1; docker create --name uidprobe app-under-test >/dev/null
+        uid="$(docker cp uidprobe:/etc/passwd - 2>/dev/null | tar -xO 2>/dev/null | awk -F: -v u="${user%%:*}" '$1 == u { print $3; exit }')"
+        docker rm -f uidprobe >/dev/null ;;
+      *) uid="${user%%:*}" ;;
+    esac ;;
+esac
+if [ -n "$uid" ] && [ "$uid" != "0" ]; then echo "OK: User='$user' runs as uid $uid"; else echo "FAIL: User='$user' is root or has no /etc/passwd entry"; fi
 docker inspect --format='{{json .Config.ExposedPorts}}' app-under-test | grep '8080/tcp'
 docker run -d -p 8080:8080 --name app-under-test-run app-under-test
 curl -sf http://localhost:8080/healthz                           # the CI smoke gate, in one shot
