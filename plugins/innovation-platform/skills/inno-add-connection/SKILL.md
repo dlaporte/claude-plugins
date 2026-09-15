@@ -416,7 +416,7 @@ The sample below is written for the official SDK; the swap for standalone
 
 ```python
 from mcp.server.fastmcp import Context
-from storage import Connections, NotConnected  # template helpers
+from storage import Connections, ConnectionLocked, NotConnected  # template helpers
 
 # On the standalone `fastmcp` package instead? Drop the Context import and the
 # ctx parameter, and get the request from the dependency:
@@ -433,6 +433,12 @@ async def list_incidents(ctx: Context) -> dict:
     caller_assertion = request.headers.get("x-caller-assertion")
     try:
         cred = await connections.get("crm", caller_assertion)
+    except ConnectionLocked:
+        # Catch this BEFORE NotConnected (it is a subclass): connected, but
+        # locked for this MCP client. Re-authorizing the client fixes it.
+        return {"error": "Your CRM connection is locked for this assistant. "
+                         "Re-authorize this connector (in Claude: /mcp, then "
+                         "re-authenticate this server) and try again."}
     except NotConnected as e:
         # Do NOT swallow this — surface the link so the user can link once.
         return {"error": f"You're not connected to your CRM yet — open "
@@ -480,13 +486,21 @@ Rules that hold regardless of language:
     instead of caching the credential in memory until `expires_at`.
   - **`not_connected` carrying `locked: true`** — the credential exists, but
     this call could not reach the user's own sealing key. It means "connected,
-    and locked right now", not "never connected". The two template clients
-    surface it differently. The JS client raises `ConnectionLocked`, a subclass
-    of `NotConnected` with the same `connect_url` field, so an existing `catch
-    (e) { if (e instanceof NotConnected) ... }` block keeps working unchanged.
-    The Python client has no locked subclass: it raises plain `NotConnected`,
-    so `except NotConnected` already catches it, but the exception alone will
-    not tell you which of the two cases you are in. Two situations produce it:
+    and locked right now", not "never connected". Both template clients raise
+    `ConnectionLocked` for it, a subclass of `NotConnected` carrying the same
+    connect link (`connectUrl` in `lib/storage.js`, `connect_url` in
+    `app/storage.py`), so an existing `catch (e) { if (e instanceof
+    NotConnected) ... }` block or `except NotConnected` clause keeps working
+    unchanged. To tell the two cases apart, check for `ConnectionLocked`
+    first: in JS test `instanceof ConnectionLocked` before `NotConnected`; in
+    Python import it (`from storage import ConnectionLocked, NotConnected`)
+    and put `except ConnectionLocked` BEFORE `except NotConnected`, as in the
+    sample above, since the subclass would otherwise be caught by the parent
+    clause. A repo created from an older copy of the template may have a
+    `storage.py` with no `ConnectionLocked`, which raises plain `NotConnected`
+    for both cases and cannot tell them apart: copy the current
+    `app/storage.py` from `inno-template` before writing the locked branch.
+    Two situations produce it:
     the MCP client authorized the app **before** the user's first connection,
     or the user's sealing key was reset after they last connected. **The fix is re-authorizing the MCP client**, never
     `connect_url`: in Claude, run `/mcp` and re-authenticate that server.
