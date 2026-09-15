@@ -1,6 +1,6 @@
 ---
 name: inno-manage-app
-description: Use to share, check on, start, stop, export, open up, or configure a deployed Innovation Platform app via the inno-platform MCP tools (grant_access, revoke_access, set_app_access, app_status, start_app, stop_app, restart_app, request_start, transfer_app (admin-only), export_app_data, get_app_metrics, get_app_usage, get_app_logs, set_config, set_app_variable/list_app_variables/remove_app_variable, create_support_bundle). Use when the user wants to give someone access, open an app to everyone with SSO, check deploy status, bring back a stopped app, restart a wedged app, read its logs, set an environment variable or API key for their app, reassign ownership (admins), download their app's data, or shut one down.
+description: Use to share, check on, start, stop, export, open up, or configure a deployed Innovation Platform app via the inno-platform MCP tools (grant_access, revoke_access, set_app_access, app_status, start_app, stop_app, restart_app, request_start, transfer_app (admin-only), revoke_sessions (admin-only), export_app_data, get_app_metrics, get_app_usage, get_app_logs, set_config, set_app_variable/list_app_variables/remove_app_variable, create_support_bundle). Use when the user wants to give someone access, open an app to everyone with SSO, check deploy status, bring back a stopped app, restart a wedged app, read its logs, set an environment variable or API key for their app, reassign ownership (admins), sign someone out of the platform panel everywhere (admins), download their app's data, or shut one down.
 ---
 
 # inno-manage-app
@@ -36,9 +36,28 @@ Okta group**. A `forbidden` error back from any of these tools means exactly
 that; don't retry it and don't try to work around it locally (there is no
 local escalation — authorization lives in the platform, not the client).
 
+**Call budget.** Every platform tool call counts against one budget of
+**60 calls a minute per signed-in person**, and every agent and session that
+person runs shares it, parallel subagents included. Past that, any tool
+answers `rate_limited` ("More than 60 platform tool calls in a minute"). Wait
+a full minute before retrying, and never retry in a tight loop. If you hit it
+during ordinary work, something is calling too often (a polling loop, a retry
+loop, a parallel fan-out across many apps): stop and change the approach
+rather than pushing through. The web panel has its own brakes (120 changes a
+minute, and 60 a minute for its live app detail, metrics and log reads) and
+answers HTTP 429 with `Retry-After: 60`. The counts are approximate, never a
+quota to plan against.
+
 There is also a web panel at `https://inno-platform.davidlaporte.org` with the
 same capabilities (same API, same authorization) — point users there for
 anything visual: dashboards, notification history, lifecycle timelines.
+
+If the panel, a download link, or a Connections page answers
+`account_inactive` (HTTP 401, "This account can no longer sign in"), that
+person's Okta account is suspended or deprovisioned. The platform has ended
+their session and nothing in this skill can undo it: the account itself has to
+be restored by a platform admin or the identity team. The same account also
+can no longer refresh an MCP client authorization for any app.
 
 **Speak the user's language.** Many users are non-technical. Explain in plain
 terms — "access", "a database", "file storage", "your app's address" — and do
@@ -58,8 +77,11 @@ States: `created` → `deploying` → `active` ⇄ `warned` → `stopped` → *(
   it can't serve and **can't be deployed** (a `git push` fails with
   `app_stopped` until it's started).
 - A stopped app's data is kept for 30 days (default), then **purged**:
-  infrastructure, database, and files permanently deleted. The GitHub repo,
-  audit history, and notification history survive purge.
+  infrastructure, database, and files permanently deleted, every MCP client
+  authorization for the app revoked, and its usage and cost history deleted.
+  The GitHub repo, audit history, notification history, and finished data
+  exports survive purge. The app's name is held for seven days afterward
+  before anyone can register it again.
 - All of these windows are platform config, overridable per app or per user.
   **Pinned** apps (admin-set) are exempt from the idle clock entirely. Pinned
   apps are still stopped by the safety sweep when a vulnerability goes
@@ -78,9 +100,14 @@ Reattaches the domain and resets the idle clock; the app serves again
 immediately, **no redeploy needed**. Owners have a limited number of
 self-service starts (default 1, lifetime, per app — check `app_status`);
 admins are unlimited and don't consume the owner's allowance. When the owner
-is out of starts, `start_app` returns `start_limit_reached` — use
+is out of starts, `start_app` returns `start_limit_reached`. Use
 `request_start({ app, reason })` instead, which notifies every platform
-admin and lands in their panel notification feed.
+admin and lands in their panel notification feed. Call it once: a repeat
+request while one is already waiting (unread, and made since the app's current
+stop) is recorded but sends no second notification, and the tool says a
+request "is already waiting with the platform admins". Relay that instead of
+asking again. A new request notifies again only after an admin has read the
+waiting one.
 
 `start_app` can also return **`app_limit_reached`**: starting would put the
 owner over their active-app limit (the message carries the numbers). Report
@@ -105,12 +132,19 @@ Detaches the app's domain now: it stops serving, can't be deployed, and its
 30-day purge countdown begins. Everything is intact and `start_app` fully
 reverses it until the window closes — but **always confirm with the user by
 name before calling**, and tell them the purge date from the response.
+A stop that lands while a deploy is running wins: the deploy does not bring
+the app back, so a stopped app stays stopped until `start_app`.
 Rejected with `app_pinned` if the app is marked pinned (an admin
-must turn that off first). There is no un-purge: once the window lapses (or
-an admin purges deliberately), only the repo and history remain, and the name
-becomes reusable via a fresh registration (`register_app`, see
-`inno-new-app`) — purge also releases the repo binding, so the same repo can
-be registered again.
+must turn that off first).
+
+There is no un-purge: once the window lapses (or an admin purges
+deliberately), only the repo and history remain. The name is then **held for
+seven days**: `check_name` reports it unavailable with the date it frees up,
+and `register_app` refuses it with `name_quarantined` until then. No admin can
+lift the hold, so do not suggest asking one. After the hold a fresh
+registration (`register_app`, see `inno-new-app`) can take the name again.
+Purge also releases the repo binding, so the same repo can be registered again
+right away under a different name.
 
 ## `grant_access({ app, email })` / `revoke_access({ app, email })`
 
@@ -127,22 +161,33 @@ access here is what actually lets someone past the Okta login on
   the panel shows people only the apps they own.
 - For an **mcp-function** or **mcp-container** app the same group governs
   access, checked when the user authorizes their MCP client and re-checked on
-  every token refresh.
+  every token refresh. A person who is not a member is stopped at
+  authorization with "You don't have access to this app. Ask its owner to
+  share it with you." The platform remembers each person's approval of an MCP
+  client per app instance, so being asked to approve again is not a fault:
+  platform v0.14.2 reset every remembered approval once (one re-approval per
+  user per app), and an app that was purged and later registered again under
+  the same name is a new instance that asks again.
   `revoke_access` additionally deletes the user's OAuth grants for the app
   outright; worst case a revoked user keeps working for the remaining
-  access-token lifetime (≤1h) plus a short gateway cache (≤60s).
+  access-token lifetime (1 hour at most) plus a short gateway cache (60 seconds
+  at most).
 - `revoke_access` also deletes that user's stored Connection credentials for
   the app, on every app type, so requests made as them stop reaching the
   connected backend. The platform audits this as `connection_cascade_revoked`.
-- The revoke **cascades to consumer apps**: every app that reads this app's
-  data through a link removes the same user too, and the response names those
-  apps. The cascade is best-effort per consumer, so a consumer whose Okta
-  removal fails is logged and left out of that list while the source revoke
-  still stands. Relay the list, and treat it as the immediate report rather
-  than the only record: the consumer apps' `access_revoked` audit rows carry a
-  `cascade_from`
-  field naming the source app, and `list_app_links` enumerates the consumers
-  at any time.
+- The revoke **cascades to consumer apps**, transitively: every app that reads
+  this app's data through a link, and every app that reads one of those in
+  turn, removes the same user too and deletes that user's stored Connection
+  credentials there. The response names the apps it removed them from. A
+  consumer whose removal fails does not undo the source revoke, but it is not
+  silent either: the response then carries a `WARNING:` naming the apps that
+  could not be updated and saying the user may still reach the data through
+  them. Relay that warning plainly, do not report the revoke as complete, and
+  offer to run `revoke_access` again (it is safe to repeat) or to have the
+  membership removed by hand. Beyond the immediate report, the consumer apps'
+  `access_revoked` audit rows carry a `cascade_from` field naming the source
+  app (a failed one is audited `access_revoke_failed`), and `list_app_links`
+  enumerates the consumers at any time.
 
 ## `app_status({ app })` / `get_app_metrics({ app, days?, hours? })`
 
@@ -225,25 +270,76 @@ returns it to the named member list (open: false). Owner or admin only.
   the one-time admin backfill (`scripts/backfill-open-access.mjs`).
 - Confirm before opening — state plainly that EVERY SSO user will have
   access, not just current members.
+- While an app is open, a person who is not a member reaches it carrying only
+  `inno-{app}-open` in `X-Forwarded-Groups` (the header never carries the
+  platform admin group or other apps' groups). App code that admits only
+  `inno-{app}-users` will refuse them, so check the app before promising that
+  opening it lets everyone in.
+- Closing an app that an open consumer app reads through a data link revokes
+  that link, and the consumer's owner gets a `link_rebuild_pending`
+  notification telling them to redeploy it.
 
-## `transfer_app({ app, new_owner_email })` — reassign ownership (ADMINS ONLY)
+## `transfer_app({ app, new_owner_email, force? })`: reassign ownership (ADMINS ONLY)
 
 **Platform admins only** (tightened 2026-07-21): there is no accept step, so
 owner-initiated transfers could dump unwanted apps on people. When an app
-OWNER asks to transfer their app, do NOT call this tool for them — tell them
+OWNER asks to transfer their app, do NOT call this tool for them. Tell them
 a platform admin must do it, and offer to draft the request.
 
-When the caller IS an admin: immediate — the recipient becomes the owner
+When the caller IS an admin: immediate. The recipient becomes the owner
 (lifecycle notices, quota, and management rights move to them) and is added
 to the app's access group; the previous owner **keeps access as a regular
 member** and is notified. The recipient must be an Okta user.
 
 - Counts against the recipient's `apps.max_active` **unless the app is
-  stopped** — an `app_limit_reached` error means the recipient is at their
+  stopped**. An `app_limit_reached` error means the recipient is at their
   cap: an admin can raise their limit. Do NOT offer to stop the recipient's
   apps for them.
-- Confirm before calling — this takes effect immediately, there is no
-  accept step. State plainly who gains and who keeps what.
+- **Data links block it.** Data links are same-owner only, so a transfer has
+  to revoke every link that touches the app. While any of those links still
+  has a deployed binding (a live link, or one unlinked since the consumer app
+  last deployed), the transfer is refused with `link_transfer_blocked`, naming
+  each `consumer->source` pair. There are two ways forward and the choice is
+  the admin's: unlink with `unlink_app_data` and redeploy each consumer, then
+  transfer (unlinking alone does not clear the block, the consumer's redeploy
+  does), or call again with `force: true`. **Never add `force: true` on your
+  own.** Explain what it does, name the affected apps, and get an explicit yes.
+- **What `force: true` does.** It revokes those links, dispatches a rebuild of
+  each affected consumer at its current release tag, and notifies each
+  consumer's owner (`link_rebuild_pending`). Until that rebuild lands the
+  consumer's deployed binding still exists. A container-shaped consumer
+  deployed on platform v0.14.2 or later is cut off within 60 seconds anyway by
+  the platform's live link check (its reads then fail `link_revoked`); a
+  function-shaped consumer keeps read-write access to the other app's database
+  until its rebuild finishes. If the response says `REBUILD NOT DISPATCHED` for
+  an app, that app keeps its binding until someone redeploys it by hand: tell
+  the admin and that app's owner.
+- `link_containment` means this app reads another app's data through a link
+  and the recipient cannot see that source app, so the transfer would widen
+  who can reach it. `force` does not override this. Grant the recipient access
+  to the named source app first, or unlink, then transfer.
+- A data export the previous owner started and that has not finished fails
+  once ownership moves; the new owner starts a fresh one if they want it.
+- Confirm before calling: this takes effect immediately and there is no
+  accept step. State plainly who gains and who keeps what, and which data
+  links (if any) it will break.
+
+## `revoke_sessions({ email })`: sign someone out of the panel (ADMINS ONLY)
+
+Ends every live platform panel session for one person, immediately: they are
+signed out everywhere and must sign in through Okta again. Use it when
+offboarding someone or when a session may be compromised. It does NOT touch
+MCP client authorizations (`revoke_access` does that, one app at a time) and
+changes no group membership, so a full offboarding is `revoke_sessions` plus
+`revoke_access` on each app they can reach. It is deliberately not part of
+`transfer_app`: a previous owner usually stays a legitimate user.
+
+- Sessions created before platform v0.14.1 were never indexed and cannot be
+  ended this way until that person signs in again (at most 7 days later).
+  A response of "has no live panel sessions" can therefore still leave an old
+  session alive; say so when the admin is responding to a compromise.
+- Confirm with the admin by name before calling. The response says how many
+  sessions were ended.
 
 ## `get_app_usage({ app, days? })` — meters and estimated cost
 
@@ -314,6 +410,10 @@ switch) and any `notify.email.<event>` — at their own user scope. So "stop
 emailing me about deploys but keep the purge warnings" is self-service. Those
 same keys at app or platform scope stay admin-only.
 
+`set_config` refuses a `note` longer than 200 characters (the panel answers
+`note_too_long`); shorten it and call again. `value` is always passed as a
+string, numbers and switches included (`"14"`, `"true"`).
+
 ## Variables (`set_app_variable` / `list_app_variables` / `remove_app_variable`)
 
 Per-app **environment variables** — the sanctioned home for an APP-level
@@ -368,12 +468,20 @@ after an app is purged); admins see everything. Every email the platform sends
 corresponds to an entry here.
 
 Stages worth acting on when one appears: `respin_failed`, `auto_restarted`,
-`auto_restart_failed`, `link_severed`, `degraded`, `usage_anomaly`,
-`quota_horizon`, `connection_expired`, `unlinked` / `relinked`, `transferred`,
-`access_changed`, `shared`, `exported`. The tool filters on one app, one
-`stage`, or unread only. `mark_all_notifications_read` clears the caller's
-whole feed in one call, which is what a user asking to dismiss a backlog
-wants.
+`auto_restart_failed`, `link_severed`, `link_rebuild_pending`, `degraded`,
+`usage_anomaly`, `quota_horizon`, `connection_expired`, `unlinked` /
+`relinked`, `transferred`, `access_changed`, `shared`, `exported`.
+`link_rebuild_pending` means a data link this app used was revoked (an unlink,
+a source that closed, or an ownership transfer): the app's deployed binding to
+the other app's database keeps working until the app is rebuilt, and the entry
+says whether a rebuild was dispatched or the owner has to redeploy (for an
+owner that is `inno-ship`). Admins also see two admin-only stages:
+`start_requested` (an owner asked for a start) and `connection_sink_new_host`
+(a connection was pointed at a credential destination no connection on the
+platform was using; check that the host belongs to the backend the connection
+claims to be). The tool filters on one app, one `stage`, or unread only.
+`mark_all_notifications_read` clears the caller's whole feed in one call, which
+is what a user asking to dismiss a backlog wants.
 
 ## Authorization summary
 
@@ -386,6 +494,11 @@ wants.
 | `rebuild_app` | `inno-platform-admins` only (owners redeploy by tagging their own repo) |
 | `export_app_data` | app owner, or `inno-platform-admins` |
 | `transfer_app` | `inno-platform-admins` only (owners ask an admin) |
+| `revoke_sessions` | `inno-platform-admins` only |
+| `purge_app` | `inno-platform-admins` only |
+| `link_app_data` | the owner of both apps, or `inno-platform-admins` |
+| `unlink_app_data` | the consumer app's owner, or `inno-platform-admins` |
+| `list_app_links` | app owner, or `inno-platform-admins` |
 | `set_app_access` | app owner, or `inno-platform-admins` (opening gated by `access.allow_open`) |
 | `register_app` | any signed-in Okta user (becomes the owner) |
 | `create_support_bundle` | app owner, or `inno-platform-admins` |
@@ -415,10 +528,16 @@ needs the backend to actually invalidate it, they must disconnect from the
 Connections tab on their account page instead. Confirm with the user before calling it; it is not reversible for
 them beyond reconnecting.
 
-`create_support_bundle({ app, description })` builds a diagnostics zip
-(recent logs, deploys, container state, health/safety findings — no app data)
-behind an authenticated download link. Use it when an app misbehaves; the
-user attaches the zip to a ticket in the support system (RT/ServiceNow).
+`create_support_bundle({ app, description? })` builds a diagnostics zip
+(recent logs, deployment history, container state, health and safety findings,
+usage, audit trail; no app data and no secrets) behind an authenticated
+download link. `description` is optional plain text of up to 4000 characters,
+embedded for the support team: ask the owner before putting anything sensitive
+in it. Use it when an app misbehaves; the user attaches the zip to a ticket in
+the support system (RT/ServiceNow). Each app is limited to **5 bundles in any
+24 hours**. Past that the tool refuses `bundle_limit_reached`. Every bundle
+covers the same recent window, so point the user at a bundle they already
+have instead of making another, or wait for the oldest one to age out.
 
 If you're unsure whether the signed-in user owns an app, call `app_status`
 first — its `forbidden` vs. success response is itself the authorization
