@@ -98,7 +98,9 @@ order:
    edit what), rewired to key on `X-Forwarded-User`: `X-Forwarded-Groups`
    carries only this app's `inno-{name}-users` and `inno-{name}-open`, never the
    platform admin group, another app's groups, or the repo's existing role
-   groups, so existing role checks cannot move onto that header. This is about the app's *own* front-door
+   groups (for an SSO app from its first deploy on the v0.14.3 gateway onward;
+   MCP apps get the narrowed header immediately), so existing role checks cannot
+   move onto that header. This is about the app's *own* front-door
    login — a separate thing to look for is auth to a *backend the app calls
    out to*: if the repo runs its own OAuth flow against some other service,
    holds a long-lived per-user token for that service, or ships a sidecar
@@ -117,19 +119,27 @@ order:
    patched base image (container; see `inno-containerize`); app code arranged
    under `app/`; a root `CLAUDE.md` carrying the platform's required section
    headers (config-integrity checks these — copy `dlaporte/inno-template`'s
-   `CLAUDE.md` and adapt its body).
+   `CLAUDE.md` and adapt its body). Also check the repo's **default branch**:
+   if it is not `main`, raise it as an open decision in the plan. The
+   `deploy.yml` that `register_app` returns runs the safety checks only on
+   pushes to `main` (a `v*` tag still deploys), registration's scaffold prune
+   reads `main`, and `inno-safety-preflight` and `inno-ship` push to `main`.
+   Renaming the default branch to `main` is the simple path; the choice is the
+   user's.
 5. **Gate risks**: secrets **anywhere in git history** (gitleaks scans the full
    history, and this is the *same* repo: history is not left behind, so a
    secret buried in an old commit still fails and must be scrubbed AND rotated;
    the rotated value then goes into an app Variable, never back in the repo),
    dependency CVEs (`pip-audit`, Trivy), and semgrep OWASP patterns such as
    string-built HTML or raw SQL formatting. **Semgrep scans the whole repository
-   except the repo-root `src/`**, not just `app/`: root-level scripts, tools,
-   tests and the Dockerfile all count, so a migrated repo's non-app files can
-   fail the gate too. Then list every path the `config-integrity` gate rejects:
-   - **anything under a repo-root `src/`** (the platform owns `src/` and injects
-     its gateway there). A repo whose code lives in `src/` must move it, for
-     example to `app/src/`;
+   except the repo-root `src/` and semgrep's default-ignored directories**
+   (`test/`, `tests/`, `build/`, `dist/`, `vendor/`, `node_modules/`, at any
+   depth), not just `app/`: root-level scripts, tools, workflow files and the
+   Dockerfile all count, so a migrated repo's non-app files can fail the gate
+   too. Then list every path the `config-integrity` gate rejects:
+   - **anything under a repo-root `src/`** (the platform owns `src/`: its
+     gateway was bundled from there, and the deploy wipes it). A repo whose
+     code lives in `src/` must move it, for example to `app/src/`;
    - the repo-root `package.json`, `package-lock.json` and `tsconfig.json`
      (your own under `app/` are fine);
    - a `wrangler.*` config or a `.wrangler/` directory at the repo root;
@@ -140,6 +150,15 @@ order:
      under `app/` are allowed, except `.npmrc`);
    - a `scaffold/` directory, which is rejected unless `app/.needs-build` is
      still present.
+
+   List every existing file under `.github/workflows/`. The platform's caller
+   workflow must live at exactly `.github/workflows/deploy.yml` (the platform
+   re-dispatches that file name for security respins), so an existing
+   `deploy.yml`, often a live pipeline to another host with its own secrets,
+   has to be renamed (for example to `legacy-deploy.yml`) or retired, and that
+   is the user's decision. Any workflow that passes `secrets: inherit` also
+   fails the `sast` gate; the fix is to drop the line or pass only the named
+   secrets that workflow needs.
 
    Inventory every value the app reads from its environment or a `.env` file:
    each becomes an app **Variable** (`set_app_variable`) after registration,
@@ -192,13 +211,17 @@ The written plan covers, at minimum, each assessment product above:
 - **Contract adaptations** — port/healthz/non-root/`app/` layout/CLAUDE.md
 - **Gate risks found** — secrets (including git history), CVEs, semgrep hits,
   files that must be deleted before CI will pass
+- **Existing workflows**: each file under `.github/workflows/`, what happens to
+  an existing `deploy.yml` (renamed or retired), and any `secrets: inherit` line
+  to remove
 - **What does not carry over**
 - **Proposed name** (checked available) and the exact hostname consequence
 - **How the repo is protected**: the branch/restore-point strategy Phase 2
   will use, and the one small commit registration itself needs on the default
   branch (a proof-of-control file under `.inno-platform/`), so the user approves
   that write in advance
-- **Effort summary and open decisions** (read-only default, members, …)
+- **Effort summary and open decisions** (read-only default, members, a
+  non-`main` default branch, …)
 
 Only after that plan is in your reply: **stop and get explicit user approval**
 (of the plan *and* the name) before Phase 2. Ask the approval question in
@@ -241,7 +264,8 @@ merge to `main` once it's ready. Tell the user where the restore point is.
    - an **App install link**: give it to the user and have them **install the
      platform GitHub App** on the account/org that owns the repo, scoped to that
      repository. If the App already covers the repo (including "All
-     repositories"), they can skip the link.
+     repositories"), they can skip the link. A setup page that says **GitHub
+     App installed** (rather than **Repository verified**) is fine: run call 2.
 
    Once the proof file is on the default branch and the App is installed, call
    `register_app` **again with the same arguments**; the second call binds the
@@ -252,10 +276,12 @@ merge to `main` once it's ready. Tell the user where the restore point is.
    `repo_already_registered`, `repo_owner_claimed`, `app_limit_reached`,
    `repo_mismatch`, `guardrails_not_accepted`, …).
 2. **Add the caller workflow.** Write `.github/workflows/deploy.yml` exactly as
-   `register_app` returned it (an existing non-template repo won't have one; if
-   the repo already has one, replace it, and never keep a `secrets: inherit`
-   line: it is a blocking `sast` finding, and the platform workflow needs no
-   caller secrets). It
+   `register_app` returned it. If the repo already has a `deploy.yml`, never
+   overwrite it silently: rename or retire it only as the approved plan says,
+   and if the plan did not cover it, show the user the file and ask first. With
+   the user's okay, remove `secrets: inherit` from any workflow that carries it
+   (or pass only the named secrets it needs); the platform workflow needs no
+   caller secrets. The returned file
    references `dlaporte/inno-platform-ci/.github/workflows/platform-ci.yml@main`
    and passes `with: app: {name}`; keep its `workflow_dispatch` trigger (the
    platform re-dispatches it for security respins). The `with:` block matters
