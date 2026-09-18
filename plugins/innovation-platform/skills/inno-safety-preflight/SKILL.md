@@ -56,7 +56,7 @@ a green gate as proof that a scan actually happened, and you can tell a user
 "that CVE is ignored until 2026-12-31, after which this deploy stops passing"
 while there's still time to act.
 
-Four things are checked here, and **all are hard requirements before
+Five things are checked here, and **all are hard requirements before
 `inno-ship`**:
 
 1. The **safety gates** (CI) — eight jobs, all `needs:` prerequisites of
@@ -83,6 +83,9 @@ Four things are checked here, and **all are hard requirements before
    platform's runtime requirements that CI can't see.
 4. The **app-code security notes** (you): the app-level risk classes the
    perimeter can't close — authorization/IDOR above all.
+5. **Declared variables** (you, repo-local): if `app/inno-variables.json`
+   exists, whether it's well-formed and whether any name it marks
+   `required` still has no value.
 
 ## 1. Guardrails + contract + security review (do this while CI runs, or first)
 
@@ -125,6 +128,18 @@ in SQL, output is escaped, and expensive actions are bounded per caller. A
 real authorization hole is a hard stop — fix or guide the fix before
 `inno-ship`. (A stateless single-view tool can skip this.)
 
+## 1b. Declared variables (repo-local, before you push)
+
+If the repo carries `app/inno-variables.json`, validate it the same way
+`inno-ship` does (same name grammar, reserved names, 32-entry cap, and the
+three allowed fields; see there for the exact rules) and, for every
+`required: true` name, check whether it already has a value
+(`list_app_variables`, or `app_status`, which names an unset required one
+directly). Nothing here is CI-enforced (the file is read only at the tag's
+`deploy` finalize step, never at a push), so this is purely advisory, and
+it's the only warning an author gets before their first deploy leaves a
+required key silently unset.
+
 ## 2. Push and watch the gates
 
 Before pushing, look at `.github/workflows/deploy.yml`. If it has a
@@ -139,7 +154,21 @@ differ, do not push blind, tell the user the gates only run on the default
 branch, and ask whether to switch to it or merge there first.
 
 ```bash
-git add -A && git commit -m "<why-focused message>"   # if uncommitted work
+git add -A
+
+# Committed DIRECTORY symlinks fail config-integrity (check 1c) and there is
+# no policy toggle for it. Run this AFTER `git add -A`, so the index covers
+# both already-tracked links and ones you are about to commit, and so
+# gitignored app/node_modules (which npm fills with directory links) drops
+# out on its own. A link to a FILE is legal, so classify rather than reject
+# on mode alone: -d and -e follow the link, which is the test the gate makes.
+git ls-files -s | awk '$1 == "120000"' | cut -f2 | while IFS= read -r l; do
+  if   [ -d "$l" ];   then echo "BLOCKED (directory link): $l -> $(readlink "$l")"
+  elif [ ! -e "$l" ]; then echo "BLOCKED (dangling link):  $l -> $(readlink "$l")"
+  fi
+done
+
+git commit -m "<why-focused message>"   # if uncommitted work
 git push origin HEAD
 ```
 

@@ -736,3 +736,8 @@ If the app needs an app-level key or config value instead (one API key the
 whole app shares, a base URL), set it after registration with
 `set_app_variable` — it reaches the app as a plain environment variable.
 Never put it in the repo; gitleaks fails the build on the full history.
+
+If the app will read platform Variables, consider adding
+`app/inno-variables.json` (name → `{required?, secret?, description?}`) so
+an owner without your source can see what it needs (see
+`inno-platform-conventions`).

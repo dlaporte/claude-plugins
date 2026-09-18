@@ -241,6 +241,21 @@ never build a settings page to collect them. Hidden values (the default)
 are write-only after saving; a change lands right away and briefly
 restarts a container app.
 
+An app may optionally describe the variables it reads in
+`app/inno-variables.json`: a JSON object keyed by variable name, each
+value `{"required"?: bool, "secret"?: bool, "description"?: string}` (all
+optional; defaults `false`/`true`/empty; description ≤200 chars; ≤32
+entries; names follow the same env-var-shaped, non-reserved rule as
+`set_app_variable`). The platform sends it on every successful deploy
+(the tag's finalize step only; nothing checks it at push time) and it's
+purely advisory: declaring a name never sets, blocks, or reserves it, and a
+malformed file is refused whole, with the previous declarations kept and
+the deploy left green; the run log's `deploy-complete:` line is where the
+reason surfaces. Once declared, `list_app_variables` and the panel's
+Variables tab show a required-but-unset name as missing (with your
+description), and `app_status` names it directly. Write one whenever your
+app depends on a variable an owner wouldn't otherwise know to set.
+
 ## Per-user backend access (Connections)
 
 Identity above is about *your app* knowing who's using it. Some apps also need

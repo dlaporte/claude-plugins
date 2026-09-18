@@ -80,6 +80,28 @@ Every package the code imports must be declared in `app/package.json`, because
 `app-deps` installs from that file alone and nothing is installed at the repo
 root.
 
+### Declared variables, if the app has any
+
+If the repo has `app/inno-variables.json`, read it before tagging: nothing
+in CI validates or applies it before the tag's `deploy` job finalizes, so
+this is the only check that helps before the first deploy. It must be a
+JSON object keyed by variable name (env-var shaped:
+`^[A-Z][A-Z0-9_]{0,63}$`, and not one of the platform-reserved names or
+prefixes: `ENVIRONMENT`, `SLEEP_AFTER`, `ACCESS_TEAM_DOMAIN`, `ACCESS_AUD`,
+`OAUTH_RS_MODE`, `OAUTH_RS_RESOURCE`, `MCP_AUTH_SERVER`, `PORT`, `DATA`,
+`FILES`, `DB`, `APP`, `APP_WORKER`, `PLATFORM`, or a `LINKED_`/`APPVAR_`
+prefix), each value an object with only `required` (bool, default false),
+`secret` (bool, default true) and `description` (string, ≤200 chars,
+default empty): an unrecognized field name, a wrong-typed field, a bad
+name, or more than 32 entries refuses the **whole file** (the platform keeps
+its previous declarations and the tag still deploys; the reason surfaces
+only on the `deploy-complete:` line in this run's log). For every name
+marked `required: true`, call `list_app_variables` (or read `app_status`,
+which now names an unset required one on its own line) and tell the user
+before you tag if it has no value yet: the platform never blocks a deploy
+or fails a gate over a missing required variable, so this is the only
+warning the user gets before finding out at runtime.
+
 ## 1. Commit, push, and wait for green checks
 
 **Confirm the branch before pushing.** The `deploy.yml` `register_app` handed
@@ -282,16 +304,25 @@ deployment timestamp are the authoritative, side-effect-free signals — use
 those. If the user wants to see the app for themselves, let them visit it
 in their own browser; don't pre-check it for them.
 
-### The first health probe after a brand-new app's deploy can also be transiently wrong
+### A brand-new app's first health status may briefly read `unknown`, not `unhealthy`
 
-Same propagation-window reasoning as the DNS caveat above, applied to the
-platform's own health signal: right after a clean first-ever deploy, the
-post-deploy health probe can fire before the deployment has fully propagated
-and briefly report `unhealthy (HTTP 500)` even though the app's `/healthz` is
-a static 200. Don't treat that first probe as authoritative — it's not real
-signal yet. `restart_app` does **not** re-fire the probe or update the
-deployment record (it only redeploys the current worker version), so it will
-not clear a stale-looking `unhealthy`. To get a fresh health signal, re-run
-the whole tag run (`gh run rerun <run-id>`, without `--job`: a container deploy
-needs the image that same run's `container` job scanned, and that image is kept
-for only one day) or wait for the platform's daily probe.
+Since platform v0.14.15, the deploy-time health probe defers rather than
+alarms when it can't get a good answer from the origin: Cloudflare's
+origin-reach statuses (520-527, 530), exactly what a freshly-attached
+hostname returns for the ~60-90s a container needs to finish cold-starting,
+are classified the same as a thrown connection error. A deferred probe
+leaves the app's health status **untouched** (`unknown`, for a brand-new app
+that has never been probed) rather than recording `unhealthy` and mailing
+the owner a false alarm; it resolves at the next scheduled pass. Don't read
+a still-`unknown` `app_status` right after a first deploy as a problem: the
+deferred probe hasn't resolved yet, the app isn't down. A genuinely broken
+deploy still surfaces immediately: an application-level 5xx is a real answer
+from a reachable app, so it's never deferred and alarms right away, same as
+an origin-reach status still failing at the next scheduled pass. `restart_app`
+does **not** re-fire the probe or update the deployment record, so it won't
+clear or refresh a pending status either way. To get a fresh signal sooner,
+re-run the whole tag run (`gh run rerun <run-id>`, without `--job`: a
+container deploy needs the image that same run's `container` job scanned,
+kept for only one day) or wait for the platform's next scheduled probe
+(`health.probe_interval_hours`, default 24 but configurable per app and per
+user, so it isn't always literally daily).

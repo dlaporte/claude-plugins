@@ -221,7 +221,10 @@ Read-only. `app_status` returns status, owner, URL (for an **mcp-function** or
 **mcp-container** app this is its **MCP endpoint** — the `…/mcp` address an
 MCP client uses), last-seen
 time, last deployment, and — when relevant — the stop/purge deadlines and the
-owner's remaining self-service starts. `get_app_metrics` returns per-day requests,
+owner's remaining self-service starts. If the app declares its variables
+(`app/inno-variables.json`) and a REQUIRED one has no value, `app_status`
+names it on its own line; check there before reaching for
+`list_app_variables`. `get_app_metrics` returns per-day requests,
 errors, and p50 CPU from Cloudflare analytics (`days`, default 14, max 31),
 followed by an hourly per-request section from the gateway: requests, errors,
 error rate, and p50/p95 latency (`hours`, default 24, max 168). Reach for the
@@ -486,6 +489,14 @@ Things to relay to the user in plain terms:
   hidden values never appear, and each hidden one reports which state it is
   in (`delivered` or `pending delivery`). `remove_app_variable {app, name}`
   removes the deployed copy first, then the record; idempotent.
+- An app may declare the variables it reads in its own
+  `app/inno-variables.json`, sent to the platform on each successful
+  deploy. `list_app_variables` then also lists a declared name nobody has
+  set yet as **not set**, marked REQUIRED or optional with the author's own
+  description, and a set name that was also declared carries that
+  description too; the header count splits variables that are **set** from
+  ones **declared and still missing**. Declaring is advisory only: it
+  never sets, blocks, or reserves a value.
 
 ## Notifications (`list_notifications` / `mark_notification_read` / `mark_all_notifications_read`)
 
