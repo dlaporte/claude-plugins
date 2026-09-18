@@ -313,16 +313,20 @@ hostname returns for the ~60-90s a container needs to finish cold-starting,
 are classified the same as a thrown connection error. A deferred probe
 leaves the app's health status **untouched** (`unknown`, for a brand-new app
 that has never been probed) rather than recording `unhealthy` and mailing
-the owner a false alarm; it resolves at the next scheduled pass. Don't read
-a still-`unknown` `app_status` right after a first deploy as a problem: the
-deferred probe hasn't resolved yet, the app isn't down. A genuinely broken
-deploy still surfaces immediately: an application-level 5xx is a real answer
-from a reachable app, so it's never deferred and alarms right away, same as
-an origin-reach status still failing at the next scheduled pass. `restart_app`
-does **not** re-fire the probe or update the deployment record, so it won't
-clear or refresh a pending status either way. To get a fresh signal sooner,
-re-run the whole tag run (`gh run rerun <run-id>`, without `--job`: a
-container deploy needs the image that same run's `container` job scanned,
-kept for only one day) or wait for the platform's next scheduled probe
-(`health.probe_interval_hours`, default 24 but configurable per app and per
-user, so it isn't always literally daily).
+the owner a false alarm; it clears on the next hourly cron pass, within
+about an hour, a fixed floor that's separate from the app's own
+`health.probe_interval_hours` schedule (default 24, configurable per app
+and per user). Don't read a still-`unknown` `app_status` right after a
+first deploy as a problem: the deferred probe hasn't resolved yet, the app
+isn't down. A genuinely broken deploy still surfaces immediately: an
+application-level 5xx is a real answer from a reachable app, so it's never
+deferred and alarms right away, same as an origin-reach status still
+failing at the next hourly pass. `restart_app` does **not** re-fire the
+probe or update the deployment record, so it won't clear or refresh a
+pending status either way. To get a fresh signal sooner than the next
+hourly pass, re-run the whole tag run (`gh run rerun <run-id>`, without
+`--job`: a container deploy needs the image that same run's `container`
+job scanned, kept for only one day). That hourly floor only applies while a
+status is pending: once it clears, the app's ordinary recurring health
+check goes back to following `health.probe_interval_hours`, so it isn't
+always literally daily.
