@@ -70,8 +70,23 @@ for recitation.
 
 States: `created` → `deploying` → `active` ⇄ `warned` → `stopped` → *(purged)*.
 
-- **Any authenticated request to an app resets its idle clock.** Traffic is
-  the only keep-alive; there is no "renew" action.
+- **What resets the idle clock depends on the app's perimeter**, and traffic
+  is the only keep-alive either way: there is no "renew" action. For an **SSO
+  app** (`container`, `function`) any signed-in visit counts. For an **MCP
+  app** (`mcp-function`, `mcp-container`) only a real MCP request counts: a
+  tool call, a resource read, a prompt, a completion. Connecting, the protocol
+  handshake, listing tools and health probes deliberately do not, so a client
+  that stays connected and never calls a tool does not keep the app alive, and
+  a service-token caller never touches the clock at all.
+- **Every deploy touches the clock too**, which is why an MCP owner never sees
+  this while they are actively building: it bites at the handoff, when the app
+  stops being deployed and is merely connected. When an owner is surprised by
+  a warning or a stop, reconcile `app_status`'s **Last seen** against what
+  they believe has been happening. A Last seen that tracks their last deploy,
+  or their last real tool call, rather than the days their client sat
+  connected, is the tell. Say it plainly: to keep an MCP app active, make a
+  real request to it; a client that stays connected and only lists tools does
+  not count.
 - After 14 idle days (default) an app is **warned** — still fully serving,
   just a notice. 14 days later it is **stopped**: its domain is detached, so
   it can't serve and **can't be deployed** (a `git push` fails with

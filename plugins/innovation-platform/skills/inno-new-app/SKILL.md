@@ -202,6 +202,11 @@ make, with your recommendation**:
     `mcp-container` can consume a Connection in v1. Choose `mcp-container`
     instead; do not land such an app on `mcp-function` and discover the gap
     after registration (the type is fixed at registration).
+    **Idle clock:** an MCP app's clock advances only on real tool use (a tool
+    call, resource read, prompt or completion). Connecting, the handshake and
+    tool listings do not count, so an app that is built and then left
+    connected but unused is warned and then stopped like any idle app. Tell
+    the user that when you hand the app over (`inno-manage-app`).
   - **`mcp-container`:** choose when the product is an **MCP server** that
     needs the **container** shape instead — a **non-TS/JS stack** (Python,
     Go, Ruby, …), **native dependencies**, **heavy/long-running compute**
@@ -227,7 +232,9 @@ make, with your recommendation**:
     Note the idle **cold start**: a sleeping container wakes on request, so
     expect a seconds-scale delay on the first `POST /mcp` after idle
     (`sleep_after` default 10m) — mention this if responsiveness matters to
-    the user.
+    the user. The idle-clock rule under `mcp-function` applies here too: only
+    real tool use advances it, so a connected-but-unused server still gets
+    stopped.
   - State your recommendation and the reason, and go with the user's call.
 - **Deployment pattern** (contract §5): server-rendered is the default for
   internal tools; SPA+API when rich client interactivity is the point — applies
