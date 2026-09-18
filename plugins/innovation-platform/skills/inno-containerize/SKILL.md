@@ -109,7 +109,12 @@ changed in between: pin the base to the digest `get_app_contract` serves.
    build that would use it: npm expands environment variables into it, so the
    gate rejects it at every depth. Other package-manager config
    (`.yarnrc.yml`, `pnpm-workspace.yaml`, `bunfig.toml`) is allowed under
-   `app/` but not at the repo root.
+   `app/` but not at the repo root. **Never commit a symlink that points at a
+   directory**, anywhere in the repo, dangling ones included; a link to a
+   *file* is fine. The gate walks the tree without following links, so content
+   behind a directory link is never inspected, and there is no policy toggle
+   to waive it (contract version 14). Copy the real directory in, or produce
+   it during the image build.
 
 **Base image: call the `get_app_contract` MCP tool for the platform's
 current digest-pinned recommended bases (python/node/go) — never hard-code

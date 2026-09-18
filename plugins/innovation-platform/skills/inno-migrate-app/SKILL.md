@@ -147,7 +147,15 @@ order:
      `.pnpmfile.cjs`, `pnpm-workspace.yaml`, `bunfig.toml` (the same files
      under `app/` are allowed, except `.npmrc`);
    - a `scaffold/` directory, which is rejected unless `app/.needs-build` is
-     still present.
+     still present;
+   - **any committed symlink that resolves to a directory**, at any depth,
+     dangling ones included (a symlink to a *file* stays legal). The gate
+     walks the tree without following links, so anything behind a directory
+     link is never inspected at all. `config-integrity` has no policy toggle,
+     so a repo carrying one cannot deploy until the link is removed (contract
+     version 14, platform v0.14.14). A migrated repo is exactly where one
+     turns up: a vendored path, a shared assets directory, a link left by an
+     old build layout. Replace it with the real directory or drop it.
 
    List every existing file under `.github/workflows/`. The platform's caller
    workflow must live at exactly `.github/workflows/deploy.yml` (the platform

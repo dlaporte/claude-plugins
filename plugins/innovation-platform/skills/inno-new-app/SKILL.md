@@ -554,7 +554,10 @@ else is platform-owned and must NOT be in the repo: all of a repo-root `src/`
 of your own is fine), the
 repo-root `package.json`, `package-lock.json` and `tsconfig.json`, any
 `wrangler.*` config, and a `.npmrc` at any depth (including `app/.npmrc`).
-Don't create any of them. Load the
+Don't create any of them. Don't commit a symlink that points at a directory
+anywhere in the repo either, dangling ones included (a link to a *file* is
+fine): the `config-integrity` gate walks the tree without following links, so
+it rejects every directory link outright, with no policy toggle. Load the
 `inno-platform-conventions` skill before writing any application code (stack
 policy, storage, identity, the do-not-touch file list), and — for a container
 or mcp-container app — the `inno-containerize` skill before editing the

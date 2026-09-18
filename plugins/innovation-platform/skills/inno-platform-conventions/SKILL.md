@@ -422,7 +422,16 @@ included: npm reads the `.npmrc` of the directory it runs in and expands
 `${VAR}` from the environment into it, which makes it a
 credential-exfiltration channel. The other package managers' files are
 allowed inside `app/`. Install from the public registry and never commit a
-`.npmrc` anywhere. Keep secrets and local env out of the repo entirely: an
+`.npmrc` anywhere.
+
+**No directory symlink anywhere in the repo**, at any depth and dangling ones
+too; a symlink that resolves to a *file* stays legal. The gate walks your tree
+without following links, so anything behind a directory link is never
+inspected, which is how a forbidden file (an `app/.npmrc`, say) could hide
+from every check above. `config-integrity` has no policy toggle, so a repo
+carrying one cannot deploy until the link is removed. This is the rule that
+took the contract to version 14 (platform v0.14.14), and it is not additive: a
+repo that passed before can fail its next CI run on it. Keep secrets and local env out of the repo entirely: an
 app-level key or config value belongs in a **Variable** (`set_app_variable`,
 or the app page's Variables tab), delivered to your code as a real
 environment variable.
