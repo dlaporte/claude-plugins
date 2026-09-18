@@ -188,9 +188,12 @@ access here is what actually lets someone past the Okta login on
   `response_type=code` with no `code_challenge`: the platform's OAuth server
   requires PKCE with `S256` on every authorization-code request, confidential
   clients included, and refuses a missing challenge, an unsupported method or
-  `plain` with a 400. That policy lives in the pinned provider library
-  (`@cloudflare/workers-oauth-provider`, exact `0.10.3`), so there is no
-  platform setting to relax it: it is the client's bug to fix.
+  `plain` with a 400. Two layers enforce that: the pinned provider library
+  (`@cloudflare/workers-oauth-provider`, exact `0.10.3`) rejects an
+  unsupported method and `plain`, and the platform adds a floor of its own at
+  `/authorize` refusing any code flow with no `code_challenge`, which is the
+  part that covers confidential clients because the library checks only public
+  ones. Neither is a setting anyone can relax: it is the client's bug to fix.
   `revoke_access` additionally deletes the user's OAuth grants for the app
   outright; worst case a revoked user keeps working for the remaining
   access-token lifetime (1 hour at most) plus a short gateway cache (60 seconds

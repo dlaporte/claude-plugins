@@ -199,6 +199,10 @@ proves the lockfile on its own: since platform v0.14.14 the `npm ci` runs in
 the `app-deps` job on every push to the default branch and hard-errors there,
 so a missing or stale lockfile is a red job in the run you are narrating, not
 a surprise at the tag. (The `deps` gate still builds a throwaway lockfile when
-none is committed, so its own green never proved anything here.) Checking the
-file yourself first is belt, not the safeguard: it saves a round trip through
-CI, nothing more.
+none is committed, so its own green never proved anything here.) One
+exception: `app-deps` is `needs: [policy, config-integrity]`, so a red
+`config-integrity` SKIPS it and the lockfile goes unproven. A skipped
+`app-deps` also skips `deploy`, so you cannot tag on it either way; the risk
+is believing this push proved something it did not. When `config-integrity`
+is red, fix that first and read the next run. Checking the file yourself is
+otherwise belt, not the safeguard: it saves a round trip through CI.

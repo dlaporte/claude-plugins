@@ -95,8 +95,8 @@ git commit -m "<short, why-focused message>"
 git push origin HEAD
 ```
 
-This runs the seven gate jobs (`config-integrity`, `secrets`, `sast`, `deps`,
-`dep-age`, `container`, `scaffold-check`) plus the `policy` fetch that resolves
+This runs the eight gate jobs (`config-integrity`, `secrets`, `sast`, `deps`,
+`dep-age`, `container`, `scaffold-check`, `app-deps`) plus the `policy` fetch that resolves
 the admin gate configuration, and then **stops** — the deploy job is
 ref-gated to release tags. The `container` image gates run for `container` and
 `mcp-container` apps; they're skipped for `function` and `mcp-function` apps,
