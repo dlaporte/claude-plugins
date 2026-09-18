@@ -77,7 +77,8 @@ fi
 ```
 
 Every package the code imports must be declared in `app/package.json`, because
-the deploy installs nothing at the repo root.
+`app-deps` installs from that file alone and nothing is installed at the repo
+root.
 
 ## 1. Commit, push, and wait for green checks
 
