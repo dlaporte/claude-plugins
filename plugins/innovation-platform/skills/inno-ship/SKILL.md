@@ -91,13 +91,26 @@ branch, and ask whether to switch to it or merge there first.
 
 ```bash
 git add -A
+
+# Committed DIRECTORY symlinks fail config-integrity (check 1c) and there is
+# no policy toggle for it. Run this AFTER `git add -A`, so the index covers
+# both already-tracked links and ones you are about to commit, and so
+# gitignored app/node_modules (which npm fills with directory links) drops
+# out on its own. A link to a FILE is legal, so classify rather than reject
+# on mode alone: -d and -e follow the link, which is the test the gate makes.
+git ls-files -s | awk '$1 == "120000"' | cut -f2 | while IFS= read -r l; do
+  if   [ -d "$l" ];   then echo "BLOCKED (directory link): $l -> $(readlink "$l")"
+  elif [ ! -e "$l" ]; then echo "BLOCKED (dangling link):  $l -> $(readlink "$l")"
+  fi
+done
+
 git commit -m "<short, why-focused message>"
 git push origin HEAD
 ```
 
 This runs the eight gate jobs (`config-integrity`, `secrets`, `sast`, `deps`,
-`dep-age`, `container`, `scaffold-check`, `app-deps`) plus the `policy` fetch that resolves
-the admin gate configuration, and then **stops** — the deploy job is
+`dep-age`, `container`, `scaffold-check`, `app-deps`) plus the `policy` fetch
+that resolves the admin gate configuration, and then **stops** — the deploy job is
 ref-gated to release tags. The `container` image gates run for `container` and
 `mcp-container` apps; they're skipped for `function` and `mcp-function` apps,
 which have no image to build. Watch with `gh run watch` or the `get_ci_status`

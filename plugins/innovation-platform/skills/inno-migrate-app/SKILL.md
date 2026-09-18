@@ -155,7 +155,18 @@ order:
      so a repo carrying one cannot deploy until the link is removed (contract
      version 14, platform v0.14.14). A migrated repo is exactly where one
      turns up: a vendored path, a shared assets directory, a link left by an
-     old build layout. Replace it with the real directory or drop it.
+     old build layout. Replace it with the real directory or drop it. A
+     directory link shows nothing useful in `ls` or a file tree, so scan the
+     index. A link to a FILE is legal, so classify rather than reject on mode
+     alone (`-d` and `-e` follow the link, which is the test the gate makes):
+
+     ```bash
+     git ls-files -s | awk '$1 == "120000"' | cut -f2 | while IFS= read -r l; do
+       if   [ -d "$l" ];   then echo "BLOCKED (directory link): $l -> $(readlink "$l")"
+       elif [ ! -e "$l" ]; then echo "BLOCKED (dangling link):  $l -> $(readlink "$l")"
+       fi
+     done
+     ```
 
    List every existing file under `.github/workflows/`. The platform's caller
    workflow must live at exactly `.github/workflows/deploy.yml` (the platform

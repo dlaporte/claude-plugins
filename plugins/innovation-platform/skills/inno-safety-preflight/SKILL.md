@@ -200,9 +200,11 @@ the `app-deps` job on every push to the default branch and hard-errors there,
 so a missing or stale lockfile is a red job in the run you are narrating, not
 a surprise at the tag. (The `deps` gate still builds a throwaway lockfile when
 none is committed, so its own green never proved anything here.) One
-exception: `app-deps` is `needs: [policy, config-integrity]`, so a red
-`config-integrity` SKIPS it and the lockfile goes unproven. A skipped
-`app-deps` also skips `deploy`, so you cannot tag on it either way; the risk
-is believing this push proved something it did not. When `config-integrity`
-is red, fix that first and read the next run. Checking the file yourself is
+exception, and it is about what you REPORT rather than about safety:
+`app-deps` is `needs: [policy, config-integrity]`, so a red
+`config-integrity` skips it. Nothing unsafe follows, because that run skips
+`deploy` too and there is no tag to cut, but a skipped `app-deps` proved
+nothing. Do not report the lockfile as clear on such a run, and say that it
+will be checked for the first time on the re-push, so a lockfile failure
+arriving then is not a new regression. Checking the file yourself is
 otherwise belt, not the safeguard: it saves a round trip through CI.
