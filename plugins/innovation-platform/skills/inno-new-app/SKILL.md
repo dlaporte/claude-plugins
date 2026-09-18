@@ -608,14 +608,15 @@ version anyway, so the body describes the runtime this app actually has.
   `env.DATA` (D1), `env.FILES` (R2), not `storage.internal`. Declare every
   npm package the code imports in a **non-root** `app/package.json`, and commit
   the `app/package-lock.json` that `npm install` (run inside `app/`) produces,
-  kept in sync with `package.json`. The deploy installs with
-  `npm ci --ignore-scripts` inside `app/` and fails without a lockfile or with a
-  stale one, and it installs nothing at the repo root, so an import not declared
-  in `app/package.json` fails to bundle (for example
-  `Could not resolve "hono"`). The push safety checks do not reliably
-  catch a missing lockfile (the dependency audit generates a throwaway one, and
-  only the release-age cooldown flags it, when an admin has enabled that), so
-  usually only the tag deploy fails. The repo is already function-shaped
+  kept in sync with `package.json`. CI installs with
+  `npm ci --ignore-scripts` inside `app/` in the `app-deps` job and fails
+  without a lockfile or with a stale one; the deploy job runs no package
+  manager in `app/`, and nothing is installed at the repo root, so an import
+  not declared in `app/package.json` fails to bundle (for example
+  `Could not resolve "hono"`). That install runs on **every push to the default
+  branch** (platform v0.14.14), not only at the release tag, so a missing
+  lockfile reds the preflight run. The `deps` gate is not what catches it: that
+  audit generates a throwaway lockfile of its own. The repo is already function-shaped
   (no Dockerfile, no Python reference — the CI image gates are skipped for this
   type); extend `app/index.ts` rather than re-scaffolding. Never interpolate
   user data into hand-built HTML — even escaped, the SAST gate blocks it; return

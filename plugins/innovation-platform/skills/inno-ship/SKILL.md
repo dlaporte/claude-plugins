@@ -51,16 +51,18 @@ test -f app/.needs-build && echo "BLOCKED: app/.needs-build present — build th
 ```
 
 For a function-shaped app (`function`, `mcp-function`), also confirm the
-lockfile. The push checks do not reliably catch its absence (the
-dependency audit resolves a throwaway lockfile), but the tag deploy refuses
-without it:
+lockfile. The push checks do catch its absence now: since platform v0.14.14
+`npm ci` runs in the `app-deps` job on every push to the default branch and
+hard-errors there. (The `deps` gate's green still proves nothing, because that
+audit resolves a throwaway lockfile.) Check it here anyway, as belt, to save a
+round trip through CI:
 
 ```bash
 if [ -f app/package.json ] && [ ! -f app/package-lock.json ]; then echo "BLOCKED: commit app/package-lock.json (run npm install inside app/)"; else echo "OK: lockfile present, or no app/package.json"; fi
 ```
 
 Then, only when `app/package.json` exists, install from the lockfile exactly as
-the deploy does: `npm ci` fails on a lockfile out of sync with
+the `app-deps` job does: `npm ci` fails on a lockfile out of sync with
 `app/package.json`. A function app with no `app/package.json` has no
 dependencies and nothing to install; do not create one to satisfy npm. The
 install creates `app/node_modules/`, which must be gitignored before §1's
@@ -167,8 +169,8 @@ and ask first, whether or not the row below says so.
 | `container` | Trivy CVE, a `USER` the non-root gate refuses (the gate accepts only a plain uid 1 to 2147483647 or a portable name on one clean `/etc/passwd` line; see `inno-containerize` item 2), missing `EXPOSE 8080`, or the image never answered `GET /healthz` | `inno-containerize` |
 | `scaffold-check` | not a failure — it suppresses `deploy` while `app/.needs-build` exists (see §0) | build the app, remove the marker |
 | `deploy` fails with `app_stopped` | the app was stopped by the lifecycle (or deliberately) — **stopped apps cannot be deployed** | `inno-manage-app`: `start_app` first, then re-tag |
-| `deploy` fails with `Missing app/package-lock.json` (function-shaped apps) | `app/package.json` exists but no lockfile is committed; the deploy installs only from a committed lockfile and never resolves ranges fresh | run `npm install` inside `app/`, commit `app/package-lock.json`, push, cut the next patch tag |
-| `deploy` fails in `npm ci`, or the bundle step reports `Could not resolve "<package>"` (function-shaped apps) | the lockfile no longer matches `app/package.json`, or the code imports a package not declared there (the deploy installs nothing at the repo root) | declare the package in `app/package.json`, run `npm install` inside `app/`, commit both files, cut the next patch tag |
+| `app-deps` fails with `Missing app/package-lock.json` (function-shaped apps) | `app/package.json` exists but no lockfile is committed; CI installs only from a committed lockfile and never resolves ranges fresh. This job runs on pushes too, so the failure blocks before any tag exists | run `npm install` inside `app/`, commit `app/package-lock.json`, push, confirm `app-deps` is green, then tag |
+| `app-deps` fails in `npm ci` (on pushes as well as tags), or the `deploy` bundle step reports `Could not resolve "<package>"` (function-shaped apps) | the lockfile no longer matches `app/package.json`, or the code imports a package not declared there (nothing is installed at the repo root) | declare the package in `app/package.json`, run `npm install` inside `app/`, commit both files, push, confirm `app-deps` is green, then cut the next patch tag |
 | `deploy` fails with `app_not_deployable` | the app was stopped, or its repo lost the platform GitHub App, while this deploy was starting | if the repo was unlinked, have the user reinstall the GitHub App on it first (re-linking leaves the app stopped); then `start_app` (`inno-manage-app`) and cut the next patch tag |
 | `deploy` fails at finalize with `app_not_deploying` | the app was stopped or purged while the deploy ran; nothing went live | `app_status` to see which; if stopped, `start_app`, then cut the next patch tag |
 | `deploy` fails with `No scanned image recorded` (container apps) | the platform has no record of the image this run's `container` job scanned (that job's best-effort SBOM upload failed, or the record could not be read), so the deploy cannot prove which image passed the gates | re-run the whole tag run (`gh run rerun <run-id>`); if it repeats, stop and offer a support bundle |

@@ -58,9 +58,10 @@ gateway boundary, but three specifics differ — the authoritative deltas are in
 - **Health:** answer `GET /healthz` with 200 as a **route** in your `fetch`
   handler, not a listening port.
 - **Dependencies:** declare every npm package your Worker imports in
-  `app/package.json` and commit `app/package-lock.json` beside it. The deploy
-  runs `npm ci --ignore-scripts` inside `app/` and fails without the lockfile,
-  and nothing is installed at the repo root, so an undeclared bare import
+  `app/package.json` and commit `app/package-lock.json` beside it. CI runs
+  `npm ci --ignore-scripts` inside `app/` in the `app-deps` job and fails
+  without the lockfile; the deploy job runs no package manager in `app/` at
+  all, and nothing is installed at the repo root, so an undeclared bare import
   fails the bundle.
 
 The **`mcp-function`** type is a function-type app whose consumer is an MCP client
@@ -119,11 +120,14 @@ check that the lockfile resolves a clean version before committing to it.
 **Node apps: commit `app/package-lock.json`, and declare every import.** For a
 function-shaped app (`function`, `mcp-function`) that ships
 `app/package.json`, a committed `app/package-lock.json` is required outright
-since platform v0.14.2: the deploy job installs with `npm ci` and fails the
-release naming the file when the lockfile is missing, and fails again if it is
-out of step with `app/package.json`. A push to the default branch does NOT
-catch this, because the `deps` gate builds a throwaway lockfile to audit
-when none is committed, so the preflight goes green and only the tagged deploy fails.
+since platform v0.14.2: CI installs with `npm ci` in the `app-deps` job and
+fails naming the file when the lockfile is missing, and fails again if it is
+out of step with `app/package.json`. Since v0.14.14 that job runs on **every
+push to the default branch**, so the preflight catches it before you tag; only
+the handover of the installed tree to the deploy is tag-gated, and the deploy
+job itself runs no package manager in `app/`. (The `deps` gate does still
+build a throwaway lockfile to audit when none is committed, so its own green
+proves nothing about this.)
 Regenerate the lockfile with `npm install` inside `app/` whenever you change
 dependencies, and commit both files together. Every package your Worker
 imports by bare name must be listed in `app/package.json` itself: nothing is

@@ -321,10 +321,12 @@ restore point is.
    - **Dependencies** pinned in the stack's manifest under `app/`, CVE-clean.
      A function-shaped app (`function`, `mcp-function`) must declare every
      package it imports in `app/package.json` and commit a matching
-     `app/package-lock.json` (run `npm install` inside `app/`): the deploy
-     installs only from that lockfile with `npm ci`, refuses when it is missing,
-     and installs nothing at the repo root, so an import the repo used to
-     satisfy from a root `package.json` fails to bundle.
+     `app/package-lock.json` (run `npm install` inside `app/`): CI installs
+     only from that lockfile, with `npm ci` in the `app-deps` job, and refuses
+     when it is missing, on every push to the default branch as well as at the
+     tag. Nothing is installed at the repo root and the deploy job runs no
+     package manager in `app/`, so an import the repo used to satisfy from a
+     root `package.json` fails to bundle.
    - **Dockerfile** (container) written per `inno-containerize` for the app's
      actual runtime.
    - A root **`CLAUDE.md`** carrying the required section headers (copy

@@ -59,7 +59,7 @@ while there's still time to act.
 Four things are checked here, and **all are hard requirements before
 `inno-ship`**:
 
-1. The **safety gates** (CI) — seven jobs, all `needs:` prerequisites of
+1. The **safety gates** (CI) — eight jobs, all `needs:` prerequisites of
    `deploy`, plus the `policy` job that fetches the admin gate policy:
    `config-integrity`, `secrets` (gitleaks), `sast` (Semgrep, over the whole
    repository except the platform-owned root `src/` and the directories
@@ -73,7 +73,10 @@ Four things are checked here, and **all are hard requirements before
    `mcp-function` types; the image scan runs with `--ignore-unfixed`, so only
    HIGH/CRITICAL findings that have a fix available can fail it), and
    `scaffold-check` (suppresses deploy while the `app/.needs-build` template
-   marker is still present).
+   marker is still present), and `app-deps` (installs a function-shaped app's
+   `app/package.json` with `npm ci --ignore-scripts` inside `app/`, on every
+   push as well as at the tag; a missing or stale `app/package-lock.json`
+   hard-errors here).
 2. The **guardrails policy** (you): a qualitative read of the app against
    the platform's acceptable-use policy.
 3. The **application contract** (you): the app's conformance to the
@@ -173,7 +176,7 @@ For each gate, tell the user what happened in THEIR terms:
 | `yaml.github-actions.security.secrets-inherit` finding on `.github/workflows/deploy.yml` | A real fix, not a false positive: tell the user and, with their okay, delete the `secrets: inherit` line from `deploy.yml`. The platform's reusable workflow needs no inherited secrets (it uses only the automatic `GITHUB_TOKEN` and OIDC), and repos made from older copies of the template carry that line. Keep the `workflow_dispatch` trigger. |
 | `SAFETY GATE DISABLED by platform policy` in the log | Deliberate admin configuration, not a bug. Note it and move on. |
 | config-integrity failure | Something in the repo is a file the platform injects at build time, or one it forbids outright. If the gate names files under a root `src/` directory, stop and show the user what is there before touching anything: the platform owns all of `src/`, not just `src/gateway/`, but that directory can hold the author's own code, so never move or delete anything in it unprompted. With the user's okay, MOVE their code into `app/` (for example `app/src/`), update the Dockerfile `COPY` paths and any imports or build settings that pointed at the old location, and delete only what they confirm is not theirs (a vendored `src/gateway/`, a `src/node_modules/`). A root `package.json`, `package-lock.json` or `tsconfig.json` gets the same care: in a migrated Node repo it can be the app's real manifest, and deleting it breaks the build. Show it to the user and, with their okay, move it under `app/` (updating the Dockerfile `COPY` paths and any scripts or imports that read it); delete it only if they confirm it is not theirs. Delete a root `wrangler.jsonc`. Delete any competing wrangler config (`wrangler.json`, `wrangler.toml`, an env variant), which wrangler's config discovery could let outrank the vetted file, and a `.wrangler/` directory, whose `deploy/config.json` can redirect the deploy to an unvetted config entirely. Delete a `scaffold/` directory, which registration prunes out of app repos, unless `app/.needs-build` is still present (the check is waived until that marker goes). Remove a root-level `.env*` and any root package manager config (`.npmrc`, `.yarnrc`, `.yarnrc.yml`, `.pnpmfile.cjs`, `pnpm-workspace.yaml`, `bunfig.toml`); a `.env`'s values move into app Variables with `set_app_variable`. Remove every `.npmrc` at any depth, `app/.npmrc` included: npm expands environment variables into it, so it is rejected wherever it sits. Remove every committed symlink that resolves to a directory, at any depth and dangling ones too (a link to a *file* is fine): the gate walks the tree without following links, so anything behind one is never inspected, and there is no policy toggle to waive it (contract version 14). Show the user the link, then replace it with the real directory or drop it. If instead `CLAUDE.md`'s required template headers were altered, revert them (the rest of the file is yours). A message that the gate "could not fully inspect the app tree" means a committed directory it could not read; fix or remove that path. Everything else under `app/` (an `app/package.json`, an `app/.yarnrc.yml`, an `app/src/`) is yours and fine. |
-| `dep-age` failure | The **inverse** of a CVE finding: do NOT bump to the newest release, that makes it redder. Either a pinned dependency was published more recently than the platform's cooldown allows (`safety.min_release_age_days`, 0 = off and the default, so this only fires once an admin has enabled it; `get_config app=<name>` tells you the value actually in force and how many days you're short by), or the app ships `app/package.json` with no committed, parseable `app/package-lock.json` and there are no exact versions to date at all. Remedies: wait out the cooldown, pin an older vetted version, commit `app/package-lock.json`, or ask a platform admin for an app-scope `safety.min_release_age_days: 0`. Separately from this gate, a function-shaped app's release fails without a committed `app/package-lock.json` whatever the cooldown says (platform v0.14.2). |
+| `dep-age` failure | The **inverse** of a CVE finding: do NOT bump to the newest release, that makes it redder. Either a pinned dependency was published more recently than the platform's cooldown allows (`safety.min_release_age_days`, 0 = off and the default, so this only fires once an admin has enabled it; `get_config app=<name>` tells you the value actually in force and how many days you're short by), or the app ships `app/package.json` with no committed, parseable `app/package-lock.json` and there are no exact versions to date at all. Remedies: wait out the cooldown, pin an older vetted version, commit `app/package-lock.json`, or ask a platform admin for an app-scope `safety.min_release_age_days: 0`. Separately from this gate, a function-shaped app that ships `app/package.json` with no committed `app/package-lock.json` fails the `app-deps` job outright, whatever the cooldown says (platform v0.14.2). Since v0.14.14 that install runs on every push to the default branch, so it fails in this very run rather than at the tag. |
 | container failure | Dockerfile contract problem, or the built image never answered `GET /healthz` within ~90s; hand off to `inno-containerize`. For a non-root failure: the gate accepts only a plain uid 1 to 2147483647 or a portable name on one clean `/etc/passwd` line (see `inno-containerize` item 2). The image this job scans on the tag run is the exact image that ships: the deploy job pushes it by digest and never rebuilds the Dockerfile. |
 
 Diagnose privately (the `get_ci_status` run link and job conclusions, its
@@ -191,7 +194,11 @@ for the oldest to age out.
 End with a clear verdict: **"Safe to ship"** (gates green and guardrails
 clean, and, for a `function` or `mcp-function` app that has
 `app/package.json`, a committed `app/package-lock.json` in step with it; point
-at `/inno-ship`) or **"Not yet"** with the specific blockers listed. Check that
-lockfile yourself before saying "Safe to ship": the push-time `deps` gate
-builds a throwaway lockfile when none is committed, so its green does not
-prove the tagged deploy, which runs `npm ci` and fails without one.
+at `/inno-ship`) or **"Not yet"** with the specific blockers listed. This push
+proves the lockfile on its own: since platform v0.14.14 the `npm ci` runs in
+the `app-deps` job on every push to the default branch and hard-errors there,
+so a missing or stale lockfile is a red job in the run you are narrating, not
+a surprise at the tag. (The `deps` gate still builds a throwaway lockfile when
+none is committed, so its own green never proved anything here.) Checking the
+file yourself first is belt, not the safeguard: it saves a round trip through
+CI, nothing more.
