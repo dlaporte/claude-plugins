@@ -181,8 +181,16 @@ access here is what actually lets someone past the Okta login on
   share it with you." The platform remembers each person's approval of an MCP
   client per app instance, so being asked to approve again is not a fault:
   platform v0.14.2 reset every remembered approval once (one re-approval per
-  user per app), and an app that was purged and later registered again under
-  the same name is a new instance that asks again.
+  user per app), v0.14.14 keyed the memory to the client's redirect URI as
+  well and reset it the same way once more, and an app that was purged and
+  later registered again under the same name is a new instance that asks
+  again. A client that never reaches the approval page at all may be sending
+  `response_type=code` with no `code_challenge`: the platform's OAuth server
+  requires PKCE with `S256` on every authorization-code request, confidential
+  clients included, and refuses a missing challenge, an unsupported method or
+  `plain` with a 400. That policy lives in the pinned provider library
+  (`@cloudflare/workers-oauth-provider`, exact `0.10.3`), so there is no
+  platform setting to relax it: it is the client's bug to fix.
   `revoke_access` additionally deletes the user's OAuth grants for the app
   outright; worst case a revoked user keeps working for the remaining
   access-token lifetime (1 hour at most) plus a short gateway cache (60 seconds
