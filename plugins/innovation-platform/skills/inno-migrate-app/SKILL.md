@@ -112,6 +112,13 @@ order:
 3. **Persistence to port** — local files and SQLite move to the platform's
    storage (D1 for SQL, R2 for files) reached at `http://storage.internal`
    (container) or the app's own `env.DATA`/`env.FILES` bindings (function).
+   The gateway path caps two bodies, which is worth planning the port
+   around: a `{sql, params}` body over **4 MiB** is refused
+   `400 bad_request`, the same answer malformed JSON gets, so a one-shot
+   import of an existing SQLite table has to go in batches; and a
+   `PUT /_storage/files/{key}` whose **declared** `Content-Length` is over
+   **25 MiB** is refused `413 too_large`. Neither cap applies on the
+   bindings path.
    Dependencies the platform cannot provide — Postgres-specific SQL, Redis,
    queues, third-party managed services — are **blockers**: name them, never
    silently drop them.

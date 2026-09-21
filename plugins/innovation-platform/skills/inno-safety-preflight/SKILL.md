@@ -66,7 +66,10 @@ Five things are checked here, and **all are hard requirements before
    semgrep skips by default at any depth, `test/`, `tests/`, `build/`, `dist/`,
    `vendor/` and `node_modules/`; `app/`, the Dockerfile,
    `.github/workflows/deploy.yml` and root scripts are all scanned), `deps`
-   (dependency audit), `dep-age` (the dependency-release-age cooldown — see
+   (dependency audit: `npm audit` covers only `app/package.json`'s
+   **production** dependencies, `--omit=dev`, so a devDependency is not
+   audited even though the `app-deps` job installs it), `dep-age` (the
+   dependency-release-age cooldown — see
    the table below), `container` (build + image CVEs + non-root/`EXPOSE 8080`
    + a `GET /healthz` smoke test, run for `container` and `mcp-container`
    apps — the image checks are skipped for the function-shaped `function` and

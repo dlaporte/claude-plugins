@@ -709,6 +709,16 @@ handler — route on the URL, read identity from the request headers, read/write
   commit the updated `app/package-lock.json` in the same commit (see the
   function bullet above).
 
+**Container apps: two caps on the storage endpoints.** `POST
+/_storage/sql/query` and `/execute` take at most **4 MiB** of
+`{sql, params}` JSON per request, and a bigger body comes back
+`400 bad_request` with no more detail than malformed JSON gets, so a route
+that writes in bulk should send batches rather than one array.
+`PUT /_storage/files/{key}` refuses an object whose **declared**
+`Content-Length` is over **25 MiB** with `413 too_large`, so an upload
+route needs its own size check and its own message. A function app reaches
+`env.DATA`/`env.FILES` directly and has neither cap.
+
 **Rewrite `README.md` — this is required, not optional.** The template's README
 is inno-template's own ("Use this template…", template internals) and describes
 nothing about this app. Replace it with a **high-level overview of the user's

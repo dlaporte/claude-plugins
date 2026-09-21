@@ -105,7 +105,13 @@ changed in between: pin the base to the digest `get_app_contract` serves.
    reach the origin at all, which is what a container still cold-starting
    behind a just-attached hostname looks like, defers to the next hourly
    pass instead of alarming, so a brand-new app reading `unknown` right
-   after its first deploy is normal (see `inno-ship`). Keep it cheap and
+   after its first deploy is normal (see `inno-ship`). Only a connection
+   error or a Cloudflare origin-reach status (520-527, 530) defers, though.
+   A probe that **times out** with no response at all does not: the
+   platform retries it once and then reports it, so `/healthz` has to
+   answer well inside **45 seconds** of a cold start or the owner gets a
+   real alarm. The smoke gate's ~90s of polling is the looser of the two
+   clocks; size the boot for the 45s one. Keep it cheap and
    **storage-independent** — a slow app boot is legitimate, a `/healthz`
    that waits on storage is not. Never stub it as a TODO.
 5. **Keep build inputs where the gates allow them.** Put the app's code and

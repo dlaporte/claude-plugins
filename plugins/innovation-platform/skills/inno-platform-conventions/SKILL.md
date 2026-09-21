@@ -112,7 +112,9 @@ Whatever the stack: pin dependencies in its own manifest under `app/`
 (`requirements.txt` for the Python reference — the template's copy is the
 source for its pins; `package.json` for Node; `go.mod` for Go; …) and keep
 them CVE-clean: the `deps` gate (pip-audit over `app/requirements.txt`,
-`npm audit` over `app/package.json`) and the `container` gate (Trivy, any
+`npm audit` over `app/package.json`'s **production** dependencies only, run
+`--omit=dev`, so a devDependency is never audited even though the `app-deps`
+job installs it) and the `container` gate (Trivy, any
 stack) fail the build otherwise. One known trap, informational not
 prohibitive: older **FastAPI** pins drag in a CVE-bearing Starlette line —
 check that the lockfile resolves a clean version before committing to it.
@@ -181,6 +183,19 @@ app process entirely outside the container (unusual). File storage is
 backed by R2. Non-Python stacks call the same plain-HTTP endpoints directly
 (`POST /_storage/sql/query|execute`, `PUT/GET/DELETE /_storage/files/{key}`,
 `GET /_storage/files` — see `get_app_contract` for the table).
+
+**Two body caps on that gateway, and the SQL one is the easy one to hit.**
+`POST /_storage/sql/query` and `/execute` accept at most **4 MiB** of
+`{sql, params}` JSON per request, and so do the
+`/_storage/linked/{app}/sql/*` twins a data link exposes. A larger body is
+refused `400 bad_request`, which is exactly the answer malformed JSON gets,
+so an oversized bulk insert reads as a syntax error rather than a size
+problem: send it in batches. `PUT /_storage/files/{key}` is capped
+separately, on the object's **declared** `Content-Length`, and over
+**25 MiB** the answer is `413 too_large`. Both caps have been enforced since
+the gateway shipped; contract version 17 is where they were written down.
+Neither applies to a function-shaped app, which reaches
+`env.DATA`/`env.FILES` with no gateway in between.
 
 ## Identity: read the header, never build auth
 
