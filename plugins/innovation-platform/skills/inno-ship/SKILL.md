@@ -326,13 +326,12 @@ problem: the deferred probe hasn't resolved yet, the app isn't down. A
 genuinely broken deploy still surfaces immediately: an application-level
 5xx is a real answer from a reachable app, so it's never deferred and
 alarms right away, same as an origin-reach status still failing at the
-next hourly pass. Nor is a **timeout** ever deferred: a probe that gets no
-response at all, or a non-200 answer, is retried once 5 seconds later and
-then reported, so a verdict can take up to about 95 seconds, not 45; each
-attempt allows only 45 seconds, so an app whose `/healthz` cannot answer
-inside that first cold-start attempt gets one more try 5 seconds later
-before it alarms. That ~95s span is a third clock, neither the hourly
-re-probe nor `health.probe_interval_hours`. `restart_app` does **not** re-fire the
+next hourly pass. Nor is a **timeout** ever deferred: each attempt allows
+only 45 seconds, and a probe that gets no response at all, or a non-200
+answer, is retried once 5 seconds later and then reported, so a verdict
+can take up to about 95 seconds, not 45. That ~95s span is a third clock,
+neither the hourly re-probe nor `health.probe_interval_hours`.
+`restart_app` does **not** re-fire the
 probe or update the deployment record, so it won't clear or refresh a
 pending status either way. To get a fresh signal sooner than the next
 hourly pass, re-run the whole tag run (`gh run rerun <run-id>`, without
