@@ -1,8 +1,9 @@
 name: CI
 
-# Two jobs, both cheap and dependency-free (jq is preinstalled on the runner):
-# manifests must be well-formed, and any change to a plugin must come with a
-# version bump for that plugin.
+# Three jobs, all cheap and dependency-free (jq is preinstalled on the
+# runner): manifests must be well-formed, any change to a plugin must come
+# with a version bump for that plugin, and every innovation-platform skill's
+# Version gate block must stay byte-identical to the rest.
 #
 # Why the bump is a HARD gate rather than a convention: delivery is keyed on
 # the declared version. Claude Code caches an installed plugin at
@@ -85,6 +86,26 @@ jobs:
           fi
           git fetch --no-tags --depth=50 origin "$base" 2>/dev/null || true
 
+          # Splits a MAJOR.MINOR.PATCH string into three numeric fields and
+          # compares them component by component, so 1.10.0 correctly beats
+          # 1.9.0 (a plain string compare would get that backwards). A
+          # differently-shaped string, or a non-numeric field, fails the
+          # comparison the same as a real regression would.
+          version_gt() {
+            local newv="$1" oldv="$2"
+            local n1 n2 n3 o1 o2 o3 extra
+            IFS=. read -r n1 n2 n3 extra <<<"$newv"
+            [ -z "${extra:-}" ] || return 1
+            IFS=. read -r o1 o2 o3 extra <<<"$oldv"
+            [ -z "${extra:-}" ] || return 1
+            for f in "$n1" "$n2" "$n3" "$o1" "$o2" "$o3"; do
+              case "$f" in ''|*[!0-9]*) return 1 ;; esac
+            done
+            if [ "$n1" -ne "$o1" ]; then [ "$n1" -gt "$o1" ]; return; fi
+            if [ "$n2" -ne "$o2" ]; then [ "$n2" -gt "$o2" ]; return; fi
+            [ "$n3" -gt "$o3" ]
+          }
+
           fail=0
           for dir in plugins/*/; do
             plugin="$(basename "$dir")"
@@ -93,17 +114,64 @@ jobs:
 
             manifest="$dir.claude-plugin/plugin.json"
             new="$(jq -r '.version // ""' "$manifest" 2>/dev/null || echo "")"
-            # Absent at the base = the plugin is newly versioned (or new), which
-            # is itself a bump.
-            old="$(git show "$base:$manifest" 2>/dev/null | jq -r '.version // ""' 2>/dev/null || echo "")"
 
-            if [ "$new" = "$old" ]; then
+            if ! git cat-file -e "$base:$manifest" 2>/dev/null; then
+              # Genuinely absent at the base: a new plugin, or one newly
+              # versioned for the first time. That absence is itself the
+              # bump, so there is nothing to compare against.
+              echo "OK: $plugin (unversioned) -> $new"
+              continue
+            fi
+
+            old="$(git show "$base:$manifest" 2>/dev/null | jq -r '.version // ""' 2>/dev/null || echo "")"
+            if [ -z "$old" ]; then
+              echo "::error file=$manifest::\"$plugin\"'s manifest exists at the base commit ($base) but its version could not be read from it"
+              fail=1
+              continue
+            fi
+
+            if version_gt "$new" "$old"; then
+              echo "OK: $plugin $old -> $new"
+            else
               echo "::error file=$manifest::\"$plugin\" changed but its version is still $new — bump it. Delivery is keyed on this value, so users already on $new may never receive these changes."
               echo "  changed files:"
               printf '    %s\n' $changed
               fail=1
-            else
-              echo "OK: $plugin ${old:-(unversioned)} -> $new"
             fi
           done
+          [ "$fail" -eq 0 ] || exit 1
+
+  version-gate-parity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Every innovation-platform skill's Version gate block matches
+        run: |
+          set -euo pipefail
+          fail=0
+          first=""
+          first_file=""
+          count=0
+          for f in plugins/innovation-platform/skills/*/SKILL.md; do
+            count=$((count + 1))
+            block="$(awk '/^## Version gate/{p=1} p{print} p&&/^Carry on\.$/{exit}' "$f")"
+            if [ -z "$block" ]; then
+              echo "::error file=$f::no \"## Version gate\" block found (expected one starting at that heading and ending at a bare \"Carry on.\" line)"
+              fail=1
+              continue
+            fi
+            sum="$(printf '%s' "$block" | md5sum | cut -d' ' -f1)"
+            if [ -z "$first" ]; then
+              first="$sum"
+              first_file="$f"
+              continue
+            fi
+            if [ "$sum" != "$first" ]; then
+              echo "::error file=$f::Version gate block differs from $first_file, keep it byte-identical across every skill"
+              fail=1
+            fi
+          done
+          echo "Compared the Version gate block across $count skill files."
           [ "$fail" -eq 0 ] || exit 1

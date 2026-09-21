@@ -192,9 +192,11 @@ refused `400 bad_request`, which is exactly the answer malformed JSON gets,
 so an oversized bulk insert reads as a syntax error rather than a size
 problem: send it in batches. `PUT /_storage/files/{key}` is capped
 separately, on the object's **declared** `Content-Length`, and over
-**25 MiB** the answer is `413 too_large`. Both caps have been enforced since
-the gateway shipped; contract version 17 is where they were written down.
-Neither applies to a function-shaped app, which reaches
+**25 MiB** the answer is `413 too_large`. The file cap has been enforced
+since the gateway first shipped (2026-07-22), and the SQL body cap since
+platform v0.14.17 (2026-09-18); both predate contract version 17, which is
+where they were written down. Neither applies to a function-shaped app,
+which reaches
 `env.DATA`/`env.FILES` with no gateway in between.
 
 ## Identity: read the header, never build auth
