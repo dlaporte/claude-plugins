@@ -242,7 +242,8 @@ are write-only after saving; a change lands right away and briefly
 restarts a container app.
 
 An app may optionally describe the variables it reads in
-`app/inno-variables.json`: a JSON object keyed by variable name, each
+`app/inno-variables.json` (contract version 15, platform v0.14.16): a JSON
+object keyed by variable name, each
 value `{"required"?: bool, "secret"?: bool, "description"?: string}` (all
 optional; defaults `false`/`true`/empty; description ≤200 chars; ≤32
 entries; names follow the same env-var-shaped, non-reserved rule as
@@ -253,8 +254,12 @@ malformed file is refused whole, with the previous declarations kept and
 the deploy left green; the run log's `deploy-complete:` line is where the
 reason surfaces. Once declared, `list_app_variables` and the panel's
 Variables tab show a required-but-unset name as missing (with your
-description), and `app_status` names it directly. Write one whenever your
-app depends on a variable an owner wouldn't otherwise know to set.
+description), and `app_status` names it directly. Removing a name from the
+file removes the declaration on the next deploy, but deleting the whole
+file does not: the deploy sends no declaration field at all, and the
+previous set keeps being advertised. To clear every name, commit the file
+as `{}` rather than deleting it. Write one whenever your app depends on a
+variable an owner wouldn't otherwise know to set.
 
 ## Per-user backend access (Connections)
 
@@ -349,9 +354,10 @@ signing out of Okta.
 
 Log like it's a contract: one event per line to stdout, plain text or JSON.
 That stream is what surfaces in the app's panel **Logs tab** and the
-`get_app_logs` MCP tool (container stdout + gateway, newest first) — log well
-now and runtime debugging (`inno-manage-app`'s Runtime issues guidance) is
-actually useful later instead of a wall of noise.
+`get_app_logs` MCP tool (the gateway plus your own source, newest first:
+container stdout on a container shape, your own Worker on a function
+shape). Log well now and runtime debugging (`inno-manage-app`'s Runtime
+issues guidance) is actually useful later instead of a wall of noise.
 
 ## Keep `ENVIRONMENT=production`
 

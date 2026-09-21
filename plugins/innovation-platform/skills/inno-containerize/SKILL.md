@@ -98,8 +98,14 @@ changed in between: pin the base to the digest `get_app_contract` serves.
    `container` job runs the built image (`docker run -d -p 8080:8080`) and
    polls `/healthz` 18 times with a 5s sleep (~90s); if nothing answers 200
    it dumps the container logs and fails the job, which fails `deploy`. The
-   platform's runtime health probe binds to the same endpoint after deploy
-   (immediately on each green deploy, then daily). Keep it cheap and
+   platform's runtime health probe binds to the same endpoint after deploy:
+   immediately on each green deploy, then on the configured interval
+   (`health.probe_interval_hours`, 24 hours by default, and an admin can
+   change it platform-wide or per app). A deploy-time probe that cannot
+   reach the origin at all, which is what a container still cold-starting
+   behind a just-attached hostname looks like, defers to the next hourly
+   pass instead of alarming, so a brand-new app reading `unknown` right
+   after its first deploy is normal (see `inno-ship`). Keep it cheap and
    **storage-independent** — a slow app boot is legitimate, a `/healthz`
    that waits on storage is not. Never stub it as a TODO.
 5. **Keep build inputs where the gates allow them.** Put the app's code and

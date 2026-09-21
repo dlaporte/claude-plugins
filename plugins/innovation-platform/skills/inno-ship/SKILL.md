@@ -95,7 +95,11 @@ prefix), each value an object with only `required` (bool, default false),
 default empty): an unrecognized field name, a wrong-typed field, a bad
 name, or more than 32 entries refuses the **whole file** (the platform keeps
 its previous declarations and the tag still deploys; the reason surfaces
-only on the `deploy-complete:` line in this run's log). For every name
+only on the `deploy-complete:` line in this run's log). A file that is not
+valid JSON, cannot be read, or is over 32 KB never reaches the platform at
+all: the deploy run itself logs the reason and sends nothing, so look for
+that line in the run log rather than for a `deploy-complete:` line, which
+this class does not produce. For every name
 marked `required: true`, call `list_app_variables` (or read `app_status`,
 which now names an unset required one on its own line) and tell the user
 before you tag if it has no value yet: the platform never blocks a deploy
@@ -315,13 +319,14 @@ leaves the app's health status **untouched** (`unknown`, for a brand-new app
 that has never been probed) rather than recording `unhealthy` and mailing
 the owner a false alarm; it clears on the next hourly cron pass, within
 about an hour, a fixed floor that's separate from the app's own
-`health.probe_interval_hours` schedule (default 24, configurable per app
-and per user). Don't read a still-`unknown` `app_status` right after a
-first deploy as a problem: the deferred probe hasn't resolved yet, the app
-isn't down. A genuinely broken deploy still surfaces immediately: an
-application-level 5xx is a real answer from a reachable app, so it's never
-deferred and alarms right away, same as an origin-reach status still
-failing at the next hourly pass. `restart_app` does **not** re-fire the
+`health.probe_interval_hours` schedule (default 24, and an admin can set
+it at platform or app scope; there is no user scope for this key). Don't
+read a still-`unknown` `app_status` right after a first deploy as a
+problem: the deferred probe hasn't resolved yet, the app isn't down. A
+genuinely broken deploy still surfaces immediately: an application-level
+5xx is a real answer from a reachable app, so it's never deferred and
+alarms right away, same as an origin-reach status still failing at the
+next hourly pass. `restart_app` does **not** re-fire the
 probe or update the deployment record, so it won't clear or refresh a
 pending status either way. To get a fresh signal sooner than the next
 hourly pass, re-run the whole tag run (`gh run rerun <run-id>`, without

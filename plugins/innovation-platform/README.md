@@ -97,7 +97,9 @@ session once authorization completes; only then are the tools callable.
   stop, start, or restart an app, read its logs and notifications, set its
   environment variables / API keys, and build support bundles (up to 5 per app in
   any 24 hours). Idle apps are
-  warned, stopped, then purged on a config-driven clock; any traffic resets it.
+  warned, stopped, then purged on a config-driven clock; real use resets it,
+  meaning a signed-in visit or, for an MCP app, a tool call, resource read,
+  prompt or completion. Probes and automated callers do not.
 
 ## How the platform enforces security
 

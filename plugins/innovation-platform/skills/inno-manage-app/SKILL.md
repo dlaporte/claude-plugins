@@ -97,6 +97,13 @@ States: `created` → `deploying` → `active` ⇄ `warned` → `stopped` → *(
   The GitHub repo, audit history, notification history, and finished data
   exports survive purge. The app's name is held for seven days afterward
   before anyone can register it again.
+- A purge also revokes **every data link touching the app, in both
+  directions**. An app that reads this one's database keeps a binding that
+  now fails at runtime, and its next deploy is refused with
+  `link_source_missing`; its owner is notified. Run `list_app_links` before
+  confirming a purge, or before telling someone a stopped app can be left to
+  age out, so the consumer apps are named while there is still time to move
+  them.
 - All of these windows are platform config, overridable per app or per user.
   **Pinned** apps (admin-set) are exempt from the idle clock entirely. Pinned
   apps are still stopped by the safety sweep when a vulnerability goes
@@ -195,9 +202,13 @@ access here is what actually lets someone past the Okta login on
   part that covers confidential clients because the library checks only public
   ones. Neither is a setting anyone can relax: it is the client's bug to fix.
   `revoke_access` additionally deletes the user's OAuth grants for the app
-  outright; worst case a revoked user keeps working for the remaining
-  access-token lifetime (1 hour at most) plus a short gateway cache (60 seconds
-  at most).
+  outright, so access ends at once: the only lag is the gateway's
+  introspection cache, 60 seconds at most. The exception is the one case
+  where the tool says so in its own response text: if the grant store could
+  not be reached, the grants are still live and access instead ends within
+  the hour, via the membership re-check every token refresh runs. Read the
+  result text, not just the absence of an error, before telling an admin the
+  person is off.
 - `revoke_access` also deletes that user's stored Connection credentials for
   the app, on every app type, so requests made as them stop reaching the
   connected backend. The platform audits this as `connection_cascade_revoked`.
@@ -242,11 +253,14 @@ When an app misbehaves at runtime — errors, blank pages, weird behavior —
 check `app_status` first (is it even `active`, and when did it last deploy or
 go `warned`/`stopped`). If it's up and still broken, call **`get_app_logs`**
 **before theorizing or editing any code**: recent log lines from the
-container's stdout plus the gateway, newest first
-(`{app, since_minutes?, level?, q?, limit?}`, defaulting to the last 60
-minutes / 100 lines). Narrow with `level` (e.g. `error`) or `q` (a substring
-match) instead of pulling everything. The same data is also on the app's
-panel page, as a **Logs tab**, for anyone who'd rather look visually.
+gateway plus the app's own source, newest first. The app's own source is
+the container's stdout on a `container` or `mcp-container` app, and the
+app's own Worker on a `function` or `mcp-function` app, so every type has
+something here (`{app, since_minutes?, level?, q?, limit?}`, defaulting to
+the last 60 minutes / 100 lines). Narrow with `level` (e.g. `error`) or
+`q` (a substring match) instead of pulling everything. The same data is
+also on the app's panel page, as a **Logs tab**, for anyone who'd rather
+look visually.
 
 **Adoption caveat:** log lines only flow from deploys made after
 observability shipped (2026-07-23) — an app that hasn't respun or released
@@ -259,10 +273,15 @@ echo user-influenced content.
 
 ## `restart_app({ app })` — fresh start, same version
 
-Redeploys the app's **current version** — worker isolates are replaced, the
-Durable Object restarts, and the container is SIGTERM'd, so everything
-cold-starts on the next request. No code changes, no data loss; in-flight
-requests are dropped. Owner or admin. Reach for it when an app is wedged at
+Redeploys the app's **gateway** at its current version, and what that buys
+depends on the shape. On a `container` or `mcp-container` app it is end to
+end: worker isolates are replaced, the Durable Object restarts, and the
+container is SIGTERM'd, so everything cold-starts on the next request. On a
+`function` or `mcp-function` app the gateway has neither a Durable Object
+nor a container, and the app's own Worker script is a **separate deployment
+this does not redeploy**, so a wedged function app is not fixed by this
+tool. No code changes, no data loss; in-flight requests are dropped. Owner
+or admin. Reach for it when an app is wedged at
 runtime (hung process, poisoned in-memory state) and the logs don't point
 to a code fix — and say what it does before calling it, since live requests
 drop. If the app was never deployed (or was purged), it returns
@@ -461,8 +480,14 @@ Connection, see `inno-add-connection`).
 
 Things to relay to the user in plain terms:
 
-- `set_app_variable {app, name, value, secret?}` — names look like env vars
-  (`SENDGRID_API_KEY`); values up to 4 KB; up to 32 per app. **Hidden by
+- `set_app_variable {app, name, value, secret?}` takes names that are
+  environment-variable shaped: A to Z, digits and underscores, starting with
+  a letter, up to 64 characters (`SENDGRID_API_KEY`). The platform refuses
+  its own injected names (`ENVIRONMENT`, `SLEEP_AFTER`, `ACCESS_TEAM_DOMAIN`,
+  `ACCESS_AUD`, `OAUTH_RS_MODE`, `OAUTH_RS_RESOURCE`, `MCP_AUTH_SERVER`,
+  `PORT`, `DATA`, `FILES`, `DB`, `APP`, `APP_WORKER`, `PLATFORM`) and
+  anything starting with `LINKED_` or `APPVAR_`, with a message naming the
+  rule. Values up to 4 KB; up to 32 per app. **Hidden by
   default**: the value is write-only and never shown again, anywhere — tell
   the user that before sending it, and never echo it back into the chat.
   Pass `secret: false` only for genuinely non-sensitive config the user
@@ -496,7 +521,10 @@ Things to relay to the user in plain terms:
   description, and a set name that was also declared carries that
   description too; the header count splits variables that are **set** from
   ones **declared and still missing**. Declaring is advisory only: it
-  never sets, blocks, or reserves a value.
+  never sets, blocks, or reserves a value. If a set name looks like a typo
+  of a declared name nobody has set, the row carries a suggestion naming the
+  declared one. It is advisory and changes nothing, but it is usually the
+  answer to "I set it and the app still reports it missing".
 
 ## Notifications (`list_notifications` / `mark_notification_read` / `mark_all_notifications_read`)
 
