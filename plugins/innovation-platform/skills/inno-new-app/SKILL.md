@@ -616,12 +616,16 @@ version anyway, so the body describes the runtime this app actually has.
   npm package the code imports in a **non-root** `app/package.json`, and commit
   the `app/package-lock.json` that `npm install` (run inside `app/`) produces,
   kept in sync with `package.json`. CI installs with
-  `npm ci --ignore-scripts` inside `app/` in the `app-deps` job and fails
-  without a lockfile or with a stale one; the deploy job runs no package
-  manager in `app/`, and nothing is installed at the repo root, so an import
-  not declared in `app/package.json` fails to bundle (for example
-  `Could not resolve "hono"`). That install runs on **every push to the default
-  branch** (platform v0.14.14), not only at the release tag, so a missing
+  `npm ci --ignore-scripts --omit=dev` inside `app/` in the `app-deps` job
+  and fails without a lockfile or with a stale one; devDependencies are
+  neither installed nor audited. The deploy job runs no package manager in
+  `app/`, and nothing is installed at the repo root, so an import not
+  declared in `app/package.json` fails to bundle (for example
+  `Could not resolve "hono"`), and an import that resolves only against a
+  devDependency fails it too, with an error titled `devDependency imported
+  at runtime` that names the package and the fix. That install runs on
+  **every push to the default branch** (platform v0.14.14), not only at the
+  release tag, so a missing
   lockfile reds the preflight run. The `deps` gate is not what catches it: that
   audit generates a throwaway lockfile of its own. The repo is already function-shaped
   (no Dockerfile, no Python reference — the CI image gates are skipped for this

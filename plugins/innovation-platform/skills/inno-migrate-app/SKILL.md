@@ -343,11 +343,15 @@ restore point is.
      A function-shaped app (`function`, `mcp-function`) must declare every
      package it imports in `app/package.json` and commit a matching
      `app/package-lock.json` (run `npm install` inside `app/`): CI installs
-     only from that lockfile, with `npm ci` in the `app-deps` job, and refuses
-     when it is missing, on every push to the default branch as well as at the
-     tag. Nothing is installed at the repo root and the deploy job runs no
-     package manager in `app/`, so an import the repo used to satisfy from a
-     root `package.json` fails to bundle.
+     only from that lockfile, with `npm ci --ignore-scripts --omit=dev` in the
+     `app-deps` job, and refuses when it is missing, on every push to the
+     default branch as well as at the tag; devDependencies are neither
+     installed nor audited. Nothing is installed at the repo root and the
+     deploy job runs no package manager in `app/`, so an import the repo used
+     to satisfy from a root `package.json` fails to bundle, and production
+     code that imports a devDependency at runtime fails it too, with an error
+     titled `devDependency imported at runtime` that names the package and
+     the fix.
    - **Dockerfile** (container) written per `inno-containerize` for the app's
      actual runtime.
    - A root **`CLAUDE.md`** carrying the required section headers (copy

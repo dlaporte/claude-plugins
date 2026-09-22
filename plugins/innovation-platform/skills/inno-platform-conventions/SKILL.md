@@ -59,10 +59,13 @@ gateway boundary, but three specifics differ — the authoritative deltas are in
   handler, not a listening port.
 - **Dependencies:** declare every npm package your Worker imports in
   `app/package.json` and commit `app/package-lock.json` beside it. CI runs
-  `npm ci --ignore-scripts` inside `app/` in the `app-deps` job and fails
-  without the lockfile; the deploy job runs no package manager in `app/` at
-  all, and nothing is installed at the repo root, so an undeclared bare import
-  fails the bundle.
+  `npm ci --ignore-scripts --omit=dev` inside `app/` in the `app-deps` job and
+  fails without the lockfile; devDependencies are neither installed nor
+  audited. The deploy job runs no package manager in `app/` at all, and
+  nothing is installed at the repo root, so an undeclared bare import fails
+  the bundle, and production code that imports a devDependency at runtime
+  fails it too, with an error titled `devDependency imported at runtime` that
+  names the package and the fix.
 
 The **`mcp-function`** type is a function-type app whose consumer is an MCP client
 instead of a browser — every function delta above applies, plus the deltas in
@@ -113,8 +116,11 @@ Whatever the stack: pin dependencies in its own manifest under `app/`
 source for its pins; `package.json` for Node; `go.mod` for Go; …) and keep
 them CVE-clean: the `deps` gate (pip-audit over `app/requirements.txt`,
 `npm audit` over `app/package.json`'s **production** dependencies only, run
-`--omit=dev`, so a devDependency is never audited even though the `app-deps`
-job installs it) and the `container` gate (Trivy, any
+`--omit=dev`; since platform v0.14.21 the `app-deps` job installs with
+`--omit=dev` too, so the audited set and the installed set are the same, and
+production code that imports a devDependency at runtime fails the deploy
+bundle with an error titled `devDependency imported at runtime`, naming the
+package and the fix) and the `container` gate (Trivy, any
 stack) fail the build otherwise. One known trap, informational not
 prohibitive: older **FastAPI** pins drag in a CVE-bearing Starlette line —
 check that the lockfile resolves a clean version before committing to it.
@@ -122,9 +128,10 @@ check that the lockfile resolves a clean version before committing to it.
 **Node apps: commit `app/package-lock.json`, and declare every import.** For a
 function-shaped app (`function`, `mcp-function`) that ships
 `app/package.json`, a committed `app/package-lock.json` is required outright
-since platform v0.14.2: CI installs with `npm ci` in the `app-deps` job and
-fails naming the file when the lockfile is missing, and fails again if it is
-out of step with `app/package.json`. Since v0.14.14 that job runs on **every
+since platform v0.14.2: CI installs with `npm ci --ignore-scripts --omit=dev`
+in the `app-deps` job and fails naming the file when the lockfile is missing,
+and fails again if it is out of step with `app/package.json`. Since v0.14.14
+that job runs on **every
 push to the default branch**, so the preflight catches it before you tag; only
 the handover of the installed tree to the deploy is tag-gated, and the deploy
 job itself runs no package manager in `app/`. (The `deps` gate does still
@@ -192,7 +199,10 @@ refused `400 bad_request`, which is exactly the answer malformed JSON gets,
 so an oversized bulk insert reads as a syntax error rather than a size
 problem: send it in batches. `PUT /_storage/files/{key}` is capped
 separately, on the object's **declared** `Content-Length`, and over
-**25 MiB** the answer is `413 too_large`. The file cap has been enforced
+**25 MiB** the answer is `413 too_large`. Since platform v0.14.21, a PUT sent
+with no `Content-Length` header at all (a chunked body, for example) is
+refused `411 length_required` before the gateway calls R2, which has never
+accepted a stream of unknown length. The file cap has been enforced
 since the gateway first shipped (2026-07-22), and the SQL body cap since
 platform v0.14.17 (2026-09-18); both predate contract version 17, which is
 where they were written down. Neither applies to a function-shaped app,

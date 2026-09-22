@@ -52,25 +52,26 @@ test -f app/.needs-build && echo "BLOCKED: app/.needs-build present — build th
 
 For a function-shaped app (`function`, `mcp-function`), also confirm the
 lockfile. The push checks do catch its absence now: since platform v0.14.14
-`npm ci` runs in the `app-deps` job on every push to the default branch and
-hard-errors there. (The `deps` gate's green still proves nothing, because that
-audit resolves a throwaway lockfile.) Check it here anyway, as belt, to save a
-round trip through CI:
+`npm ci --ignore-scripts --omit=dev` runs in the `app-deps` job on every push
+to the default branch and hard-errors there. (The `deps` gate's green still
+proves nothing, because that audit resolves a throwaway lockfile.) Check it
+here anyway, as belt, to save a round trip through CI:
 
 ```bash
 if [ -f app/package.json ] && [ ! -f app/package-lock.json ]; then echo "BLOCKED: commit app/package-lock.json (run npm install inside app/)"; else echo "OK: lockfile present, or no app/package.json"; fi
 ```
 
 Then, only when `app/package.json` exists, install from the lockfile exactly as
-the `app-deps` job does: `npm ci` fails on a lockfile out of sync with
-`app/package.json`. A function app with no `app/package.json` has no
+the `app-deps` job does: `npm ci --ignore-scripts --omit=dev` fails on a
+lockfile out of sync with `app/package.json`, and installs no
+devDependencies. A function app with no `app/package.json` has no
 dependencies and nothing to install; do not create one to satisfy npm. The
 install creates `app/node_modules/`, which must be gitignored before §1's
 `git add -A` (template repos already ignore it; a migrated repo may not):
 
 ```bash
 if [ -f app/package.json ]; then
-  (cd app && npm ci --ignore-scripts) && { git check-ignore -q app/node_modules/ || echo "BLOCKED: add node_modules/ to .gitignore before git add -A"; }
+  (cd app && npm ci --ignore-scripts --omit=dev) && { git check-ignore -q app/node_modules/ || echo "BLOCKED: add node_modules/ to .gitignore before git add -A"; }
 else
   echo "OK: no app/package.json, so nothing to install"
 fi
@@ -204,13 +205,13 @@ and ask first, whether or not the row below says so.
 | `config-integrity` | the repo carries a platform-owned or forbidden path, or `CLAUDE.md` lacks a required header. Forbidden: any file under a repo-root `src/` (the platform owns `src/`: its gateway was bundled from there, and the deploy wipes it), a root `package.json`/`package-lock.json`/`tsconfig.json`, a root `wrangler.*` config or `.wrangler/` directory, a `.npmrc` at ANY depth (`app/.npmrc` included), a root `.env*`/`.yarnrc`/`.yarnrc.yml`/`.pnpmfile.cjs`/`pnpm-workspace.yaml`/`bunfig.toml`, a `scaffold/` directory that survived registration's prune (rejected as soon as `app/.needs-build` is gone), or any committed symlink that resolves to a directory at ANY depth (dangling ones included; a link to a file is fine, and there is no policy toggle for this one). The failure message names each path | **stop and ask; this is not a quiet fix.** Files under `src/` and a root `package.json` can be the user's own code: show the user every flagged path first. Only with their okay, move author code and manifests under `app/` (for example `app/src/`), update the Dockerfile `COPY` paths and the code's imports to match, and delete only what they confirm is not theirs (such as `src/gateway/` or `src/node_modules/`). Never move or delete author code unprompted before a tagged deploy. See `inno-platform-conventions` |
 | `secrets` | gitleaks found a committed credential | rotate + scrub history, then set the new value as an app Variable (`set_app_variable`) |
 | `sast` | semgrep OWASP finding anywhere in the repo except the repo-root `src/` and semgrep's default-ignored directories (`test/`, `tests/`, `build/`, `dist/`, `vendor/`, `node_modules/`, at any depth): `app/`, the Dockerfile, workflow files, and root-level scripts or tools all count (the log names the file). A `secrets: inherit` line in `.github/workflows/deploy.yml` (older template copies carry one) is a blocking finding too | `inno-platform-conventions` (escaping, SQL); for `secrets: inherit`, tell the user and, with their okay, delete the line (the platform workflow needs no caller secrets) |
-| `deps` | CVE in `app/requirements.txt` or a prod npm dep. `npm audit` runs `--omit=dev`, so a devDependency is never the cause here, even though `app-deps` installs one | bump the pinned dep |
+| `deps` | CVE in `app/requirements.txt` or a prod npm dep. `npm audit` runs `--omit=dev`; since platform v0.14.21 `app-deps` installs with `--omit=dev` too, so the audited set and the installed set are the same, and a devDependency is never installed either | bump the pinned dep |
 | `dep-age` | a pinned dep is **too new** for the platform's release-age cooldown (`safety.min_release_age_days`; off by default, so this only fires once an admin enabled it), or `app/package.json` ships with no committed, parseable `app/package-lock.json` so there is nothing to date | **not** a version bump — bumping to the newest release makes it worse. Wait out the cooldown, pin an older vetted version, commit `app/package-lock.json`, or ask a platform admin for an app-scope `safety.min_release_age_days: 0` |
 | `container` | Trivy CVE, a `USER` the non-root gate refuses (the gate accepts only a plain uid 1 to 2147483647 or a portable name on one clean `/etc/passwd` line; see `inno-containerize` item 2), missing `EXPOSE 8080`, or the image never answered `GET /healthz` | `inno-containerize` |
 | `scaffold-check` | not a failure — it suppresses `deploy` while `app/.needs-build` exists (see §0) | build the app, remove the marker |
 | `deploy` fails with `app_stopped` | the app was stopped by the lifecycle (or deliberately) — **stopped apps cannot be deployed** | `inno-manage-app`: `start_app` first, then re-tag |
 | `app-deps` fails with `Missing app/package-lock.json` (function-shaped apps) | `app/package.json` exists but no lockfile is committed; CI installs only from a committed lockfile and never resolves ranges fresh. This job runs on pushes too, so the failure blocks before any tag exists | run `npm install` inside `app/`, commit `app/package-lock.json`, push, confirm `app-deps` is green, then tag |
-| `app-deps` fails in `npm ci` (on pushes as well as tags), or the `deploy` bundle step reports `Could not resolve "<package>"` (function-shaped apps) | the lockfile no longer matches `app/package.json`, or the code imports a package not declared there (nothing is installed at the repo root) | declare the package in `app/package.json`, run `npm install` inside `app/`, commit both files, push, confirm `app-deps` is green, then cut the next patch tag |
+| `app-deps` fails in `npm ci` (on pushes as well as tags), or the `deploy` bundle step reports `Could not resolve "<package>"` with the titled error `Undeclared import` (function-shaped apps), or reports it with the titled error `devDependency imported at runtime` | the lockfile no longer matches `app/package.json`, or the code imports a package not declared anywhere (nothing is installed at the repo root), or the code imports at runtime a package declared only under `devDependencies` (`app-deps` installs `--omit=dev`, so that tree was never installed) | for an undeclared package: declare it in `app/package.json`, run `npm install` inside `app/`, commit both files, push, confirm `app-deps` is green, then cut the next patch tag. For a devDependency: move it to dependencies instead, `cd app && npm install <package> && npm uninstall --save-dev <package>`, commit `app/package.json` and `app/package-lock.json`, push, confirm `app-deps` is green, then cut the next patch tag |
 | `deploy` fails with `app_not_deployable` | the app was stopped, or its repo lost the platform GitHub App, while this deploy was starting | if the repo was unlinked, have the user reinstall the GitHub App on it first (re-linking leaves the app stopped); then `start_app` (`inno-manage-app`) and cut the next patch tag |
 | `deploy` fails at finalize with `app_not_deploying` | the app was stopped or purged while the deploy ran; nothing went live | `app_status` to see which; if stopped, `start_app`, then cut the next patch tag |
 | `deploy` fails with `No scanned image recorded` (container apps) | the platform has no record of the image this run's `container` job scanned (that job's best-effort SBOM upload failed, or the record could not be read), so the deploy cannot prove which image passed the gates | re-run the whole tag run (`gh run rerun <run-id>`); if it repeats, stop and offer a support bundle |

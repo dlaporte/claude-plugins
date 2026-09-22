@@ -67,8 +67,12 @@ Five things are checked here, and **all are hard requirements before
    `vendor/` and `node_modules/`; `app/`, the Dockerfile,
    `.github/workflows/deploy.yml` and root scripts are all scanned), `deps`
    (dependency audit: `npm audit` covers only `app/package.json`'s
-   **production** dependencies, `--omit=dev`, so a devDependency is not
-   audited even though the `app-deps` job installs it), `dep-age` (the
+   **production** dependencies, `--omit=dev`; since platform v0.14.21 the
+   `app-deps` job installs with `--omit=dev` too, so the audited set and the
+   installed set are the same, and production code that imports a
+   devDependency at runtime fails the deploy bundle with an error titled
+   `devDependency imported at runtime`, naming the package and the fix),
+   `dep-age` (the
    dependency-release-age cooldown — see
    the table below), `container` (build + image CVEs + non-root/`EXPOSE 8080`
    + a `GET /healthz` smoke test, run for `container` and `mcp-container`
@@ -77,9 +81,9 @@ Five things are checked here, and **all are hard requirements before
    HIGH/CRITICAL findings that have a fix available can fail it), and
    `scaffold-check` (suppresses deploy while the `app/.needs-build` template
    marker is still present), and `app-deps` (installs a function-shaped app's
-   `app/package.json` with `npm ci --ignore-scripts` inside `app/`, on every
-   push as well as at the tag; a missing or stale `app/package-lock.json`
-   hard-errors here).
+   `app/package.json` with `npm ci --ignore-scripts --omit=dev` inside
+   `app/`, on every push as well as at the tag; a missing or stale
+   `app/package-lock.json` hard-errors here).
 2. The **guardrails policy** (you): a qualitative read of the app against
    the platform's acceptable-use policy.
 3. The **application contract** (you): the app's conformance to the
@@ -227,9 +231,10 @@ End with a clear verdict: **"Safe to ship"** (gates green and guardrails
 clean, and, for a `function` or `mcp-function` app that has
 `app/package.json`, a committed `app/package-lock.json` in step with it; point
 at `/inno-ship`) or **"Not yet"** with the specific blockers listed. This push
-proves the lockfile on its own: since platform v0.14.14 the `npm ci` runs in
-the `app-deps` job on every push to the default branch and hard-errors there,
-so a missing or stale lockfile is a red job in the run you are narrating, not
+proves the lockfile on its own: since platform v0.14.14 `npm ci
+--ignore-scripts --omit=dev` runs in the `app-deps` job on every push to the
+default branch and hard-errors there, so a missing or stale lockfile is a red
+job in the run you are narrating, not
 a surprise at the tag. (The `deps` gate still builds a throwaway lockfile when
 none is committed, so its own green never proved anything here.) One
 exception, and it is about what you REPORT rather than about safety:
