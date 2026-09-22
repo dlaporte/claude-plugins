@@ -116,8 +116,9 @@ Whatever the stack: pin dependencies in its own manifest under `app/`
 source for its pins; `package.json` for Node; `go.mod` for Go; …) and keep
 them CVE-clean: the `deps` gate (pip-audit over `app/requirements.txt`,
 `npm audit` over `app/package.json`'s **production** dependencies only, run
-`--omit=dev`; since platform v0.14.21 the `app-deps` job installs with
-`--omit=dev` too, so the audited set and the installed set are the same, and
+`--omit=dev`; since platform v0.14.21 (contract version 19) the `app-deps`
+job installs with `--omit=dev` too, so the audited set and the installed set
+are the same, and
 production code that imports a devDependency at runtime fails the deploy
 bundle with an error titled `devDependency imported at runtime`, naming the
 package and the fix) and the `container` gate (Trivy, any
@@ -199,8 +200,9 @@ refused `400 bad_request`, which is exactly the answer malformed JSON gets,
 so an oversized bulk insert reads as a syntax error rather than a size
 problem: send it in batches. `PUT /_storage/files/{key}` is capped
 separately, on the object's **declared** `Content-Length`, and over
-**25 MiB** the answer is `413 too_large`. Since platform v0.14.21, a PUT sent
-with no `Content-Length` header at all (a chunked body, for example) is
+**25 MiB** the answer is `413 too_large`. Since platform v0.14.21 (contract
+version 19), a PUT sent with no `Content-Length` header at all (a chunked
+body, for example) is
 refused `411 length_required` before the gateway calls R2, which has never
 accepted a stream of unknown length. The file cap has been enforced
 since the gateway first shipped (2026-07-22), and the SQL body cap since

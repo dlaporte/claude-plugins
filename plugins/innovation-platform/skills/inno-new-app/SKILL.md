@@ -719,8 +719,10 @@ handler — route on the URL, read identity from the request headers, read/write
 `400 bad_request` with no more detail than malformed JSON gets, so a route
 that writes in bulk should send batches rather than one array.
 `PUT /_storage/files/{key}` refuses an object whose **declared**
-`Content-Length` is over **25 MiB** with `413 too_large`, so an upload
-route needs its own size check and its own message. A function app reaches
+`Content-Length` is over **25 MiB** with `413 too_large`, and refuses one
+sent with no `Content-Length` header at all with `411 length_required`
+instead (platform v0.14.21, contract version 19), so an upload route needs
+its own size check and its own message. A function app reaches
 `env.DATA`/`env.FILES` directly and has neither cap.
 
 **Rewrite `README.md` — this is required, not optional.** The template's README

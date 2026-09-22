@@ -67,9 +67,10 @@ Five things are checked here, and **all are hard requirements before
    `vendor/` and `node_modules/`; `app/`, the Dockerfile,
    `.github/workflows/deploy.yml` and root scripts are all scanned), `deps`
    (dependency audit: `npm audit` covers only `app/package.json`'s
-   **production** dependencies, `--omit=dev`; since platform v0.14.21 the
-   `app-deps` job installs with `--omit=dev` too, so the audited set and the
-   installed set are the same, and production code that imports a
+   **production** dependencies, `--omit=dev`; since platform v0.14.21
+   (contract version 19) the `app-deps` job installs with `--omit=dev` too,
+   so the audited set and the installed set are the same, and production
+   code that imports a
    devDependency at runtime fails the deploy bundle with an error titled
    `devDependency imported at runtime`, naming the package and the fix),
    `dep-age` (the
