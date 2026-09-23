@@ -77,12 +77,12 @@ States: `created` → `deploying` → `active` ⇄ `warned` → `stopped` → *(
 - **What resets the idle clock depends on the app's perimeter**, and traffic
   is the only keep-alive either way: there is no "renew" action. The platform
   serves the rule from one place, the **Lifecycle (idle clock)** section of
-  `get_platform_docs`, and it reads: an app's idle clock is reset by real use,
-  a signed-in visit for a browser app, or for an MCP app a tool call, resource
-  read, prompt or completion; health probes, automated callers and a client
-  that only connects or lists tools do not count, and a deploy or start does.
-  Quote that, or fetch it; never hand-write your own list of request kinds. A
-  service-token caller never touches the clock at all.
+  `get_platform_docs`, and it reads: "An app's idle clock is reset by real
+  use: a signed-in visit for a browser app, or for an MCP app a tool call,
+  resource read, prompt or completion. Health probes, automated callers and a
+  client that only connects or lists tools do not count; a deploy or start
+  does." Quote that, or fetch it; never hand-write your own list of request
+  kinds. A service-token caller never touches the clock at all.
 - **Every deploy touches the clock too**, which is why an MCP owner never sees
   this while they are actively building: it bites at the handoff, when the app
   stops being deployed and is merely connected. When an owner is surprised by
@@ -296,7 +296,7 @@ look visually.
 
 **Reading a line.** Each one is `[ts] LEVEL <who> | message`, and `<who>` is
 the source: `container` on a line the container wrote to stdout, and
-Cloudflare's own origin label (the script name) on a Worker line. That is what
+Cloudflare's own origin label on a Worker line. That is what
 separates the container's own output from the gateway's. It does **not**
 separate a function app's gateway from the app's own Worker, so do not offer
 that distinction to a user. The fleet-wide `get_platform_logs` renders the app
@@ -389,8 +389,9 @@ a platform admin must do it, and offer to draft the request.
 When the caller IS an admin: immediate. The recipient becomes the owner
 (lifecycle notices, quota, and management rights move to them) and is added
 to the app's access group; the previous owner **keeps access as a regular
-member**. Both the recipient and the previous owner are notified. The
-recipient must be an Okta user.
+member**. The recipient is notified; the previous owner is notified whenever
+the caller is not the owner, so an admin transferring their own app leaves no
+notice for themselves. The recipient must be an Okta user.
 
 - Counts against the recipient's `apps.max_active` **unless the app is
   stopped**. An `app_limit_reached` error means the recipient is at their

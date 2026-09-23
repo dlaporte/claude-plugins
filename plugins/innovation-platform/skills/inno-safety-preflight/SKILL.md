@@ -218,7 +218,9 @@ Nothing deploys from this push. Watch the run either way:
 
 ## 3. Translate the results — this is the actual product
 
-For each gate, tell the user what happened in THEIR terms:
+For each gate, tell the user what happened in THEIR terms. Plain terms, no
+provider or product names unless they have shown technical fluency; the full
+rule is the plugin README's **House style** section.
 
 | Outcome | What you say / do |
 |---|---|

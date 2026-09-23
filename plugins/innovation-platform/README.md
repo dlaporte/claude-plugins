@@ -63,7 +63,9 @@ claude plugin update innovation-platform@davidlaporte
 ```
 
 Restart Claude Code afterwards. An installed plugin is cached per version, so
-without those two commands nothing tells a user they are on an old build.
+without those two commands nothing in Claude Code itself tells a user they are
+on an old build; that `Plugin:` line is the only signal, and only a skill that
+ran the gate has seen it.
 
 ### House style
 
@@ -74,7 +76,9 @@ specific technologies or providers (Cloudflare, D1, R2, Okta, Workers,
 wrangler, Trivy) unless the user has expressed technical ability or asks
 questions that reveal it. The precision in the skills is for your own
 reasoning, your commits and your tool calls, not for recitation. Each skill
-states this in one line and points here.
+that speaks to the user states this in one line and points here.
+`inno-containerize` and `inno-platform-conventions` do not, because what they
+produce is a Dockerfile and app code rather than sentences a user reads.
 
 ## What's in the box
 

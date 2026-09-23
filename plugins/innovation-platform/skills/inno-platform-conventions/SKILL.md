@@ -398,7 +398,7 @@ That stream is what surfaces in the app's panel **Logs tab** and the
 container stdout on a container shape, your own Worker on a function
 shape). Each line reads `[ts] LEVEL <who> | message`, and `<who>` is the
 source: `container` on a line your container wrote to stdout, and Cloudflare's
-own origin label (the script name) on a Worker line. That column separates a
+own origin label on a Worker line. That column separates a
 container's output from a Worker's; it does not separate a function app's
 gateway from the app's own Worker. Log well now and runtime debugging
 (`inno-manage-app`'s Runtime issues guidance) is actually useful later
