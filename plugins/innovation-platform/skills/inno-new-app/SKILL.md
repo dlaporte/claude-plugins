@@ -103,12 +103,15 @@ sentence in this flow.
    **Active-app limit.** `check_name` also warns when the user is at their
    active-app limit ("you are at your active-app limit (N of M)") — at the cap,
    `register_app` WILL fail with `app_limit_reached`, so resolve this BEFORE any
-   build work: show the user their apps (`list_apps`) and **offer to stop one or
-   more** (`stop_app`) to make room — only ever with their explicit
-   confirmation, never silently (stopping detaches the app's domain and starts
-   its purge countdown). If they decline, stop here: the remaining options are
-   asking a platform admin to raise their limit (`apps.max_active`, user scope)
-   or not building the app.
+   build work. Report the limit factually and name the remedies, the rule
+   `inno-manage-app` sets for `start_app`: the user stops one of their own
+   apps when THEY choose to, or a platform admin raises their limit
+   (`apps.max_active`, user scope). **Do NOT propose or offer to stop specific
+   apps to make room**; that trade-off is the user's to initiate. If the user
+   asks to stop one, `stop_app` it only with their explicit confirmation by
+   name (stopping detaches the app's domain and starts its purge countdown).
+   Otherwise stop here: an admin raising the limit, or not building the app,
+   are the remaining options.
 2. **Repo** — the `owner/repo` slug of the GitHub repo the user will create
    from the template (§2). The **owner is the user's** account or org, and the
    repo name is **their choice** — suggest `inno-{name}` for familiarity, but it
@@ -206,13 +209,12 @@ make, with your recommendation**:
     `mcp-container` can consume a Connection in v1. Choose `mcp-container`
     instead; do not land such an app on `mcp-function` and discover the gap
     after registration (the type is fixed at registration).
-    **Idle clock:** an MCP app's clock advances only on real use, and a client
-    that stays connected without making requests does not count, so an app
-    that is built and then left connected but unused is warned and then
-    stopped like any idle app. The rule itself is served from one place, the
-    **Lifecycle (idle clock)** section of `get_platform_docs`; quote that
-    rather than writing your own list of request kinds. Tell the user when you
-    hand the app over (`inno-manage-app`).
+    **Idle clock:** an MCP app that is built and then left connected but
+    unused is warned and then stopped like any idle app. What counts as use
+    is served from one place, the **Lifecycle (idle clock)** section of
+    `get_platform_docs`, and `inno-manage-app`'s lifecycle section quotes it:
+    fetch or quote that sentence rather than describing the rule in your own
+    words. Tell the user when you hand the app over (`inno-manage-app`).
   - **`mcp-container`:** choose when the product is an **MCP server** that
     needs the **container** shape instead — a **non-TS/JS stack** (Python,
     Go, Ruby, …), **native dependencies**, **heavy/long-running compute**
@@ -504,7 +506,8 @@ repo). It returns text beginning **`App
 - **`too_many_members`** — `members` held more than 50 emails. Register with a
   shorter list and add the rest afterward with `grant_access`.
 - **`app_limit_reached`** — the user is at their active-app limit; resolve per
-  §1 (offer `stop_app` with confirmation, or an admin raises the limit).
+  §1 (the user chooses to stop one of their own apps, or an admin raises the
+  limit; never propose which to stop).
 - **`repo_already_registered`** — that GitHub repo is already bound to an app
   (one repo binds to at most one app). Use a different repo, or manage the
   existing app via `inno-manage-app`. (`repo_id_conflict` is the audit action
@@ -523,11 +526,11 @@ repo). It returns text beginning **`App
 - **Repo wasn't template-derived.** The user registered a repo that didn't
   come from §2's "Use this template" flow (a blank GitHub "New repository" is
   the common way this happens), so the server had nothing to prune. There are
-  two real cues, and they differ by type. A **container** registration prunes
-  silently: the response simply reports the scaffold step as skipped, with no
-  warning. A **function**, **mcp-function** or **mcp-container** registration
-  warns, naming the overlay it could not find: `no scaffold/<preset>/ overlay
-  found in <repo>, the repo predates the "<preset>" deployment type`. The
+  two real cues, and they differ by type. A **container** registration says
+  nothing about it: the response does not mention the scaffold step at
+  all. A **function**, **mcp-function** or **mcp-container**
+  registration warns, naming the overlay it could not find, in a warning
+  beginning `no scaffold/<preset>/ overlay found in <repo>`. The
   second cue is the one that holds for every type: after call 2 finishes, the
   repo shows none of the type-specific files described in §4. This is not an
   error to retry. Treat it as the empty-repo path in §4 below.
@@ -709,7 +712,7 @@ handler — route on the URL, read identity from the request headers, read/write
 **Container apps: two caps on the storage endpoints.** A `{sql, params}` body
 over **4 MiB** and a file `PUT` whose declared `Content-Length` is over
 **25 MiB** are both refused, as is a `PUT` sent with no `Content-Length` at
-all (since platform v0.14.21, and contract version 20 states it). So a route
+all (since platform v0.14.21, and contract version 21 states it). So a route
 that writes in bulk sends batches, and an upload route needs its own size
 check and its own message. The exact codes and the reasoning are
 `inno-platform-conventions`' **Persistence** section. A function app reaches
@@ -730,7 +733,8 @@ Once scaffolding is in place, tell the user the app was registered (their repo +
 future URL — for an **mcp-function** or **mcp-container** app, the `/mcp`
 endpoint their MCP client will use), and that the next steps are: write the
 app, run
-`inno-safety-preflight` locally, then `inno-ship`. Beyond the registration
+`inno-safety-preflight` (it pushes to the default branch, which runs the real
+gates and deploys nothing), then `inno-ship`. Beyond the registration
 proof file (§3), don't push anything yet unless asked: `inno-new-app`'s job is
 registration + scaffolding, not deploying.
 

@@ -82,7 +82,7 @@ States: `created` → `deploying` → `active` ⇄ `warned` → `stopped` → *(
   resource read, prompt or completion. Health probes, automated callers and a
   client that only connects or lists tools do not count; a deploy or start
   does." Quote that, or fetch it; never hand-write your own list of request
-  kinds. A service-token caller never touches the clock at all.
+  kinds.
 - **Every deploy touches the clock too**, which is why an MCP owner never sees
   this while they are actively building: it bites at the handoff, when the app
   stops being deployed and is merely connected. When an owner is surprised by
@@ -97,7 +97,8 @@ States: `created` → `deploying` → `active` ⇄ `warned` → `stopped` → *(
   it can't serve and **can't be deployed**. A push to the default branch still
   runs the gates green on a stopped app; it is the **release tag's** `deploy`
   job that fails with `app_stopped`, because the deploy broker refuses to mint
-  a token for a stopped app. Start it first, then re-tag.
+  a token for a stopped app. Start it first, then cut the next patch tag (a
+  tag is immutable, so never force-move one).
 - A stopped app's data is kept for 30 days (default), then **purged**:
   infrastructure, database, and files permanently deleted, every MCP client
   authorization for the app revoked, and its usage and cost history deleted.
@@ -179,7 +180,11 @@ and `register_app` refuses it with `name_quarantined` until then. No admin can
 lift the hold, so do not suggest asking one. After the hold a fresh
 registration (`register_app`, see `inno-new-app`) can take the name again.
 Purge also releases the repo binding, so the same repo can be registered again
-right away under a different name.
+right away under a different name. An admin's `purge_app` loses the same race
+a stop does; its description says: "Refused with app_deploying while a deploy
+is in flight: wait for it to finish or fail, then purge. Answers app_busy when
+another change to this app is in flight; retry in a moment." Retry once, never
+in a loop.
 
 ## `grant_access({ app, email })` / `revoke_access({ app, email })`
 
@@ -190,8 +195,10 @@ access here is what actually lets someone past the Okta login on
 
 - `email` must look like a real, unquoted email address — the platform
   rejects anything containing quotes, backslashes, or whitespace.
-- If the target email has no matching Okta user, the tool returns an error
-  rather than silently no-op'ing — surface that to the user.
+- If the target email has no matching Okta user, the tool refuses rather
+  than silently no-op'ing. Its description says: "Answers
+  okta_user_not_found when the address has no Okta account." Surface that to
+  the user.
 - Note: membership grants access to the **app**, not to the platform panel —
   the panel shows people only the apps they own.
 - **`link_containment`** refuses the grant when this app reads another app's
@@ -224,7 +231,8 @@ access here is what actually lets someone past the Okta login on
   introspection cache, 60 seconds at most. The exception is the one case
   where the tool says so in its own response text: if the grant store could
   not be reached, the grants are still live and access instead ends within
-  the hour, via the membership re-check every token refresh runs. Read the
+  60 minutes (the MCP access-token lifetime), via the membership re-check
+  every token refresh runs. Read the
   result text, not just the absence of an error, before telling an admin the
   person is off.
 - **On a browser app (`container`, `function`) the removal is not immediate.**
@@ -277,7 +285,9 @@ error body back to you, so there is nothing to read in the response beyond
 "unavailable". Reach for `get_app_logs` or a support bundle instead of
 re-reading the metrics call.
 
-Deployment statuses: `pending`, `deploying`, `deployed`.
+Deployment statuses: `pending`, `deploying`, `deployed`, `failed` (the
+deploy token was refused), and `abandoned` (a run that died, closed out when a
+later deploy finalizes or the recovery sweep finds it stale).
 
 ## Runtime issues — read the logs before you theorize
 
@@ -336,7 +346,8 @@ run and the app deploys only if they pass, with no new commit and no code
 change. It exists for the cases an owner cannot self-serve, such as picking up
 a newly promoted platform gateway on a third-party-owned repo an admin cannot
 push a tag to. The app must be active or warned with a release-tagged
-deployment on record. An app predating the release-model deploy flow returns
+deployment on record: any other status returns `app_not_deployed` (start it
+first), and an app predating the release-model deploy flow returns
 `no_release_tag` and needs one owner-cut `v*` tag first. It also answers
 `app_not_installed` when the platform GitHub App is no longer installed on the
 repo (only the repo owner can reinstall it on GitHub) and `repo_not_linked`
@@ -571,15 +582,20 @@ Things to relay to the user in plain terms:
   audit row names every variable that failed and the reason for each, rather
   than only the last one. An admin reads it with `query_audit`. Names never
   appear beside their values there.
-- Refused while a deploy is running (`app_deploying`) — wait it out and
-  retry; and refused entirely until the platform's encryption key is set
-  (`variables_disabled` — an admin-side precondition, not an argument
-  problem).
+- Refused while a deploy is running (`app_deploying`), by `set_app_variable`
+  and `remove_app_variable` alike: wait it out and retry.
+- **Variables need the platform's encryption key**, the same
+  `CONNECTIONS_ENC_KEY` Connections use. Until an admin sets it,
+  `set_app_variable` refuses every variable, `secret: false` ones included,
+  with `variables_disabled`: "The platform's encryption key is not
+  configured, so the platform cannot store this value. Ask a platform admin
+  to set CONNECTIONS_ENC_KEY; retrying will not help." That is an admin-side
+  precondition, not an argument problem: relay it and stop.
 - **`app_busy`** means another change to this app is in flight: retry **once**
-  after a moment, never in a loop. **`variables_limit_reached`** refuses the
+  after a moment, never in a loop; it comes back from `set_app_variable` and
+  `remove_app_variable` alike. **`variables_limit_reached`** refuses the
   33rd variable, because an app holds at most 32; remove one with
-  `remove_app_variable` before setting another. Both codes come back from
-  `set_app_variable` and `remove_app_variable` alike.
+  `remove_app_variable` before setting another.
 - `list_app_variables {app}` — names, hidden/visible, who set each and when;
   hidden values never appear, and each hidden one reports which state it is
   in (`delivered` or `pending delivery`). `remove_app_variable {app, name}`
@@ -696,9 +712,10 @@ the support system (RT/ServiceNow). Each app is limited to **5 bundles in any
 covers the same recent window, so point the user at a bundle they already
 have instead of making another, or wait for the oldest one to age out. A
 bundle also carries the image's dependency SBOM when one is on file. The tool
-can answer **`diagnostics_unavailable`** instead: the platform could not
-assemble the diagnostics at all, which is a platform-side condition, not an
-argument problem, so say so and do not retry in a loop.
+can answer **`diagnostics_unavailable`** instead. Its description says:
+"Answers diagnostics_unavailable when the platform has no diagnostics storage
+configured, which only an admin can fix." That is a platform-side condition,
+not an argument problem, so say so and do not retry in a loop.
 
 This section is the plugin's one home for support bundles; `inno-ship` and
 `inno-safety-preflight` offer one at their own stuck points and point here for

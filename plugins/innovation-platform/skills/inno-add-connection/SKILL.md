@@ -382,8 +382,10 @@ the stored value, and an omitted `disabled` leaves the enabled/paused state
 as-is.
 
 `list_connections` shows the app's configured Connections (definitions only,
-never credential material) — use it before any re-call, per the approval gate
-above.
+never credential material): one line per connection with its name, label,
+strategy, enabled or disabled, `has_client_id=`, `connected=`, `last_used=`,
+and `sinks=`, the addresses credentials are actually sent to. Use it before
+any re-call, per the approval gate above.
 
 **`remove_app_connection` is the destructive one, and it is not the pause
 switch.** It deletes the definition **and every credential the app's users

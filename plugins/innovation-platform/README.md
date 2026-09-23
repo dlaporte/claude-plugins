@@ -124,7 +124,8 @@ produce is a Dockerfile and app code rather than sentences a user reads.
   the app to consume it. **`mcp-container`** apps only in v1.
 - **`skills/inno-safety-preflight`** — run the CI security gates, plus a
   guardrails, application-contract, and `get_app_security` (app-code
-  authorization/IDOR) review, before pushing.
+  authorization/IDOR) review, by pushing to the default branch, which runs
+  the real gates and deploys nothing.
 - **`skills/inno-ship`**: push, wait for the safety checks, cut the `v*` release
   tag that deploys, and report the live URL.
 - **`skills/inno-manage-app`** — grant/revoke access, check status and metrics,
@@ -156,7 +157,8 @@ several skills now has one home and pointers from the rest:
 `inno-platform-conventions` owns the semgrep scope, the forbidden-path list,
 the identity header rule, the Node dependency rule, the storage caps and the
 `CLAUDE.md` header rule; `inno-manage-app` owns the call budget and support
-bundles; `inno-safety-preflight` owns the directory-symlink pre-push check;
+bundles; `inno-safety-preflight` owns the pre-push branch and
+directory-symlink checks and how to read `get_ci_status`;
 `inno-containerize` owns the health-probe clock; `inno-new-app` owns the
 name-check and active-app-limit rules; and this README owns House style.
 
@@ -164,11 +166,11 @@ name-check and active-app-limit rules; and this README owns House style.
 
 The plugin's skills *guide* you toward compliant code, but nothing here is
 trusted: enforcement happens server-side. An app's repo belongs to the user,
-under any account and with any name they like, and every push to `main` there
-runs the platform's reusable CI workflow, which an app author cannot edit or
+under any account and with any name they like, and every push to that repo's
+default branch runs the platform's reusable CI workflow, which an app author cannot edit or
 bypass (only the thin caller `deploy.yml` in their own repo is editable, and
-stripping it just means the reusable workflow never runs). A push to `main`
-runs the gates and deploys nothing. Only pushing a `v*` release tag reaches
+stripping it just means the reusable workflow never runs). A push to the
+default branch runs the gates and deploys nothing. Only pushing a `v*` release tag reaches
 the deploy job, and it runs the same gates first. That workflow gates the
 deploy behind config-integrity, secret scanning, SAST, dependency auditing,
 the dependency release-age cooldown, and container/image scanning, all of which

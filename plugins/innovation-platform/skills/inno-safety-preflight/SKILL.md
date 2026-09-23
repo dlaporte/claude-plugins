@@ -72,7 +72,7 @@ Five things are checked here, and **all are hard requirements before
    `inno-platform-conventions`' **Rendering** section), `deps`
    (dependency audit: `npm audit` covers only `app/package.json`'s
    **production** dependencies, `--omit=dev`; since platform v0.14.21, and
-   contract version 20 states it, the `app-deps` job installs with
+   contract version 21 states it, the `app-deps` job installs with
    `--omit=dev` too, so the audited set and the installed set are the same,
    and a runtime import must therefore sit under `dependencies`),
    `dep-age` (the
@@ -164,14 +164,16 @@ Before pushing, look at `.github/workflows/deploy.yml`. If it has a
 `sast` gate will fail on it: tell the user, and with their okay delete that
 line as part of this push. Nothing else in the file changes.
 
-Also confirm the branch: the workflow's trigger only runs gates on pushes to
-the repository's default branch. Compare `git branch --show-current` against
+**Confirm the branch before pushing.** The `deploy.yml` `register_app` handed
+back triggers gates only on pushes to the repository's default branch (a `v*`
+tag deploys from any branch). Compare `git branch --show-current` against
 `gh repo view --json defaultBranchRef --jq .defaultBranchRef.name`; if they
 differ, do not push blind, tell the user the gates only run on the default
 branch, and ask whether to switch to it or merge there first.
 
-The symlink check below is the plugin's one copy; `inno-ship` and
-`inno-migrate-app` point here for it.
+This branch check, the symlink check below, and the reading of
+`get_ci_status` after it are the plugin's one copy; `inno-ship` and
+`inno-migrate-app` point here for them.
 
 ```bash
 git add -A
@@ -196,19 +198,21 @@ Nothing deploys from this push. Watch the run either way:
 
 - **MCP (no gh needed):** call `get_ci_status` with the app name — it returns
   the run status, the run link, and each gate's conclusion. Its first line
-  also names the branch and commit the run is for, with the branch fenced in
-  «» guillemets because anyone who can push to the repo chooses it; with no
-  `run_id` it
+  also names the branch and commit the run is for ("... on «<branch>»,
+  commit `<sha>`"), with the branch fenced in «» guillemets because anyone
+  who can push to the repo chooses it; with no `run_id` it
   returns only the latest `deploy.yml` run, so check that commit (or branch)
   against `git rev-parse --short HEAD` before narrating a green or red
   result as the answer for this push, not a stale one. It also tries for
-  file:line failure annotations, but those need the GitHub Checks API, and
-  the platform's GitHub App deliberately omits that permission, so for a
-  registered app the tool reports the findings as unavailable and points at
-  the run link instead. Narrate from the job conclusions and that link when
-  that happens. Two refusals are worth recognizing: `app_not_installed` (the
-  App is no longer installed on the repo; the user reinstalls it on GitHub)
-  and `repo_not_linked` (registration never finished).
+  file:line failure annotations, but those need the platform GitHub App to
+  hold `Checks:Read`, which the App's documented permission set deliberately
+  omits, so for a registered app the tool reports the findings as
+  unavailable and a failed job's line points at the run link instead.
+  Narrate from the job conclusions and that link (or `gh run view
+  --log-failed`) when that happens. Two refusals are worth recognizing:
+  `app_not_installed` (the App is no longer installed on the repo; the user
+  reinstalls it on GitHub) and `repo_not_linked` (registration never
+  finished).
   Poll every ~30s while `in_progress`; narrate transitions ("secrets ✓,
   container still building…"). Polling that slowly is well inside the
   platform's call budget, but never poll the same run from several subagents
@@ -231,7 +235,7 @@ rule is the plugin README's **House style** section.
 | `SAFETY GATE DISABLED by platform policy` in the log | Deliberate admin configuration, not a bug. Note it and move on. |
 | config-integrity failure | Something in the repo is a file the platform injects at build time, or one it forbids outright; the failure names each path, and the full list with the reason for each is `inno-platform-conventions`' **Files you must not touch** section. Three rules govern how you act on it. **Never move or delete author code unprompted**: files under a root `src/`, and a root `package.json` / `package-lock.json` / `tsconfig.json`, are often the author's real code and manifests in a migrated repo, so show the user every flagged path and, only with their okay, move it under `app/` (for example `app/src/`), updating the Dockerfile `COPY` paths and any imports or build settings that pointed at the old location; delete only what they confirm is not theirs. **Platform-owned files just go**: a root `wrangler.jsonc` or any competing wrangler config, a `.wrangler/` directory, a `scaffold/` that outlived `app/.needs-build`, a root-level `.env*` (its values move into app Variables with `set_app_variable`) and any root package-manager config, plus every `.npmrc` at any depth. **A directory symlink has no policy toggle**: show the user the link, then replace it with the real directory or drop it. If instead `CLAUDE.md`'s required template headers were altered, revert them (the rest of the file is yours). A message that the gate "could not fully inspect the app tree" means a committed directory it could not read; fix or remove that path. Everything else under `app/` (an `app/package.json`, an `app/.yarnrc.yml`, an `app/src/`) is yours and fine. |
 | `dep-age` failure | The **inverse** of a CVE finding: do NOT bump to the newest release, that makes it redder. Either a pinned dependency was published more recently than the platform's cooldown allows (`safety.min_release_age_days`, 0 = off and the default, so this only fires once an admin has enabled it; `get_config app=<name>` tells you the value actually in force and how many days you're short by), or the app ships `app/package.json` with no committed, parseable `app/package-lock.json` and there are no exact versions to date at all. Remedies: wait out the cooldown, pin an older vetted version, commit `app/package-lock.json`, or ask a platform admin for an app-scope `safety.min_release_age_days: 0`. Separately from this gate, a function-shaped app that ships `app/package.json` with no committed `app/package-lock.json` fails the `app-deps` job outright, whatever the cooldown says (platform v0.14.2). Since v0.14.14 that install runs on every push to the default branch, so it fails in this very run rather than at the tag. |
-| container failure | Dockerfile contract problem, or the built image never answered `GET /healthz` within ~90s; hand off to `inno-containerize`. For a non-root failure: the gate accepts only a plain uid 1 to 2147483647 or a portable name on one clean `/etc/passwd` line (see `inno-containerize` item 2). The image this job scans on the tag run is the exact image that ships: the deploy job pushes it by digest and never rebuilds the Dockerfile. |
+| container failure | Dockerfile contract problem, or the built image never answered `GET /healthz` with exactly 200 inside the smoke test's budgets (about 90 seconds when the port refuses, about 162 seconds when it accepts and hangs; the clocks are `inno-containerize` item 4); hand off to `inno-containerize`. For a non-root failure: the gate accepts only a plain uid 1 to 2147483647 or a portable name on one clean `/etc/passwd` line (see `inno-containerize` item 2). The image this job scans on the tag run is the exact image that ships: the deploy job pushes it by digest and never rebuilds the Dockerfile. |
 
 Diagnose privately (the `get_ci_status` run link and job conclusions, its
 annotations when they come through, or `gh run view --log-failed` if the user

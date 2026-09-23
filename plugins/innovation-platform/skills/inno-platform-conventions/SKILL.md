@@ -116,7 +116,7 @@ Whatever the stack: pin dependencies in its own manifest under `app/`
 source for its pins; `package.json` for Node; `go.mod` for Go; …) and keep
 them CVE-clean: the `deps` gate (pip-audit over `app/requirements.txt`,
 `npm audit` over `app/package.json`'s **production** dependencies only, run
-`--omit=dev`; since platform v0.14.21, and contract version 20 states it, the
+`--omit=dev`; since platform v0.14.21, and contract version 21 states it, the
 `app-deps` job installs with `--omit=dev` too, so the audited set and the
 installed set are the same, and
 production code that imports a devDependency at runtime fails the deploy
@@ -202,7 +202,7 @@ so an oversized bulk insert reads as a syntax error rather than a size
 problem: send it in batches. `PUT /_storage/files/{key}` is capped
 separately, on the object's **declared** `Content-Length`, and over
 **25 MiB** the answer is `413 too_large`. Since platform v0.14.21, and
-contract version 20 states it, a PUT sent with no `Content-Length` header at
+contract version 21 states it, a PUT sent with no `Content-Length` header at
 all (a chunked body, for example) is
 refused `411 length_required` before the gateway calls R2, which has never
 accepted a stream of unknown length. The file cap has been enforced
@@ -279,10 +279,15 @@ optional; defaults `false`/`true`/empty; description ≤200 chars; ≤32
 entries; names follow the same env-var-shaped, non-reserved rule as
 `set_app_variable`). The platform sends it on every successful deploy
 (the tag's finalize step only; nothing checks it at push time) and it's
-purely advisory: declaring a name never sets, blocks, or reserves it, and a
-malformed file is refused whole, with the previous declarations kept and
-the deploy left green; the run log's `deploy-complete:` line is where the
-reason surfaces. Once declared, `list_app_variables` and the panel's
+purely advisory: declaring a name never sets, blocks, or reserves it. A
+file that breaks a rule (a bad name, an unknown or wrong-typed field, more
+than 32 entries) is refused whole, with the previous declarations kept and
+the deploy left green, and the run log's `deploy-complete:` line is where
+that reason surfaces. A file that is not valid JSON, cannot be read, or is
+over 32 KB never reaches the platform: the run prints a
+`::warning title=Declared variables::` annotation naming the reason instead,
+and the deploy still finalizes green (the full rule is `inno-ship`'s
+**Declared variables** paragraph). Once declared, `list_app_variables` and the panel's
 Variables tab show a required-but-unset name as missing (with your
 description), and `app_status` names it directly. Removing a name from the
 file removes the declaration on the next deploy, but deleting the whole
@@ -338,8 +343,8 @@ try {
 }
 ```
 
-Two other seam responses are **not** the user's problem and must not be shown
-as one:
+Three other seam responses are **not** the user's problem and must not be
+shown as one:
 
 - **`503`** — the connection has been disabled by its owner or a platform
   admin. Transient: the backend is paused, the user's connection is not
@@ -348,6 +353,10 @@ as one:
   120/minute per (app, user). Wait the `Retry-After` interval (60 seconds)
   before retrying; don't relay a `connect_url`, and don't ask the user to
   reconnect.
+- **`502 connections_upstream_error`** (named in the contract since version
+  21): the backend's own token endpoint failed while the platform was renewing
+  the user's credential. A dependency failure, not the user's: retry later,
+  and don't relay a `connect_url` or ask the user to reconnect.
 
 Two more are the **app's** to fix, not the user's, and never a connect prompt
 (contract §2.2 lists both):

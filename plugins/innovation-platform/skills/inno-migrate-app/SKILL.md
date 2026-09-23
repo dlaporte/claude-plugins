@@ -117,7 +117,7 @@ order:
    around: a `{sql, params}` body over **4 MiB** and a file `PUT` over
    **25 MiB** of declared `Content-Length` are both refused, as is a `PUT`
    sent with no `Content-Length` at all (since platform v0.14.21, and
-   contract version 20 states it). So a one-shot import of an existing SQLite
+   contract version 21 states it). So a one-shot import of an existing SQLite
    table has to go in batches. The exact codes and the reasoning are
    `inno-platform-conventions`' **Persistence** section. Neither cap applies
    on the bindings path.
@@ -278,7 +278,11 @@ restore point is.
    on the repo's default branch, so `git pull` before editing. Branch on the
    response the same way `inno-new-app` §3 documents (`repo_control_unproven`,
    `name_quarantined`, `repo_already_registered`, `repo_owner_claimed`,
-   `app_limit_reached`, `repo_mismatch`, `guardrails_not_accepted`, …).
+   `repo_identity_changed`, `app_limit_reached`, `repo_mismatch`,
+   `guardrails_not_accepted`, …). For `repo_identity_changed` the tool's
+   description says: "Answers repo_identity_changed when the repo was
+   renamed, transferred or recreated since it was verified: call again for a
+   new proof file."
 2. **Add the caller workflow.** Write `.github/workflows/deploy.yml` exactly as
    `register_app` returned it. If the repo already has a `deploy.yml`, never
    overwrite it silently: rename or retire it only as the approved plan says,
@@ -349,7 +353,8 @@ restore point is.
 ## Hand off
 
 End the same way `inno-new-app` does: the next steps are `inno-safety-preflight`
-locally, then `inno-ship`. Beyond the registration proof file, don't commit or
+(it pushes to the default branch, which runs the real gates and deploys
+nothing), then `inno-ship`. Beyond the registration proof file, don't commit or
 push unless asked. If gates fail
 after pushing, map the failing job through `inno-ship`'s table. If the user
 abandons the migration after registering, point at `inno-manage-app` (`stop_app`)

@@ -111,12 +111,8 @@ warning the user gets before finding out at runtime.
 
 ## 1. Commit, push, and wait for green checks
 
-**Confirm the branch before pushing.** The `deploy.yml` `register_app` handed
-back triggers gates only on pushes to the repository's default branch (a `v*`
-tag deploys from any branch). Compare `git branch --show-current` against
-`gh repo view --json defaultBranchRef --jq .defaultBranchRef.name`; if they
-differ, do not push blind, tell the user the gates only run on the default
-branch, and ask whether to switch to it or merge there first.
+**Confirm the branch before pushing**, exactly as `inno-safety-preflight` §2
+says (the gates run only on pushes to the repository's default branch).
 
 ```bash
 git add -A
@@ -136,21 +132,8 @@ that resolves the admin gate configuration, and then **stops** — the deploy jo
 ref-gated to release tags. The `container` image gates run for `container` and
 `mcp-container` apps; they're skipped for `function` and `mcp-function` apps,
 which have no image to build. Watch with `gh run watch` or the `get_ci_status`
-MCP tool. `get_ci_status` returns the run status, each job's conclusion, and
-the run link; its first line also names the branch and commit ("... on
-«<branch>», commit `<sha>`", the branch fenced in guillemets because anyone
-who can push to the repo chooses it), and with no `run_id` it returns
-only the LATEST
-`deploy.yml` run, so before trusting a green or red result, check that
-commit (or branch) against `git rev-parse --short HEAD` to confirm it is this
-push and not an older, unrelated run. Its file:line annotations need the
-platform GitHub App to hold `Checks:Read`, which the App's documented
-permission set omits, so for a registered app the ordinary answer is that the
-findings are unavailable and a failed job's line points at the run link
-instead. Diagnose from that link or `gh run view --log-failed`. The tool can
-also answer `app_not_installed` (the App is no longer installed on the repo;
-reinstall it on GitHub) or `repo_not_linked` (registration never finished).
-If a gate
+MCP tool, and read `get_ci_status` (which run it is, its annotations, its two
+refusals) as `inno-safety-preflight` §2 says. If a gate
 fails, follow the failure guidance below and re-push; never tag on top of red checks.
 
 ## 2. Cut the release — this is the deploy
@@ -206,17 +189,19 @@ and ask first, whether or not the row below says so.
 | `config-integrity` | the repo carries a platform-owned or forbidden path, or `CLAUDE.md` lacks a required header. The failure message names each path; the full list, with the reason for each, is `inno-platform-conventions`' **Files you must not touch** section | **stop and ask; this is not a quiet fix.** Files under `src/` and a root `package.json` can be the user's own code: show the user every flagged path first. Only with their okay, move author code and manifests under `app/` (for example `app/src/`), update the Dockerfile `COPY` paths and the code's imports to match, and delete only what they confirm is not theirs (such as `src/gateway/` or `src/node_modules/`). Never move or delete author code unprompted before a tagged deploy. See `inno-platform-conventions` |
 | `secrets` | gitleaks found a committed credential | rotate + scrub history, then set the new value as an app Variable (`set_app_variable`) |
 | `sast` | a semgrep OWASP finding anywhere the gate scans, which is the whole repository and not just `app/` (the scope is `inno-platform-conventions`' **Rendering** section; the log names the file). A `secrets: inherit` line in `.github/workflows/deploy.yml` (older template copies carry one) is a blocking finding too | `inno-platform-conventions` (escaping, SQL); for `secrets: inherit`, tell the user and, with their okay, delete the line (the platform workflow needs no caller secrets) |
-| `deps` | CVE in `app/requirements.txt` or a prod npm dep. `npm audit` runs `--omit=dev`; since platform v0.14.21, and contract version 20 states it, `app-deps` installs with `--omit=dev` too, so the audited set and the installed set are the same, and a devDependency is never installed either | bump the pinned dep |
+| `deps` | CVE in `app/requirements.txt` or a prod npm dep. `npm audit` runs `--omit=dev`; since platform v0.14.21, and contract version 21 states it, `app-deps` installs with `--omit=dev` too, so the audited set and the installed set are the same, and a devDependency is never installed either | bump the pinned dep |
 | `dep-age` | a pinned dep is **too new** for the platform's release-age cooldown (`safety.min_release_age_days`; off by default, so this only fires once an admin enabled it), or `app/package.json` ships with no committed, parseable `app/package-lock.json` so there is nothing to date | **not** a version bump — bumping to the newest release makes it worse. Wait out the cooldown, pin an older vetted version, commit `app/package-lock.json`, or ask a platform admin for an app-scope `safety.min_release_age_days: 0` |
 | `container` | Trivy CVE, a `USER` the non-root gate refuses (the gate accepts only a plain uid 1 to 2147483647 or a portable name on one clean `/etc/passwd` line; see `inno-containerize` item 2), missing `EXPOSE 8080`, or the image never answered `GET /healthz` | `inno-containerize` |
 | `scaffold-check` | not a failure — it suppresses `deploy` while `app/.needs-build` exists (see §0) | build the app, remove the marker |
-| `deploy` fails with `app_stopped` | the app was stopped by the lifecycle (or deliberately), and **stopped apps cannot be deployed**. Only the release tag's `deploy` job fails this way; a push to the default branch still runs every gate green on a stopped app, so a clean preflight is not evidence that the app can deploy | `inno-manage-app`: `start_app` first, then re-tag |
+| `deploy` fails with `app_stopped` | the app was stopped by the lifecycle (or deliberately), and **stopped apps cannot be deployed**. Only the release tag's `deploy` job fails this way; a push to the default branch still runs every gate green on a stopped app, so a clean preflight is not evidence that the app can deploy | `inno-manage-app`: `start_app` first, then cut the next patch tag |
 | `app-deps` fails with `Missing app/package-lock.json` (function-shaped apps) | `app/package.json` exists but no lockfile is committed; CI installs only from a committed lockfile and never resolves ranges fresh. This job runs on pushes too, so the failure blocks before any tag exists | run `npm install` inside `app/`, commit `app/package-lock.json`, push, confirm `app-deps` is green, then tag |
 | `app-deps` fails in `npm ci` (on pushes as well as tags), or the `deploy` bundle step reports `Could not resolve "<package>"` with the titled error `Undeclared import` (function-shaped apps), or reports it with the titled error `devDependency imported at runtime` | the lockfile no longer matches `app/package.json`, or the code imports a package not declared anywhere (nothing is installed at the repo root), or the code imports at runtime a package declared only under `devDependencies` (`app-deps` installs `--omit=dev`, so that tree was never installed) | for an undeclared package: declare it in `app/package.json`, run `npm install` inside `app/`, commit both files, push, confirm `app-deps` is green, then cut the next patch tag. For a devDependency: move it to dependencies instead, `cd app && npm install <package> && npm uninstall --save-dev <package>`, commit `app/package.json` and `app/package-lock.json`, push, confirm `app-deps` is green, then cut the next patch tag |
 | `deploy` fails with `app_not_deployable` | the app was stopped, or its repo lost the platform GitHub App, while this deploy was starting | if the repo was unlinked, have the user reinstall the GitHub App on it first (re-linking leaves the app stopped); then `start_app` (`inno-manage-app`) and cut the next patch tag |
 | `deploy` fails at finalize with `app_not_deploying` | the app was stopped or purged while the deploy ran; nothing went live | `app_status` to see which; if stopped, `start_app`, then cut the next patch tag |
 | `deploy` fails with `No scanned image recorded` (container apps) | the platform has no record of the image this run's `container` job scanned (that job's best-effort SBOM upload failed, or the record could not be read), so the deploy cannot prove which image passed the gates | re-run the whole tag run (`gh run rerun <run-id>`); if it repeats, stop and offer a support bundle |
 | `deploy` fails with `Image mismatch`, or finalize refuses `image_mismatch` (container apps) | the image handed to the deploy job is not the one the gates scanned; this is never a code bug. Check that `.github/workflows/deploy.yml` still matches `register_app`'s snippet (one `platform` job, nothing that uploads an artifact named `inno-scanned-image`) | show the user how `deploy.yml` differs from the snippet; with their okay restore it, push, and cut the next patch tag (a re-run of the old tag reuses the old workflow file); if `deploy.yml` already matches, re-run the whole tag run; if it repeats, stop and offer a support bundle |
+| the broker refuses `app_mismatch`: a container app's `container` job logs `deploy-sbom failed (403)` naming `app_mismatch`, the `policy` job warns `Gate policy unavailable`, and a tag run's `deploy` stops at `Gateway not promoted` | the repository is registered to a different app than the one `deploy.yml` names: the broker identifies the app from the signed repository id, the `with: app:` value (or, with no `with:` block, the name derived from the repo name) disagrees, and it refuses every request, the policy fetch included. With no policy the gates run all on with no ignores and as a container app, so a function-shaped app shows only the warning and a failed `container` job | with the user's okay, set `with: app:` to the app this repo is registered as (`list_apps` names the repo beside each app), or restore `register_app`'s snippet; push, confirm the gates are green, and cut the next patch tag |
+| the broker refuses `repo_unlinked`: the same three signs, the `deploy-sbom failed (403)` line saying the app "is no longer linked to its repository" | the platform GitHub App was uninstalled from the repo, or the repo was removed from the installation. The broker issues nothing to an unlinked app, and the app itself is stopped and counting down to purge (`list_apps` flags it `[UNLINKED]`) | have the user reinstall the platform GitHub App on the repo, which re-links it; then `start_app` (`inno-manage-app`), push, and cut the next patch tag |
 | `policy` fails with `Invalid app name` | the `with: app:` value in `deploy.yml` is not a valid app name | with the user's okay, correct the `with: app:` value (or restore `register_app`'s snippet), push, cut the next patch tag |
 
 A gate failure is real signal; there is no override or admin bypass. A
@@ -264,13 +249,15 @@ Shipped v<X.Y.Z> — <the app URL, as reported by app_status / register_app>
 
 and note that the app is **Okta-gated** — the first visit prompts an Okta
 login (Cloudflare Access), and only the owner plus anyone granted access via
-`inno-manage-app`'s `grant_access` can reach it.
+`inno-manage-app`'s `grant_access` can reach it, unless the app has been
+opened to every SSO user with `set_app_access` (`inno-manage-app`).
 
 For an **mcp-function** or **mcp-container** app, report the **MCP endpoint** (`…/mcp`, as returned by
 `app_status` / `register_app`) instead of a browser URL, and tell the user to
 add it as an MCP server in their client (Claude Code, claude.ai) — the first
 connection runs an OAuth authorization (consent + Okta) rather than a browser
-SSO redirect. Access is still the app's member list.
+SSO redirect. Access is still the app's member list, or every SSO user
+once the app is opened with `set_app_access`.
 
 **On a brand-new app's first-ever deploy, warn about the propagation window
 when you hand over the URL/endpoint — don't just paste a bare link.** The same

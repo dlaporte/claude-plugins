@@ -228,9 +228,12 @@ the environment. Both `awk` compares append `""` to force a STRING compare,
 exactly as the workflow does, because awk compares numerically when both sides
 look numeric and a name like `1e3` would otherwise match a passwd name `1000`.
 It has no comments and no `!` outside single quotes, so it
-pastes cleanly into bash, zsh, or an interactive zsh. The last four commands
-are the `/healthz` smoke gate in one shot, and they test for **exactly 200**
-the way CI does: `curl -f` would accept a 204 or a 301 that CI refuses. If
+pastes cleanly into bash, zsh, or an interactive zsh. Everything after the
+`EXPOSE` check is the `/healthz` smoke gate, and it waits the way CI does:
+up to 18 tries 5 seconds apart, each with a 4 second timeout, stopping early
+if the container exits, and it tests for **exactly 200**, because `curl -f`
+would accept a 204 or a 301 that CI refuses. So an app that is still booting
+is not a `FAIL`; a `FAIL` prints the container's logs. If
 `docker build` fails, fix that
 first: the checks below read the last image that built, and with no image at
 all they print a misleading root `FAIL`.
@@ -280,13 +283,23 @@ shown="$(printf '%s' "$user" | LC_ALL=C tr -c ' -~' '?')"
 if [ -z "$why" ]; then echo "OK: User='$shown' runs as uid $n"; else echo "FAIL: User='$shown' $why"; fi
 docker inspect --format='{{json .Config.ExposedPorts}}' app-under-test | grep '8080/tcp'
 docker run -d -p 8080:8080 --name app-under-test-run app-under-test
-[ "$(curl -s -o /dev/null -w '%{http_code}' --max-time 4 http://localhost:8080/healthz)" = 200 ] && echo "OK: /healthz 200" || echo "FAIL: /healthz not 200"
+ok=""; last=""; exited=""
+for i in $(seq 1 18); do
+  last="$(curl -s -o /dev/null -w '%{http_code}' --max-time 4 http://localhost:8080/healthz || true)"
+  if [ "$last" = 200 ]; then ok=1; break; fi
+  running="$(docker inspect -f '{{.State.Running}}' app-under-test-run 2>/dev/null || echo false)"
+  if [ "$running" = true ]; then sleep 5; else exited=1; break; fi
+done
+if [ -n "$ok" ]; then echo "OK: /healthz 200"
+elif [ -n "$exited" ]; then echo "FAIL: the container exited before /healthz answered 200, last status: ${last:-none}"; docker logs app-under-test-run
+else echo "FAIL: /healthz did not answer 200 within 18 tries, last status: ${last:-none}"; docker logs app-under-test-run
+fi
 docker rm -f app-under-test-run
 ```
 
-If you have Trivy installed locally, mirror the CI gate's severity policy
-before pushing (the exact scanner version is CI's business, not yours):
-
-```bash
-trivy image --severity HIGH,CRITICAL --ignore-unfixed app-under-test
-```
+This block scans nothing. The image CVE scan is the `container` job's alone:
+do not run an image scanner locally, because `inno-safety-preflight`'s house
+rule is never to install or run scanners locally (a local result drifts from
+CI's pinned scanner and knows nothing about the admin's central ignores or the
+`safety.gate.trivy` toggle). Push to the default branch instead, which runs the
+real scan and deploys nothing (`inno-safety-preflight`).
