@@ -25,6 +25,10 @@ its guidance may describe platform behavior that no longer exists, and skills
 added since their build are simply absent — this check is the only thing that
 will tell them so.
 
+If the line reads **current** but adds that a newer version **is available**,
+that is advisory, not a block: mention it once, with the same two commands, and
+carry on with the skill.
+
 If there is no `Plugin:` line at all, the gate is not armed on this platform.
 Carry on.
 
@@ -51,20 +55,16 @@ test -f app/.needs-build && echo "BLOCKED: app/.needs-build present — build th
 ```
 
 For a function-shaped app (`function`, `mcp-function`), also confirm the
-lockfile. The push checks do catch its absence now: since platform v0.14.14
-`npm ci --ignore-scripts --omit=dev` runs in the `app-deps` job on every push
-to the default branch and hard-errors there. (The `deps` gate's green still
-proves nothing, because that audit resolves a throwaway lockfile.) Check it
-here anyway, as belt, to save a round trip through CI:
+lockfile. The push checks do catch its absence, in the `app-deps` job; the
+rule they enforce is `inno-platform-conventions`' **Node apps** paragraph.
+Check it here anyway, as belt, to save a round trip through CI:
 
 ```bash
 if [ -f app/package.json ] && [ ! -f app/package-lock.json ]; then echo "BLOCKED: commit app/package-lock.json (run npm install inside app/)"; else echo "OK: lockfile present, or no app/package.json"; fi
 ```
 
 Then, only when `app/package.json` exists, install from the lockfile exactly as
-the `app-deps` job does: `npm ci --ignore-scripts --omit=dev` fails on a
-lockfile out of sync with `app/package.json`, and installs no
-devDependencies. A function app with no `app/package.json` has no
+the `app-deps` job does. A function app with no `app/package.json` has no
 dependencies and nothing to install; do not create one to satisfy npm. The
 install creates `app/node_modules/`, which must be gitignored before §1's
 `git add -A` (template repos already ignore it; a migrated repo may not):
@@ -77,9 +77,9 @@ else
 fi
 ```
 
-Every package the code imports must be declared in `app/package.json`, because
-`app-deps` installs from that file alone and nothing is installed at the repo
-root.
+Every package the code imports must be declared in `app/package.json` under
+`dependencies`, because `app-deps` installs from that file alone, with
+`--omit=dev`, and nothing is installed at the repo root.
 
 ### Declared variables, if the app has any
 
@@ -98,9 +98,11 @@ name, or more than 32 entries refuses the **whole file** (the platform keeps
 its previous declarations and the tag still deploys; the reason surfaces
 only on the `deploy-complete:` line in this run's log). A file that is not
 valid JSON, cannot be read, or is over 32 KB never reaches the platform at
-all: the deploy run itself logs the reason and sends nothing, so look for
-that line in the run log rather than for a `deploy-complete:` line, which
-this class does not produce. For every name
+all. That class does not fail the deploy either: the run prints a
+`::warning title=Declared variables::` annotation naming the reason, sends
+no declarations, and then finalizes as usual, so the `deploy-complete:` line
+still appears, just with no `variables_refused` field on it. Look for the
+warning annotation, not for a missing line. For every name
 marked `required: true`, call `list_app_variables` (or read `app_status`,
 which now names an unset required one on its own line) and tell the user
 before you tag if it has no value yet: the platform never blocks a deploy
@@ -118,22 +120,15 @@ branch, and ask whether to switch to it or merge there first.
 
 ```bash
 git add -A
-
-# Committed DIRECTORY symlinks fail config-integrity (check 1c) and there is
-# no policy toggle for it. Run this AFTER `git add -A`, so the index covers
-# both already-tracked links and ones you are about to commit, and so
-# gitignored app/node_modules (which npm fills with directory links) drops
-# out on its own. A link to a FILE is legal, so classify rather than reject
-# on mode alone: -d and -e follow the link, which is the test the gate makes.
-git ls-files -s | awk '$1 == "120000"' | cut -f2 | while IFS= read -r l; do
-  if   [ -d "$l" ];   then echo "BLOCKED (directory link): $l -> $(readlink "$l")"
-  elif [ ! -e "$l" ]; then echo "BLOCKED (dangling link):  $l -> $(readlink "$l")"
-  fi
-done
-
 git commit -m "<short, why-focused message>"
 git push origin HEAD
 ```
+
+Between the `git add -A` and the commit, run the **directory-symlink check**
+from `inno-safety-preflight` §2. It has one copy in this plugin and lives
+there; a committed directory link fails `config-integrity` with no policy
+toggle, and it has to run after `git add -A` so the index covers both
+already-tracked links and the ones you are about to commit.
 
 This runs the eight gate jobs (`config-integrity`, `secrets`, `sast`, `deps`,
 `dep-age`, `container`, `scaffold-check`, `app-deps`) plus the `policy` fetch
@@ -143,12 +138,19 @@ ref-gated to release tags. The `container` image gates run for `container` and
 which have no image to build. Watch with `gh run watch` or the `get_ci_status`
 MCP tool. `get_ci_status` returns the run status, each job's conclusion, and
 the run link; its first line also names the branch and commit ("... on
-`<branch>`, commit `<sha>`"), and with no `run_id` it returns only the LATEST
+«<branch>», commit `<sha>`", the branch fenced in guillemets because anyone
+who can push to the repo chooses it), and with no `run_id` it returns
+only the LATEST
 `deploy.yml` run, so before trusting a green or red result, check that
 commit (or branch) against `git rev-parse --short HEAD` to confirm it is this
-push and not an older, unrelated run. Its file:line annotations are best
-effort and normally unavailable for a registered app, so diagnose from the
-run link or `gh run view --log-failed` when they are missing. If a gate
+push and not an older, unrelated run. Its file:line annotations need the
+platform GitHub App to hold `Checks:Read`, which the App's documented
+permission set omits, so for a registered app the ordinary answer is that the
+findings are unavailable and a failed job's line points at the run link
+instead. Diagnose from that link or `gh run view --log-failed`. The tool can
+also answer `app_not_installed` (the App is no longer installed on the repo;
+reinstall it on GitHub) or `repo_not_linked` (registration never finished).
+If a gate
 fails, follow the failure guidance below and re-push; never tag on top of red checks.
 
 ## 2. Cut the release — this is the deploy
@@ -180,18 +182,17 @@ the tagged commit and then deploys.
 gh run watch    # or poll get_ci_status
 ```
 
-If you poll `get_ci_status` instead, wait at least 30 seconds between calls.
-Platform tools are capped at 60 calls a minute per user, shared by every agent
-that user runs; past the cap every tool answers `rate_limited`. Wait a minute
-and retry; never retry in a tight loop.
+If you poll `get_ci_status` instead, wait at least 30 seconds between calls,
+and never poll the same run from several subagents at once: the platform's
+call budget is per person, not per agent. The rule is `inno-manage-app`'s
+**Call budget** section.
 
 ### On failure — fix quietly, report plainly
 
 The user is not necessarily a developer. **Do not paste raw CI logs, stack
 traces, or job internals into the conversation.** The same goes for
-technology names — say "the security check", "the database", "file storage",
-not Cloudflare/D1/R2/Trivy/wrangler, unless the user has shown technical
-fluency. Read the logs yourself
+technology names: say "the security check", "the database", "file storage",
+per the plugin README's **House style** section. Read the logs yourself
 (`gh run view <run-id> --log-failed`) but keep that output to yourself. To
 the user, one plain sentence: "The security check found an out-of-date
 dependency — I'm updating it and re-shipping." Fix the **root cause**, push,
@@ -202,14 +203,14 @@ and ask first, whether or not the row below says so.
 
 | Failing job | Likely cause | Fix via |
 |---|---|---|
-| `config-integrity` | the repo carries a platform-owned or forbidden path, or `CLAUDE.md` lacks a required header. Forbidden: any file under a repo-root `src/` (the platform owns `src/`: its gateway was bundled from there, and the deploy wipes it), a root `package.json`/`package-lock.json`/`tsconfig.json`, a root `wrangler.*` config or `.wrangler/` directory, a `.npmrc` at ANY depth (`app/.npmrc` included), a root `.env*`/`.yarnrc`/`.yarnrc.yml`/`.pnpmfile.cjs`/`pnpm-workspace.yaml`/`bunfig.toml`, a `scaffold/` directory that survived registration's prune (rejected as soon as `app/.needs-build` is gone), or any committed symlink that resolves to a directory at ANY depth (dangling ones included; a link to a file is fine, and there is no policy toggle for this one). The failure message names each path | **stop and ask; this is not a quiet fix.** Files under `src/` and a root `package.json` can be the user's own code: show the user every flagged path first. Only with their okay, move author code and manifests under `app/` (for example `app/src/`), update the Dockerfile `COPY` paths and the code's imports to match, and delete only what they confirm is not theirs (such as `src/gateway/` or `src/node_modules/`). Never move or delete author code unprompted before a tagged deploy. See `inno-platform-conventions` |
+| `config-integrity` | the repo carries a platform-owned or forbidden path, or `CLAUDE.md` lacks a required header. The failure message names each path; the full list, with the reason for each, is `inno-platform-conventions`' **Files you must not touch** section | **stop and ask; this is not a quiet fix.** Files under `src/` and a root `package.json` can be the user's own code: show the user every flagged path first. Only with their okay, move author code and manifests under `app/` (for example `app/src/`), update the Dockerfile `COPY` paths and the code's imports to match, and delete only what they confirm is not theirs (such as `src/gateway/` or `src/node_modules/`). Never move or delete author code unprompted before a tagged deploy. See `inno-platform-conventions` |
 | `secrets` | gitleaks found a committed credential | rotate + scrub history, then set the new value as an app Variable (`set_app_variable`) |
-| `sast` | semgrep OWASP finding anywhere in the repo except the repo-root `src/` and semgrep's default-ignored directories (`test/`, `tests/`, `build/`, `dist/`, `vendor/`, `node_modules/`, at any depth): `app/`, the Dockerfile, workflow files, and root-level scripts or tools all count (the log names the file). A `secrets: inherit` line in `.github/workflows/deploy.yml` (older template copies carry one) is a blocking finding too | `inno-platform-conventions` (escaping, SQL); for `secrets: inherit`, tell the user and, with their okay, delete the line (the platform workflow needs no caller secrets) |
-| `deps` | CVE in `app/requirements.txt` or a prod npm dep. `npm audit` runs `--omit=dev`; since platform v0.14.21 (contract version 19) `app-deps` installs with `--omit=dev` too, so the audited set and the installed set are the same, and a devDependency is never installed either | bump the pinned dep |
+| `sast` | a semgrep OWASP finding anywhere the gate scans, which is the whole repository and not just `app/` (the scope is `inno-platform-conventions`' **Rendering** section; the log names the file). A `secrets: inherit` line in `.github/workflows/deploy.yml` (older template copies carry one) is a blocking finding too | `inno-platform-conventions` (escaping, SQL); for `secrets: inherit`, tell the user and, with their okay, delete the line (the platform workflow needs no caller secrets) |
+| `deps` | CVE in `app/requirements.txt` or a prod npm dep. `npm audit` runs `--omit=dev`; since platform v0.14.21, and contract version 20 states it, `app-deps` installs with `--omit=dev` too, so the audited set and the installed set are the same, and a devDependency is never installed either | bump the pinned dep |
 | `dep-age` | a pinned dep is **too new** for the platform's release-age cooldown (`safety.min_release_age_days`; off by default, so this only fires once an admin enabled it), or `app/package.json` ships with no committed, parseable `app/package-lock.json` so there is nothing to date | **not** a version bump — bumping to the newest release makes it worse. Wait out the cooldown, pin an older vetted version, commit `app/package-lock.json`, or ask a platform admin for an app-scope `safety.min_release_age_days: 0` |
 | `container` | Trivy CVE, a `USER` the non-root gate refuses (the gate accepts only a plain uid 1 to 2147483647 or a portable name on one clean `/etc/passwd` line; see `inno-containerize` item 2), missing `EXPOSE 8080`, or the image never answered `GET /healthz` | `inno-containerize` |
 | `scaffold-check` | not a failure — it suppresses `deploy` while `app/.needs-build` exists (see §0) | build the app, remove the marker |
-| `deploy` fails with `app_stopped` | the app was stopped by the lifecycle (or deliberately) — **stopped apps cannot be deployed** | `inno-manage-app`: `start_app` first, then re-tag |
+| `deploy` fails with `app_stopped` | the app was stopped by the lifecycle (or deliberately), and **stopped apps cannot be deployed**. Only the release tag's `deploy` job fails this way; a push to the default branch still runs every gate green on a stopped app, so a clean preflight is not evidence that the app can deploy | `inno-manage-app`: `start_app` first, then re-tag |
 | `app-deps` fails with `Missing app/package-lock.json` (function-shaped apps) | `app/package.json` exists but no lockfile is committed; CI installs only from a committed lockfile and never resolves ranges fresh. This job runs on pushes too, so the failure blocks before any tag exists | run `npm install` inside `app/`, commit `app/package-lock.json`, push, confirm `app-deps` is green, then tag |
 | `app-deps` fails in `npm ci` (on pushes as well as tags), or the `deploy` bundle step reports `Could not resolve "<package>"` with the titled error `Undeclared import` (function-shaped apps), or reports it with the titled error `devDependency imported at runtime` | the lockfile no longer matches `app/package.json`, or the code imports a package not declared anywhere (nothing is installed at the repo root), or the code imports at runtime a package declared only under `devDependencies` (`app-deps` installs `--omit=dev`, so that tree was never installed) | for an undeclared package: declare it in `app/package.json`, run `npm install` inside `app/`, commit both files, push, confirm `app-deps` is green, then cut the next patch tag. For a devDependency: move it to dependencies instead, `cd app && npm install <package> && npm uninstall --save-dev <package>`, commit `app/package.json` and `app/package-lock.json`, push, confirm `app-deps` is green, then cut the next patch tag |
 | `deploy` fails with `app_not_deployable` | the app was stopped, or its repo lost the platform GitHub App, while this deploy was starting | if the repo was unlinked, have the user reinstall the GitHub App on it first (re-linking leaves the app stopped); then `start_app` (`inno-manage-app`) and cut the next patch tag |
@@ -232,10 +233,10 @@ diagnostics **support bundle** via the **`create_support_bundle`** MCP tool
 (`app`, plus a plain-language `description`). Give the user the download link
 it returns and tell them to attach the zip to a ticket in the support
 system — the platform team triages there, not in the platform.
-The platform allows 5 support bundles per app per rolling 24 hours; past that,
-`create_support_bundle` answers `bundle_limit_reached`. Each bundle snapshots
-the same 24 hours of logs, so attach the most recent existing bundle instead of
-retrying.
+The caps and refusals are `inno-manage-app`'s support-bundle section; the one
+to expect here is `bundle_limit_reached`, and the answer to it is to attach
+the most recent existing bundle rather than retrying, since every bundle
+covers the same recent window.
 
 ## 4. On success — provenance, then the live URL
 
@@ -311,33 +312,19 @@ in their own browser; don't pre-check it for them.
 
 ### A brand-new app's first health status may briefly read `unknown`, not `unhealthy`
 
-Since platform v0.14.15, the deploy-time health probe defers rather than
-alarms when it can't get a good answer from the origin: Cloudflare's
-origin-reach statuses (520-527, 530), exactly what a freshly-attached
-hostname returns for the ~60-90s a container needs to finish cold-starting,
-are classified the same as a thrown connection error. A deferred probe
-leaves the app's health status **untouched** (`unknown`, for a brand-new app
-that has never been probed) rather than recording `unhealthy` and mailing
-the owner a false alarm; it clears on the next hourly cron pass, within
-about an hour, a fixed floor that's separate from the app's own
-`health.probe_interval_hours` schedule (default 24, and an admin can set
-it at platform or app scope; there is no user scope for this key). Don't
-read a still-`unknown` `app_status` right after a first deploy as a
-problem: the deferred probe hasn't resolved yet, the app isn't down. A
-genuinely broken deploy still surfaces immediately: an application-level
-5xx is a real answer from a reachable app, so it's never deferred and
-alarms right away, same as an origin-reach status still failing at the
-next hourly pass. Nor is a **timeout** ever deferred: each attempt allows
-only 45 seconds, and a probe that gets no response at all, or a non-200
-answer, is retried once 5 seconds later and then reported, so a verdict
-can take up to about 95 seconds, not 45. That ~95s span is a third clock,
-neither the hourly re-probe nor `health.probe_interval_hours`.
-`restart_app` does **not** re-fire the
-probe or update the deployment record, so it won't clear or refresh a
-pending status either way. To get a fresh signal sooner than the next
-hourly pass, re-run the whole tag run (`gh run rerun <run-id>`, without
-`--job`: a container deploy needs the image that same run's `container`
-job scanned, kept for only one day). That hourly floor only applies while a
-status is pending: once it clears, the app's ordinary recurring health
-check goes back to following `health.probe_interval_hours`, so it isn't
-always literally daily.
+Don't read a still-`unknown` `app_status` right after a first deploy as a
+problem: the deploy-time probe defers rather than alarms when it cannot reach
+the origin at all, which is exactly what a freshly-attached hostname looks
+like while a container finishes cold-starting. The status stays untouched and
+clears on the next hourly cron pass. A genuinely broken deploy still surfaces
+immediately, because an application-level 5xx is a real answer from a
+reachable app and is never deferred.
+
+The probe clocks themselves have one home, `inno-containerize` item 4: which
+statuses defer, the 45-second attempt with its single retry, the roughly
+95-second verdict, the hourly floor, and `health.probe_interval_hours`. Two
+things this skill adds. `restart_app` does **not** re-fire the probe or update
+the deployment record, so it will not clear or refresh a pending status. And
+to get a fresh signal sooner than the next hourly pass, re-run the whole tag
+run (`gh run rerun <run-id>`, without `--job`: a container deploy needs the
+image that same run's `container` job scanned, kept for only one day).

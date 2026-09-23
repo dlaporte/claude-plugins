@@ -25,6 +25,10 @@ its guidance may describe platform behavior that no longer exists, and skills
 added since their build are simply absent — this check is the only thing that
 will tell them so.
 
+If the line reads **current** but adds that a newer version **is available**,
+that is advisory, not a block: mention it once, with the same two commands, and
+carry on with the skill.
+
 If there is no `Plugin:` line at all, the gate is not armed on this platform.
 Carry on.
 
@@ -36,7 +40,9 @@ Okta group**. A `forbidden` error back from any of these tools means exactly
 that; don't retry it and don't try to work around it locally (there is no
 local escalation — authorization lives in the platform, not the client).
 
-**Call budget.** Every platform tool call counts against one budget of
+**Call budget** (this section is the plugin's one home for the rule; the other
+skills state one sentence and point here). Every platform tool call counts
+against one budget of
 **60 calls a minute per signed-in person**, and every agent and session that
 person runs shares it, parallel subagents included. Past that, any tool
 answers `rate_limited` ("More than 60 platform tool calls in a minute"). Wait
@@ -59,25 +65,24 @@ their session and nothing in this skill can undo it: the account itself has to
 be restored by a platform admin or the identity team. The same account also
 can no longer refresh an MCP client authorization for any app.
 
-**Speak the user's language.** Many users are non-technical. Explain in plain
-terms — "access", "a database", "file storage", "your app's address" — and do
-NOT name specific technologies or providers (Cloudflare, D1, R2, Okta,
-Workers) unless the user has expressed technical ability or asks questions
-that reveal it. The technical detail in this skill is for YOUR reasoning, not
-for recitation.
+**Speak the user's language.** Plain terms with the user, no provider or
+product names unless they have shown technical fluency. The full rule is the
+plugin README's **House style** section; the technical detail in this skill is
+for YOUR reasoning, not for recitation.
 
 ## The lifecycle (know this before advising anyone)
 
 States: `created` → `deploying` → `active` ⇄ `warned` → `stopped` → *(purged)*.
 
 - **What resets the idle clock depends on the app's perimeter**, and traffic
-  is the only keep-alive either way: there is no "renew" action. For an **SSO
-  app** (`container`, `function`) any signed-in visit counts. For an **MCP
-  app** (`mcp-function`, `mcp-container`) only a real MCP request counts: a
-  tool call, a resource read, a prompt, a completion. Connecting, the protocol
-  handshake, listing tools and health probes deliberately do not, so a client
-  that stays connected and never calls a tool does not keep the app alive, and
-  a service-token caller never touches the clock at all.
+  is the only keep-alive either way: there is no "renew" action. The platform
+  serves the rule from one place, the **Lifecycle (idle clock)** section of
+  `get_platform_docs`, and it reads: an app's idle clock is reset by real use,
+  a signed-in visit for a browser app, or for an MCP app a tool call, resource
+  read, prompt or completion; health probes, automated callers and a client
+  that only connects or lists tools do not count, and a deploy or start does.
+  Quote that, or fetch it; never hand-write your own list of request kinds. A
+  service-token caller never touches the clock at all.
 - **Every deploy touches the clock too**, which is why an MCP owner never sees
   this while they are actively building: it bites at the handoff, when the app
   stops being deployed and is merely connected. When an owner is surprised by
@@ -89,8 +94,10 @@ States: `created` → `deploying` → `active` ⇄ `warned` → `stopped` → *(
   not count.
 - After 14 idle days (default) an app is **warned** — still fully serving,
   just a notice. 14 days later it is **stopped**: its domain is detached, so
-  it can't serve and **can't be deployed** (a `git push` fails with
-  `app_stopped` until it's started).
+  it can't serve and **can't be deployed**. A push to the default branch still
+  runs the gates green on a stopped app; it is the **release tag's** `deploy`
+  job that fails with `app_stopped`, because the deploy broker refuses to mint
+  a token for a stopped app. Start it first, then re-tag.
 - A stopped app's data is kept for 30 days (default), then **purged**:
   infrastructure, database, and files permanently deleted, every MCP client
   authorization for the app revoked, and its usage and cost history deleted.
@@ -100,7 +107,8 @@ States: `created` → `deploying` → `active` ⇄ `warned` → `stopped` → *(
 - A purge also revokes **every data link touching the app, in both
   directions**. An app that reads this one's database keeps a binding that
   now fails at runtime, and its next deploy is refused with
-  `link_source_missing`; its owner is notified. Run `list_app_links` before
+  `link_source_missing`; its owner is notified, and so is the purged app's
+  own owner. Run `list_app_links` before
   confirming a purge, or before telling someone a stopped app can be left to
   age out, so the consumer apps are named while there is still time to move
   them.
@@ -118,8 +126,11 @@ anything. If an app should genuinely never expire, that's the admin-set
 
 ## `start_app({ app })` — bring back a stopped app
 
-Reattaches the domain and resets the idle clock; the app serves again
-immediately, **no redeploy needed**. Owners have a limited number of
+Reattaches the domain and resets the idle clock, so the app serves again
+immediately with **no redeploy needed**. The app's owner is notified that it
+is serving again, which matters when the caller is an admin rather than the
+owner. It answers `app_busy` when another change to the app is in flight:
+retry once after a moment, never in a loop. Owners have a limited number of
 self-service starts (default 1, lifetime, per app — check `app_status`);
 admins are unlimited and don't consume the owner's allowance. When the owner
 is out of starts, `start_app` returns `start_limit_reached`. Use
@@ -154,8 +165,10 @@ Detaches the app's domain now: it stops serving, can't be deployed, and its
 30-day purge countdown begins. Everything is intact and `start_app` fully
 reverses it until the window closes — but **always confirm with the user by
 name before calling**, and tell them the purge date from the response.
-A stop that lands while a deploy is running wins: the deploy does not bring
-the app back, so a stopped app stays stopped until `start_app`.
+**A stop does not win a race with a deploy: it is refused.** While a deploy is
+in flight `stop_app` answers `app_deploying`; wait for the deploy to finish or
+fail, then stop. While another change to the app is in flight it answers
+`app_busy` instead: retry once after a moment, never in a loop.
 Rejected with `app_pinned` if the app is marked pinned (an admin
 must turn that off first).
 
@@ -181,6 +194,11 @@ access here is what actually lets someone past the Okta login on
   rather than silently no-op'ing — surface that to the user.
 - Note: membership grants access to the **app**, not to the platform panel —
   the panel shows people only the apps they own.
+- **`link_containment`** refuses the grant when this app reads another app's
+  data through a link and the person you are granting cannot see that source
+  app: letting them in here would expose the source's data. The message names
+  every blocked source. Grant them access to the named source app first, or
+  drop the link with `unlink_app_data`, then grant again.
 - For an **mcp-function** or **mcp-container** app the same group governs
   access, checked when the user authorizes their MCP client and re-checked on
   every token refresh. A person who is not a member is stopped at
@@ -209,6 +227,14 @@ access here is what actually lets someone past the Okta login on
   the hour, via the membership re-check every token refresh runs. Read the
   result text, not just the absence of an error, before telling an admin the
   person is off.
+- **On a browser app (`container`, `function`) the removal is not immediate.**
+  That user sits behind Cloudflare Access, whose session the platform cannot
+  end: their existing Access session stays valid for the rest of its 24-hour
+  duration and is re-accepted without a revocation lookup, so the removal
+  applies at their **next sign-in**. Nothing on this surface shortens that
+  window, `revoke_sessions` included. If someone must lose a browser app NOW,
+  the levers are stopping the app or an admin removing its Access application.
+  Say this plainly when an admin is offboarding someone.
 - `revoke_access` also deletes that user's stored Connection credentials for
   the app, on every app type, so requests made as them stop reaching the
   connected backend. The platform audits this as `connection_cascade_revoked`.
@@ -244,6 +270,12 @@ An app that 500s for half its users all afternoon hides inside a daily
 average. That section can also report **unknown** rather than a number, which
 means no data points were recorded: either no traffic, or a gateway build that
 predates the request-metrics binding. Never read it as a clean bill of health.
+The hourly section is omitted entirely while `signal.red_enabled` is off for
+the app. When either half cannot be fetched, the tool says so in a fixed
+sentence and logs the detail platform-side; it no longer echoes the upstream
+error body back to you, so there is nothing to read in the response beyond
+"unavailable". Reach for `get_app_logs` or a support bundle instead of
+re-reading the metrics call.
 
 Deployment statuses: `pending`, `deploying`, `deployed`.
 
@@ -261,6 +293,16 @@ the last 60 minutes / 100 lines). Narrow with `level` (e.g. `error`) or
 `q` (a substring match) instead of pulling everything. The same data is
 also on the app's panel page, as a **Logs tab**, for anyone who'd rather
 look visually.
+
+**Reading a line.** Each one is `[ts] LEVEL <who> | message`, and `<who>` is
+the source: `container` on a line the container wrote to stdout, and
+Cloudflare's own origin label (the script name) on a Worker line. That is what
+separates the container's own output from the gateway's. It does **not**
+separate a function app's gateway from the app's own Worker, so do not offer
+that distinction to a user. The fleet-wide `get_platform_logs` renders the app
+name first and the source second (`[ts] LEVEL <app source> | message`); ask it
+for an app that does not exist and it answers `app_not_found`, as does the
+panel's fleet log filter.
 
 **Adoption caveat:** log lines only flow from deploys made after
 observability shipped (2026-07-23) — an app that hasn't respun or released
@@ -295,7 +337,10 @@ change. It exists for the cases an owner cannot self-serve, such as picking up
 a newly promoted platform gateway on a third-party-owned repo an admin cannot
 push a tag to. The app must be active or warned with a release-tagged
 deployment on record. An app predating the release-model deploy flow returns
-`no_release_tag` and needs one owner-cut `v*` tag first. Owners never need this
+`no_release_tag` and needs one owner-cut `v*` tag first. It also answers
+`app_not_installed` when the platform GitHub App is no longer installed on the
+repo (only the repo owner can reinstall it on GitHub) and `repo_not_linked`
+when registration never finished. Owners never need this
 tool: they redeploy by tagging their own repo, which is `inno-ship`.
 
 ## `set_app_access({ app, open })` — open to everyone, or members-only
@@ -305,6 +350,8 @@ returns it to the named member list (open: false). Owner or admin only.
 
 - The named member list is **never modified** — closing always restores
   exactly the configured access. Say so when confirming.
+- The app's owner is notified of the change whenever the caller is not the
+  owner.
 - Takes effect at each user's **next sign-in**; already-signed-in users keep
   their session up to 24h. For an **mcp-function** or **mcp-container** app
   "sign-in" is the client's OAuth authorization — a change applies on the
@@ -314,17 +361,20 @@ returns it to the named member list (open: false). Owner or admin only.
 - `open_access_disallowed` means an admin has restricted open access for
   this app or owner (`access.allow_open`) — a platform admin can change it
   with `set_config`; do not try to work around it by mass grant_access.
+- `link_containment` refuses the opening when this app **reads** another
+  app's data through a link and that source app is still closed: opening
+  would expose the source's data to every SSO user. The message names each
+  closed source. Unlink with `unlink_app_data`, or open the named source app
+  deliberately first.
 - `open_access_unprovisioned` means the app predates the feature and needs
   the one-time admin backfill (`scripts/backfill-open-access.mjs`).
 - Confirm before opening — state plainly that EVERY SSO user will have
   access, not just current members.
 - While an app is open, a person who is not a member reaches it carrying only
-  `inno-{app}-open` in `X-Forwarded-Groups` (the header never carries the
-  platform admin group or other apps' groups: immediately for an MCP app, and
-  for a browser SSO app from its next deploy on platform v0.14.3). App code
-  that admits only
+  `inno-{app}-open` in `X-Forwarded-Groups`. App code that admits only
   `inno-{app}-users` will refuse them, so check the app before promising that
-  opening it lets everyone in.
+  opening it lets everyone in. What that header can and cannot carry has one
+  home: `inno-platform-conventions`' **Identity** section.
 - Closing an app that an open consumer app reads through a data link revokes
   that link, and the consumer's owner gets a `link_rebuild_pending`
   notification telling them to redeploy it.
@@ -339,7 +389,8 @@ a platform admin must do it, and offer to draft the request.
 When the caller IS an admin: immediate. The recipient becomes the owner
 (lifecycle notices, quota, and management rights move to them) and is added
 to the app's access group; the previous owner **keeps access as a regular
-member** and is notified. The recipient must be an Okta user.
+member**. Both the recipient and the previous owner are notified. The
+recipient must be an Okta user.
 
 - Counts against the recipient's `apps.max_active` **unless the app is
   stopped**. An `app_limit_reached` error means the recipient is at their
@@ -401,6 +452,9 @@ Owner or admin. Two honesty rules when relaying results:
   settings, not a bill** (the tool's text says so — keep that framing).
 - An empty result means "the nightly collector hasn't filled this in yet",
   NOT "the app has no traffic" — live charts are on the app's panel page.
+- These request counts are **not** the idle-clock signal. An MCP app can show
+  healthy traffic here while its idle clock has not advanced at all. Read
+  `app_status` for that, never this tool.
 
 The container is almost always the biggest line; if a user asks how to lower
 it, the honest lever is `container.sleep_after` (admin-set, applies on next
@@ -410,7 +464,8 @@ deploy).
 
 Starts a background build of a downloadable archive: the app's database as a
 SQL dump, every stored file, and a `manifest.json` (app record, members,
-effective config). The owner is emailed when it's ready;
+effective config). The owner is notified when it's ready, in-platform plus
+email per their own notification settings;
 the archive appears on the app's panel page (Data exports card) and is kept
 for a limited time (default 30 days). Owner or admin only.
 
@@ -462,7 +517,11 @@ same keys at app or platform scope stay admin-only.
 
 `set_config` refuses a `note` longer than 200 characters (the panel answers
 `note_too_long`); shorten it and call again. `value` is always passed as a
-string, numbers and switches included (`"14"`, `"true"`).
+string, numbers and switches included (`"14"`, `"true"`). A value the key
+cannot take is refused `invalid_value`, and the message now names the rule in
+one sentence: the value does not fit this setting's type or grammar,
+`get_config` names the type, and no stored value may exceed 1000 characters.
+Read that sentence and fix the named thing rather than guessing at the format.
 
 ## Variables (`set_app_variable` / `list_app_variables` / `remove_app_variable`)
 
@@ -506,10 +565,20 @@ Things to relay to the user in plain terms:
   legacy caveat: a container app last deployed before the Variables facility
   existed needs one redeploy before container-side values reach its
   environment.
+- When the platform re-pushes an app's variables and some of them do not
+  land, the failure is recorded **per variable**: the `variables_sync_failed`
+  audit row names every variable that failed and the reason for each, rather
+  than only the last one. An admin reads it with `query_audit`. Names never
+  appear beside their values there.
 - Refused while a deploy is running (`app_deploying`) — wait it out and
   retry; and refused entirely until the platform's encryption key is set
   (`variables_disabled` — an admin-side precondition, not an argument
   problem).
+- **`app_busy`** means another change to this app is in flight: retry **once**
+  after a moment, never in a loop. **`variables_limit_reached`** refuses the
+  33rd variable, because an app holds at most 32; remove one with
+  `remove_app_variable` before setting another. Both codes come back from
+  `set_app_variable` and `remove_app_variable` alike.
 - `list_app_variables {app}` — names, hidden/visible, who set each and when;
   hidden values never appear, and each hidden one reports which state it is
   in (`delivered` or `pending delivery`). `remove_app_variable {app, name}`
@@ -546,7 +615,9 @@ owner that is `inno-ship`). Admins also see two admin-only stages:
 `start_requested` (an owner asked for a start) and `connection_sink_new_host`
 (a connection was pointed at a credential destination no connection on the
 platform was using; check that the host belongs to the backend the connection
-claims to be). The tool filters on one app, one `stage`, or unread only.
+claims to be). The tool filters on one app, one `stage`, or unread only, and
+returns **at most 50 rows** per call, so narrow the filter rather than trying
+to read a long history in one go.
 `mark_all_notifications_read` clears the caller's whole feed in one call, which
 is what a user asking to dismiss a backlog wants.
 
@@ -593,7 +664,25 @@ credential is sealed to the user, and the key needed to read the token being
 revoked rides a browser session, which an MCP call does not have.) If the user
 needs the backend to actually invalidate it, they must disconnect from the
 Connections tab on their account page instead. Confirm with the user before calling it; it is not reversible for
-them beyond reconnecting.
+them beyond reconnecting. It refuses **`invalid_app_name`** before it looks
+anything up when `app` is not a well-formed app name, and
+`unlink_app_data`'s `source` is refused by the schema the same way, so a typo
+or a padded name comes back as a refusal rather than as "no connections
+match".
+
+If you're unsure whether the signed-in user owns an app, call `app_status`
+first: its `forbidden` vs. success response is itself the authorization
+check.
+
+**Every tool's own description now states its notifications, its scope rule
+and the refusals it can answer.** When a user asks who gets told about an
+action, or who may call it, read the tool's description rather than this
+skill's summary: the description is generated from the platform's own source.
+The MCP server also reports the live platform version as its
+`serverInfo.version`, so an MCP client's server listing tells you which
+release you are talking to.
+
+## Support bundles (`create_support_bundle`)
 
 `create_support_bundle({ app, description? })` builds a diagnostics zip
 (recent logs, deployment history, container state, health and safety findings,
@@ -604,11 +693,15 @@ in it. Use it when an app misbehaves; the user attaches the zip to a ticket in
 the support system (RT/ServiceNow). Each app is limited to **5 bundles in any
 24 hours**. Past that the tool refuses `bundle_limit_reached`. Every bundle
 covers the same recent window, so point the user at a bundle they already
-have instead of making another, or wait for the oldest one to age out.
+have instead of making another, or wait for the oldest one to age out. A
+bundle also carries the image's dependency SBOM when one is on file. The tool
+can answer **`diagnostics_unavailable`** instead: the platform could not
+assemble the diagnostics at all, which is a platform-side condition, not an
+argument problem, so say so and do not retry in a loop.
 
-If you're unsure whether the signed-in user owns an app, call `app_status`
-first — its `forbidden` vs. success response is itself the authorization
-check.
+This section is the plugin's one home for support bundles; `inno-ship` and
+`inno-safety-preflight` offer one at their own stuck points and point here for
+the rules.
 
 ## Finding app names
 

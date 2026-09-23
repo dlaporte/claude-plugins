@@ -25,6 +25,10 @@ its guidance may describe platform behavior that no longer exists, and skills
 added since their build are simply absent — this check is the only thing that
 will tell them so.
 
+If the line reads **current** but adds that a newer version **is available**,
+that is advisory, not a block: mention it once, with the same two commands, and
+carry on with the skill.
+
 If there is no `Plugin:` line at all, the gate is not armed on this platform.
 Carry on.
 
@@ -57,9 +61,9 @@ Scan the existing repo and present a **migration assessment** covering, in
 order:
 
 1. **Stack — keep vs. adapt is the user's decision, informed by your analysis.**
-   Present findings to the user in plain language — name specific technologies
-   (Cloudflare, D1, R2, Okta, wrangler) only if the user has shown technical
-   fluency; the precision below is for your assessment, not recitation.
+   Present findings to the user in plain language; the precision below is for
+   your assessment, not recitation. The plugin README's **House style**
+   section is the rule.
 
    The platform contract is **HTTP on port 8080** (container) or a Cloudflare
    Worker `fetch` handler (function), **not a language**: no CI gate checks the language or
@@ -79,12 +83,10 @@ order:
      stateless — §1.3). **Exception:** if the MCP source needs a per-user
      **Connection** to a backend (step 2 below), it MUST be `mcp-container`
      even when the source is TS/JS — `mcp-function` cannot consume a Connection
-     in v1. CRITICAL for a Python source using FastMCP (the `mcp`
-     SDK): construct it with
-     `transport_security=TransportSecuritySettings(enable_dns_rebinding_protection=False)`
-     (import from `mcp.server.transport_security`) — FastMCP otherwise
-     auto-enables localhost-only Host validation and every gateway-forwarded
-     `/mcp` request dies with `421 Invalid Host header` (§1.3 records this).
+     in v1. CRITICAL for a Python source using FastMCP (the `mcp` SDK): it
+     needs the `transport_security` setting `get_app_contract` §1.3 states,
+     or every gateway-forwarded `/mcp` request fails. The contract is where
+     that setting is written down; take it from there.
    - **Any deal-breakers?** A hard blocker that makes the platform unable to run
      the app at all — call it out plainly. One known trap: **FastAPI** is
      keepable only if its resolved Starlette version clears `pip-audit`/Trivy
@@ -97,10 +99,9 @@ order:
    List each file/route to remove. Keep the app's own **authorization** (who may
    edit what), rewired to key on `X-Forwarded-User`: `X-Forwarded-Groups`
    carries only this app's `inno-{name}-users` and `inno-{name}-open`, never the
-   platform admin group, another app's groups, or the repo's existing role
-   groups (for an SSO app from its first deploy on the v0.14.3 gateway onward;
-   MCP apps get the narrowed header immediately), so existing role checks cannot
-   move onto that header. This is about the app's *own* front-door
+   repo's existing role groups, so existing role checks cannot move onto that
+   header. The full header rule is `inno-platform-conventions`' **Identity**
+   section. This is about the app's *own* front-door
    login — a separate thing to look for is auth to a *backend the app calls
    out to*: if the repo runs its own OAuth flow against some other service,
    holds a long-lived per-user token for that service, or ships a sidecar
@@ -108,19 +109,18 @@ order:
    it — that's exactly what a Connection replaces. Flag it in the assessment
    and point at the `inno-add-connection` skill for Phase 2 instead of
    carrying the old backend-auth code forward (note: needs the `mcp-container`
-   type, §1's deployment-type bullet).
+   type, per Phase 1 step 1's deployment-type bullet).
 3. **Persistence to port** — local files and SQLite move to the platform's
    storage (D1 for SQL, R2 for files) reached at `http://storage.internal`
    (container) or the app's own `env.DATA`/`env.FILES` bindings (function).
    The gateway path caps two bodies, which is worth planning the port
-   around: a `{sql, params}` body over **4 MiB** is refused
-   `400 bad_request`, the same answer malformed JSON gets, so a one-shot
-   import of an existing SQLite table has to go in batches; and a
-   `PUT /_storage/files/{key}` whose **declared** `Content-Length` is over
-   **25 MiB** is refused `413 too_large`, and one sent with no
-   `Content-Length` header at all is refused `411 length_required` instead
-   (platform v0.14.21, contract version 19). Neither cap applies on the
-   bindings path.
+   around: a `{sql, params}` body over **4 MiB** and a file `PUT` over
+   **25 MiB** of declared `Content-Length` are both refused, as is a `PUT`
+   sent with no `Content-Length` at all (since platform v0.14.21, and
+   contract version 20 states it). So a one-shot import of an existing SQLite
+   table has to go in batches. The exact codes and the reasoning are
+   `inno-platform-conventions`' **Persistence** section. Neither cap applies
+   on the bindings path.
    Dependencies the platform cannot provide — Postgres-specific SQL, Redis,
    queues, third-party managed services — are **blockers**: name them, never
    silently drop them.
@@ -138,44 +138,27 @@ order:
    secret buried in an old commit still fails and must be scrubbed AND rotated;
    the rotated value then goes into an app Variable, never back in the repo),
    dependency CVEs (`pip-audit`, Trivy), and semgrep OWASP patterns such as
-   string-built HTML or raw SQL formatting. **Semgrep scans the whole repository
-   except the repo-root `src/` and semgrep's default-ignored directories**
-   (`test/`, `tests/`, `build/`, `dist/`, `vendor/`, `node_modules/`, at any
-   depth), not just `app/`: root-level scripts, tools, workflow files and the
-   Dockerfile all count, so a migrated repo's non-app files can fail the gate
-   too. Then list every path the `config-integrity` gate rejects:
-   - **anything under a repo-root `src/`** (the platform owns `src/`: its
-     gateway was bundled from there, and the deploy wipes it). A repo whose
-     code lives in `src/` must move it, for example to `app/src/`;
-   - the repo-root `package.json`, `package-lock.json` and `tsconfig.json`
-     (your own under `app/` are fine);
-   - a `wrangler.*` config or a `.wrangler/` directory at the repo root;
-   - a `.npmrc` at **any** depth, `app/.npmrc` included (npm expands
-     environment variables into it);
-   - at the repo root only: `.env` / `.env.*`, `.yarnrc`, `.yarnrc.yml`,
-     `.pnpmfile.cjs`, `pnpm-workspace.yaml`, `bunfig.toml` (the same files
-     under `app/` are allowed, except `.npmrc`);
-   - a `scaffold/` directory, which is rejected unless `app/.needs-build` is
-     still present;
+   string-built HTML or raw SQL formatting. **Semgrep scans the whole
+   repository, not just `app/`**: root-level scripts, tools, workflow files
+   and the Dockerfile all count, so a migrated repo's non-app files can fail
+   the gate too. The exact scope, and what it skips, is
+   `inno-platform-conventions`' **Rendering** section. Then list every path
+   the `config-integrity` gate rejects. That list has one home too,
+   `inno-platform-conventions`' **Files you must not touch** section; walk it
+   against this repo and note every hit. The three that catch migrated repos
+   most often:
+   - **anything under a repo-root `src/`**, which a repo whose code lives
+     there must move, for example to `app/src/` (updating the Dockerfile's
+     `COPY` paths);
+   - the repo-root `package.json`, `package-lock.json` and `tsconfig.json`,
+     which in a Node repo are often the app's real manifests rather than
+     leftovers, so show them to the user before touching them;
    - **any committed symlink that resolves to a directory**, at any depth,
-     dangling ones included (a symlink to a *file* stays legal). The gate
-     walks the tree without following links, so anything behind a directory
-     link is never inspected at all. `config-integrity` has no policy toggle,
-     so a repo carrying one cannot deploy until the link is removed (contract
-     version 14, platform v0.14.14). A migrated repo is exactly where one
-     turns up: a vendored path, a shared assets directory, a link left by an
-     old build layout. Replace it with the real directory or drop it. A
-     directory link shows nothing useful in `ls` or a file tree, so scan the
-     index. A link to a FILE is legal, so classify rather than reject on mode
-     alone (`-d` and `-e` follow the link, which is the test the gate makes):
-
-     ```bash
-     git ls-files -s | awk '$1 == "120000"' | cut -f2 | while IFS= read -r l; do
-       if   [ -d "$l" ];   then echo "BLOCKED (directory link): $l -> $(readlink "$l")"
-       elif [ ! -e "$l" ]; then echo "BLOCKED (dangling link):  $l -> $(readlink "$l")"
-       fi
-     done
-     ```
+     dangling ones included. A migrated repo is exactly where one turns up: a
+     vendored path, a shared assets directory, a link left by an old build
+     layout. It shows nothing useful in `ls` or a file tree, so scan the index
+     with the check in `inno-safety-preflight` §2, which is the plugin's copy
+     of it, and replace each hit with the real directory or drop it.
 
    List every existing file under `.github/workflows/`. The platform's caller
    workflow must live at exactly `.github/workflows/deploy.yml` (the platform
@@ -199,27 +182,14 @@ order:
    still unset.
 6. **What does not carry over** — custom domains, background jobs/cron, and any
    always-on/websocket assumptions.
-7. **Proposed app name** — lowercase letters/digits/hyphens, 3-29 chars,
-   starting with a letter; a few names are reserved server-side, so have a
-   fallback. A name ending in **`-app`** is rejected as well: the server
-   returns `invalid_name` for `todo-app`, so propose `todo` instead. A repo
-   called `something-app` makes that suffix an easy reflex, so drop it rather
-   than carrying the repo name across. The name drives the app's hostname
-   `inno-{name}.<platform domain>`
-   (quote the exact URL from `register_app`'s response — never construct it);
-   it is independent of the repo name.
-   **Check the name with the `check_name` MCP tool (read-only) before you
-   propose it.** Only put forward a name it reports as **available**; if it's
-   in-use/reserved/invalid, pick another; if it reports the name **was recently
-   purged and is held until** a UTC time, it belonged to an app purged in the
-   last seven days and nobody, admins included, can register it before then:
-   pick another or wait (`register_app` refuses it as `name_quarantined`); if
-   it's the caller's own existing app,
-   surface that (a stopped app is brought back with `start_app`, not by
-   re-registering). **If `check_name` warns the user is at their active-app
-   limit**, resolve that first: show their apps (`list_apps`) and offer — with
-   explicit confirmation only — to `stop_app` one to make room; otherwise an
-   admin raises their `apps.max_active`, or pause the migration.
+7. **Proposed app name.** The name rules, every `check_name` answer and the
+   active-app limit have one home: `inno-new-app` §1's name bullet. Follow it
+   here unchanged, including checking the name before you propose it. Two
+   things this flow adds: a repo called `something-app` makes the rejected
+   **`-app`** suffix an easy reflex, so drop it rather than carrying the repo
+   name across, and the name is independent of the repo name, though it does
+   drive the app's hostname. Quote the exact URL from `register_app`'s
+   response; never construct it.
    Also ask who else needs access — optional Okta emails feed `register_app`'s
    `members` and can be added later via `inno-manage-app`.
 
@@ -344,30 +314,24 @@ restore point is.
    - **Dependencies** pinned in the stack's manifest under `app/`, CVE-clean.
      A function-shaped app (`function`, `mcp-function`) must declare every
      package it imports in `app/package.json` and commit a matching
-     `app/package-lock.json` (run `npm install` inside `app/`): CI installs
-     only from that lockfile, with `npm ci --ignore-scripts --omit=dev` in the
-     `app-deps` job, and refuses when it is missing, on every push to the
-     default branch as well as at the tag; devDependencies are neither
-     installed nor audited. Nothing is installed at the repo root and the
-     deploy job runs no package manager in `app/`, so an import the repo used
-     to satisfy from a root `package.json` fails to bundle, and production
-     code that imports a devDependency at runtime fails it too, with an error
-     titled `devDependency imported at runtime` that names the package and
-     the fix.
+     `app/package-lock.json` (run `npm install` inside `app/`). The migration
+     trap is that CI installs `--omit=dev` and nothing is installed at the
+     repo root, so an import the repo used to satisfy from a root
+     `package.json` or from `devDependencies` now fails to bundle. The whole
+     rule is `inno-platform-conventions`' **Node apps** paragraph.
    - **Dockerfile** (container) written per `inno-containerize` for the app's
      actual runtime.
    - A root **`CLAUDE.md`** carrying the required section headers (copy
      `dlaporte/inno-template`'s and rewrite the body to describe this app's real
      stack — only the headers are gate-checked).
-   - **Remove or move every forbidden path** flagged in Phase 1: move code out
-     of a repo-root `src/` (for example to `app/src/`, updating the
-     Dockerfile's `COPY` paths) and delete whatever remains there; delete the
-     root `package.json`/`package-lock.json`/`tsconfig.json`, any root
-     `wrangler.*` config, `.wrangler/`, `scaffold/`, every `.npmrc` at any
-     depth, and the root `.env*`, `.yarnrc`, `.yarnrc.yml`, `.pnpmfile.cjs`,
-     `pnpm-workspace.yaml` and `bunfig.toml`. The `.env` values move to app
-     **Variables** (`set_app_variable`); the code keeps reading the same
-     environment names, so this is usually a zero-code change.
+   - **Remove or move every forbidden path** flagged in Phase 1, working from
+     the list in `inno-platform-conventions`' **Files you must not touch**
+     section. Move code out of a repo-root `src/` (for example to `app/src/`,
+     updating the Dockerfile's `COPY` paths) rather than deleting it, and get
+     the user's okay before touching anything that could be theirs. The `.env`
+     values move to app **Variables** (`set_app_variable`); the code keeps
+     reading the same environment names, so this is usually a zero-code
+     change.
    - Delete `app/.needs-build` if the repo carries one (CI skips deploys while
      it's present).
 4. **Secrets in history** — because this is the same repo, a credential in any

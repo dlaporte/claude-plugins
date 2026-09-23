@@ -25,6 +25,10 @@ its guidance may describe platform behavior that no longer exists, and skills
 added since their build are simply absent — this check is the only thing that
 will tell them so.
 
+If the line reads **current** but adds that a newer version **is available**,
+that is advisory, not a block: mention it once, with the same two commands, and
+carry on with the skill.
+
 If there is no `Plugin:` line at all, the gate is not armed on this platform.
 Carry on.
 
@@ -61,14 +65,10 @@ in the conversation transcript), not a **cannot**.
 the `inno-migrate-app` skill instead — it registers the existing repo in place
 and adapts it to the contract, no scaffolding-from-template.
 
-**Speak the user's language.** The platform serves a broad userbase including
-non-technical users. When explaining anything to the user, use plain terms —
-"a database", "file storage", "an access group", "your app's address",
-"sign-in" — and do NOT name specific technologies or providers (Cloudflare,
-D1, R2, Okta, Workers, wrangler) unless the user has expressed technical
-ability or asks questions that reveal it. Full precision belongs in the code
-and commits you write, not in explanations; this rule applies to every
-user-facing sentence in this flow.
+**Speak the user's language.** Plain terms with the user, no provider or
+product names unless they have shown technical fluency. The full rule is the
+plugin README's **House style** section, and it applies to every user-facing
+sentence in this flow.
 
 ## 1. Intake — ask the user for five things
 
@@ -82,10 +82,14 @@ user-facing sentence in this flow.
    Steer the user off that suffix before you check the name.
 
    **Verify availability before you settle on a name — never recommend or
-   confirm a name without checking it first.** Call the **`check_name`** MCP
+   confirm a name without checking it first.** (This step is the plugin's one
+   home for the name rules and the active-app limit; `inno-migrate-app` points
+   here.) Call the **`check_name`** MCP
    tool (read-only; provisions nothing) on the candidate. Only proceed with a
    name it reports as **available**. If it comes back in-use, reserved, or
-   invalid, ask the user for a different one. If it says the name **was
+   invalid, ask the user for a different one; a name it refuses as unusable is
+   echoed back inside `«»` guillemets, which fence it as untrusted text rather
+   than marking it as quoted by the user. If it says the name **was
    recently purged and is held until** a UTC time, it belonged to an app purged
    within the last seven days and nobody, admins included, can register it
    before then (`register_app` refuses it as `name_quarantined`): offer a
@@ -186,7 +190,7 @@ make, with your recommendation**:
     dependencies** or system binaries, **long-running / heavy compute**, or a
     port of existing non-JS code (that's `inno-migrate-app`, which defaults to
     container). Absent such a signal, prefer function.
-  - **`mcp-function` (named `mcp` before v0.8.0):** choose when the product is an **MCP server for AI assistants**
+  - **`mcp-function` (named `mcp`, then `mcp-worker`, before the current name):** choose when the product is an **MCP server for AI assistants**
     (Claude Code, claude.ai) rather than a browser UI. Function-shaped (JS/TS,
     no Dockerfile): the app serves the MCP **Streamable HTTP** transport at
     `POST /mcp`, and users add `https://inno-{name}.<domain>/mcp` as an MCP
@@ -202,11 +206,13 @@ make, with your recommendation**:
     `mcp-container` can consume a Connection in v1. Choose `mcp-container`
     instead; do not land such an app on `mcp-function` and discover the gap
     after registration (the type is fixed at registration).
-    **Idle clock:** an MCP app's clock advances only on real tool use (a tool
-    call, resource read, prompt or completion). Connecting, the handshake and
-    tool listings do not count, so an app that is built and then left
-    connected but unused is warned and then stopped like any idle app. Tell
-    the user that when you hand the app over (`inno-manage-app`).
+    **Idle clock:** an MCP app's clock advances only on real use, and a client
+    that stays connected without making requests does not count, so an app
+    that is built and then left connected but unused is warned and then
+    stopped like any idle app. The rule itself is served from one place, the
+    **Lifecycle (idle clock)** section of `get_platform_docs`; quote that
+    rather than writing your own list of request kinds. Tell the user when you
+    hand the app over (`inno-manage-app`).
   - **`mcp-container`:** choose when the product is an **MCP server** that
     needs the **container** shape instead — a **non-TS/JS stack** (Python,
     Go, Ruby, …), **native dependencies**, **heavy/long-running compute**
@@ -220,21 +226,16 @@ make, with your recommendation**:
     story as `mcp-function` — no browser SSO, the platform issues OAuth tokens
     and the gateway validates them; access is still the app's Okta member
     group. Default stack: **Python + the official MCP Python SDK** (FastMCP).
-    CRITICAL (Python SDK): construct FastMCP with
-    `transport_security=TransportSecuritySettings(enable_dns_rebinding_protection=False)`
-    (import from `mcp.server.transport_security`) — FastMCP otherwise auto-enables
-    localhost-only Host validation (its `host` setting defaults to 127.0.0.1 even when
-    uvicorn binds 0.0.0.0) and every gateway-forwarded /mcp request dies with
-    `421 Invalid Host header`. The platform gateway is the identity boundary; rebinding
-    protection only misfires behind it. Also: after deploying a fix to a RUNNING
+    CRITICAL (Python SDK): keep the starter's `transport_security` setting,
+    which `get_app_contract` §1.3 states and explains; changing it breaks every
+    gateway-forwarded `/mcp` request. Also: after deploying a fix to a RUNNING
     mcp-container app, `restart_app` — a live instance keeps serving the old image
     until it recycles.
     Note the idle **cold start**: a sleeping container wakes on request, so
     expect a seconds-scale delay on the first `POST /mcp` after idle
     (`sleep_after` default 10m) — mention this if responsiveness matters to
-    the user. The idle-clock rule under `mcp-function` applies here too: only
-    real tool use advances it, so a connected-but-unused server still gets
-    stopped.
+    the user. The idle-clock rule under `mcp-function` applies here too, from
+    the same served home.
   - State your recommendation and the reason, and go with the user's call.
 - **Deployment pattern** (contract §5): server-rendered is the default for
   internal tools; SPA+API when rich client interactivity is the point — applies
@@ -264,12 +265,11 @@ The written design covers, at minimum:
 - **Routes / pages** — what the user can actually open and do
 - **Access model**: who can see what, and who can edit. The platform manages
   only membership: `X-Forwarded-Groups` carries at most this app's own
-  `inno-{name}-users` (a member) and `inno-{name}-open` (a caller who reached an
-  open app), never the platform admin group or any other app's groups (for an
-  SSO app from its first deploy on the v0.14.3 gateway onward; MCP apps get the
-  narrowed header immediately). Any
-  finer role (an editor, an admin view) needs the app's own role table keyed on
-  `X-Forwarded-User`; do not design around reading other groups from the header.
+  `inno-{name}-users` (a member) and `inno-{name}-open` (a caller who reached
+  an open app). Any finer role (an editor, an admin view) needs the app's own
+  role table keyed on `X-Forwarded-User`; do not design around reading other
+  groups from the header. The full header rule, including when an older live
+  app still sees more, is `inno-platform-conventions`' **Identity** section.
 - **Deployment pattern and stack**
 - **Name** (confirmed available via `check_name`) and the exact hostname it
   produces
@@ -348,12 +348,19 @@ register_app({ app, repo, description, type, members, accept_guardrails: true, c
   shape. Omit for container. The type is fixed at registration and can't be
   switched later (register a new app to change it).
 - `accept_guardrails: true` — required; you must have done the §1a review.
-- `members` — optional list of Okta emails.
+- `members` is an optional list of Okta emails. Each address is notified that
+  the app was shared with them, in-platform plus email per their own
+  notification settings, so name only people who should hear about it now.
 - `connections` — optional list of names, when §1 step 5 flagged a per-user
   backend. Pass what you plan to set up; it **creates nothing** (a connection
   needs a strategy and config only `set_app_connection` can supply) and is
   echoed back in the response as a reminder to configure each one. A
   badly-shaped name is noted in the response and never fails the registration.
+  The list itself is bounded: **at most 16 names, each at most 64
+  characters**. On the MCP surface the schema refuses a longer list or an
+  over-long name before the tool runs; the handler behind it answers
+  `too_many_connections`. Names beyond the bound are added afterwards with
+  `set_app_connection`.
 
 The first call returns text beginning **`Registration started for "{name}" ←
 {repo}.`** It carries, in this order: (a) the template link again, in case the
@@ -486,11 +493,9 @@ repo). It returns text beginning **`App
   account, or deleted and recreated after it was verified. Confirm the repo's
   current `owner/repo` slug with the user and call again with it; a new slug
   starts a fresh registration with a new proof file and a new install link
-  (have the user open that link and save). The stale verification can keep
-  answering this (or `Registration started …` for the new slug when the App
-  was already installed) for up to about a day; if it repeats, tell the user
-  registration can finish once that window passes rather than calling in a
-  loop.
+  (have the user open that link and save). The platform retires the stale
+  verification as it answers, so the very next call starts clean: there is no
+  window to wait out.
 - **`invalid_member_email`**: one of `members` is not a plain email address.
   Fix or drop it and call again.
 - **`upstream_error`** (could not re-check the repository with GitHub): a
@@ -515,13 +520,17 @@ repo). It returns text beginning **`App
   a consistent `repo`.
 - **`github_app_not_configured`** — the platform's GitHub App isn't set up on
   this deployment; nobody can register until an admin configures it.
-- **Repo wasn't template-derived** (call 2's response reports something like
-  "scaffold not applied" / the repo shows none of the type-specific scaffold
-  described in §4 after call 2 finishes) — the user registered a repo that
-  didn't come from §2's "Use this template" flow (a blank GitHub "New
-  repository" is the common way this happens), so the server had nothing to
-  prune. This is not an error to retry — treat it as the empty-repo path in
-  §4 below.
+- **Repo wasn't template-derived.** The user registered a repo that didn't
+  come from §2's "Use this template" flow (a blank GitHub "New repository" is
+  the common way this happens), so the server had nothing to prune. There are
+  two real cues, and they differ by type. A **container** registration prunes
+  silently: the response simply reports the scaffold step as skipped, with no
+  warning. A **function**, **mcp-function** or **mcp-container** registration
+  warns, naming the overlay it could not find: `no scaffold/<preset>/ overlay
+  found in <repo>, the repo predates the "<preset>" deployment type`. The
+  second cue is the one that holds for every type: after call 2 finishes, the
+  repo shows none of the type-specific files described in §4. This is not an
+  error to retry. Treat it as the empty-repo path in §4 below.
 - **`registration_disabled`** — an admin has turned off self-service
   registration; a platform admin must re-enable it (`registration.enabled`).
 - Any other non-empty error — surface it verbatim rather than retrying blindly.
@@ -555,17 +564,14 @@ platform v0.14.5): a stateless FastMCP starter for `app/main.py`, plus its own
 `README.md`, `CLAUDE.md`, and `app/requirements.txt`, applied over the
 container root (see the bullet below); `Dockerfile`, `lib/`, and
 `app/storage.py` stay as the container reference's. Everything
-else is platform-owned and must NOT be in the repo: all of a repo-root `src/`
-(its gateway was bundled from there and the deploy wipes it, and the
-`config-integrity` gate fails a repo carrying any file under it; an `app/src/`
-of your own is fine), the
-repo-root `package.json`, `package-lock.json` and `tsconfig.json`, any
-`wrangler.*` config, and a `.npmrc` at any depth (including `app/.npmrc`).
-Don't create any of them. Don't commit a symlink that points at a directory
-anywhere in the repo either, dangling ones included (a link to a *file* is
-fine): the `config-integrity` gate walks the tree without following links, so
-it rejects every directory link outright, with no policy toggle. Load the
-`inno-platform-conventions` skill before writing any application code (stack
+else is platform-owned and must NOT be in the repo: a repo-root `src/`, the
+repo-root `package.json` / `package-lock.json` / `tsconfig.json`, any wrangler
+config or `.wrangler/`, a `scaffold/` that outlives `app/.needs-build`, a root
+`.env*` or package-manager config, a `.npmrc` at any depth, and any committed
+symlink that resolves to a directory. Don't create any of them. The full list,
+with the reason for each and what to do when a migrated repo already carries
+one, is `inno-platform-conventions`' **Files you must not touch** section.
+Load that skill before writing any application code (stack
 policy, storage, identity, the do-not-touch file list), and — for a container
 or mcp-container app — the `inno-containerize` skill before editing the
 Dockerfile.
@@ -594,15 +600,11 @@ directory:
   `app/requirements.txt`, the root `CLAUDE.md`, `README.md`, and `.gitignore`.
 
 Copy `CLAUDE.md` rather than writing one: the `config-integrity` gate checks
-five required section headers. **The check is type-blind.** Three headers are
-required of every app whatever its type: `## Innovation Platform App`,
-`## Identity (do not build auth)`, and `## What CI enforces`. The remaining two
-are variant groups, and any member of a group satisfies the gate:
-`## Persistence (use the storage client)` or `## Persistence (use your
-bindings)`, and `## Container contract` or `## Function contract` (the legacy
-`## Worker contract` still passes too). So a container app carrying the
-function headers passes and the reverse passes as well. Copy your own type's
-version anyway, so the body describes the runtime this app actually has.
+five required section headers, and the check is **type-blind**, so a container
+app carrying the function headers passes and the reverse passes as well.
+`inno-platform-conventions`' **Files you must not touch** section names the
+five and the two variant groups. Copy your own type's version anyway, so the
+body describes the runtime this app actually has.
 
 **Scaffold by the deployment type you chose in §1b** (fetch `get_app_contract`
 §1.1 for the authoritative function deltas):
@@ -611,23 +613,16 @@ version anyway, so the body describes the runtime this app actually has.
   exporting `export default { fetch(request, env, ctx) }`. The request is
   already Access-verified — read identity from `request.headers`
   (`X-Forwarded-User` / `X-Forwarded-Groups`), serve **`GET /healthz` as a
-  route** (200), and reach storage through the app's **own bindings** —
+  route** returning **exactly 200** (a 204 or a redirect to `/healthz/` fails
+  both the CI smoke gate and the runtime probe), and reach storage through the
+  app's **own bindings**:
   `env.DATA` (D1), `env.FILES` (R2), not `storage.internal`. Declare every
   npm package the code imports in a **non-root** `app/package.json`, and commit
   the `app/package-lock.json` that `npm install` (run inside `app/`) produces,
-  kept in sync with `package.json`. CI installs with
-  `npm ci --ignore-scripts --omit=dev` inside `app/` in the `app-deps` job
-  and fails without a lockfile or with a stale one; devDependencies are
-  neither installed nor audited. The deploy job runs no package manager in
-  `app/`, and nothing is installed at the repo root, so an import not
-  declared in `app/package.json` fails to bundle (for example
-  `Could not resolve "hono"`), and an import that resolves only against a
-  devDependency fails it too, with an error titled `devDependency imported
-  at runtime` that names the package and the fix. That install runs on
-  **every push to the default branch** (platform v0.14.14), not only at the
-  release tag, so a missing
-  lockfile reds the preflight run. The `deps` gate is not what catches it: that
-  audit generates a throwaway lockfile of its own. The repo is already function-shaped
+  kept in sync with `package.json`. The install rule and everything it
+  refuses have one home, `inno-platform-conventions`' **Node apps** paragraph;
+  the short of it is that a runtime import must sit under `dependencies`,
+  because CI installs `--omit=dev`. The repo is already function-shaped
   (no Dockerfile, no Python reference — the CI image gates are skipped for this
   type); extend `app/index.ts` rather than re-scaffolding. Never interpolate
   user data into hand-built HTML — even escaped, the SAST gate blocks it; return
@@ -673,12 +668,10 @@ version anyway, so the body describes the runtime this app actually has.
   `GET /healthz`, storage via `http://storage.internal`) PLUS the MCP
   **Streamable HTTP** transport at `POST /mcp`, **stateless only** (no
   `sessionIdGenerator`/session correlation, same restriction as
-  `mcp-function`). The starter already constructs FastMCP with
-  `transport_security=TransportSecuritySettings(enable_dns_rebinding_protection=False)`;
-  keep it that way. Removing it re-enables FastMCP's localhost-only Host
-  check, and every gateway-forwarded `/mcp` request then fails with
-  `421 Invalid Host header`, since the gateway proxies with this app's public
-  Host header, not localhost. Identity: implement no auth of your own, the
+  `mcp-function`). **Keep the starter's `transport_security` setting**, which
+  `get_app_contract` §1.3 states and explains; the contract is the one place
+  that carries it, and changing it breaks every gateway-forwarded `/mcp`
+  request. Identity: implement no auth of your own, the
   platform is the OAuth Authorization Server, the gateway is the Resource
   Server; read `X-Forwarded-User`/`X-Forwarded-Groups` only, and never route
   `/.well-known/oauth-protected-resource` yourself; no sign-out link (there
@@ -713,16 +706,13 @@ handler — route on the URL, read identity from the request headers, read/write
   commit the updated `app/package-lock.json` in the same commit (see the
   function bullet above).
 
-**Container apps: two caps on the storage endpoints.** `POST
-/_storage/sql/query` and `/execute` take at most **4 MiB** of
-`{sql, params}` JSON per request, and a bigger body comes back
-`400 bad_request` with no more detail than malformed JSON gets, so a route
-that writes in bulk should send batches rather than one array.
-`PUT /_storage/files/{key}` refuses an object whose **declared**
-`Content-Length` is over **25 MiB** with `413 too_large`, and refuses one
-sent with no `Content-Length` header at all with `411 length_required`
-instead (platform v0.14.21, contract version 19), so an upload route needs
-its own size check and its own message. A function app reaches
+**Container apps: two caps on the storage endpoints.** A `{sql, params}` body
+over **4 MiB** and a file `PUT` whose declared `Content-Length` is over
+**25 MiB** are both refused, as is a `PUT` sent with no `Content-Length` at
+all (since platform v0.14.21, and contract version 20 states it). So a route
+that writes in bulk sends batches, and an upload route needs its own size
+check and its own message. The exact codes and the reasoning are
+`inno-platform-conventions`' **Persistence** section. A function app reaches
 `env.DATA`/`env.FILES` directly and has neither cap.
 
 **Rewrite `README.md` — this is required, not optional.** The template's README

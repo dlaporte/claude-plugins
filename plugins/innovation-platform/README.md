@@ -47,20 +47,50 @@ MCP client enumerates tools at startup, so `inno-platform`'s tools stay
 uncallable even after `claude mcp list` shows it `✔ Connected`. Restart the
 session once authorization completes; only then are the tools callable.
 
+### Keeping the plugin current
+
+Every skill opens by passing this plugin's `version` to `get_platform_status`,
+which holds the minimum version the platform accepts and answers on a
+`Plugin:` line. **OUTDATED stops the skill dead**, as does a version the
+platform could not read: stale guidance describes behavior that no longer
+exists, and skills added since your build are simply missing. The same line
+advises, without blocking, when a newer version than yours is available.
+Either way the fix is two commands:
+
+```
+claude plugin marketplace update davidlaporte
+claude plugin update innovation-platform@davidlaporte
+```
+
+Restart Claude Code afterwards. An installed plugin is cached per version, so
+without those two commands nothing tells a user they are on an old build.
+
+### House style
+
+Every skill in this plugin speaks to a broad, largely non-technical userbase,
+so the sentences you say back to a user use plain terms: "access", "a
+database", "file storage", "your app's address", "sign-in". Do **not** name
+specific technologies or providers (Cloudflare, D1, R2, Okta, Workers,
+wrangler, Trivy) unless the user has expressed technical ability or asks
+questions that reveal it. The precision in the skills is for your own
+reasoning, your commits and your tool calls, not for recitation. Each skill
+states this in one line and points here.
+
 ## What's in the box
 
 - **`.mcp.json`** — points at `https://inno-platform.davidlaporte.org/mcp`,
   the platform's remote MCP server (tools: `register_app`, `check_name`,
   `list_apps`, `app_status`, `grant_access`, `revoke_access`, `set_app_access`, `stop_app`,
-  `start_app`, `request_start`, `transfer_app`, `export_app_data`, `get_app_metrics`, `get_app_usage`, `get_app_logs`, `restart_app`, `get_platform_status`,
+  `start_app`, `request_start`, `export_app_data`, `get_app_metrics`, `get_app_usage`, `get_app_logs`, `restart_app`, `get_platform_status`,
   `link_app_data`, `unlink_app_data`, `list_app_links`,
   `list_notifications`, `mark_notification_read`, `mark_all_notifications_read`,
   `get_platform_docs`, `get_guardrails`, `get_app_contract`, `get_app_security`, `get_ci_status`, `create_support_bundle`,
-  self-service `set_config`/`remove_config`,
+  `set_config`/`remove_config` (admin-only, with one exception: any user may set their own `notify.email.*` keys at their own user scope, so muting a notification is self-service),
   `get_config` (scoped — `app=` for an app you manage, `user=` for your own account; the argument-less fleet catalog is admin-only),
   `set_app_connection`/`list_connections`/`remove_app_connection`,
   `list_user_connections`/`disconnect_user_connection` (connection sessions — yours; an app's for its owner; the fleet for admins),
-  `set_app_variable`/`list_app_variables`/`remove_app_variable` (per-app environment variables — owner-or-admin; hidden values are write-only), and the admin-only `rebuild_app`
+  `set_app_variable`/`list_app_variables`/`remove_app_variable` (per-app environment variables, owner-or-admin; hidden values are write-only), and the admin-only `transfer_app`
+  (reassign an app's owner; owners ask an admin), `rebuild_app`
   (redeploy an app's released code at its live tag), `purge_app`,
   `revoke_sessions` (end one person's panel sessions everywhere), `list_users`, `query_audit`, `sync_gateway_ref`,
   `list_admins`, `grant_admin`, `revoke_admin`, `export_platform_backup`,
@@ -97,9 +127,34 @@ session once authorization completes; only then are the tools callable.
   stop, start, or restart an app, read its logs and notifications, set its
   environment variables / API keys, and build support bundles (up to 5 per app in
   any 24 hours). Idle apps are
-  warned, stopped, then purged on a config-driven clock; real use resets it,
-  meaning a signed-in visit or, for an MCP app, a tool call, resource read,
-  prompt or completion. Probes and automated callers do not.
+  warned, stopped, then purged on a config-driven clock, and real use resets
+  it. What counts as real use is served from one place, the **Lifecycle (idle
+  clock)** section of `get_platform_docs`; this skill quotes it rather than
+  keeping its own list.
+
+### How the skills are laid out
+
+Each skill loads on its own, so a few blocks are deliberately repeated rather
+than pointed at. The **Version gate** at the top of every skill is the main
+one: it is byte-identical across all eight by design, because a skill that
+loads alone cannot follow a pointer to reach its own precondition. Check that
+it has stayed identical with:
+
+```
+for f in plugins/innovation-platform/skills/*/SKILL.md; do
+  awk '/^## Version gate/{p=1} p{print} p&&/^Carry on\.$/{exit}' "$f" | md5 -q
+done | sort -u
+```
+
+One line of output means the eight agree. That is the same block CI's
+`version-gate-parity` job compares, so this check and CI cannot disagree. Everything else that appeared in
+several skills now has one home and pointers from the rest:
+`inno-platform-conventions` owns the semgrep scope, the forbidden-path list,
+the identity header rule, the Node dependency rule, the storage caps and the
+`CLAUDE.md` header rule; `inno-manage-app` owns the call budget and support
+bundles; `inno-safety-preflight` owns the directory-symlink pre-push check;
+`inno-containerize` owns the health-probe clock; `inno-new-app` owns the
+name-check and active-app-limit rules; and this README owns House style.
 
 ## How the platform enforces security
 

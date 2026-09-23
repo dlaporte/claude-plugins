@@ -25,6 +25,10 @@ its guidance may describe platform behavior that no longer exists, and skills
 added since their build are simply absent — this check is the only thing that
 will tell them so.
 
+If the line reads **current** but adds that a newer version **is available**,
+that is advisory, not a block: mention it once, with the same two commands, and
+carry on with the skill.
+
 If there is no `Plugin:` line at all, the gate is not armed on this platform.
 Carry on.
 
@@ -94,18 +98,26 @@ changed in between: pin the base to the digest `get_app_contract` serves.
 3. **CVE-clean image** — patch the base's OS packages in the build
    (`apt-get upgrade` / `apk upgrade`) so the Trivy gate passes; a stock
    base commonly ships fixable CVEs that have nothing to do with your code.
-4. **`GET /healthz` → 200** — a **hard CI gate**, not a nicety. The
+4. **`GET /healthz` answers exactly 200.** A **hard CI gate**, not a nicety,
+   and this item is the plugin's one home for the probe clocks (`inno-ship`
+   points here). The
    `container` job runs the built image (`docker run -d -p 8080:8080`) and
    polls `/healthz` 18 times, 5 seconds apart, with a 4 second per-try
    timeout: about 90 seconds if the port refuses outright, up to about 162
-   seconds if it accepts the connection and then hangs. It requires exactly
-   200 (true from platform v0.14.20); anything else, or no answer at all,
+   seconds if it accepts the connection and then hangs. It requires **exactly
+   200** (true from platform v0.14.20), and so does the runtime probe: a 204,
+   and any 3xx, fail both, so a framework that redirects `/healthz` to
+   `/healthz/` fails both. Anything else, or no answer at all,
    and it dumps the container logs and fails the job, which fails `deploy`.
    That CI clock is separate from the platform's own runtime health probe,
    which binds to the same endpoint after every deploy: immediately on each
    green one, then on the configured interval (`health.probe_interval_hours`,
    24 hours by default, and an admin can change it platform-wide or per
-   app). A deploy-time probe that cannot reach the origin at all, which is
+   app). The probe presents a credential chosen by the app's **perimeter**,
+   which is why `/healthz` must not depend on the caller: the Access service
+   token on an SSO-perimeter app (`container`, `function`) and the bearer
+   probe token on an OAuth-RS-perimeter app (`mcp-function`,
+   `mcp-container`). A deploy-time probe that cannot reach the origin at all, which is
    what a container still cold-starting behind a just-attached hostname
    looks like, defers to the next hourly pass instead of alarming, so a
    brand-new app reading `unknown` right after its first deploy is normal
@@ -113,24 +125,26 @@ changed in between: pin the base to the digest `get_app_contract` serves.
    status (520-527, 530) defers, though. A probe that **times out**, or
    answers with anything other than 200, does not: each attempt allows 45
    seconds, and a failed attempt gets one retry 5 seconds later before it
-   is reported, so a verdict can take up to about 95 seconds. Size the boot
+   is reported, so a verdict can take up to about 95 seconds. That roughly
+   95 second span is a third clock, neither the hourly re-probe nor
+   `health.probe_interval_hours`. The hourly floor applies only while a
+   status is pending: once it clears, the recurring check goes back to
+   following `health.probe_interval_hours`, so it is not always literally
+   daily. Size the boot
    to answer inside that first 45 second attempt; a second attempt follows
    5 seconds later, and nothing follows it. Keep it cheap and
    **storage-independent**: a slow app boot is legitimate, but a `/healthz`
    that waits on storage is not. Never stub it as a TODO.
 5. **Keep build inputs where the gates allow them.** Put the app's code and
    manifests under `app/` (an `app/src/` is fine); a repo-root `src/` is
-   platform-owned and the `config-integrity` gate fails any file in it. Never
-   commit a `.npmrc` anywhere, `app/.npmrc` included, even for a container
-   build that would use it: npm expands environment variables into it, so the
-   gate rejects it at every depth. Other package-manager config
-   (`.yarnrc.yml`, `pnpm-workspace.yaml`, `bunfig.toml`) is allowed under
-   `app/` but not at the repo root. **Never commit a symlink that points at a
-   directory**, anywhere in the repo, dangling ones included; a link to a
-   *file* is fine. The gate walks the tree without following links, so content
-   behind a directory link is never inspected, and there is no policy toggle
-   to waive it (contract version 14). Copy the real directory in, or produce
-   it during the image build.
+   platform-owned and the `config-integrity` gate fails any file in it. The
+   two that bite a Dockerfile author specifically: never commit a `.npmrc`
+   anywhere, `app/.npmrc` included, even for a container build that would use
+   it, and never commit a symlink that points at a **directory**, anywhere in
+   the repo, dangling ones included (a link to a *file* is fine). Copy the
+   real directory in, or produce it during the image build. The full
+   forbidden-path list, with the reason for each, is
+   `inno-platform-conventions`' **Files you must not touch** section.
 
 **Base image: call the `get_app_contract` MCP tool for the platform's
 current digest-pinned recommended bases (python/node/go) — never hard-code
@@ -144,11 +158,11 @@ never `ENV`/`ARG` a secret into the committed Dockerfile: the image is
 built in CI from the repo, so a baked-in value is a committed one, and
 gitleaks fails the build.
 
-**The Dockerfile is scanned too.** The `sast` gate runs semgrep over the whole
-repository except the repo-root `src/` and semgrep's default-ignored
-directories (`test/`, `tests/`, `build/`, `dist/`, `vendor/`, `node_modules/`,
-at any depth), because the docker build context is the repo root: the
-Dockerfile and any root-level file it `COPY`s are checked, not only `app/`.
+**The Dockerfile is scanned too.** The `sast` gate's semgrep run covers the
+whole repository, not only `app/`, because the docker build context is the
+repo root: the Dockerfile and any root-level file it `COPY`s are checked. The
+exact scope, and what it skips, is `inno-platform-conventions`' **Rendering**
+section.
 
 ## Reference recipe — Python (the platform's tested stack)
 
@@ -210,9 +224,14 @@ The block below builds the image, then decides the non-root rule exactly the
 way the CI gate does (item 2 above) and prints one `OK:` or `FAIL:` line. It
 never runs the image to resolve the user: it reads `/etc/passwd` straight off
 the image, maps NUL bytes before reading, and hands the name to `awk` through
-the environment. It has no comments and no `!` outside single quotes, so it
-pastes cleanly into bash, zsh, or an interactive zsh. The last three commands
-are the `/healthz` smoke gate in one shot. If `docker build` fails, fix that
+the environment. Both `awk` compares append `""` to force a STRING compare,
+exactly as the workflow does, because awk compares numerically when both sides
+look numeric and a name like `1e3` would otherwise match a passwd name `1000`.
+It has no comments and no `!` outside single quotes, so it
+pastes cleanly into bash, zsh, or an interactive zsh. The last four commands
+are the `/healthz` smoke gate in one shot, and they test for **exactly 200**
+the way CI does: `curl -f` would accept a 204 or a 301 that CI refuses. If
+`docker build` fails, fix that
 first: the checks below read the last image that built, and with no image at
 all they print a misleading root `FAIL`.
 
@@ -238,8 +257,8 @@ if [ -z "$why" ]; then
           else
             uid="$(printf '%s\n' "$pw" | U="$u" LC_ALL=C awk -F: '
               { line = $0; sub(/^[^!-~]+/, "", line); sub(/[^!-~]+$/, "", line)
-                split(line, f, ":"); if (f[1] == ENVIRON["U"]) loose++
-                if ($1 == ENVIRON["U"]) { exact++; field = $3 } }
+                split(line, f, ":"); if ((f[1] "") == (ENVIRON["U"] "")) loose++
+                if (($1 "") == (ENVIRON["U"] "")) { exact++; field = $3 } }
               END { if (loose == 0 && exact == 0) print "none"
                     else if (loose != 1 || exact != 1) print "ambiguous"
                     else if (field !~ /^[0-9]+$/) print "malformed"
@@ -261,7 +280,7 @@ shown="$(printf '%s' "$user" | LC_ALL=C tr -c ' -~' '?')"
 if [ -z "$why" ]; then echo "OK: User='$shown' runs as uid $n"; else echo "FAIL: User='$shown' $why"; fi
 docker inspect --format='{{json .Config.ExposedPorts}}' app-under-test | grep '8080/tcp'
 docker run -d -p 8080:8080 --name app-under-test-run app-under-test
-curl -sf http://localhost:8080/healthz
+[ "$(curl -s -o /dev/null -w '%{http_code}' --max-time 4 http://localhost:8080/healthz)" = 200 ] && echo "OK: /healthz 200" || echo "FAIL: /healthz not 200"
 docker rm -f app-under-test-run
 ```
 

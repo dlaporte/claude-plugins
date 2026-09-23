@@ -25,6 +25,10 @@ its guidance may describe platform behavior that no longer exists, and skills
 added since their build are simply absent — this check is the only thing that
 will tell them so.
 
+If the line reads **current** but adds that a newer version **is available**,
+that is advisory, not a block: mention it once, with the same two commands, and
+carry on with the skill.
+
 If there is no `Plugin:` line at all, the gate is not armed on this platform.
 Carry on.
 
@@ -55,17 +59,13 @@ gateway boundary, but three specifics differ — the authoritative deltas are in
 - **Storage:** the app's **own bindings** — `env.DATA` (D1) / `env.FILES`
   (R2) — instead of `http://storage.internal`. Still no platform credential
   and no cross-app reach; a binding is a handle to the app's *own* resources.
-- **Health:** answer `GET /healthz` with 200 as a **route** in your `fetch`
-  handler, not a listening port.
+- **Health:** answer `GET /healthz` with **exactly 200** as a **route** in your
+  `fetch` handler, not a listening port. A 204, or a redirect to `/healthz/`,
+  fails both enforcers.
 - **Dependencies:** declare every npm package your Worker imports in
-  `app/package.json` and commit `app/package-lock.json` beside it. CI runs
-  `npm ci --ignore-scripts --omit=dev` inside `app/` in the `app-deps` job and
-  fails without the lockfile; devDependencies are neither installed nor
-  audited. The deploy job runs no package manager in `app/` at all, and
-  nothing is installed at the repo root, so an undeclared bare import fails
-  the bundle, and production code that imports a devDependency at runtime
-  fails it too, with an error titled `devDependency imported at runtime` that
-  names the package and the fix.
+  `app/package.json` and commit `app/package-lock.json` beside it. The install
+  rule, what it refuses, and when it runs have one home in this skill: the
+  **Node apps** paragraph below. Read it there rather than from a copy here.
 
 The **`mcp-function`** type is a function-type app whose consumer is an MCP client
 instead of a browser — every function delta above applies, plus the deltas in
@@ -116,12 +116,13 @@ Whatever the stack: pin dependencies in its own manifest under `app/`
 source for its pins; `package.json` for Node; `go.mod` for Go; …) and keep
 them CVE-clean: the `deps` gate (pip-audit over `app/requirements.txt`,
 `npm audit` over `app/package.json`'s **production** dependencies only, run
-`--omit=dev`; since platform v0.14.21 (contract version 19) the `app-deps`
-job installs with `--omit=dev` too, so the audited set and the installed set
-are the same, and
+`--omit=dev`; since platform v0.14.21, and contract version 20 states it, the
+`app-deps` job installs with `--omit=dev` too, so the audited set and the
+installed set are the same, and
 production code that imports a devDependency at runtime fails the deploy
 bundle with an error titled `devDependency imported at runtime`, naming the
-package and the fix) and the `container` gate (Trivy, any
+package and the fix) and the `container` gate (Trivy at HIGH and CRITICAL
+with a fix available, OS and language packages alike, any
 stack) fail the build otherwise. One known trap, informational not
 prohibitive: older **FastAPI** pins drag in a CVE-bearing Starlette line —
 check that the lockfile resolves a clean version before committing to it.
@@ -200,9 +201,9 @@ refused `400 bad_request`, which is exactly the answer malformed JSON gets,
 so an oversized bulk insert reads as a syntax error rather than a size
 problem: send it in batches. `PUT /_storage/files/{key}` is capped
 separately, on the object's **declared** `Content-Length`, and over
-**25 MiB** the answer is `413 too_large`. Since platform v0.14.21 (contract
-version 19), a PUT sent with no `Content-Length` header at all (a chunked
-body, for example) is
+**25 MiB** the answer is `413 too_large`. Since platform v0.14.21, and
+contract version 20 states it, a PUT sent with no `Content-Length` header at
+all (a chunked body, for example) is
 refused `411 length_required` before the gateway calls R2, which has never
 accepted a stream of unknown length. The file cap has been enforced
 since the gateway first shipped (2026-07-22), and the SQL body cap since
@@ -348,6 +349,16 @@ as one:
   before retrying; don't relay a `connect_url`, and don't ask the user to
   reconnect.
 
+Two more are the **app's** to fix, not the user's, and never a connect prompt
+(contract §2.2 lists both):
+
+- **`401 connections_bad_assertion`**: the caller assertion did not verify,
+  almost always because the app echoed one it kept from an earlier request.
+  The header is good for 300 seconds from the moment it is minted, so echo
+  the `X-Caller-Assertion` of the request you are serving right now.
+- **`403 connections_not_declared`**: this app has no connection by that
+  name. Check the string you passed against `list_connections`.
+
 Connections are reachable from **`mcp-container`** apps only in v1 — the
 other three types can't consume one yet. Setting one up (discovering how the
 backend signs people in, choosing among the three strategies — a pasted
@@ -385,8 +396,13 @@ Log like it's a contract: one event per line to stdout, plain text or JSON.
 That stream is what surfaces in the app's panel **Logs tab** and the
 `get_app_logs` MCP tool (the gateway plus your own source, newest first:
 container stdout on a container shape, your own Worker on a function
-shape). Log well now and runtime debugging (`inno-manage-app`'s Runtime
-issues guidance) is actually useful later instead of a wall of noise.
+shape). Each line reads `[ts] LEVEL <who> | message`, and `<who>` is the
+source: `container` on a line your container wrote to stdout, and Cloudflare's
+own origin label (the script name) on a Worker line. That column separates a
+container's output from a Worker's; it does not separate a function app's
+gateway from the app's own Worker. Log well now and runtime debugging
+(`inno-manage-app`'s Runtime issues guidance) is actually useful later
+instead of a wall of noise.
 
 ## Keep `ENVIRONMENT=production`
 

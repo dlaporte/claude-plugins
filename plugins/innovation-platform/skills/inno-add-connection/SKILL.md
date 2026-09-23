@@ -25,6 +25,10 @@ its guidance may describe platform behavior that no longer exists, and skills
 added since their build are simply absent — this check is the only thing that
 will tell them so.
 
+If the line reads **current** but adds that a newer version **is available**,
+that is advisory, not a block: mention it once, with the same two commands, and
+carry on with the skill.
+
 If there is no `Plugin:` line at all, the gate is not armed on this platform.
 Carry on.
 
@@ -41,20 +45,18 @@ Requires the `inno-platform` MCP server (ships with this plugin's `.mcp.json`).
 If this is the first call against it this session, expect a browser Okta
 login — that's expected, not an error.
 
-Every platform tool call counts against one budget of **60 calls a minute per
-signed-in person**, shared by every agent and session they run. Past it, any
-tool answers `rate_limited`: wait a full minute, then retry once. This skill
-never needs anywhere near that many calls, so hitting it means something is
-looping (or several subagents are calling at once); stop and reconsider rather
-than retrying.
+Platform tool calls share one per-person budget, described in
+`inno-manage-app`'s **Call budget** section. This skill never needs anywhere
+near it, so an answer of `rate_limited` here means something is looping, or
+several subagents are calling at once; stop and reconsider rather than
+retrying.
 
-**Speak the user's language.** Match the rest of this plugin: use plain terms
-with the user — "connect your app to {backend} as each person," "sign in to
-{backend} once," "a token you create in your {backend} account and paste in."
-Don't say "OAuth," "PKCE," "client secret," or name the platform's own
-providers (Cloudflare, Okta, wrangler) unless the user is clearly technical.
-Those words are fine in your own reasoning and in the tool calls you make —
-just not in the sentences you say back to a non-technical user.
+**Speak the user's language,** per the plugin README's **House style**
+section. Here that means "connect your app to {backend} as each person,"
+"sign in to {backend} once," "a token you create in your {backend} account and
+paste in." Never "OAuth," "PKCE" or "client secret." Those words are fine in
+your own reasoning and in the tool calls you make, just not in the sentences
+you say back to a non-technical user.
 
 **No catalog, no steering.** This skill doesn't maintain or suggest a list of
 backends. If the target is a big enterprise service that already has its own
@@ -188,8 +190,11 @@ needs no cooperation from anyone else.
     public (secret-less) client.
   - `pkce` — **omit it.** PKCE is on unless you pass an explicit `false`
     (platform v0.11.2+), and an explicit `false` is a real downgrade the
-    platform flags back at you. Only set it after a connect attempt actually
-    fails because the backend rejects `code_challenge`.
+    platform flags back at you in a warning on the write. Relay that warning:
+    it is the only report of the downgrade on any surface, since PKCE is what
+    binds an authorization code to the client that asked for it. Only set it
+    after a connect attempt actually fails because the backend rejects
+    `code_challenge`.
   - `refresh` is one of `"static"` (default), `"rotating"`, or `"none"` — see
     `references/discovery.md` for which to pick.
   - `revocation_endpoint` is **optional but worth setting** when the backend
@@ -333,11 +338,13 @@ missing field, a bad strategy/config pairing) — fix the specific thing named
 and retry. Three responses that are **not** rejections, so don't
 retry blindly:
 
-- **"set CONNECTIONS_ENC_KEY on the platform first"** — a real precondition,
-  not a bad argument: passing a `client_secret` requires the platform's
-  encryption key to already be configured. If you hit this, the platform
-  hasn't finished its Connections setup yet — surface it rather than reshaping
-  the call (nothing you change in the args fixes it).
+- **`connections_disabled`**, a real precondition rather than a bad argument:
+  passing a `client_secret` requires the platform's encryption key to already
+  be configured. The response says so in these words: "The platform's
+  encryption key is not configured, so the platform cannot store this value.
+  Ask a platform admin to set CONNECTIONS_ENC_KEY; retrying will not help."
+  Relay that to the user and stop; nothing you change in the args fixes it,
+  and the person who can fix it is a platform admin, not them.
 - **A "rotating" refresh warning** — if you set `refresh: "rotating"`, the
   tool returns a warning that the platform has no per-user refresh lock, so
   concurrent refreshes for one user can race into a spurious disconnect. This
@@ -576,7 +583,13 @@ meaning. Read the page title the user reports before changing anything:
   person is not a member of the app. The page will not say which. Check in
   this order: `list_connections` for the app (does that connection name exist,
   and is it enabled), then whether the person has access to the app
-  (`grant_access` if not). Never tell the user the backend is down.
+  (`grant_access` if not). Never tell the user the backend is down. The page
+  now gives this same answer for a fifth cause it can no longer fall through
+  on: a definition whose strategy the browser leg cannot start. All three
+  live strategies are startable here (`secret_form` and `oauth2_client_creds`
+  render their paste forms on this very route, `oauth2_code` goes on to
+  consent), so in practice this arm only catches a definition written by some
+  future strategy, and the earlier four causes are still the ones to check.
 - **"Too many requests"** (HTTP 429, `Retry-After: 60`). The connect pages
   share a budget of 60 requests a minute per person with the platform panel's
   live reads. Wait a minute, then start again from the chat.
