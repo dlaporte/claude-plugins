@@ -83,8 +83,8 @@ sentence in this flow.
 
    **Verify availability before you settle on a name — never recommend or
    confirm a name without checking it first.** (This step is the plugin's one
-   home for the name rules and the active-app limit; `inno-migrate-app` points
-   here.) Call the **`check_name`** MCP
+   home for the name rules and the registration-time active-app check, whose
+   rule is `inno-manage-app`'s; `inno-migrate-app` points here.) Call the **`check_name`** MCP
    tool (read-only; provisions nothing) on the candidate. Only proceed with a
    name it reports as **available**. If it comes back in-use, reserved, or
    invalid, ask the user for a different one; a name it refuses as unusable is

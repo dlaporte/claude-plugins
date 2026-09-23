@@ -156,11 +156,11 @@ One line of output means the eight agree. That is the same block CI's
 several skills now has one home and pointers from the rest:
 `inno-platform-conventions` owns the semgrep scope, the forbidden-path list,
 the identity header rule, the Node dependency rule, the storage caps and the
-`CLAUDE.md` header rule; `inno-manage-app` owns the call budget and support
-bundles; `inno-safety-preflight` owns the pre-push branch and
+`CLAUDE.md` header rule; `inno-manage-app` owns the call budget, support
+bundles and the active-app-limit rule; `inno-safety-preflight` owns the pre-push branch and
 directory-symlink checks and how to read `get_ci_status`;
 `inno-containerize` owns the health-probe clock; `inno-new-app` owns the
-name-check and active-app-limit rules; and this README owns House style.
+name-check rules; and this README owns House style.
 
 ## How the platform enforces security
 
