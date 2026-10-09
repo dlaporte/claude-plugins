@@ -88,7 +88,7 @@ produce is a Dockerfile and app code rather than sentences a user reads.
   `start_app`, `request_start`, `export_app_data`, `get_app_metrics`, `get_app_usage`, `get_app_logs`, `restart_app`, `get_platform_status`,
   `link_app_data`, `unlink_app_data`, `list_app_links`,
   `list_notifications`, `mark_notification_read`, `mark_all_notifications_read`,
-  `get_platform_docs`, `get_guardrails`, `get_app_contract`, `get_app_security`, `get_ci_status`, `create_support_bundle`,
+  `get_platform_docs`, `get_guardrails`, `get_app_contract`, `get_app_security`, `get_app_accessibility`, `get_ci_status`, `create_support_bundle`,
   `set_config`/`remove_config` (admin-only, with one exception: any user may set their own `notify.email.*` keys at their own user scope, so muting a notification is self-service),
   `get_config` (scoped — `app=` for an app you manage, `user=` for your own account; the argument-less fleet catalog is admin-only),
   `set_app_connection`/`list_connections`/`remove_app_connection`,
@@ -123,9 +123,10 @@ produce is a Dockerfile and app code rather than sentences a user reads.
   per-user client ID/secret pair), and wires
   the app to consume it. **`mcp-container`** apps only in v1.
 - **`skills/inno-safety-preflight`** — run the CI security gates, plus a
-  guardrails, application-contract, and `get_app_security` (app-code
-  authorization/IDOR) review, by pushing to the default branch, which runs
-  the real gates and deploys nothing.
+  guardrails, application-contract, `get_app_security` (app-code
+  authorization/IDOR) and `get_app_accessibility` (advisory) review, by
+  pushing to the default branch, which runs the real gates and deploys
+  nothing.
 - **`skills/inno-ship`**: push, wait for the safety checks, cut the `v*` release
   tag that deploys, and report the live URL.
 - **`skills/inno-manage-app`** — grant/revoke access, check status and metrics,
@@ -158,7 +159,8 @@ several skills now has one home and pointers from the rest:
 the identity header rule, the Node dependency rule, the storage caps and the
 `CLAUDE.md` header rule; `inno-manage-app` owns the call budget, support
 bundles and the active-app-limit rule; `inno-safety-preflight` owns the pre-push branch and
-directory-symlink checks and how to read `get_ci_status`;
+directory-symlink checks, how to read `get_ci_status`, and how to read the
+CI accessibility, response-header and Dockerfile reports;
 `inno-containerize` owns the health-probe clock; `inno-new-app` owns the
 name-check rules; and this README owns House style.
 
