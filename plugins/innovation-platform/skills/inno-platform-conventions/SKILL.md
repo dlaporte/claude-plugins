@@ -168,6 +168,45 @@ Use your stack's auto-escaping template engine. In the Python reference,
 dynamic content through
 `templates.TemplateResponse(request, "page.html", {...})`.
 
+**Response headers.** A browser-facing app (`container`, `function`) should
+send a baseline of security headers on its HTML responses, set in one
+middleware in the app so they travel with the code through the gated
+deploy. Contract §3 recommends it (since platform v0.14.30, contract version
+22), and `get_app_security` §9 is the one place that names each header and
+gives a starting Content-Security-Policy per deployment pattern, including
+how an SPA allows its bootstrap script. Take the headers and the policy from
+there, not from memory. For a `container` app the CI run's response-header
+report shows what the app sends today; it is advisory in every mode and never
+blocks a deploy.
+
+## Accessibility: native elements first
+
+Every browser-facing app (`container`, `function`; the two MCP types have no
+browser UI) should meet WCAG 2.2 Level AA. Contract §3 recommends it (since
+platform v0.14.30, contract version 22), and a school or unit with its own
+accessibility policy is governed by that policy. **Fetch the
+`get_app_accessibility` MCP tool before writing UI code**: it is the live
+source for what that takes. The habits below cost nothing up front, and they
+are a reminder, not a substitute for the served notes:
+
+- **Native elements first.** A `<button>` for an action, an `<a href>` for
+  navigation, a visible `<label for>` on every input, a native `<dialog>` for
+  a modal. A clickable `<div>` has to rebuild by hand everything a button
+  already does for a keyboard and a screen reader.
+- `<html lang>` and a specific `<title>` on every page, one `<main>`, and
+  headings in order.
+- **Visible focus.** Never remove the focus outline without a
+  `:focus-visible` style in its place.
+- **Single-page apps:** a route change updates `document.title` and moves
+  focus to the new view.
+
+None of this is a gate by default. For a `container` app the `container` CI
+job runs an accessibility report against the built image, and it fails the
+deploy only when a platform admin has set the app's `safety.a11y.mode` to
+`enforce`; the served notes say what each mode does, and
+`inno-safety-preflight` reads the report. A `function` app gets no automated
+report, so a review against the served notes is its only check.
+
 ## Persistence: the storage client, never local disk
 
 Container disk is **ephemeral** — it is wiped on every restart and every
