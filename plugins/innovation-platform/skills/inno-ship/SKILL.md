@@ -136,6 +136,15 @@ MCP tool, and read `get_ci_status` (which run it is, its annotations, its two
 refusals) as `inno-safety-preflight` §2 says. If a gate
 fails, follow the failure guidance below and re-push; never tag on top of red checks.
 
+The `container` job also writes the accessibility, response-header and
+Dockerfile reports (since platform v0.14.30, contract version 22);
+`inno-safety-preflight` §1c says where they are and how to read them. In the
+default `report` mode their findings never block a push or a tag, so do not
+hold a release for them, and do not read a green `container` job as a clean
+report either. Only when an admin has set the app's `safety.a11y.mode` to
+`enforce` can the accessibility report fail the job: the `Accessibility check
+failed` row below.
+
 ## 2. Cut the release — this is the deploy
 
 Pick the version, then tag:
@@ -192,6 +201,7 @@ and ask first, whether or not the row below says so.
 | `deps` | CVE in `app/requirements.txt` or a prod npm dep. `npm audit` runs `--omit=dev`; since platform v0.14.21, and contract version 21 states it, `app-deps` installs with `--omit=dev` too, so the audited set and the installed set are the same, and a devDependency is never installed either | bump the pinned dep |
 | `dep-age` | a pinned dep is **too new** for the platform's release-age cooldown (`safety.min_release_age_days`; off by default, so this only fires once an admin enabled it), or `app/package.json` ships with no committed, parseable `app/package-lock.json` so there is nothing to date | **not** a version bump — bumping to the newest release makes it worse. Wait out the cooldown, pin an older vetted version, commit `app/package-lock.json`, or ask a platform admin for an app-scope `safety.min_release_age_days: 0` |
 | `container` | Trivy CVE, a `USER` the non-root gate refuses (the gate accepts only a plain uid 1 to 2147483647 or a portable name on one clean `/etc/passwd` line; see `inno-containerize` item 2), missing `EXPOSE 8080`, or the image never answered `GET /healthz` | `inno-containerize` |
+| `container` fails with `Accessibility check failed` (only when the app's `safety.a11y.mode` is `enforce`) | the accessibility report found a critical or serious violation that no waiver covers, or the landing page `/` could not be scanned because of the app (a 4xx, a redirect off the app, a blank page, or a page that never finished loading), or the app left no page scannable at all. A 5xx is never held against the app, because CI runs it without stored data, and a scan the platform could not run only warns | read what the report marks as blocking (`inno-safety-preflight` §1c) and fix it, push, confirm the gates are green, then cut the next patch tag. A failing `/` has to render in CI, where there is no stored data, as a real page (an empty state, not an error or a redirect off the app): `app/inno-a11y.json` adds pages that render without stored data, but it never stands in for `/`. A rule that is wrong for this app: name its rule id and have the user ask a platform admin for a time-limited waiver, `safety.ignore.a11y.<rule-id>` with an expiry date as its value |
 | `scaffold-check` | not a failure — it suppresses `deploy` while `app/.needs-build` exists (see §0) | build the app, remove the marker |
 | `deploy` fails with `app_stopped` | the app was stopped by the lifecycle (or deliberately), and **stopped apps cannot be deployed**. Only the release tag's `deploy` job fails this way; a push to the default branch still runs every gate green on a stopped app, so a clean preflight is not evidence that the app can deploy | `inno-manage-app`: `start_app` first, then cut the next patch tag |
 | `app-deps` fails with `Missing app/package-lock.json` (function-shaped apps) | `app/package.json` exists but no lockfile is committed; CI installs only from a committed lockfile and never resolves ranges fresh. This job runs on pushes too, so the failure blocks before any tag exists | run `npm install` inside `app/`, commit `app/package-lock.json`, push, confirm `app-deps` is green, then tag |
@@ -251,6 +261,14 @@ and note that the app is **Okta-gated** — the first visit prompts an Okta
 login (Cloudflare Access), and only the owner plus anyone granted access via
 `inno-manage-app`'s `grant_access` can reach it, unless the app has been
 opened to every SSO user with `set_app_access` (`inno-manage-app`).
+
+For a `container` app, add one plain line with the tag run's accessibility
+report counts: critical, serious, moderate and minor findings, and how many
+pages could not be checked (`inno-safety-preflight` §1c says where to read
+them). In `report` mode say that they did not block this release, and that
+they are what a tool detected, not a verdict that the app is accessible. If
+the report did not run, or `safety.a11y.mode` is `off`, say that instead of
+quoting zeros.
 
 For an **mcp-function** or **mcp-container** app, report the **MCP endpoint** (`…/mcp`, as returned by
 `app_status` / `register_app`) instead of a browser URL, and tell the user to
