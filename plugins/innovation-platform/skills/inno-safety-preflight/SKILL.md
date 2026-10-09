@@ -216,9 +216,13 @@ step is green, so neither `get_ci_status`'s job conclusions nor `gh run view
 
 There is no report when the `container` job failed before its smoke test
 passed, or when the app's `safety.a11y.mode` is `off` (the run warns
-`Accessibility check off` instead). A run that says `Accessibility scan did
-not run` failed on the platform's side: that is not a clean result, and it
-never blocks.
+`Accessibility check off` instead). `Accessibility scan did not run` means
+no page was scanned, which is never a clean result; read the reason it
+gives. A reason on the platform's side (one marked platform-side, or a
+`/healthz`, download or scanner failure) never blocks. A reason that is the
+app's (a 4xx, a redirect off the app, a blank page, a page that never
+finished loading) is the app's to fix, and it blocks only in `enforce` mode,
+where the job also fails with `Accessibility check failed`.
 
 Translate them for the user, in plain terms (the plugin README's **House
 style** section):
