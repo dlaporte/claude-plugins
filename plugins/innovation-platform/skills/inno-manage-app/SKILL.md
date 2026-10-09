@@ -516,10 +516,17 @@ beneath it — who set each override and the note they left. An app's own
 `safety.ignore.*` suppressions appear here too, with their expiry state, which
 is how an owner learns why a finding stopped failing their build. `get_config`
 only reads them. Adding or lifting one is an admin act, done with `set_config`
-/ `remove_config` on the key `safety.ignore.<semgrep|trivy|deps>.<finding-id>`
-at platform, app, or user scope. The VALUE is the expiry date (`YYYY-MM-DD`,
-honored through that day) or empty for never expires. The panel's Platform
-screen is the same act on a visual surface, not the only way in.
+/ `remove_config` on the key
+`safety.ignore.<semgrep|trivy|deps|a11y>.<finding-id>` at platform, app, or
+user scope; for `a11y` the id is an accessibility rule id (such as
+`color-contrast`), and the waiver applies at the deploy check only, because
+accessibility findings never reach the safety sweep. The VALUE is the expiry
+date (`YYYY-MM-DD`, honored through that day) or empty for never expires.
+The panel's Platform screen is the same act on a visual surface, not the
+only way in. The policy those waivers sit under is `safety.a11y.mode` (since
+platform v0.14.30, contract version 22): `report` (the default, never
+blocks), `enforce` or `off`, where `off` is its danger value and `set_config`
+warns on it; what each mode does is the table `get_app_accessibility` serves.
 
 **Writing** is admin-only, with one exception: every user may set their own
 **Notifications** settings — `notify.email.enabled` (the personal master
