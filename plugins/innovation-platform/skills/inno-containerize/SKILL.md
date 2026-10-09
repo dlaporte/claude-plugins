@@ -59,6 +59,15 @@ anyway so that re-enabling the gate restores sweep coverage immediately,
 with no new deploy needed to regenerate it. Every check that runs must
 pass before `deploy` (which needs `container` to have succeeded) will run.
 
+Since platform v0.14.30 (contract version 22) the job also writes reports
+after the smoke test, which are not among those checks. Every
+container-shaped app gets a **Dockerfile misconfiguration report** (`trivy
+config`, HIGH and CRITICAL), advisory in every mode: a finding there is a
+Dockerfile fix to offer, never a red job. A `container` app also gets an
+accessibility and response-header report, which can fail the job only when
+an admin has set the app's `safety.a11y.mode` to `enforce`.
+`inno-safety-preflight` §1c is where both are read.
+
 The image the gates scanned is the image that ships. On a `v*` tag run the
 `container` job saves that exact image as a workflow artifact; the `deploy`
 job loads it, refuses unless its id matches the id the `container` job
