@@ -57,6 +57,13 @@ long-lived connections — instant blockers to surface), and the current
 recommended base images. Judge the repo against the contract, not a remembered
 summary of it.
 
+If the app has pages people open in a browser, **fetch `get_app_accessibility`
+beside it.** It serves the platform's accessibility notes (WCAG 2.2 AA as the
+target; a school's own policy governs where it has one), and it is the
+checklist for assessment item 8 below. Contract §3 recommends it rather than
+requiring it, so a shortfall goes into the plan as work to do, never as a
+blocker.
+
 Scan the existing repo and present a **migration assessment** covering, in
 order:
 
@@ -192,6 +199,14 @@ order:
    response; never construct it.
    Also ask who else needs access — optional Okta emails feed `register_app`'s
    `members` and can be added later via `inno-manage-app`.
+8. **Accessibility** (an app with browser pages; an MCP server or an API-only
+   app has none, so say it does not apply): who uses it, the main flows a
+   person has to complete, and how each works today from the keyboard alone
+   and with a screen reader. Walk the existing pages against
+   `get_app_accessibility` and note what is missing: `lang`, real titles,
+   labeled form controls, visible focus, controls built from `<div>`s, and
+   any response headers `get_app_security` §9 lists that the app does not
+   send.
 
 Run a **guardrails** review too: call `get_guardrails` and judge the app's name,
 purpose, and behavior against it. A conflict is a HARD STOP — you must not pass
@@ -220,6 +235,8 @@ The written plan covers, at minimum, each assessment product above:
   to remove
 - **What does not carry over**
 - **Proposed name** (checked available) and the exact hostname consequence
+- **Accessibility**: item 8's users, flows and keyboard and screen-reader
+  paths, and the fixes the migration will make
 - **How the repo is protected**: the branch/restore-point strategy Phase 2
   will use, and the one small commit registration itself needs on the default
   branch (a proof-of-control file under `.inno-platform/`), so the user approves
@@ -338,6 +355,14 @@ restore point is.
      change.
    - Delete `app/.needs-build` if the repo carries one (CI skips deploys while
      it's present).
+   - **Browser pages** (recommended, contract §3; not a gate by default): add
+     what item 8 found missing, `<html lang>`, a real `<title>`, labeled form
+     controls and visible focus styles, plus one middleware that sets the
+     response headers `get_app_security` §9 lists. In an SPA, handle route
+     changes too: update `document.title` and move focus to the new view.
+     The served notes carry the detail; the plugin's summary is
+     `inno-platform-conventions`' **Accessibility** section and **Response
+     headers** paragraph.
 4. **Secrets in history** — because this is the same repo, a credential in any
    past commit still trips the `secrets` gate. Rotate it (a history rewrite
    alone doesn't un-leak it), scrub it from history before shipping, and set

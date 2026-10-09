@@ -163,6 +163,13 @@ guaranteed long-lived connections), the stack policy, and the current
 recommended base images. Evaluate the user's idea against it before designing; a
 not-supported requirement surfaces HERE, not after registration.
 
+For an app people will open in a browser (a `container` or `function`
+design), **fetch `get_app_accessibility` beside it.** It serves the
+platform's accessibility notes (WCAG 2.2 AA as the target; a school's own
+policy governs where it has one), and its defaults shape the design's
+Accessibility line below and the scaffold in §4. The two MCP types have no
+browser UI, so it does not apply to them.
+
 Invoke the **`superpowers:brainstorming`** skill to design the app: what it does,
 its data model (what it stores — tables, files), its routes/pages, and its
 access model (who can see and edit). If that skill isn't available in the
@@ -272,6 +279,9 @@ The written design covers, at minimum:
   role table keyed on `X-Forwarded-User`; do not design around reading other
   groups from the header. The full header rule, including when an older live
   app still sees more, is `inno-platform-conventions`' **Identity** section.
+- **Accessibility** (a browser-facing app): who will use it, the main flows
+  a person has to complete, and how each one works from the keyboard alone
+  and with a screen reader. For an MCP app, say it does not apply.
 - **Deployment pattern and stack**
 - **Name** (confirmed available via `check_name`) and the exact hostname it
   produces
@@ -708,6 +718,18 @@ handler — route on the URL, read identity from the request headers, read/write
   For a function or mcp-function app, also run `npm install` inside `app/` and
   commit the updated `app/package-lock.json` in the same commit (see the
   function bullet above).
+
+**Browser-facing apps (`container`, `function`): accessible pages and
+response headers from the first commit.** Scaffold every page with
+`<html lang>`, a real `<title>`, a visible label on each form control, and
+visible focus styles, and add one middleware that sets the response headers
+`get_app_security` §9 lists, with the starting Content-Security-Policy it
+gives for the deployment pattern you chose. For an SPA, also handle route
+changes: update `document.title` and move focus to the new view. The detail
+lives in the served notes (`get_app_accessibility`, `get_app_security` §9);
+take it from there, not from this list. The plugin's summary of both is
+`inno-platform-conventions`' **Accessibility** section and **Response
+headers** paragraph.
 
 **Container apps: two caps on the storage endpoints.** A `{sql, params}` body
 over **4 MiB** and a file `PUT` whose declared `Content-Length` is over
