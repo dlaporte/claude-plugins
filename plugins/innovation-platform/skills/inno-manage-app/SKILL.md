@@ -377,8 +377,12 @@ returns it to the named member list (open: false). Owner or admin only.
   would expose the source's data to every SSO user. The message names each
   closed source. Unlink with `unlink_app_data`, or open the named source app
   deliberately first.
-- `open_access_unprovisioned` means the app predates the feature and needs
-  the one-time admin backfill (`scripts/backfill-open-access.mjs`).
+- `open_access_unprovisioned` means the app's open-access group or rule is
+  missing. Nothing re-creates it for a finished app: an app still
+  mid-registration is repaired by running `register_app` again; otherwise a
+  platform admin must `purge_app` it and `register_app` it again. Say plainly
+  that `purge_app` permanently deletes the app's data and holds its name for
+  seven days, and run `export_app_data` first.
 - Confirm before opening — state plainly that EVERY SSO user will have
   access, not just current members.
 - While an app is open, a person who is not a member reaches it carrying only

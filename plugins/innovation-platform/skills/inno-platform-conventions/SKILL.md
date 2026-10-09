@@ -176,8 +176,9 @@ deploy. Contract §3 recommends it (since platform v0.14.30, contract version
 gives a starting Content-Security-Policy per deployment pattern, including
 how an SPA allows its bootstrap script. Take the headers and the policy from
 there, not from memory. For a `container` app the CI run's response-header
-report shows what the app sends today; it is advisory in every mode and never
-blocks a deploy.
+report shows what the app sends today. It never blocks a deploy, and it runs
+inside the accessibility scan, so it is absent when the app's accessibility
+mode is `off`.
 
 ## Accessibility: native elements first
 

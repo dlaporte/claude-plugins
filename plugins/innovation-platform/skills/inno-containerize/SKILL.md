@@ -65,7 +65,8 @@ container-shaped app gets a **Dockerfile misconfiguration report** (`trivy
 config`, HIGH and CRITICAL), advisory in every mode: a finding there is a
 Dockerfile fix to offer, never a red job. A `container` app also gets an
 accessibility and response-header report, which can fail the job only when
-an admin has set the app's `safety.a11y.mode` to `enforce`.
+an admin has set the app's `safety.a11y.mode` to `enforce`; the header check
+runs inside the accessibility scan, so with the mode `off` neither runs.
 `inno-safety-preflight` §1c is where both are read.
 
 The image the gates scanned is the image that ships. On a `v*` tag run the

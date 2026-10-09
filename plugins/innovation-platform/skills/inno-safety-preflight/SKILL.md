@@ -232,8 +232,9 @@ style** section):
 - **Not scanned:** a page listed as not scanned was not checked, which is
   never the same as clean. A 5xx there usually means the page needs stored
   data, which CI does not have; it never blocks.
-- **Response headers and Dockerfile findings** are advisory in every mode:
-  explain each in one sentence and offer the fix (`get_app_security` §9 for
+- **Response headers and Dockerfile findings** never block (the header
+  report runs inside the accessibility scan, so it is absent when the mode is
+  `off`): explain each in one sentence and offer the fix (`get_app_security` §9 for
   the headers, `inno-containerize` for the Dockerfile).
 - **In `enforce` mode** a blocking finding fails the `container` job with
   `Accessibility check failed`; §3's table has the row.
