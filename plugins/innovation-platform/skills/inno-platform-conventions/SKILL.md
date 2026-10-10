@@ -384,12 +384,18 @@ try {
 }
 ```
 
-Three other seam responses are **not** the user's problem and must not be
+Four other seam responses are **not** the user's problem and must not be
 shown as one:
 
 - **`503`** — the connection has been disabled by its owner or a platform
   admin. Transient: the backend is paused, the user's connection is not
   revoked. Treat it like any other transient seam failure and retry later.
+- **`503 connections_disabled`** (named in the contract since version 24):
+  Connections is not provisioned on this platform. A platform missing its
+  gateway key issues no caller assertion, so the app's correct echo arrives
+  empty and gets this answer rather than a `400`. Nothing in the app fixes it
+  and retrying will not either: tell a platform admin, and treat the
+  connection as unavailable until they do.
 - **`429 rate_limited`**: the seam's abuse brake, sustained calling past
   120/minute per (app, user). Wait the `Retry-After` interval (60 seconds)
   before retrying; don't relay a `connect_url`, and don't ask the user to
