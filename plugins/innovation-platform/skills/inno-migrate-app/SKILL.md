@@ -105,7 +105,7 @@ order:
    `X-Forwarded-User` / `X-Forwarded-Groups` (see `inno-platform-conventions`).
    List each file/route to remove. Keep the app's own **authorization** (who may
    edit what), rewired to key on `X-Forwarded-User`: `X-Forwarded-Groups`
-   carries only this app's `inno-{name}-users` and `inno-{name}-open`, never the
+   carries only this app's `inno-{name}-users` and `inno-{name}-open` (the prefix is the instance's; `app_status` reports the real names), never the
    repo's existing role groups, so existing role checks cannot move onto that
    header. The full header rule is `inno-platform-conventions`' **Identity**
    section. This is about the app's *own* front-door
@@ -308,7 +308,8 @@ restore point is.
    (or pass only the named secrets it needs); the platform workflow needs no
    caller secrets. The returned file
    references `dlaporte/inno-platform-ci/.github/workflows/platform-ci.yml@main`
-   and passes `with: app: {name}`; keep its `workflow_dispatch` trigger (the
+   (the instance's CI mirror, `<owner>/<mirror repo>`; use the exact reference
+   `register_app` returns) and passes `with: app: {name}`; keep its `workflow_dispatch` trigger (the
    platform re-dispatches it for security respins). The `with:` block matters
    most in a migration: without it the reusable workflow derives the app name
    from the repository name with any `inno-` prefix removed, and a migrated repo

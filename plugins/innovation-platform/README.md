@@ -97,7 +97,7 @@ produce is a Dockerfile and app code rather than sentences a user reads.
   (reassign an app's owner; owners ask an admin), `rebuild_app`
   (redeploy an app's released code at its live tag), `purge_app`,
   `revoke_sessions` (end one person's panel sessions everywhere), `list_users`, `query_audit`, `sync_gateway_ref`,
-  `list_admins`, `grant_admin`, `revoke_admin`, `export_platform_backup`,
+  `list_admins`, `grant_admin`, `revoke_admin`, `claim_instance_objects`, `accept_naming_change`, `export_platform_backup`,
   `get_platform_logs`).
   There's also a
   web panel with the same capabilities at
@@ -185,4 +185,4 @@ Cloudflare deploy token; a forked or gate-stripped workflow gets a
 `403 deploy_denied:workflow` and never reaches Cloudflare. In short: skills guide, CI
 validates, and the deploy broker enforces provenance — so only code that
 went through the platform's own CI can ever end up live at
-`https://inno-{app}.davidlaporte.org`.
+`https://inno-{app}.davidlaporte.org` (the platform reports the real hostname).

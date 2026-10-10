@@ -269,7 +269,8 @@ if you see it in a request dump.
 
 `X-Forwarded-Groups` carries at most two groups, both this app's own:
 `inno-{app}-users` when the caller is a member and `inno-{app}-open` when they
-reached an open app through its open-access twin. Since contract version 12
+reached an open app through its open-access twin (the `inno-` prefix is the
+instance's; `app_status` reports the real names). Since contract version 12
 (platform v0.14.3) it never carries the platform admin group, another app's
 groups, or any other `inno-` group, so use it only to tell a member from an
 open-access visitor; any finer role (an editor, a staff view, an in-app admin)

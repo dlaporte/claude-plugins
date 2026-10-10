@@ -240,7 +240,8 @@ The `deploy` job (tag runs only) requests a GitHub OIDC token (audience
 for a scoped Cloudflare deploy token. The broker verifies the token's signed
 `job_workflow_ref` claim equals exactly
 `dlaporte/inno-platform-ci/.github/workflows/platform-ci.yml@refs/heads/main`
-and that the triggering ref is a `refs/tags/v*` release tag — the broker
+(this instance's mirror, `<owner>/<mirror repo>`; the platform reports the
+real one) and that the triggering ref is a `refs/tags/v*` release tag. The broker
 issues deploy tokens for tags only, so a request from a push to the default
 branch, a push to any other branch, or a fork gets `403 deploy_denied`, as
 does a repo whose deploy.yml is edited to skip gates. There is no code path
@@ -296,7 +297,7 @@ request cold-starts on the new image.
 
 ### Do not curl, dig, or otherwise resolve the hostname to "verify" success
 
-Never look up `inno-{name}.davidlaporte.org` yourself (via `curl`, `dig`,
+Never look up the app's hostname (`inno-{name}.davidlaporte.org` here; the platform reports the real one) yourself (via `curl`, `dig`,
 `nslookup`, a browser navigation, etc.) as a way to confirm the deploy
 worked — especially right after a first-ever deploy for a brand-new app. The
 DNS record for a freshly deployed hostname can take up to roughly a minute to

@@ -1,6 +1,6 @@
 ---
 name: inno-manage-app
-description: Use to share, check on, start, stop, export, open up, or configure a deployed Innovation Platform app via the inno-platform MCP tools (grant_access, revoke_access, set_app_access, app_status, start_app, stop_app, restart_app, request_start, transfer_app (admin-only), revoke_sessions (admin-only), export_app_data, get_app_metrics, get_app_usage, get_app_logs, set_config, set_app_variable/list_app_variables/remove_app_variable, create_support_bundle). Use when the user wants to give someone access, open an app to everyone with SSO, check deploy status, bring back a stopped app, restart a wedged app, read its logs, set an environment variable or API key for their app, reassign ownership (admins), sign someone out of the platform panel everywhere (admins), download their app's data, or shut one down.
+description: Use to share, check on, start, stop, export, open up, or configure a deployed Innovation Platform app via the inno-platform MCP tools (grant_access, revoke_access, set_app_access, app_status, start_app, stop_app, restart_app, request_start, transfer_app (admin-only), revoke_sessions (admin-only), claim_instance_objects and accept_naming_change (admin-only), export_app_data, get_app_metrics, get_app_usage, get_app_logs, set_config, set_app_variable/list_app_variables/remove_app_variable, create_support_bundle). Use when the user wants to give someone access, open an app to everyone with SSO, check deploy status, bring back a stopped app, restart a wedged app, read its logs, set an environment variable or API key for their app, reassign ownership (admins), sign someone out of the platform panel everywhere (admins), download their app's data, or shut one down.
 ---
 
 # inno-manage-app
@@ -191,7 +191,10 @@ in a loop.
 Adds or removes a user from the app's `inno-{name}-users` Okta group — this
 group is what the gateway's Cloudflare Access policy checks, so granting
 access here is what actually lets someone past the Okta login on
-`https://inno-{name}.davidlaporte.org`.
+`https://inno-{name}.davidlaporte.org`. (Those names come from the platform
+instance's naming settings; `inno-` and `davidlaporte.org` are this
+instance's values. Quote the real group and hostname from `app_status` or
+`register_app`'s answer rather than building them.)
 
 - `email` must look like a real, unquoted email address — the platform
   rejects anything containing quotes, backslashes, or whitespace.
@@ -386,8 +389,9 @@ returns it to the named member list (open: false). Owner or admin only.
 - Confirm before opening — state plainly that EVERY SSO user will have
   access, not just current members.
 - While an app is open, a person who is not a member reaches it carrying only
-  `inno-{app}-open` in `X-Forwarded-Groups`. App code that admits only
-  `inno-{app}-users` will refuse them, so check the app before promising that
+  `inno-{app}-open` in `X-Forwarded-Groups` (the group names carry the
+  instance's group prefix; `app_status` reports the real ones). App code that
+  admits only `inno-{app}-users` will refuse them, so check the app before promising that
   opening it lets everyone in. What that header can and cannot carry has one
   home: `inno-platform-conventions`' **Identity** section.
 - Closing an app that an open consumer app reads through a data link revokes
@@ -457,6 +461,54 @@ changes no group membership, so a full offboarding is `revoke_sessions` plus
   session alive; say so when the admin is responding to a compromise.
 - Confirm with the admin by name before calling. The response says how many
   sessions were ended.
+
+## `claim_instance_objects({ apply?, include_admin_group? })`: mark this instance's Okta groups (ADMINS ONLY)
+
+Only needed where several platform instances share one Okta org. Every group
+the platform creates carries an ownership marker (`[instance:<id>]` at the end
+of its description); groups an earlier release created do not, and the platform
+never adopts an unmarked group by name on a shared org (`register_app` refuses
+it with `idp_object_foreign`). The tool lists the groups this instance recorded
+(each app's members and open group, any group the open rule assigns to, and the
+platform admin group) with each one's marker: unmarked, this instance, or
+another instance.
+
+- **Dry run first, always.** The default (`apply` false) lists and changes
+  nothing. Show the admin the list. If other instances share the org, they
+  should compare their lists before either applies, because two registries can
+  record one group id and whichever claims it first takes it.
+- `apply: true` marks each unmarked recorded group and audits it
+  (`idp_object_claimed`). A group marked for another instance is never
+  touched. It is idempotent, so a second apply changes nothing.
+- **Leave `include_admin_group` off unless the admin says otherwise.** On a
+  shared org, another instance on this release refuses an admin group marked
+  for this one and is left with no admins. Ask the admin to confirm before
+  setting it.
+- A group too long to carry the marker is reported "too long to mark"; an Okta
+  failure shows on that group's line and the run carries on. Relay both.
+- It marks only groups this instance recorded. A group `register_app` refused
+  that this instance never recorded is not fixed by this tool; that case is
+  `docs/OPERATIONS.md` "Instances sharing an IdP" (`get_platform_docs`).
+
+## `accept_naming_change()`: acknowledge a deliberate rename (ADMINS ONLY)
+
+The platform finds each app's Okta objects, Cloudflare resources and hostname
+by the instance's naming keys (`naming.hostPrefix`, `naming.resourcePrefix`,
+`naming.groupPrefix`, `naming.platformName`, `naming.platformHost`,
+`cloudflare.domain`). When a deployed key differs from the one recorded while
+apps exist, `get_platform_status` and the panel report "naming changed since
+apps were registered", naming the old and new values. Use this tool only after
+every app's names were moved to the new values by hand; it records the
+deployed values and ends the report.
+
+- **It renames nothing.** Accepting a change the apps were not moved for
+  leaves them broken and silences the report about them. Confirm with the
+  admin that each app was moved before calling.
+- **To undo an accidental change, do not call it.** Revert the manifest and
+  deploy; the report clears by itself.
+- If nothing differs, it answers that there is nothing to accept and changes
+  nothing. Audited as `naming_change_accepted`. `naming.adminGroup` is not
+  recorded and may change at any time.
 
 ## `get_app_usage({ app, days? })` — meters and estimated cost
 
@@ -662,6 +714,7 @@ is what a user asking to dismiss a backlog wants.
 | `transfer_app` | `inno-platform-admins` only (owners ask an admin) |
 | `revoke_sessions` | `inno-platform-admins` only |
 | `purge_app` | `inno-platform-admins` only |
+| `claim_instance_objects` / `accept_naming_change` | `inno-platform-admins` only |
 | `link_app_data` | the owner of both apps, or `inno-platform-admins` |
 | `unlink_app_data` | the consumer app's owner, or `inno-platform-admins` |
 | `list_app_links` | app owner, or `inno-platform-admins` |

@@ -74,7 +74,7 @@ sentence in this flow.
 
 1. **App name** — lowercase letters, digits, hyphens only, 3-29 chars,
    starting with a letter. This drives the app's **hostname** on the platform
-   domain (`inno-{name}.<domain>`), so keep it short and DNS-safe. It is NOT
+   domain (`inno-{name}.<domain>` here; the host prefix is the instance's, and `register_app`'s answer gives the real hostname), so keep it short and DNS-safe. It is NOT
    the repo name — the repo name is the user's choice (see below). A handful of
    names are reserved server-side — `check_name` reports those, so don't
    enumerate or guess. A name ending in **`-app`** is rejected as well: the
@@ -275,7 +275,8 @@ The written design covers, at minimum:
 - **Access model**: who can see what, and who can edit. The platform manages
   only membership: `X-Forwarded-Groups` carries at most this app's own
   `inno-{name}-users` (a member) and `inno-{name}-open` (a caller who reached
-  an open app). Any finer role (an editor, an admin view) needs the app's own
+  an open app); the prefix is the instance's, and `app_status` reports the
+  real names. Any finer role (an editor, an admin view) needs the app's own
   role table keyed on `X-Forwarded-User`; do not design around reading other
   groups from the header. The full header rule, including when an older live
   app still sees more, is `inno-platform-conventions`' **Identity** section.
