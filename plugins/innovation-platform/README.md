@@ -33,9 +33,16 @@ or private), and uninstalling the App unlinks and stops the app. (The old
 
 ## Install
 
-Your platform's panel shows a **Connect Claude Code** card with the exact
-commands for your instance: copy them and run them in a terminal. They add the
-marketplace, then install the plugin with your platform's address:
+For a first install, take everything from your platform's panel: its
+**Connect Claude Code** card gives the exact commands for your instance.
+`<marketplace>`, `<marketplace source>` and the platform MCP address all come
+from that card, because you are not connected yet and cannot read the status.
+Copy the commands and run them in a terminal. They add the marketplace, then
+install the plugin with your platform's address:
+
+```
+claude plugin marketplace add <marketplace source>
+```
 
 ```
 claude plugin install innovation-platform@<marketplace> --config platform_url=https://<platform host>/mcp
@@ -90,8 +97,8 @@ produce is a Dockerfile and app code rather than sentences a user reads.
 
 ## What's in the box
 
-- **`.mcp.json`**: points at the address you set as `platform_url` (the platform's MCP address),
-  the platform's remote MCP server (tools: `register_app`, `check_name`,
+- **`.mcp.json`**: points at the address you set as `platform_url`
+  (the platform's MCP address), the platform's remote MCP server (tools: `register_app`, `check_name`,
   `list_apps`, `app_status`, `grant_access`, `revoke_access`, `set_app_access`, `stop_app`,
   `start_app`, `request_start`, `export_app_data`, `get_app_metrics`, `get_app_usage`, `get_app_logs`, `restart_app`, `get_platform_status`,
   `link_app_data`, `unlink_app_data`, `list_app_links`,

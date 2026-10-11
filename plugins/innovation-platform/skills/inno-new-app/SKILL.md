@@ -1,6 +1,6 @@
 ---
 name: inno-new-app
-description: Use when the user wants to create a new app on the Innovation Platform ("new app", "create an app", "start a project on inno-platform"). Guides intake, creates a repo from the inno-template in the user's own account, calls register_app, commits the proof-of-control file it names and has them install the platform GitHub App, calls register_app again to provision + bind it, then scaffolds app/ per platform-conventions.
+description: Use when the user wants to create a new app on the Innovation Platform ("new app", "create an app", "start a project on inno-platform"). Guides intake, creates a repo from the instance's template repo in the user's own account, calls register_app, commits the proof-of-control file it names and has them install the platform GitHub App, calls register_app again to provision + bind it, then scaffolds app/ per platform-conventions.
 ---
 
 # inno-new-app
@@ -114,7 +114,7 @@ sentence in this flow.
    are the remaining options.
 2. **Repo** — the `owner/repo` slug of the GitHub repo the user will create
    from the template (§2). The **owner is the user's** account or org, and the
-   repo name is **their choice**: suggest the name prefixed with `inno-` for familiarity, but it
+   repo name is **their choice**: suggest the app name itself, but it
    is not required and can be anything. The repo may be public or private.
 3. **One-line purpose**: becomes the app's `description` (at most 500
    characters; the tool schema rejects a longer one).
@@ -316,7 +316,7 @@ gh repo create {owner}/{repo} --template <template repo> --private
 Here `<template repo>` is the owner/name on the `Template repo:` line of the
 status you read in the Version gate.
 
-- Suggest the name prefixed with `inno-`; public or private is fine, check an existing
+- Suggest the app name itself; public or private is fine, check an existing
   repo of theirs made the same way (`gh repo view … --json isPrivate`) and match it rather than
   assuming.
 - Template copying is **asynchronous**: an immediate `git clone` can land an
@@ -331,7 +331,7 @@ unauthenticated, the account it holds is not theirs, or they simply prefer it:
    it from the template repo's green **"Use this template" → "Create a new
    repository"** button.)
 2. Set the **owner** to their own account or org, and the **repository name** to
-   their choice (suggest the name prefixed with `inno-`). Public or private is fine.
+   their choice (suggest the app name itself). Public or private is fine.
 3. Click **Create repository**. The repo lands in **their** ownership, already
    scaffolded from the template.
 
@@ -456,16 +456,10 @@ repo). It returns text beginning **`App
   URL 404s until the first successful `inno-ship`.
 - A `.github/workflows/deploy.yml` — the thin caller workflow that wires the
   repo to the platform's reusable CI. **Overwrite the repo's copy with the
-  snippet the response returned.** The template ships a `deploy.yml` too, but it
-  carries no `with:` block at all, so the reusable workflow falls back to
-  deriving the app name from the repository name with any `inno-` prefix
-  removed. That derived name is asserted to the broker, which resolves the real
-  app from the signed repository id and refuses the run with `app_mismatch` when
-  the two disagree. The template's file therefore works only when the repo is
-  named `{name}` or `inno-` followed by `{name}`; any other name needs the returned snippet,
-  which carries the explicit `with: app: {name}` input and is correct for any
-  repo name, so write it in every case. This is a real step, not a hands-off
-  one. Keep the
+  snippet the response returned.** The template ships no `deploy.yml`: this file
+  always comes from `register_app`'s second call. It carries the explicit
+  `with: app: {name}` input and is correct for any repo name, so write it in
+  every case. This is a real step, not a hands-off one. Keep the
   `workflow_dispatch` trigger (the platform re-dispatches it for security
   respins). The snippet has no `secrets:` line, and the file must not gain one:
   `secrets: inherit` is a blocking finding for the `sast` gate, and the

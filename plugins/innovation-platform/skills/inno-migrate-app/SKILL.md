@@ -37,7 +37,7 @@ contract, there is no porting into a freshly provisioned repo and
 no copying. The repo stays the user's, on their account/org, public or private.
 
 This differs from `inno-new-app` only in the starting point: new-app has the
-user create a fresh repo from `inno-template`; here the user already has a repo.
+user create a fresh repo from the platform's template; here the user already has a repo.
 If their repo is **already built to the platform contract** (app code under
 `app/`, a `CLAUDE.md` with the required headers, `/healthz`, identity from the
 gateway headers), migration is just: `register_app`, commit the proof file it
@@ -310,9 +310,7 @@ restore point is.
    the Version gate (the instance's CI mirror; use the exact reference
    `register_app` returns) and passes `with: app: {name}`; keep its `workflow_dispatch` trigger (the
    platform re-dispatches it for security respins). The `with:` block matters
-   most in a migration: without it the reusable workflow derives the app name
-   from the repository name with any `inno-` prefix removed, and a migrated repo
-   rarely happens to be named `{name}` or `inno-` followed by `{name}`. The broker resolves the real app
+   most in a migration, because a migrated repo's name rarely matches the app's name. The broker resolves the real app
    from the signed repository id and refuses the run with `app_mismatch` when
    the asserted name disagrees. It is a thin caller — editing
    it can't bypass any gate (the broker's OIDC `job_workflow_ref` check enforces

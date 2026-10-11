@@ -272,7 +272,7 @@ reached an open app through its open-access twin (the names in the `App groups:`
 line of the status you read in the Version gate; `app_status` reports the real
 names). Since contract version 12
 (platform v0.14.3) it never carries the platform admin group, another app's
-groups, or any other `inno-` group, so use it only to tell a member from an
+groups, or any other group, so use it only to tell a member from an
 open-access visitor; any finer role (an editor, a staff view, an in-app admin)
 needs your own role store keyed on `X-Forwarded-User`. On an open
 `mcp-function` or `mcp-container` app the header can be empty for a non-member
@@ -280,7 +280,7 @@ who was just admitted: treat empty as "not a member", never as an error.
 The narrowing reaches an MCP app (`mcp-function`, `mcp-container`)
 immediately, because the platform narrows its groups before the gateway sees
 them. A browser SSO app (`container`, `function`) gets it only at its next
-deploy on the v0.14.3 gateway; until then it still receives every `inno-`
+deploy on the v0.14.3 gateway; until then it still receives every
 group the caller holds, so an older live app you are debugging may show extra
 groups.
 
