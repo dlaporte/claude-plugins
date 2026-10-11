@@ -20,7 +20,8 @@ Before anything else in this skill, do these five steps in order.
    reported or was unreadable, STOP. Tell the user to run the commands that
    line gives, then restart Claude Code and start again. Do not continue on a
    stale plugin: its guidance may describe platform behavior that no longer
-   exists.
+   exists. If there is no `Plugin:` line at all, the platform sets no
+   minimum version: carry on.
 4. If the `Plugin:` line says a newer version is available, that is advice, not
    a block. Mention it once, with the commands from the `Update commands:`
    line, and carry on.
