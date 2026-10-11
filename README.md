@@ -1,7 +1,7 @@
 # claude-plugins
 
 David LaPorte's Claude Code plugin marketplace — a monorepo home for plugins
-built around the davidlaporte.org homelab and other tools.
+built around the Innovation Platform and other tools.
 
 ## Add the marketplace
 
@@ -24,7 +24,7 @@ window for a login (Okta for `innovation-platform`, ServiceNow OAuth for
 
 | Plugin | Description |
 |---|---|
-| [`innovation-platform`](plugins/innovation-platform) | Build and ship apps on the davidlaporte.org Innovation Platform. |
+| [`innovation-platform`](plugins/innovation-platform) | Build and ship apps on your Innovation Platform. You enter the platform's address once; the skills read everything else from it. |
 | [`servicenow`](plugins/servicenow) | Work in ServiceNow as yourself via the snow-mcp server: triage incidents and approvals, drive changes through their state model, order from the service catalog, author knowledge, and report on any table. Six skills adapt to the deployment's read-only mode and tool packages. |
 
 ## Repo layout
