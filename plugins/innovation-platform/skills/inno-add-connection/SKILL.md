@@ -208,10 +208,10 @@ needs no cooperation from anyone else.
   `scopes` is **not** part of `config` — pass it as a **top-level arg** of
   `set_app_connection` (a `string[]`; see step 4). The client must be
   registered against the platform's **single**
-  callback URL, the same for every app and every backend:
-  ```
-  https://inno-platform.davidlaporte.org/connections/callback
-  ```
+  callback URL, the same for every app and every backend. It is the
+  `Connections callback:` line of the status you read in the Version gate
+  (the platform's address followed by `/connections/callback`). Quote it from
+  there; never build it.
   If the user can self-register a client (many developer-console backends let
   any account owner do this), have them do it and hand you the `client_id` /
   `client_secret`. If they can't — it needs a backend admin — generate the
@@ -508,7 +508,7 @@ Rules that hold regardless of language:
     clause. A repo created from an older copy of the template may have a
     `storage.py` with no `ConnectionLocked`, which raises plain `NotConnected`
     for both cases and cannot tell them apart: copy the current
-    `app/storage.py` from `inno-template` before writing the locked branch.
+    `app/storage.py` from the template repo (the `Template repo:` line of the status you read in the Version gate) before writing the locked branch.
     Two situations produce it:
     the MCP client authorized the app **before** the user's first connection,
     or the user's sealing key was reset after they last connected. **The fix is re-authorizing the MCP client**, never

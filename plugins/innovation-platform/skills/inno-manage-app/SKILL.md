@@ -34,8 +34,8 @@ Carry on.
 All operations here call tools on the `inno-platform` MCP server (see the
 plugin's `.mcp.json`). Every tool authorizes the caller server-side against
 the signed-in Okta identity from the MCP OAuth session — **you can only
-manage apps you own, unless you are a member of the `inno-platform-admins`
-Okta group**. A `forbidden` error back from any of these tools means exactly
+manage apps you own, unless you are a member of the platform admins group
+(the `Admin group:` line of the status you read in the Version gate)**. A `forbidden` error back from any of these tools means exactly
 that; don't retry it and don't try to work around it locally (there is no
 local escalation — authorization lives in the platform, not the client).
 
@@ -53,8 +53,8 @@ minute, and 60 a minute for its live app detail, metrics and log reads) and
 answers HTTP 429 with `Retry-After: 60`. The counts are approximate, never a
 quota to plan against.
 
-There is also a web panel at `https://inno-platform.davidlaporte.org` with the
-same capabilities (same API, same authorization) — point users there for
+There is also a web panel (the `Panel URL:` line of the status you read in the
+Version gate) with the same capabilities (same API, same authorization), point users there for
 anything visual: dashboards, notification history, lifecycle timelines.
 
 If the panel, a download link, or a Connections page answers
@@ -187,13 +187,14 @@ in a loop.
 
 ## `grant_access({ app, email })` / `revoke_access({ app, email })`
 
-Adds or removes a user from the app's `inno-{name}-users` Okta group — this
-group is what the gateway's Cloudflare Access policy checks, so granting
-access here is what actually lets someone past the Okta login on
-`https://inno-{name}.davidlaporte.org`. (Those names come from the platform
-instance's naming settings; `inno-` and `davidlaporte.org` are this
-instance's values. Quote the real group and hostname from `app_status` or
-`register_app`'s answer rather than building them.)
+Adds or removes a user from the app's members group (the `(members)` name in
+the `App groups:` line of the status you read in the Version gate, with the
+app's name in place of `{app}`). This group is what the gateway's Cloudflare
+Access policy checks, so granting access here is what actually lets someone
+past the Okta login on the app's address (the `App host pattern:` line, with
+the app's name in place of `{app}`). Quote the real group and hostname from
+`app_status` or `register_app`'s answer when you can, rather than building
+them.
 
 - `email` must look like a real, unquoted email address — the platform
   rejects anything containing quotes, backslashes, or whitespace.
@@ -388,9 +389,9 @@ returns it to the named member list (open: false). Owner or admin only.
 - Confirm before opening — state plainly that EVERY SSO user will have
   access, not just current members.
 - While an app is open, a person who is not a member reaches it carrying only
-  `inno-{app}-open` in `X-Forwarded-Groups` (the group names carry the
-  instance's group prefix; `app_status` reports the real ones). App code that
-  admits only `inno-{app}-users` will refuse them, so check the app before promising that
+  the app's open group (the `(open)` name in the `App groups:` line) in
+  `X-Forwarded-Groups`; `app_status` reports the real names. App code that
+  admits only the members group will refuse them, so check the app before promising that
   opening it lets everyone in. What that header can and cannot carry has one
   home: `inno-platform-conventions`' **Identity** section.
 - Closing an app that an open consumer app reads through a data link revokes
@@ -702,34 +703,36 @@ is what a user asking to dismiss a backlog wants.
 
 ## Authorization summary
 
+In this table, "platform admins" is the `Admin group:` line of the status you read in the Version gate.
+
 | Tool | Who can call it |
 |---|---|
-| `grant_access` / `revoke_access` | app owner, or `inno-platform-admins` |
-| `app_status` / `get_app_metrics` / `get_app_usage` / `get_app_logs` | app owner, or `inno-platform-admins` |
+| `grant_access` / `revoke_access` | app owner, or platform admins |
+| `app_status` / `get_app_metrics` / `get_app_usage` / `get_app_logs` | app owner, or platform admins |
 | `start_app` / `stop_app` / `request_start` | app owner (starts limited), or admins (unlimited) |
-| `restart_app` | app owner, or `inno-platform-admins` |
-| `rebuild_app` | `inno-platform-admins` only (owners redeploy by tagging their own repo) |
-| `export_app_data` | app owner, or `inno-platform-admins` |
-| `transfer_app` | `inno-platform-admins` only (owners ask an admin) |
-| `revoke_sessions` | `inno-platform-admins` only |
-| `purge_app` | `inno-platform-admins` only |
-| `claim_instance_objects` / `accept_naming_change` | `inno-platform-admins` only |
-| `link_app_data` | the owner of both apps, or `inno-platform-admins` |
-| `unlink_app_data` | the consumer app's owner, or `inno-platform-admins` |
-| `list_app_links` | app owner, or `inno-platform-admins` |
-| `set_app_access` | app owner, or `inno-platform-admins` (opening gated by `access.allow_open`) |
+| `restart_app` | app owner, or platform admins |
+| `rebuild_app` | platform admins only (owners redeploy by tagging their own repo) |
+| `export_app_data` | app owner, or platform admins |
+| `transfer_app` | platform admins only (owners ask an admin) |
+| `revoke_sessions` | platform admins only |
+| `purge_app` | platform admins only |
+| `claim_instance_objects` / `accept_naming_change` | platform admins only |
+| `link_app_data` | the owner of both apps, or platform admins |
+| `unlink_app_data` | the consumer app's owner, or platform admins |
+| `list_app_links` | app owner, or platform admins |
+| `set_app_access` | app owner, or platform admins (opening gated by `access.allow_open`) |
 | `register_app` | any signed-in Okta user (becomes the owner) |
-| `create_support_bundle` | app owner, or `inno-platform-admins` |
-| `list_users` / `query_audit` | `inno-platform-admins` only |
+| `create_support_bundle` | app owner, or platform admins |
+| `list_users` / `query_audit` | platform admins only |
 | `get_config` | `app=`: that app's owner, or admins. `user=`: the user themselves, or admins. No arguments (the fleet catalog): admins only |
 | `set_config` / `remove_config` | admins; users for their own Notifications settings, at their own user scope |
-| `set_app_variable` / `list_app_variables` / `remove_app_variable` | app owner, or `inno-platform-admins` |
+| `set_app_variable` / `list_app_variables` / `remove_app_variable` | app owner, or platform admins |
 | `list_notifications` / `mark_notification_read` / `mark_all_notifications_read` | scoped to the caller |
 | `get_platform_status` | any signed-in user |
-| `set_app_connection` / `remove_app_connection` | app owner, or `inno-platform-admins` (see `inno-add-connection`) |
+| `set_app_connection` / `remove_app_connection` | app owner, or platform admins (see `inno-add-connection`) |
 | `list_connections` | with `app`: that app's owner, or admins. Without `app` (the platform-wide fleet view): admins only |
 | `list_user_connections` | `user` = yourself always; an app's sessions: that app's owner, or admins; anything broader: admins only |
-| `disconnect_user_connection` | the user themselves, or `inno-platform-admins` (an admin disconnect is audited as the admin's action, naming the user) |
+| `disconnect_user_connection` | the user themselves, or platform admins (an admin disconnect is audited as the admin's action, naming the user) |
 
 The five connection tools are listed for reference — setting a Connection up is
 `inno-add-connection`'s workflow, not this skill's. Two are still useful here as

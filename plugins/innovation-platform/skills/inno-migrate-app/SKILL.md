@@ -33,7 +33,7 @@ Carry on.
 
 An existing repo now deploys **in place**. You register the user's **own** repo
 with the `register_app` MCP tool and make that same repo satisfy the platform
-contract — there is no porting into a freshly provisioned `inno-{app}` repo and
+contract, there is no porting into a freshly provisioned repo and
 no copying. The repo stays the user's, on their account/org, public or private.
 
 This differs from `inno-new-app` only in the starting point: new-app has the
@@ -104,7 +104,7 @@ order:
    `X-Forwarded-User` / `X-Forwarded-Groups` (see `inno-platform-conventions`).
    List each file/route to remove. Keep the app's own **authorization** (who may
    edit what), rewired to key on `X-Forwarded-User`: `X-Forwarded-Groups`
-   carries only this app's `inno-{name}-users` and `inno-{name}-open` (the prefix is the instance's; `app_status` reports the real names), never the
+   carries only this app's two groups (the names in the `App groups:` line of the status you read in the Version gate; `app_status` reports the real ones), never the
    repo's existing role groups, so existing role checks cannot move onto that
    header. The full header rule is `inno-platform-conventions`' **Identity**
    section. This is about the app's *own* front-door
@@ -133,8 +133,8 @@ order:
 4. **Contract deltas** — listens on 8080, serves `/healthz`, runs non-root,
    patched base image (container; see `inno-containerize`); app code arranged
    under `app/`; a root `CLAUDE.md` carrying the platform's required section
-   headers (config-integrity checks these — copy `dlaporte/inno-template`'s
-   `CLAUDE.md` and adapt its body). The repo's **default branch** needs no
+   headers (config-integrity checks these, copy the template repo's (the `Template repo:` line of the status you read
+   in the Version gate) `CLAUDE.md` and adapt its body). The repo's **default branch** needs no
    special handling: registration's scaffold prune and the `deploy.yml` that
    `register_app` returns both target the repo's actual default branch,
    whatever it is named (platform v0.14.5), and `inno-safety-preflight` and
@@ -306,13 +306,13 @@ restore point is.
    the user's okay, remove `secrets: inherit` from any workflow that carries it
    (or pass only the named secrets it needs); the platform workflow needs no
    caller secrets. The returned file
-   references `dlaporte/inno-platform-ci/.github/workflows/platform-ci.yml@main`
-   (the instance's CI mirror, `<owner>/<mirror repo>`; use the exact reference
+   references the workflow on the `CI workflow:` line of the status you read in
+   the Version gate (the instance's CI mirror; use the exact reference
    `register_app` returns) and passes `with: app: {name}`; keep its `workflow_dispatch` trigger (the
    platform re-dispatches it for security respins). The `with:` block matters
    most in a migration: without it the reusable workflow derives the app name
    from the repository name with any `inno-` prefix removed, and a migrated repo
-   rarely happens to be named `{name}` or `inno-{name}`. The broker resolves the real app
+   rarely happens to be named `{name}` or `inno-` followed by `{name}`. The broker resolves the real app
    from the signed repository id and refuses the run with `app_mismatch` when
    the asserted name disagrees. It is a thin caller — editing
    it can't bypass any gate (the broker's OIDC `job_workflow_ref` check enforces
@@ -343,7 +343,7 @@ restore point is.
    - **Dockerfile** (container) written per `inno-containerize` for the app's
      actual runtime.
    - A root **`CLAUDE.md`** carrying the required section headers (copy
-     `dlaporte/inno-template`'s and rewrite the body to describe this app's real
+     the template repo's (the `Template repo:` line) and rewrite the body to describe this app's real
      stack — only the headers are gate-checked).
    - **Remove or move every forbidden path** flagged in Phase 1, working from
      the list in `inno-platform-conventions`' **Files you must not touch**

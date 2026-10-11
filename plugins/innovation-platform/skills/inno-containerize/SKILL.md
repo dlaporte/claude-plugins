@@ -1,6 +1,6 @@
 ---
 name: inno-containerize
-description: Use when writing or editing the Dockerfile for an inno-{app} repo. Encodes the exact contract the platform's container gate requires (non-root, port 8080, patched base, CVE-clean image) for ANY stack, with reference recipes.
+description: Use when writing or editing the Dockerfile for an app repo. Encodes the exact contract the platform's container gate requires (non-root, port 8080, patched base, CVE-clean image) for ANY stack, with reference recipes.
 ---
 
 # inno-containerize
@@ -175,8 +175,8 @@ section.
 
 ## Reference recipe — Python (the platform's tested stack)
 
-This is the template's Dockerfile; it ships in the `inno-template` scaffold a
-container app is created from.
+This is the template's Dockerfile; it ships in the template repo's scaffold (the `Template repo:` line of the
+status you read in the Version gate) that a container app is created from.
 
 ```dockerfile
 FROM python:3.12-slim          # or the current pinned ref from get_app_contract

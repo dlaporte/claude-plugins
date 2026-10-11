@@ -1,6 +1,6 @@
 ---
 name: inno-platform-conventions
-description: Use when writing or reviewing code inside an inno-{app} repo's app/ directory — stack policy, storage, identity, and the files CI will reject if touched. Load this before writing any application code for an Innovation Platform app.
+description: Use when writing or reviewing code inside an app repo's app/ directory, stack policy, storage, identity, and the files CI will reject if touched. Load this before writing any application code for an Innovation Platform app.
 ---
 
 # inno-platform-conventions
@@ -267,9 +267,10 @@ read `X-Forwarded-User` by default and treat `X-Forwarded-Email` as its alias
 if you see it in a request dump.
 
 `X-Forwarded-Groups` carries at most two groups, both this app's own:
-`inno-{app}-users` when the caller is a member and `inno-{app}-open` when they
-reached an open app through its open-access twin (the `inno-` prefix is the
-instance's; `app_status` reports the real names). Since contract version 12
+the members group when the caller is a member and the open group when they
+reached an open app through its open-access twin (the names in the `App groups:`
+line of the status you read in the Version gate; `app_status` reports the real
+names). Since contract version 12
 (platform v0.14.3) it never carries the platform admin group, another app's
 groups, or any other `inno-` group, so use it only to tell a member from an
 open-access visitor; any finer role (an editor, a staff view, an in-app admin)
@@ -513,8 +514,9 @@ container app carrying the function headers passes, and the reverse passes as
 well. If you're hand-authoring `CLAUDE.md` (see `inno-new-app`'s empty-repo
 path), copy the template's version for your runtime: `scaffold/function/CLAUDE.md`,
 `scaffold/mcp-function/CLAUDE.md`, or `scaffold/mcp-container/CLAUDE.md`
-(platform v0.14.5) in `inno-template` for those three types, and
-`inno-template`'s root `CLAUDE.md` for `container`.
+(platform v0.14.5) in the template repo (the `Template repo:` line of the
+status you read in the Version gate) for those three types, and
+the template's root `CLAUDE.md` for `container`.
 Those are the only four: there is no `scaffold/container/`, because the
 container files ARE the template root.
 

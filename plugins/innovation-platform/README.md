@@ -1,6 +1,9 @@
 # innovation-platform
 
-Claude Code plugin for the davidlaporte.org Innovation Platform. Bundles the
+Claude Code plugin for your organization's Innovation Platform. It works with
+any instance: every instance-specific value (hostnames, group names, the
+template repo, the CI workflow, the Connections callback) is read from the
+platform's `get_platform_status` tool, never written into a skill. Bundles the
 `inno-platform` MCP server and eight skills that walk Claude through the whole
 app lifecycle: create (or migrate existing code), write, containerize,
 connect to a per-user backend, gate-check, ship, and manage. Apps deploy as
@@ -13,7 +16,7 @@ MCP server in a Docker container, any language, behind the same OAuth
 gateway). The type is chosen at `register_app`.
 
 **Repos are user-owned.** An app is created by **registering a GitHub repo you
-own**. You create a repo from the public `inno-template` ("Use this template" →
+own**. You create a repo from the instance's public template repo ("Use this template" →
 your own account or org, so it lands already scaffolded in your ownership),
 and the `register_app` MCP tool provisions the app's resources and binds them
 to your repo. `register_app` is a two-call flow with two steps in between: the
@@ -30,10 +33,17 @@ or private), and uninstalling the App unlinks and stops the app. (The old
 
 ## Install
 
+Your platform's panel shows a **Connect Claude Code** card with the exact
+commands for your instance: copy them and run them in a terminal. They add the
+marketplace, then install the plugin with your platform's address:
+
 ```
-/plugin marketplace add dlaporte/claude-plugins
-/plugin install innovation-platform@davidlaporte
+claude plugin install innovation-platform@<marketplace> --config platform_url=https://<platform host>/mcp
 ```
+
+`platform_url` is the platform's MCP address (the `MCP address:` line of
+`get_platform_status`, ending in `/mcp`). The plugin works with any instance:
+the address is the only setting.
 
 The first tool call against the `inno-platform` MCP server (e.g. from the
 `inno-new-app` skill's `register_app`) opens a browser window for an **Okta
@@ -55,15 +65,13 @@ which holds the minimum version the platform accepts and answers on a
 platform could not read: stale guidance describes behavior that no longer
 exists, and skills added since your build are simply missing. The same line
 advises, without blocking, when a newer version than yours is available.
-Either way the fix is two commands:
+Either way the fix is the commands on the status's `Update commands:` line
+(also on the panel's Connect Claude Code card): update the marketplace, update
+the plugin, set `platform_url` again if the line says so, and restart Claude
+Code.
 
-```
-claude plugin marketplace update davidlaporte
-claude plugin update innovation-platform@davidlaporte
-```
-
-Restart Claude Code afterwards. An installed plugin is cached per version, so
-without those two commands nothing in Claude Code itself tells a user they are
+An installed plugin is cached per version, so
+without those commands nothing in Claude Code itself tells a user they are
 on an old build; that `Plugin:` line is the only signal, and only a skill that
 ran the gate has seen it.
 
@@ -82,7 +90,7 @@ produce is a Dockerfile and app code rather than sentences a user reads.
 
 ## What's in the box
 
-- **`.mcp.json`** — points at `https://inno-platform.davidlaporte.org/mcp`,
+- **`.mcp.json`**: points at the address you set as `platform_url` (the platform's MCP address),
   the platform's remote MCP server (tools: `register_app`, `check_name`,
   `list_apps`, `app_status`, `grant_access`, `revoke_access`, `set_app_access`, `stop_app`,
   `start_app`, `request_start`, `export_app_data`, `get_app_metrics`, `get_app_usage`, `get_app_logs`, `restart_app`, `get_platform_status`,
@@ -101,8 +109,8 @@ produce is a Dockerfile and app code rather than sentences a user reads.
   `get_platform_logs`).
   There's also a
   web panel with the same capabilities at
-  `https://inno-platform.davidlaporte.org`.
-- **`skills/inno-new-app`**: intake -> create a repo from `inno-template` ->
+  the platform's address (the `Panel URL:` line of `get_platform_status`).
+- **`skills/inno-new-app`**: intake -> create a repo from the template repo ->
   `register_app` (first call) -> clone, commit the proof file, and install the
   GitHub App -> `register_app` (second call) -> pull -> scaffold.
 - **`skills/inno-migrate-app`** — assess an existing repo (read-only), then
@@ -185,4 +193,4 @@ Cloudflare deploy token; a forked or gate-stripped workflow gets a
 `403 deploy_denied:workflow` and never reaches Cloudflare. In short: skills guide, CI
 validates, and the deploy broker enforces provenance — so only code that
 went through the platform's own CI can ever end up live at
-`https://inno-{app}.davidlaporte.org` (the platform reports the real hostname).
+the app's own address (the platform reports the real hostname).

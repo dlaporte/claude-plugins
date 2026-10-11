@@ -1,6 +1,6 @@
 ---
 name: inno-safety-preflight
-description: Use when the user wants their inno-{app} checked before shipping ("run the safety preflight", "is this safe to ship?", "check my app"). Pushes to the default branch, which runs the platform's REAL safety gates and deploys nothing, then narrates the results with realtime guidance, plus a guardrails policy review. A failure or guardrails violation is a hard stop before inno-ship.
+description: Use when the user wants their app checked before shipping ("run the safety preflight", "is this safe to ship?", "check my app"). Pushes to the default branch, which runs the platform's REAL safety gates and deploys nothing, then narrates the results with realtime guidance, plus a guardrails policy review. A failure or guardrails violation is a hard stop before inno-ship.
 ---
 
 # inno-safety-preflight

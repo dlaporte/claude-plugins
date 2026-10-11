@@ -20,8 +20,8 @@ plugin skills, to add a per-user backend **Connection** to an app it is
 building or migrating — including auto-discovering the backend's auth mechanism
 — in plain language for a broad, mixed-technical population.
 **Depended on:** the platform Connections capability (self-service, app-scoped,
-merged to `dlaporte/inno-platform` main) and the `connections.get()`
-client-library helper in `dlaporte/inno-template` — which **shipped**, in the
+merged to the platform repo's main) and the `connections.get()`
+client-library helper in the template repo, which **shipped**, in the
 template's clients (`lib/storage.js` and `app/storage.py`); the contract states
 it un-hedged.
 
@@ -100,7 +100,7 @@ needs to act **as each individual user** on an external backend.
      obtainable: config = `{authorize_endpoint, token_endpoint, client_auth,
      pkce, refresh, scopes}` (from discovery). Needs a client id + secret
      registered at the backend against the **single platform callback URL**
-     (`https://inno-platform.davidlaporte.org/connections/callback`). If the user
+     (the status's `Connections callback:` line). If the user
      can't self-register the client, generate the exact copy-paste request to
      hand their backend admin (endpoints, the callback URL, "auth-code + PKCE").
 

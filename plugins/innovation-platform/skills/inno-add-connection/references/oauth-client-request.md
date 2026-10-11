@@ -5,7 +5,8 @@ Used from `inno-add-connection` step 3 when the chosen strategy is
 developer-console self-service on that backend) — someone with admin rights
 on the backend has to create it. Fill in the placeholders from what discovery
 (or the backend's own docs) found, and hand the user this as a copy-paste
-request to forward.
+request to forward. Replace `<Connections callback>` with the
+`Connections callback:` line of the status you read in the Version gate.
 
 ---
 
@@ -21,7 +22,7 @@ authorizes their own access — this is not a shared service account).
 Could you register a client with the following:
 
 - **Redirect / callback URL** (exact match, no variations):
-  `https://inno-platform.davidlaporte.org/connections/callback`
+  `<Connections callback>`
 - **Grant type:** Authorization Code with PKCE (`S256`), i.e. a "web
   application" or "authorization code" client type — not client-credentials
   and not implicit.

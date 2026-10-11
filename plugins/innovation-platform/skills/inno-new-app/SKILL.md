@@ -44,10 +44,11 @@ client enumerates tools at startup); the user must authorize it AND you must
 restart the session before calling any `inno-platform` tool.
 
 **The repo is the USER's.** There is no platform-owned repo model anymore. The
-repo lives in the user's **own** account or org, created from the public
-`inno-template`, with the platform's GitHub App installed on it; `register_app`
+repo lives in the user's **own** account or org, created from the instance's public
+template repo (the `Template repo:` line of the status you read in the Version
+gate), with the platform's GitHub App installed on it; `register_app`
 finishes the job. The old `create_app` tool no longer exists, and the platform
-never creates a `dlaporte/inno-{name}` repo on the user's behalf.
+never creates a repo on the user's behalf.
 
 **What is genuinely user-only.** Exactly two steps in this flow require the user
 personally: **installing the platform GitHub App** (§3 — a third-party token
@@ -73,7 +74,7 @@ sentence in this flow.
 
 1. **App name** — lowercase letters, digits, hyphens only, 3-29 chars,
    starting with a letter. This drives the app's **hostname** on the platform
-   domain (`inno-{name}.<domain>` here; the host prefix is the instance's, and `register_app`'s answer gives the real hostname), so keep it short and DNS-safe. It is NOT
+   domain (the `App host pattern:` line of the status you read in the Version gate, with the app's name in place of `{app}`; `register_app`'s answer gives the real hostname), so keep it short and DNS-safe. It is NOT
    the repo name — the repo name is the user's choice (see below). A handful of
    names are reserved server-side — `check_name` reports those, so don't
    enumerate or guess. A name ending in **`-app`** is rejected as well: the
@@ -113,7 +114,7 @@ sentence in this flow.
    are the remaining options.
 2. **Repo** — the `owner/repo` slug of the GitHub repo the user will create
    from the template (§2). The **owner is the user's** account or org, and the
-   repo name is **their choice** — suggest `inno-{name}` for familiarity, but it
+   repo name is **their choice**: suggest the name prefixed with `inno-` for familiarity, but it
    is not required and can be anything. The repo may be public or private.
 3. **One-line purpose**: becomes the app's `description` (at most 500
    characters; the tool schema rejects a longer one).
@@ -202,7 +203,7 @@ make, with your recommendation**:
   - **`mcp-function` (named `mcp`, then `mcp-worker`, before the current name):** choose when the product is an **MCP server for AI assistants**
     (Claude Code, claude.ai) rather than a browser UI. Function-shaped (JS/TS,
     no Dockerfile): the app serves the MCP **Streamable HTTP** transport at
-    `POST /mcp`, and users add `https://inno-{name}.<domain>/mcp` as an MCP
+    `POST /mcp`, and users add the app's MCP address (the `App MCP address pattern:` line, with the app's name in place of `{app}`) as an MCP
     server in their client. **Stateless only** — tools work normally, but
     server-initiated features (notifications, sampling, elicitation,
     long-lived subscriptions) do not; if the design needs those, it does not
@@ -273,9 +274,9 @@ The written design covers, at minimum:
 - **Routes / pages** — what the user can actually open and do
 - **Access model**: who can see what, and who can edit. The platform manages
   only membership: `X-Forwarded-Groups` carries at most this app's own
-  `inno-{name}-users` (a member) and `inno-{name}-open` (a caller who reached
-  an open app); the prefix is the instance's, and `app_status` reports the
-  real names. Any finer role (an editor, an admin view) needs the app's own
+  the members group (a member) and the open group (a caller who reached
+  an open app), the names in the `App groups:` line of the status you read in
+  the Version gate; `app_status` reports the real names. Any finer role (an editor, an admin view) needs the app's own
   role table keyed on `X-Forwarded-User`; do not design around reading other
   groups from the header. The full header rule, including when an older live
   app still sees more, is `inno-platform-conventions`' **Identity** section.
@@ -309,11 +310,14 @@ lands in their ownership exactly as the browser path does. Confirm the name and
 visibility with them, then:
 
 ```sh
-gh repo create {owner}/{repo} --template dlaporte/inno-template --private
+gh repo create {owner}/{repo} --template <template repo> --private
 ```
 
-- Suggest `inno-{name}`; public or private is fine — check an existing `inno-*`
-  repo of theirs (`gh repo view … --json isPrivate`) and match it rather than
+Here `<template repo>` is the owner/name on the `Template repo:` line of the
+status you read in the Version gate.
+
+- Suggest the name prefixed with `inno-`; public or private is fine, check an existing
+  repo of theirs made the same way (`gh repo view … --json isPrivate`) and match it rather than
   assuming.
 - Template copying is **asynchronous**: an immediate `git clone` can land an
   empty repo. Poll `git fetch` until `origin/main` exists before checking out.
@@ -321,12 +325,13 @@ gh repo create {owner}/{repo} --template dlaporte/inno-template --private
 **Fallback: walk them through the browser** — when `gh` is absent or
 unauthenticated, the account it holds is not theirs, or they simply prefer it:
 
-1. Open **`https://github.com/dlaporte/inno-template/generate`** — GitHub's
-   "Use this template" page for the public `inno-template`. (You can also reach
+1. Open the `new repo:` link on the `Template repo:` line of the status you
+   read in the Version gate (it ends in `/generate`). It is GitHub's
+   "Use this template" page for the instance's public template repo. (You can also reach
    it from the template repo's green **"Use this template" → "Create a new
    repository"** button.)
 2. Set the **owner** to their own account or org, and the **repository name** to
-   their choice (suggest `inno-{name}`). Public or private is fine.
+   their choice (suggest the name prefixed with `inno-`). Public or private is fine.
 3. Click **Create repository**. The repo lands in **their** ownership, already
    scaffolded from the template.
 
@@ -443,9 +448,9 @@ installation token, provisions the Okta group + D1 + R2, and binds the
 repo). It returns text beginning **`App
 "{name}" registered from {repo}`** and containing:
 
-- `URL (after first deploy): https://inno-{name}.<platform domain>` — **quote
-  this from the response, never construct it** (the platform domain is
-  deployment-specific). For an **mcp-function** or **mcp-container** app the
+- `URL (after first deploy): https://<app host>`: **quote
+  this from the response, never construct it** (the host and domain are
+  the instance's). For an **mcp-function** or **mcp-container** app the
   response surfaces the **MCP endpoint** (`…/mcp`) instead — same rule: quote
   it from the response. The
   URL 404s until the first successful `inno-ship`.
@@ -457,7 +462,7 @@ repo). It returns text beginning **`App
   removed. That derived name is asserted to the broker, which resolves the real
   app from the signed repository id and refuses the run with `app_mismatch` when
   the two disagree. The template's file therefore works only when the repo is
-  named `{name}` or `inno-{name}`; any other name needs the returned snippet,
+  named `{name}` or `inno-` followed by `{name}`; any other name needs the returned snippet,
   which carries the explicit `with: app: {name}` input and is correct for any
   repo name, so write it in every case. This is a real step, not a hands-off
   one. Keep the
@@ -593,7 +598,7 @@ Dockerfile.
 layout by hand.** A repo created via GitHub's blank "New repository" flow
 (instead of §2's "Use this template") arrives with no scaffold, so call 2
 leaves it as-is. Recognize this early — the repo is missing the type-specific
-files described below — and hand-author the full layout out of `inno-template`,
+files described below, and hand-author the full layout out of the template repo,
 then write `.github/workflows/deploy.yml` from call 2's response. Where you copy
 from depends on the type, because three of the four have an overlay
 directory:
@@ -741,7 +746,7 @@ check and its own message. The exact codes and the reasoning are
 `env.DATA`/`env.FILES` directly and has neither cap.
 
 **Rewrite `README.md` — this is required, not optional.** The template's README
-is inno-template's own ("Use this template…", template internals) and describes
+is the template's own ("Use this template…", template internals) and describes
 nothing about this app. Replace it with a **high-level overview of the user's
 app**: what it does, who it's for, and the app's URL. Keep it short — a few
 paragraphs is right; the platform mechanics (identity, storage, CI) already live
