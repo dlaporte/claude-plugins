@@ -7,29 +7,27 @@ description: Use when the user is ready to release an inno-{app} — pushes, wai
 
 ## Version gate — do this first
 
-Before anything else in this skill, read the `version` field of
-`../../.claude-plugin/plugin.json` (relative to this skill's own directory) and
-pass it to the `get_platform_status` MCP tool as `plugin_version`.
+Before anything else in this skill, do these five steps in order.
 
-The platform holds the minimum plugin version it accepts and does the
-comparison. If the `Plugin:` line comes back **OUTDATED**, or says the version
-was not reported or unreadable, STOP and tell the user to run:
+1. Read the `version` field of `../../.claude-plugin/plugin.json` (relative to
+   this skill's own directory) and call the `get_platform_status` MCP tool with
+   it as `plugin_version`.
+2. If no `inno-platform` tools are available at all, the platform address is
+   probably unset. Tell the user to open their platform's panel, copy the
+   configure command from its Connect Claude Code card, run it in a terminal,
+   and restart Claude Code. Then STOP.
+3. If the `Plugin:` line says **OUTDATED**, or says the version was not
+   reported or was unreadable, STOP. Tell the user to run the commands that
+   line gives, then restart Claude Code and start again. Do not continue on a
+   stale plugin: its guidance may describe platform behavior that no longer
+   exists.
+4. If the `Plugin:` line says a newer version is available, that is advice, not
+   a block. Mention it once, with the commands from the `Update commands:`
+   line, and carry on.
+5. If the status has no `Template repo:` line, the platform is older than
+   v0.15.8. Say so, ask the user's admin to upgrade it, and STOP before any
+   step that needs an instance value. Never fall back to a literal value.
 
-```
-claude plugin marketplace update davidlaporte
-claude plugin update innovation-platform@davidlaporte
-```
-
-then restart Claude Code and start again. Do not continue on a stale plugin:
-its guidance may describe platform behavior that no longer exists, and skills
-added since their build are simply absent — this check is the only thing that
-will tell them so.
-
-If the line reads **current** but adds that a newer version **is available**,
-that is advisory, not a block: mention it once, with the same two commands, and
-carry on with the skill.
-
-If there is no `Plugin:` line at all, the gate is not armed on this platform.
 Carry on.
 
 Deploys are **release-driven**: a push to the default branch runs the safety

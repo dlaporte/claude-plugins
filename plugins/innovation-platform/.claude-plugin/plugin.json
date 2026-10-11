@@ -1,9 +1,17 @@
 {
   "name": "innovation-platform",
-  "version": "1.0.19",
-  "description": "Build and ship apps on the davidlaporte.org Innovation Platform: create an app via the inno-platform MCP server as a container (any stack, the default type), a function (its own Cloudflare Worker), or an MCP server for AI assistants (mcp-function / mcp-container) behind the same identity gateway, write it against the platform's application + app-security contracts, run the security gates before shipping through CI/CD, and manage access to a live app.",
+  "version": "1.1.0",
+  "description": "Build and ship apps on your organization's Innovation Platform: create an app via the inno-platform MCP server as a container (any stack, the default type), a function (its own Cloudflare Worker), or an MCP server for AI assistants (mcp-function / mcp-container) behind the same identity gateway, write it against the platform's application + app-security contracts, run the security gates before shipping through CI/CD, and manage access to a live app.",
   "author": {
     "name": "David LaPorte"
   },
-  "mcpServers": "./.mcp.json"
+  "mcpServers": "./.mcp.json",
+  "userConfig": {
+    "platform_url": {
+      "type": "string",
+      "title": "Platform MCP address",
+      "description": "Your platform's MCP address, ending in /mcp. Your platform's panel shows it on its Connect Claude Code card.",
+      "required": true
+    }
+  }
 }

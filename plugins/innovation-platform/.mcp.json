@@ -2,7 +2,7 @@
   "mcpServers": {
     "inno-platform": {
       "type": "http",
-      "url": "https://inno-platform.davidlaporte.org/mcp"
+      "url": "${user_config.platform_url}"
     }
   }
 }
