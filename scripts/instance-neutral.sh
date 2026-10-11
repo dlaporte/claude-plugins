@@ -22,6 +22,8 @@ patterns=(
   'inno-` group'
   'inno-\{'
   'inno-<'
+  '`inno-`'
+  'inno-[a-z0-9]*-(users|open)\b'
 )
 
 if [ ! -d "$target" ]; then

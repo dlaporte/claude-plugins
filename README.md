@@ -12,7 +12,7 @@ built around the Innovation Platform and other tools.
 ## Install a plugin
 
 ```
-/plugin install innovation-platform@davidlaporte
+/plugin install innovation-platform@davidlaporte --config platform_url=<your platform's MCP address>
 /plugin install servicenow@davidlaporte
 ```
 

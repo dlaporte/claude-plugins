@@ -9,22 +9,22 @@ description: Use when the user wants to create a new app on the Innovation Platf
 
 Before anything else in this skill, do these five steps in order.
 
-1. Read the `version` field of `../../.claude-plugin/plugin.json` (relative to
-   this skill's own directory) and call the `get_platform_status` MCP tool with
-   it as `plugin_version`.
-2. If no `inno-platform` tools are available at all, the platform address is
+1. If no `inno-platform` tools are available at all, the platform address is
    probably unset. Tell the user to open their platform's panel, copy the
    configure command from its Connect Claude Code card, run it in a terminal,
    and restart Claude Code. Then STOP.
+2. Read the `version` field of `../../.claude-plugin/plugin.json` (relative to
+   this skill's own directory) and call the `get_platform_status` MCP tool with
+   it as `plugin_version`.
 3. If the `Plugin:` line says **OUTDATED**, or says the version was not
    reported or was unreadable, STOP. Tell the user to run the commands that
    line gives, then restart Claude Code and start again. Do not continue on a
    stale plugin: its guidance may describe platform behavior that no longer
    exists. If there is no `Plugin:` line at all, the platform sets no
-   minimum version: carry on.
+   minimum version: go on to the next step.
 4. If the `Plugin:` line says a newer version is available, that is advice, not
    a block. Mention it once, with the commands from the `Update commands:`
-   line, and carry on.
+   line, and go on to the next step.
 5. If the status has no `Template repo:` line, the platform is older than
    v0.15.8. Say so, ask the user's admin to upgrade it, and STOP before any
    step that needs an instance value. Never fall back to a literal value.
@@ -316,8 +316,8 @@ gh repo create {owner}/{repo} --template <template repo> --private
 Here `<template repo>` is the owner/name on the `Template repo:` line of the
 status you read in the Version gate.
 
-- Suggest the app name itself; public or private is fine, check an existing
-  repo of theirs made the same way (`gh repo view … --json isPrivate`) and match it rather than
+- Suggest the app name itself; public or private is fine. Ask which they want, or run
+  `gh repo list --limit 5 --json name,isPrivate` and match what their recent repos use, rather than
   assuming.
 - Template copying is **asynchronous**: an immediate `git clone` can land an
   empty repo. Poll `git fetch` until `origin/main` exists before checking out.
@@ -456,7 +456,7 @@ repo). It returns text beginning **`App
   URL 404s until the first successful `inno-ship`.
 - A `.github/workflows/deploy.yml` — the thin caller workflow that wires the
   repo to the platform's reusable CI. **Overwrite the repo's copy with the
-  snippet the response returned.** The template ships no `deploy.yml`: this file
+  snippet the response returned** (an older template may still carry one). The template ships no `deploy.yml`: this file
   always comes from `register_app`'s second call. It carries the explicit
   `with: app: {name}` input and is correct for any repo name, so write it in
   every case. This is a real step, not a hands-off one. Keep the
@@ -642,7 +642,7 @@ body describes the runtime this app actually has.
   template library. Do NOT create `wrangler.jsonc`/`app-worker.jsonc` — those
   are platform-injected. Include the required **sign-out link** (R4) — same as
   the container reference: a static link to the team-domain logout, its URL
-  sourced from `get_platform_status`'s `Sign-out URL` (see
+  sourced from the `Sign-out URL (all apps):` line of the status you read in the Version gate (see
   `inno-platform-conventions`'s "Sign out" section for the exact convention);
   nothing in this type's scaffold provides it for you.
 - **`mcp-function` app:** function-shaped — everything in the function bullet applies

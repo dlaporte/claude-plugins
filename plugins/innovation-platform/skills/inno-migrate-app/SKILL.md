@@ -9,22 +9,22 @@ description: Use when the user has an EXISTING repo or codebase they want on the
 
 Before anything else in this skill, do these five steps in order.
 
-1. Read the `version` field of `../../.claude-plugin/plugin.json` (relative to
-   this skill's own directory) and call the `get_platform_status` MCP tool with
-   it as `plugin_version`.
-2. If no `inno-platform` tools are available at all, the platform address is
+1. If no `inno-platform` tools are available at all, the platform address is
    probably unset. Tell the user to open their platform's panel, copy the
    configure command from its Connect Claude Code card, run it in a terminal,
    and restart Claude Code. Then STOP.
+2. Read the `version` field of `../../.claude-plugin/plugin.json` (relative to
+   this skill's own directory) and call the `get_platform_status` MCP tool with
+   it as `plugin_version`.
 3. If the `Plugin:` line says **OUTDATED**, or says the version was not
    reported or was unreadable, STOP. Tell the user to run the commands that
    line gives, then restart Claude Code and start again. Do not continue on a
    stale plugin: its guidance may describe platform behavior that no longer
    exists. If there is no `Plugin:` line at all, the platform sets no
-   minimum version: carry on.
+   minimum version: go on to the next step.
 4. If the `Plugin:` line says a newer version is available, that is advice, not
    a block. Mention it once, with the commands from the `Update commands:`
-   line, and carry on.
+   line, and go on to the next step.
 5. If the status has no `Template repo:` line, the platform is older than
    v0.15.8. Say so, ask the user's admin to upgrade it, and STOP before any
    step that needs an instance value. Never fall back to a literal value.
@@ -133,8 +133,8 @@ order:
 4. **Contract deltas** — listens on 8080, serves `/healthz`, runs non-root,
    patched base image (container; see `inno-containerize`); app code arranged
    under `app/`; a root `CLAUDE.md` carrying the platform's required section
-   headers (config-integrity checks these, copy the template repo's (the `Template repo:` line of the status you read
-   in the Version gate) `CLAUDE.md` and adapt its body). The repo's **default branch** needs no
+   headers (config-integrity checks them; copy the `CLAUDE.md` of the template repo, the `Template repo:` line of the status you read
+   in the Version gate, and adapt its body). The repo's **default branch** needs no
    special handling: registration's scaffold prune and the `deploy.yml` that
    `register_app` returns both target the repo's actual default branch,
    whatever it is named (platform v0.14.5), and `inno-safety-preflight` and
@@ -341,8 +341,8 @@ restore point is.
    - **Dockerfile** (container) written per `inno-containerize` for the app's
      actual runtime.
    - A root **`CLAUDE.md`** carrying the required section headers (copy
-     the template repo's (the `Template repo:` line) and rewrite the body to describe this app's real
-     stack — only the headers are gate-checked).
+     the `CLAUDE.md` of the template repo, the `Template repo:` line, and rewrite the body to describe this app's real
+     stack; only the headers are gate-checked).
    - **Remove or move every forbidden path** flagged in Phase 1, working from
      the list in `inno-platform-conventions`' **Files you must not touch**
      section. Move code out of a repo-root `src/` (for example to `app/src/`,

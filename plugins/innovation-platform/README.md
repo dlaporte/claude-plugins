@@ -73,8 +73,9 @@ platform could not read: stale guidance describes behavior that no longer
 exists, and skills added since your build are simply missing. The same line
 advises, without blocking, when a newer version than yours is available.
 Either way the fix is the commands on the status's `Update commands:` line
-(also on the panel's Connect Claude Code card): update the marketplace, update
-the plugin, set `platform_url` again if the line says so, and restart Claude
+that `get_platform_status` serves. The panel's Connect Claude Code card shows
+the marketplace add, install, `mcp add` and configure commands, but not the
+update commands. Update the marketplace, update the plugin, and restart Claude
 Code.
 
 An installed plugin is cached per version, so
