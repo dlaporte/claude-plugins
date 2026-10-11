@@ -12,8 +12,13 @@ built around the Innovation Platform and other tools.
 ## Install a plugin
 
 ```
-/plugin install innovation-platform@davidlaporte --config platform_url=<your platform's MCP address>
 /plugin install servicenow@davidlaporte
+```
+
+`innovation-platform` needs your platform's MCP address. Install it from a terminal with the address set, or copy the exact commands from your platform panel's Connect Claude Code card:
+
+```
+claude plugin install innovation-platform@davidlaporte --config platform_url=<your platform's MCP address>
 ```
 
 Note: the first MCP tool call from an installed plugin opens a browser
