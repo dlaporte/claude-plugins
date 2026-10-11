@@ -565,8 +565,8 @@ If the proof file was committed through GitHub's web UI instead, clone now:
 
 After call 2, the repo has been **pruned to the deployment type you chose** —
 the template carries every scaffold and the platform rewrote the repo at
-registration. All types ship the thin `.github/workflows/deploy.yml` caller
-workflow, which you overwrite with call 2's snippet per §3; a
+registration. No type ships `.github/workflows/deploy.yml`: you write it
+from call 2's snippet per §3. A
 **function** repo has the TS reference (`app/index.ts`),
 an **mcp-function** repo the MCP-server TS reference (also `app/index.ts`), and
 a **container** repo the Python/Starlette reference (`app/` — incl. `main.py`,
