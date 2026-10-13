@@ -145,7 +145,7 @@ Whatever the stack: pin dependencies in its own manifest under `app/`
 source for its pins; `package.json` for Node; `go.mod` for Go; …) and keep
 them CVE-clean: the `deps` gate (pip-audit over `app/requirements.txt`,
 `npm audit` over `app/package.json`'s **production** dependencies only, run
-`--omit=dev`; since platform v0.14.21, and contract version 21 states it, the
+`--omit=dev`; since platform v0.14.21, and contract version 19 states it, the
 `app-deps` job installs with `--omit=dev` too, so the audited set and the
 installed set are the same, and
 production code that imports a devDependency at runtime fails the deploy
@@ -288,7 +288,7 @@ so an oversized bulk insert reads as a syntax error rather than a size
 problem: send it in batches. `PUT /_storage/files/{key}` is capped
 separately, on the object's **declared** `Content-Length`, and over
 **25 MiB** the answer is `413 too_large`. Since platform v0.14.21, and
-contract version 21 states it, a PUT sent with no `Content-Length` header at
+contract version 19 states it, a PUT sent with no `Content-Length` header at
 all (a chunked body, for example) is
 refused `411 length_required` before the gateway calls R2, which has never
 accepted a stream of unknown length. The file cap has been enforced
