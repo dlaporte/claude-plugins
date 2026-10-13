@@ -304,17 +304,22 @@ gateway injects both, so either one works and neither is more authoritative;
 read `X-Forwarded-User` by default and treat `X-Forwarded-Email` as its alias
 if you see it in a request dump.
 
-`X-Forwarded-Groups` carries at most two groups, both this app's own:
-the members group when the caller is a member and the open group when they
-reached an open app through its open-access twin (the names in the `App groups:`
-line of the status you read in the Version gate; `app_status` reports the real
-names). Since contract version 12
+`X-Forwarded-Groups` carries at most two groups, both this app's own, in this
+order: the members group when the caller is a member, and the open group when
+the caller holds it (on an MCP app, exactly while the app is open). Their
+names are in the `App groups:` line of the status you read in the Version
+gate, and `app_status` reports the real names. Since contract version 12
 (platform v0.14.3) it never carries the platform admin group, another app's
 groups, or any other group, so use it only to tell a member from an
 open-access visitor; any finer role (an editor, a staff view, an in-app admin)
-needs your own role store keyed on `X-Forwarded-User`. On an open
-`mcp-function` or `mcp-container` app the header can be empty for a non-member
-who was just admitted: treat empty as "not a member", never as an error.
+needs your own role store keyed on `X-Forwarded-User`. Every person an app
+admits carries at least one of the two (contract R3, since version 25), so a
+visitor admitted only because the app is open carries the open group alone.
+An MCP app's two are decided at each request, so a change reaches the header
+within the gateway's introspection cache; a browser app's come from the
+caller's sign-in, so a change reaches them at their next sign-in. Code that
+treats an empty header as "not a member" keeps working, but no admitted
+caller arrives with an empty one any more.
 The narrowing reaches an MCP app (`mcp-function`, `mcp-container`)
 immediately, because the platform narrows its groups before the gateway sees
 them. A browser SSO app (`container`, `function`) gets it only at its next
