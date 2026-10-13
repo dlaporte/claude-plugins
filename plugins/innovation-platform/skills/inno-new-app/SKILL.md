@@ -46,8 +46,7 @@ restart the session before calling any `inno-platform` tool.
 repo lives in the user's **own** account or org, created from the instance's public
 template repo (the `Template repo:` line of the status you read in the Version
 gate), with the platform's GitHub App installed on it; `register_app`
-finishes the job. The old `create_app` tool no longer exists, and the platform
-never creates a repo on the user's behalf.
+finishes the job. The platform never creates a repo on the user's behalf.
 
 **What is genuinely user-only.** Exactly two steps in this flow require the user
 personally: **installing the platform GitHub App** (§3 — a third-party token
@@ -526,7 +525,9 @@ repo). It returns text beginning **`App
 - **`idp_object_foreign`**: an access group of the app's name already
   exists and is not this platform's own (another platform sharing the same
   sign-in directory may hold it); the message names the group. Choose
-  another app name and check it with `check_name`. Only when that group
+  another app name and check it with `check_name`, knowing that a clean
+  check does not rule this out: `check_name` never looks at the sign-in
+  directory's groups, so only the next call can. Only when that group
   really is this platform's own, unmarked, can an operator mark it as such
   (OPERATIONS, "Instances sharing an IdP") so the same name registers;
   `claim_instance_objects` cannot, because it marks only the groups this
