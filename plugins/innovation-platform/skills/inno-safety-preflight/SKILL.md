@@ -296,10 +296,13 @@ Nothing deploys from this push. Watch the run either way:
   omits, so for a registered app the tool reports the findings as
   unavailable and a failed job's line points at the run link instead.
   Narrate from the job conclusions and that link (or `gh run view
-  --log-failed`) when that happens. Two refusals are worth recognizing:
+  --log-failed`) when that happens. Refusals worth recognizing:
   `app_not_installed` (the App is no longer installed on the repo; the user
-  reinstalls it on GitHub) and `repo_not_linked` (registration never
-  finished). The refusals any platform tool can give are explained once, in
+  reinstalls it on GitHub), `repo_not_linked` (registration never
+  finished), and `github_app_not_configured`, `github_app_key_invalid` or
+  `installation_token_failed` (a platform-side GitHub App fault, which only
+  a platform admin can fix: tell the user it is not theirs to fix, and watch
+  the run with the `gh` CLI below meanwhile). The refusals any platform tool can give are explained once, in
   `inno-platform-conventions`' **Refusals every tool shares** section.
   Poll every ~30s while `in_progress`; narrate transitions ("secrets ✓,
   container still building…"). Polling that slowly is well inside the
