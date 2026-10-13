@@ -287,12 +287,13 @@ platform admin must do it, and offer to draft the request, naming the app and
 the new owner (`inno-manage-app` says the same).
 
 It takes effect at once. The recipient becomes the owner, and lifecycle
-notices, quota and management rights move to them. For an app in okta mode,
-in the tool's words, they "are added to the app's Okta group, which browser
-apps' sign-in reads, and then to its member list, which MCP apps read, in the
-one write that makes them the owner". For an app in platform mode (the
-import section above says which apps those are), the transfer makes no Okta
-write: that one write is the whole of it.
+notices, quota and management rights move to them. In the tool's words,
+"For an app in okta mode they are added to its Okta group, which Cloudflare
+Access reads for a browser app, and then, for every app, to its member list,
+which every MCP app and every browser app behind a capability-1 gateway
+reads, in the one write that makes them the owner". For an app in platform
+mode (the import section above says which apps those are), the transfer
+makes no Okta write: that one write is the whole of it.
 The previous owner keeps access as a member. The recipient
 is notified; the previous owner is notified whenever the caller is not the
 owner, so an admin transferring their own app leaves no notice for
@@ -585,33 +586,41 @@ it there.
 
 The promotion to a gateway from platform v0.16.5 or later (contract version
 26) is the gateway switch for browser apps, and each one picks it up at its
-next deploy, with no change to its code. From
-then on its gateway (capability 1) asks the platform on every request
-whether a person may use it, so a revoke or a close reaches them within
-about 10 seconds rather than at their next sign-in, and a browser app in
-okta mode is cut over to platform mode at that deploy (**A browser app's
+next deploy (or `rebuild_app`), with no change to its code. From then on
+its gateway (capability 1) asks the platform on every request whether a
+person may use it, so a revoke or a close reaches them within about 10
+seconds rather than at their next sign-in, as do a grant and an open on an
+app in platform mode. A browser app in okta mode is cut over to platform
+mode at that deploy, when its two member stores agree (**A browser app's
 cut-over** above). Until it redeploys, a browser app keeps its older
 gateway, and Access alone admits by the Okta groups. An owner redeploys by
 cutting a tag (`inno-ship`); `rebuild_app` covers an app whose owner will
-not.
+not. Because the promotion puts every browser app behind the platform's
+check at its next deploy, the tool's own advice is to sign in first to a
+canary browser app deployed on its own app-scope `gateway.ref` override at
+the new gateway, and to read a clean `import_okta_memberships` dry run; the
+upgrade procedure above carries that order.
 
 The deploy broker refuses `gateway_too_old` for any deploy whose gateway is
 older than capability 1, so it cannot ask the platform who may use the app,
 when the app is a browser app that needs one. That is two kinds of browser
 app: one whose access the platform checks itself (platform mode), and one
 whose switch to that started and did not finish (it carries the cut-over's
-marker: **A browser app's cut-over** above). From v0.16.5 every new browser
-app is in platform mode, so on a platform whose `gateway.ref` has not yet
-been promoted to a v0.16.5 gateway, every new browser app's first deploy is
-refused this way, as is any such app whose app-scope `gateway.ref` override
-points at an older gateway. The run's log shows the refusal's message, not
-its code, after `deploy-token request failed (HTTP 409)`; the wording may
-change between releases, so go by this description, not by its text. The
-fix is an admin's: move `gateway.ref` to a gateway of capability 1 or more
-(`sync_gateway_ref`, within the upgrade procedure above), or remove the
-app's own `gateway.ref` override with `remove_config`; then the owner cuts
-the next patch tag (`inno-ship`), which is what the refusal means when it
-asks for the tag again.
+marker, `access_signin`: **A browser app's cut-over** above). From v0.16.5
+every new browser app is in platform mode, so on a platform whose
+`gateway.ref` has not yet been promoted to a v0.16.5 gateway, every new
+browser app's first deploy is refused this way, as is any such app whose
+app-scope `gateway.ref` override points at an older gateway. The run's log
+shows the refusal's message, not its code, after `deploy-token request
+failed (HTTP 409)`; the wording may change between releases, so go by this
+description, not by its text. The fix is an admin's, in one of three ways:
+move `gateway.ref` to a gateway of capability 1 or more (`sync_gateway_ref`,
+within the upgrade procedure above); remove the app's own `gateway.ref`
+override with `remove_config`, when that override is the older gateway; or
+set an app-scope `gateway.ref` override at a capability-1 commit with
+`set_config`, which lets that one app deploy before the promotion. Then the
+owner cuts the next patch tag (`inno-ship`), which is what the refusal
+means when it asks for the tag again.
 
 ## Fleet-wide reads
 

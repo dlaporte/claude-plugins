@@ -269,11 +269,14 @@ the gateway it runs:
   10 seconds (a refusal for about 2). A person it refuses sees a plain 403
   "No access" page that names no one. When the gateway cannot get an answer
   it shows a 503 "Try again shortly" page instead: that is the platform
-  being unreachable, not a revoke. On an app still in okta mode, Access also
+  being unreachable, not a revoke. So a revoke or a close reaches a person
+  within that window in either mode, and so do a grant and an open on an
+  app in platform mode. On an app still in okta mode, Access also
   admits only through the app's Okta group, so there a person needs both
   stores: someone in only one of the two cannot reach it (unless a failed
   cut-over left the app a sign-in-only policy, which `inno-fleet-admin`
-  covers);
+  covers), and a grant or an open there waits for Access, at the person's
+  next sign-in;
 - a **browser app on an older gateway** (capability 0) admits a person when
   they sign in, through the app's Okta group, so a change reaches them at
   their next sign-in.
@@ -332,8 +335,8 @@ stands, and retry once Okta accepts the change.
   no tool can let it in: the list is the instance manifest's
   `identity.allowedEmailDomains`, which only the platform's operator can
   change, by editing the manifest and redeploying.
-- `okta_user_not_found` (okta mode only): its description says "Answers
-  okta_user_not_found when the address has no Okta account." The tool
+- `okta_user_not_found` (okta mode only): its description says it answers
+  `okta_user_not_found` "when the address has no Okta account". The tool
   refuses rather than silently no-op'ing. Surface that to the user.
 - `no_okta_group` (okta mode only): the app has no Okta group provisioned
   yet, so its registration never got that far. Running `register_app` again
@@ -549,11 +552,16 @@ returns it to the named member list (open: false). Owner or admin only.
 - On a browser app in okta mode, since platform v0.16.5 a close deletes the
   app's Access policy that lets every SSO user in, and an open creates it
   again. Its Okta rule is switched off too, but the close does not rely on
-  it: switching the rule off does not remove the people it added to the open
-  group. A browser app closed before v0.16.5 still had that policy; the
-  platform's hourly pass deletes it with no one's help (audited
-  `access_closed` with reason `stale_open_policy`), so there is nothing for
-  the owner to do.
+  it, since switching the rule off does not remove the people it added to
+  the open group, and does not depend on Okta: the policy goes first, and
+  the rule step is best effort. When that step fails (Okta cannot be
+  reached, or the rule belongs to another instance of the platform), the
+  close still lands, and its `access_closed` audit row records the note
+  `rule_not_deactivated` with `rule_error`; with no rule of that name it
+  records `rule_missing`. A browser app closed before v0.16.5 still had
+  that policy; the platform's hourly pass deletes it with no one's help
+  (audited `access_closed` with reason `stale_open_policy`), so there is
+  nothing for the owner to do.
 - On an app in platform mode, opening and closing set its open flag alone:
   no Okta rule or Access policy is read or moved, so it never answers
   `open_access_unprovisioned`, `idp_object_foreign` or
@@ -597,13 +605,15 @@ returns it to the named member list (open: false). Owner or admin only.
 - `app_busy`: another change to this app, or to an app linked to it, is in
   flight (a source it reads, when opening; a consumer reading it, when
   closing). Retry once after a moment, never in a loop.
-- `idp_object_foreign` (okta mode only) refuses opening or closing when the
-  Okta rule of the app's name does not assign to this app's own open group:
-  another platform instance sharing the Okta org owns it, and the message
-  names the rule.
-  `okta_rule_search_exhausted` means an Okta search by name returned a full
-  page with no exact match, so the platform cannot tell whether the rule
-  exists. Neither is the owner's to fix: a platform admin must look into it.
+- `idp_object_foreign` (okta mode only) refuses opening when the Okta rule
+  of the app's name does not assign to this app's own open group: another
+  platform instance sharing the Okta org owns it, and the message names the
+  rule. `okta_rule_search_exhausted`, also on opening only, means an Okta
+  search by name returned a full page with no exact match, so the platform
+  cannot tell whether the rule exists. Neither is the owner's to fix: a
+  platform admin must look into it. Since platform v0.16.5 a close answers
+  none of `open_access_unprovisioned`, `idp_object_foreign` or
+  `okta_rule_search_exhausted`.
 
 ## Transferring an app: ask an admin
 
