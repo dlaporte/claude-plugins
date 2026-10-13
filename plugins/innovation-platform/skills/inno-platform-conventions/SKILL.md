@@ -455,9 +455,10 @@ if it lacks `ConnectionsError`, copy the current `app/storage.py` or
 `lib/storage.js` from the template repo (the `Template repo:` line of the
 status you read in the Version gate). It keeps the old shapes: the Python
 error is still an `httpx.HTTPStatusError`, and the JS message is still
-`connections_error:<status>`. Only the Python message changed, to that same
-`connections_error:<status>`, which matters only to code that matches on
-`str(e)`.
+`connections_error:<status>`. What did change is the text of the error as a
+whole: in Python `str(e)` is now `connections_error:<status>`, and in JS
+`String(e)` names `ConnectionsError`. That matters only to code that matches
+on that text.
 
 Five other seam responses are **not** the user's problem and must not be
 shown as one:
