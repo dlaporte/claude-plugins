@@ -302,9 +302,9 @@ Shipped v<X.Y.Z> — <the app URL, as reported by app_status / register_app>
 and note that the app is **Okta-gated** — the first visit prompts an Okta
 login (Cloudflare Access), and only the owner plus anyone granted access via
 `inno-manage-app`'s `grant_access` can reach it, unless the app has been
-opened to every SSO user with `set_app_access` (`inno-manage-app`). On the
-platform's newer gateway, anyone else who signs in sees a plain "No access"
-page.
+opened to every SSO user with `set_app_access` (`inno-manage-app`). On a
+browser app in platform mode (every one registered on platform v0.16.5 or
+later), anyone else who signs in sees a plain "No access" page.
 
 For a `container` app, add one plain line with the tag run's accessibility
 report counts: critical, serious, moderate and minor findings, and how many
