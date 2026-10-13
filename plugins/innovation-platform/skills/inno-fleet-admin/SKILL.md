@@ -354,8 +354,9 @@ admin cannot push a tag to. Owners never need it: they redeploy by tagging
 their own repo (`inno-ship`). It starts CI in a repository the platform does
 not own, which cannot be recalled, so confirm first.
 
-- `app_not_deployed`: the app is not active or warned with a release-tagged
-  deployment on record. Start it first.
+- `app_not_deployed`: decided by the app's status alone, and the message
+  says so: `"<app>" is <status>, not active or warned, so it has no live
+  deployment for a rebuild to target. Start it first.`
 - `no_release_tag`: the app predates the release-model deploy flow and needs
   one owner-cut `v*` tag first.
 - `app_not_installed`: the platform GitHub App is no longer installed on the
