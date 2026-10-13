@@ -226,26 +226,39 @@ The rules it applies, as its description states them:
 deployment reported a gateway of capability 1 or more (one that asks the
 platform on every request; **The gateway promote** below). Under the app's
 lease, and only when a fresh read finds its member list equal to its Okta
-group, the platform gives the app's Access app a policy that only makes
-people sign in, deletes the two policies that admitted by the Okta groups,
-and sets the app to platform mode, audited `app_authz_mode_set` with
-`detail.source` `deploy_complete`. A step that fails puts the policies back
-and leaves the app in okta mode (`app_cutover_failed`, whose detail says if
-anything could not be put back), the deploy itself stays finalized, and a
-later deploy tries again. When the two stores disagree it stays in okta
-mode (`app_cutover_held`, reason `stores_disagree`), and the admins get a
-**`member_drift_detected`** notice: until the stores agree, someone in only one of them cannot reach
-the app, because Access admits by the group and the gateway by the list.
-The fix is this tool's loop with `app` set to that app: a dry run shows
-the differences, an apply makes the list match the group, and the app's
-next deploy then cuts it over (the owner's next tag, or `rebuild_app`).
-Settle a difference the other way, with `grant_access` or `revoke_access`,
-when the group is the side that is wrong. While an earlier notice for the
-app is still unread, a later deploy adds none. A cut-over can also be held
-with no notice, for a reason the `app_cutover_held` row names (a store
-could not be read, the group listed no one, the platform has no Okta token,
-or the app's record names no Access app or group); a later deploy tries
-again.
+group, the platform records the app's Access policies, marks the app as
+mid-switch (a marker that from then on holds every deploy of it to a
+gateway of capability 1 or more), gives its Access app a policy that only
+makes people sign in, deletes the two policies that admitted by the Okta
+groups, and sets the app to platform mode, audited `app_authz_mode_set`
+with `detail.source` `deploy_complete`. A step that fails is undone
+against that record and checked afterwards. When the old policies are
+verifiably back and the sign-in policy verifiably gone, the marker is
+cleared and the app is in okta mode as before (`app_cutover_failed` with
+`restored: true`). When the undo cannot be verified complete, the app stays
+in okta mode but keeps the sign-in policy and the marker (`app_cutover_failed`
+with `restored: false` and `marker_left`): Access then admits anyone who
+signs in, the app's gateway still checks its member list, every deploy of
+it needs a gateway of capability 1 or more (`gateway_too_old`, **The
+gateway promote** below), and the admins get a **`cutover_undo_failed`**
+notice. Look at the app's Access policies in the Cloudflare dashboard.
+Either way the deploy itself stays finalized, and the app's next deploy
+tries the cut-over again.
+
+When the two stores disagree the app stays in okta mode
+(`app_cutover_held`, reason `stores_disagree`), and the admins get a
+**`member_drift_detected`** notice: until the stores agree, someone in only
+one of them cannot reach the app, because Access admits by the group and
+the gateway by the list. The fix is this tool's loop with `app` set to
+that app: a dry run shows the differences, an apply makes the list match
+the group, and the app's next deploy then cuts it over (the owner's next
+tag, or `rebuild_app`). Settle a difference the other way, with
+`grant_access` or `revoke_access`, when the group is the side that is
+wrong. While an earlier notice of the same kind for the app is still
+unread, a later deploy adds none. A cut-over can also be held with no
+notice, for a reason the `app_cutover_held` row names (a store could not be
+read, the group listed no one, the platform has no Okta token, or the app's
+record names no Access app or group); a later deploy tries again.
 
 **The cut-over is one way.** No tool moves an app back to okta mode, and
 once an app is in platform mode an Okta import can no longer rebuild its
@@ -570,8 +583,9 @@ names. Run it as part of that procedure, never on its own: the operator's
 admin plugin (`innovation-platform-admin`, its `platform-upgrade` skill) runs
 it there.
 
-The promotion to a gateway from platform v0.16.5 or later is the gateway
-switch for browser apps, and each one picks it up at its next deploy. From
+The promotion to a gateway from platform v0.16.5 or later (contract version
+26) is the gateway switch for browser apps, and each one picks it up at its
+next deploy, with no change to its code. From
 then on its gateway (capability 1) asks the platform on every request
 whether a person may use it, so a revoke or a close reaches them within
 about 10 seconds rather than at their next sign-in, and a browser app in
@@ -581,17 +595,23 @@ gateway, and Access alone admits by the Okta groups. An owner redeploys by
 cutting a tag (`inno-ship`); `rebuild_app` covers an app whose owner will
 not.
 
-The deploy broker refuses `gateway_too_old` when a browser app in platform
-mode would deploy a gateway below capability 1, one that cannot enforce the
-platform's member list. From v0.16.5 every new browser app is in platform
-mode, so on a platform whose `gateway.ref` has not yet been promoted to a
-v0.16.5 gateway, every new browser app's first deploy is refused this way,
-as is any browser app in platform mode whose app-scope `gateway.ref`
-override points at an older gateway. The fix is an admin's: move
-`gateway.ref` to a gateway of capability 1 or more (`sync_gateway_ref`,
-within the upgrade procedure above), or remove the app's own `gateway.ref`
-override with `remove_config`; then the owner cuts the next patch tag
-(`inno-ship`), which is what the refusal's own "push the tag again" means.
+The deploy broker refuses `gateway_too_old` for any deploy whose gateway is
+older than capability 1, so it cannot ask the platform who may use the app,
+when the app is a browser app that needs one. That is two kinds of browser
+app: one whose access the platform checks itself (platform mode), and one
+whose switch to that started and did not finish (it carries the cut-over's
+marker: **A browser app's cut-over** above). From v0.16.5 every new browser
+app is in platform mode, so on a platform whose `gateway.ref` has not yet
+been promoted to a v0.16.5 gateway, every new browser app's first deploy is
+refused this way, as is any such app whose app-scope `gateway.ref` override
+points at an older gateway. The run's log shows the refusal's message, not
+its code, after `deploy-token request failed (HTTP 409)`; the wording may
+change between releases, so go by this description, not by its text. The
+fix is an admin's: move `gateway.ref` to a gateway of capability 1 or more
+(`sync_gateway_ref`, within the upgrade procedure above), or remove the
+app's own `gateway.ref` override with `remove_config`; then the owner cuts
+the next patch tag (`inno-ship`), which is what the refusal means when it
+asks for the tag again.
 
 ## Fleet-wide reads
 
@@ -627,7 +647,7 @@ override with `remove_config`; then the owner cuts the next patch tag
 - `list_connections` without `app`, and `list_user_connections` with no
   filters or for another person without an app you manage, are the fleet views
   of connections: admins only, and never any credential.
-- `list_notifications` shows an admin every app's feed, plus five admin-only
+- `list_notifications` shows an admin every app's feed, plus six admin-only
   stages:
   - `start_requested`: an owner asked for a start. An admin's `start_app` is
     unlimited and does not use the owner's allowance.
@@ -651,6 +671,14 @@ override with `remove_config`; then the owner cuts the next patch tag
     they agree someone in only one of the two cannot reach the app. Run the
     import for that app, then let its next deploy cut it over: **A browser
     app's cut-over** above.
+  - `cutover_undo_failed` (since platform v0.16.5): a browser app's cut-over
+    failed and could not be fully undone, and the entry says at which step
+    and what was left. The app stays in okta mode with the sign-in policy and
+    the cut-over's marker, so Access admits anyone who signs in, its gateway
+    checks its member list, and its deploys need a gateway of capability 1
+    or more. Look at the app's Access policies in the Cloudflare dashboard;
+    its next deploy tries the cut-over again (**A browser app's cut-over**
+    above).
 
   `mark_all_notifications_read` called by an admin marks every unread
   notification read, everyone's, not only the admin's own.

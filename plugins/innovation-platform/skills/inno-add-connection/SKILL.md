@@ -341,8 +341,8 @@ message it returns — it's meant to be actionable (a non-public endpoint, a
 missing field, a bad strategy/config pairing) — fix the specific thing named
 and retry. Since platform v0.16.5 the definition and any credential delete
 are one write, so a call that fails changed nothing (only the audit row it
-writes first may remain), and a retry repeats the whole of it. Four responses that are **not** rejections, so don't retry
-blindly:
+writes first may remain), and a retry repeats the whole of it. Four
+responses that are **not** rejections, so don't retry blindly:
 
 - **`connections_disabled`**, a real precondition rather than a bad argument:
   passing a `client_secret` requires the platform's encryption key to already

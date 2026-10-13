@@ -172,8 +172,8 @@ before the tag.
   push does. Only the tag's `deploy` job reads it, at its finalize step: a
   file with a bad entry is refused whole (the platform keeps the app's
   previous declarations), and one that cannot be read, is not valid JSON
-  or is over 32 KB is never sent. Neither fails a gate or stops the deploy, and a `required` name with no
-  value never does either.
+  or is over 32 KB is never sent. Neither fails a gate or stops the deploy,
+  and a `required` name with no value never does either.
 - **What you check:** validate the file the way `inno-ship` does (same name
   grammar, reserved names, 32-entry cap, and the three allowed fields; see
   there for the exact rules) and, for every `required: true` name, whether

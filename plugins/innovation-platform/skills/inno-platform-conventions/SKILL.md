@@ -339,7 +339,8 @@ visitor admitted only because the app is open carries the open group alone.
 An MCP app's two are decided at each request, so a change reaches the header
 within the gateway's introspection cache. A browser app's are decided at
 each request too once it runs a gateway of capability 1, from platform
-v0.16.5 (after a platform admin promotes `gateway.ref` and the app deploys):
+v0.16.5 and contract version 26 (after a platform admin promotes
+`gateway.ref` and the app deploys; the app's code changes nothing for it):
 the gateway asks the platform whether the caller may use the app and takes
 the groups from its answer, never from the sign-in, so a change reaches
 them within about 10 seconds. On an older gateway they come from the

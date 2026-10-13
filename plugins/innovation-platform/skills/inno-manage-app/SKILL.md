@@ -271,18 +271,22 @@ the gateway it runs:
   it shows a 503 "Try again shortly" page instead: that is the platform
   being unreachable, not a revoke. On an app still in okta mode, Access also
   admits only through the app's Okta group, so there a person needs both
-  stores: someone in only one of the two cannot reach it;
+  stores: someone in only one of the two cannot reach it (unless a failed
+  cut-over left the app a sign-in-only policy, which `inno-fleet-admin`
+  covers);
 - a **browser app on an older gateway** (capability 0) admits a person when
   they sign in, through the app's Okta group, so a change reaches them at
   their next sign-in.
 
 A browser app runs a capability-1 gateway once a platform admin has promoted
 `gateway.ref` to a gateway from platform v0.16.5 or later and the app has
-deployed since. Every browser app in platform mode runs one, because the
-platform refuses to deploy one with an older gateway (`gateway_too_old`,
-`inno-ship`). No tool prints which gateway an older app runs, so when you
-cannot tell, say a change reaches a browser app "within about 10 seconds on
-the platform's newer gateway, and at the person's next sign-in at the
+deployed since (contract version 26 states this, and the app's code
+changes nothing for it). Every browser app in platform mode runs one,
+because the platform refuses to deploy one with an older gateway
+(`gateway_too_old`, `inno-ship`). No tool prints which gateway an older app
+runs, so when you cannot tell, tell the user a change reaches a browser app
+"within about 10 seconds if the app has been redeployed since the
+platform's access update, and at the person's next sign-in at the
 latest".
 
 So grant and revoke with these tools, never by hand in Okta: on an app in
@@ -800,10 +804,10 @@ Stages worth acting on when one appears: `respin_failed`, `auto_restarted`,
 a source that closed, or an ownership transfer): the app's deployed binding to
 the other app's database keeps working until the app is rebuilt, and the entry
 says whether a rebuild was dispatched or the owner has to redeploy (for an
-owner that is `inno-ship`). Admins also see five admin-only stages
+owner that is `inno-ship`). Admins also see six admin-only stages
 (`start_requested`, `drift_detected`, `connection_sink_new_host`,
-`naming_changed` and `member_drift_detected`), which `inno-fleet-admin`
-explains. The tool filters on one app, one `stage`, or
+`naming_changed`, `member_drift_detected` and `cutover_undo_failed`), which
+`inno-fleet-admin` explains. The tool filters on one app, one `stage`, or
 unread only, and returns **at most 50 rows** per call, so narrow the filter
 rather than trying to read a long history in one go.
 `mark_notification_read` answers `notification_not_found` for an id that

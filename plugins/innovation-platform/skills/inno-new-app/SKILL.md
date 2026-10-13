@@ -388,8 +388,9 @@ register_app({ app, repo, description, type, members, accept_guardrails: true, c
     `revoke_access` (`inno-manage-app`). An address the platform could not
     check in Okta is added too, with its own warning.
   - **An app in okta mode**: a browser app (`container`, `function`) on a
-    platform before v0.16.5, or a registration begun before then and
-    finished now. Each address Okta knows is added to the app's member list
+    platform before v0.16.5, an MCP app on one before v0.16.4, or a
+    registration begun before those releases and finished after them. Each
+    address Okta knows is added to the app's member list
     and its Okta group and notified. An address Okta does not know is
     skipped: it gets no access and no notice, and call 2's answer names it
     under `Warnings:` (`member not found in Okta: <address>`). Grant it
@@ -488,7 +489,9 @@ platform v0.16.5 also gets Okta groups). It returns text beginning **`App
   on platform v0.16.5 or later needs the platform's newer gateway for that
   first deploy: until a platform admin has promoted it, the deploy is
   refused `gateway_too_old`, which is not the user's to fix (`inno-ship`'s
-  failure table).
+  failure table). Tell them plainly: "The platform needs an update from its
+  operator before your app can go live; nothing on your side needs to
+  change."
 - A `.github/workflows/deploy.yml` — the thin caller workflow that wires the
   repo to the platform's reusable CI. **Overwrite the repo's copy with the
   snippet the response returned** (an older template may still carry one). The template ships no `deploy.yml`: this file
@@ -548,9 +551,10 @@ platform v0.16.5 also gets Okta groups). It returns text beginning **`App
   platform's allowed email domains (a listed domain's subdomains are
   inside); the message names the address and the domains. Nothing was
   created: fix or drop that address and call again.
-- **`idp_object_foreign`** (only a registration begun before platform
-  v0.16.5, and only for a browser app: from v0.16.5 no new app gets an Okta
-  group, so it never answers this): an access group of the app's name already
+- **`idp_object_foreign`** (only a registration begun in okta mode and
+  finished now: a browser app's begun before platform v0.16.5, or an MCP
+  app's begun before v0.16.4; a registration begun since gets no Okta group,
+  so it never answers this): an access group of the app's name already
   exists and is not this platform's own (another platform sharing the same
   sign-in directory may hold it); the message names the group. Choose
   another app name and check it with `check_name`, knowing that a clean
