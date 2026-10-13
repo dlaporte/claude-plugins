@@ -262,6 +262,14 @@ backed by R2. Non-Python stacks call the same plain-HTTP endpoints directly
 (`POST /_storage/sql/query|execute`, `PUT/GET/DELETE /_storage/files/{key}`,
 `GET /_storage/files` — see `get_app_contract` for the table).
 
+A listing can be partial. `list_files` returns the keys as an ordinary list
+that also carries `truncated`, which is true when the gateway stopped listing
+at its cap (`get_app_contract` R5 gives the cap), so the keys are only part
+of the bucket: track keys in D1 rather than walk a bucket that size. The JS
+client's `listFiles` returns an array with the same flag, not enumerable, so
+deep equality and JSON see only the keys. A direct `GET /_storage/files`
+answers `truncated: true` beside `keys` only when the listing stopped short.
+
 **Two body caps on that gateway, and the SQL one is the easy one to hit.**
 `POST /_storage/sql/query` and `/execute` accept at most **4 MiB** of
 `{sql, params}` JSON per request, and so do the
