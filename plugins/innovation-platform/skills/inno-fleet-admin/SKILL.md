@@ -175,7 +175,7 @@ and never writes it.
    is empty, it reports who the table lacks and who it holds that do not
    belong, and ends each group's block with its parity line. The last line
    is the run's:
-   `parity: clean` only when every group was read and every table matches it,
+   `parity: clean` only when every group it compares was read and every table matches it,
    otherwise the number of differences and of groups not compared.
 2. **Read it with the admin.** A group marked for another instance, gone from
    Okta, failed to read, or read with no members is reported, and nothing of
