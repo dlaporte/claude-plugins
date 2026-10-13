@@ -147,17 +147,18 @@ lists then needs `grant_admin`.
 ## The membership import: `import_okta_memberships({ apply?, app? })`
 
 Since v0.16.1 the platform's own tables decide: each app's member list, which
-MCP apps read at every request, and the admin list. Okta still holds a copy of
-each for an app in **okta mode** (every browser app, and an MCP app
-registered before v0.16.4 that has not been cut over): the app's members
-group, which browser apps' sign-in reads, and the admin group. An app in
-**platform mode** (an MCP app registered from v0.16.4, or one this tool cut
-over) has its member list alone: the run names it and skips it ("platform
-mode, so its member list is the platform's own and is not compared with
-Okta; skipped"), and a skipped app does not count against parity. This tool
-compares the tables with Okta, reports how far apart they are, and with
-`apply: true` closes what it may and cuts MCP apps over to platform mode
-(below). It reads Okta and never writes it.
+MCP apps read at every request, and the admin list. Okta still holds a copy
+of the admin list, the admin group. It also holds a copy of the member list
+of each app in **okta mode** (every browser app, and an MCP app registered
+before v0.16.4 that has not been cut over): the app's members group, which
+browser apps' sign-in reads. An app in **platform mode** (an MCP app
+registered from v0.16.4, or one this tool cut over) has its member list
+alone: the run names it and skips it ("platform mode, so its member list is
+the platform's own and is not compared with Okta; skipped"), and a skipped
+app does not count against parity. This tool compares the tables with Okta,
+reports how far apart they are, and with `apply: true` closes what it may
+and cuts MCP apps over to platform mode (below). It reads Okta and never
+writes it.
 
 **Run it as a loop, never as one apply:**
 
@@ -204,9 +205,11 @@ The rules it applies, as its description states them:
   to platform mode", and the summary names every app flipped. From then on
   its list alone decides and the import skips it. A dry run says of each
   such app it compared that it "would flip to platform mode with apply", and
-  its summary names them. One that stays in okta mode (a write failed, or the fresh read
-  failed or found the two apart) says why on a "stays in okta mode" line,
-  and a later apply tries again. The cut-over writes nothing to Okta: the
+  its summary names them. One that stays in okta mode (a write failed, or
+  the fresh read failed or found the two apart) says why on its own line
+  ("stays in okta mode: ...", or "failed to flip to platform mode" when the
+  mode write itself failed, which counts as a failed write), and a later
+  apply tries again. The cut-over writes nothing to Okta: the
   group stays there and in the app's record until the app is purged. A
   browser app is never cut over here (that is platform v0.16.5).
 - With `apply` it audits `access_granted`, `access_revoked`,
@@ -268,8 +271,10 @@ transfer.
   read-only, and the transfer still lands with a `WARNING:` that Okta has no
   user for it. The recipient is still sent the transfer notice, as the owner
   who now receives the app's lifecycle notices. If the address is mistyped,
-  transfer the app again to the right one; if their account is still being
-  created, they can reach the app once it exists. If Okta cannot be asked,
+  transfer the app again to the right one, then run `revoke_access` on the
+  mistyped address, which that second transfer leaves on the member list as
+  the previous owner; if their account is still being created, they can
+  reach the app once it exists. If Okta cannot be asked,
   the answer says the address was not checked.
 - `no_okta_group` (okta mode only): the app has no Okta group provisioned
   yet, so its registration never finished. `app_busy`: another change to
@@ -536,7 +541,7 @@ mode before v0.16.5, so it cannot arise yet. The fix is an admin's: move
 `gateway.ref` to a gateway of capability 1 or more (`sync_gateway_ref`,
 within the upgrade procedure above), or remove the app's own `gateway.ref`
 override with `remove_config`; then the owner cuts the next patch tag
-(`inno-ship`).
+(`inno-ship`), which is what the refusal's own "push the tag again" means.
 
 ## Fleet-wide reads
 

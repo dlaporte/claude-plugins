@@ -541,10 +541,13 @@ app, and binds the repo). It returns text beginning **`App
 - **`browser_apps_need_okta`** (browser apps, until platform v0.16.5): the
   platform has no Okta token configured, and a browser app (`container`,
   `function`) needs the identity provider until the gateway switch in
-  v0.16.5. Nothing was created. It is a platform operator's fix, not the
-  user's: an MCP app (`mcp-function`, `mcp-container`) registers without
-  it, so offer that type only when the design really is an MCP server;
-  otherwise ask the platform's operator to configure Okta, and stop.
+  v0.16.5. It comes back on the first call, before any proof file, though
+  the repo from §2 already exists; nothing on the platform was created. It
+  is a platform operator's fix, not the user's: an MCP app
+  (`mcp-function`, `mcp-container`) registers without it, so offer that
+  type only when the design really is an MCP server. Otherwise tell the
+  user plainly, for example "this platform can't host website-style apps
+  yet: its operator still has to finish setting up sign-in", and stop.
 - **`idp_object_foreign`** (browser apps only: an MCP app gets no Okta
   group, so it never answers this): an access group of the app's name already
   exists and is not this platform's own (another platform sharing the same
