@@ -146,11 +146,12 @@ produce is a Dockerfile and app code rather than sentences a user reads.
   reach across the fleet: the admin roster (`list_admins`, `grant_admin`,
   `revoke_admin`), comparing the platform's membership tables with Okta and
   closing the gaps (`import_okta_memberships`), reassigning an app's owner,
-  purging an app, ending one person's panel sessions everywhere, claiming the
-  instance's Okta groups, accepting a naming change, platform configuration,
-  and the fleet-wide reads (every app, every user, the audit log, the
-  platform's logs and its backup). An owner manages their own apps with
-  `inno-manage-app`.
+  purging an app, rebuilding an app's released code at its live tag
+  (`rebuild_app`), ending one person's panel sessions everywhere, claiming
+  the instance's Okta groups, accepting a naming change, platform
+  configuration, promoting the gateway (`sync_gateway_ref`), and the
+  fleet-wide reads (every app, every user, the audit log, the platform's logs
+  and its backup). An owner manages their own apps with `inno-manage-app`.
 
 ### How the skills are laid out
 
