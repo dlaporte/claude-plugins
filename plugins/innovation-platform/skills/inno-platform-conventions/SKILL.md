@@ -47,13 +47,14 @@ memory or hard-code a base-image digest.
 ## Refusals every tool shares
 
 Seven refusals any of the platform's MCP tools can answer are named once, in
-the instructions the platform's MCP server sends when a client connects, and
-not in each tool's description, which names only the refusals of its own.
-When a tool answers one of these, this is what it means:
+the instructions the platform's MCP server sends when a client connects,
+rather than in each tool's description. When a tool answers one of these,
+this is what it means. The instructions are the source: if they ever differ
+from this list, they are right.
 
 - `account_inactive`: the caller's account is one Okta no longer lets sign
   in (suspended, deprovisioned or deleted). Every tool, read tools included,
-  checks this first, using an answer held for `auth.status_check_minutes`.
+  checks this, using an answer held for `auth.status_check_minutes`.
   Its message is
   "This account can no longer sign in. Contact a platform admin."
 - `rate_limited`: the caller made more calls in a minute than the
@@ -326,9 +327,10 @@ admits carries at least one of the two (contract R3, since version 25), so a
 visitor admitted only because the app is open carries the open group alone.
 An MCP app's two are decided at each request, so a change reaches the header
 within the gateway's introspection cache; a browser app's come from the
-caller's sign-in, so a change reaches them at their next sign-in. Code that
-treats an empty header as "not a member" keeps working, but no admitted
-caller arrives with an empty one any more.
+caller's sign-in, so a change reaches them at their next sign-in. Treat an
+empty header as "not a member", never as an error: no admitted caller
+arrives with one any more, but a request that never passed the gateway (the
+app run locally, a test) can.
 The narrowing reaches an MCP app (`mcp-function`, `mcp-container`)
 immediately, because the platform narrows its groups before the gateway sees
 them. A browser SSO app (`container`, `function`) gets it only at its next
