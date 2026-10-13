@@ -222,19 +222,23 @@ right away under a different name. An admin's immediate `purge_app` is
 ## `grant_access({ app, email })` / `revoke_access({ app, email })`
 
 Where an app's members are held depends on its **mode**. No status line
-prints it: tell it from the app's type and when it was registered, and from
-what the tool answers.
+prints it, and these tools handle either mode themselves, so you rarely need
+it: read what each answer says. A platform admin can confirm it:
+`export_platform_backup` carries each app's `authz_mode`, and `query_audit`
+shows the import's `app_authz_mode_set` row for an app it cut over.
 
 - **Platform mode**: an MCP app (`mcp-function`, `mcp-container`)
   registered on platform v0.16.4 or later, or an older one that a platform
   admin's `import_okta_memberships` apply cut over (`inno-fleet-admin`). Its
   member list is its only store, and these tools write the platform's
-  **member list** alone, with no Okta call. A new one has no Okta group at
-  all; one the import cut over keeps its old group in Okta, unread and
-  unwritten, until its purge.
+  **member list** alone, with no Okta write (a grant still looks the address
+  up in Okta, read-only, below). A new one has no Okta group at all; one the
+  import cut over keeps its old group in Okta, which the member tools no
+  longer read or write, until its purge.
 - **Okta mode**: every browser app (`container`, `function`), since no
   browser app is in platform mode before platform v0.16.5, and an MCP app
-  registered before v0.16.4 until the import cuts it over. Its members are held in two places, and each tool writes both, in
+  registered before v0.16.4 until the import cuts it over. Its members are
+  held in two places, and each tool writes both, in
   this order: first the platform's member list for the app, then the app's
   members group in Okta (the `(members)` name in the `App groups:` line of
   the status you read in the Version gate, with the app's name in place of
@@ -340,13 +344,14 @@ stands, and retry once Okta accepts the change.
 - `no_okta_group` as for the grant (okta mode only), and `app_busy` when
   another change to this app is in flight: retry once after a moment, never
   in a loop.
-- **On an app in platform mode** the revoke makes no Okta call. It removes
-  the member row, the MCP token grants found under the subject recorded at
-  the person's last sign-in, and their stored credentials, and never answers
-  `okta_user_not_found` or `no_okta_group`. When the member list did not
-  hold the address, the result says so: a mistyped revoke leaves the member
-  it was meant for in place, so check the address before telling anyone the
-  person is off.
+- **On an app in platform mode** the revoke makes no Okta call for that app
+  (a linked app in okta mode down the cascade below still gets its own group
+  change). It removes the member row, the MCP token grants found under the
+  subject recorded at the person's last sign-in, and their stored
+  credentials, and never answers `okta_user_not_found` or `no_okta_group`.
+  When the member list did not hold the address, the result says so: a
+  mistyped revoke leaves the member it was meant for in place, so check the
+  address before telling anyone the person is off.
 - An app open to every SSO user still admits a removed person, MCP and
   browser alike, through its open flag, until the app is closed
   (`set_app_access`).
@@ -507,10 +512,10 @@ returns it to the named member list (open: false). Owner or admin only.
   deliberately first.
 - `open_access_unprovisioned` (okta mode only) means the app's open-access
   group or rule is missing. Nothing re-creates it for a finished app: an app
-  still mid-registration is repaired by running `register_app` again; otherwise a
-  platform admin must `purge_app` it and `register_app` it again. Say plainly
-  that `purge_app` permanently deletes the app's data and holds its name for
-  seven days, and run `export_app_data` first.
+  still mid-registration is repaired by running `register_app` again;
+  otherwise a platform admin must `purge_app` it and `register_app` it again.
+  Say plainly that `purge_app` permanently deletes the app's data and holds
+  its name for seven days, and run `export_app_data` first.
 - Confirm before opening — state plainly that EVERY SSO user will have
   access, not just current members.
 - While an app is open, a person who is not a member reaches it carrying only
