@@ -203,7 +203,7 @@ and ask first, whether or not the row below says so.
 | `scaffold-check` | not a failure — it suppresses `deploy` while `app/.needs-build` exists (see §0) | build the app, remove the marker |
 | `deploy` fails with `app_stopped` | the app was stopped by the lifecycle (or deliberately), and **stopped apps cannot be deployed**. Only the release tag's `deploy` job fails this way; a push to the default branch still runs every gate green on a stopped app, so a clean preflight is not evidence that the app can deploy | `inno-manage-app`: `start_app` first, then cut the next patch tag |
 | `app-deps` fails with `Missing app/package-lock.json` (function-shaped apps) | `app/package.json` exists but no lockfile is committed; CI installs only from a committed lockfile and never resolves ranges fresh. This job runs on pushes too, so the failure blocks before any tag exists | run `npm install` inside `app/`, commit `app/package-lock.json`, push, confirm `app-deps` is green, then tag |
-| `app-deps` fails in `npm ci` (on pushes as well as tags), or the `deploy` bundle step reports `Could not resolve "<package>"` with the titled error `Undeclared import` (function-shaped apps), or reports it with the titled error `devDependency imported at runtime` | the lockfile no longer matches `app/package.json`, or the code imports a package not declared anywhere (nothing is installed at the repo root), or the code imports at runtime a package declared only under `devDependencies` (`app-deps` installs `--omit=dev`, so that tree was never installed) | for an undeclared package: declare it in `app/package.json`, run `npm install` inside `app/`, commit both files, push, confirm `app-deps` is green, then cut the next patch tag. For a devDependency: move it with `cd app && npm install --save-prod <package>@<version>`, where `<version>` is the specifier `devDependencies` already gives it (a `file:`, git or other non-registry specifier stays exactly as written), and run no uninstall: npm takes the entry out of `devDependencies` itself. The error's own `Move it:` command, a plain `npm install <package>` followed by `npm uninstall --save-dev <package>`, deletes the package instead, because the plain install leaves an existing devDependency where it is and the uninstall then removes it: do not run it. Check that `app/package.json` now lists the package under `dependencies` only, run §0's install block (`npm ci --ignore-scripts --omit=dev`, what `app-deps` runs), commit `app/package.json` and `app/package-lock.json`, push, confirm `app-deps` is green, then cut the next patch tag |
+| `app-deps` fails in `npm ci` (on pushes as well as tags), or the `deploy` bundle step reports `Could not resolve "<package>"` with the titled error `Undeclared import` (function-shaped apps), or reports it with the titled error `devDependency imported at runtime` | the lockfile no longer matches `app/package.json`, or the code imports a package not declared anywhere (nothing is installed at the repo root), or the code imports at runtime a package declared only under `devDependencies` (`app-deps` installs `--omit=dev`, so that tree was never installed) | for an undeclared package: declare it in `app/package.json`, run `npm install` inside `app/`, commit both files, push, confirm `app-deps` is green, then cut the next patch tag. For a devDependency: move it with the command under **Moving a devDependency into dependencies**, below this table, and never with the error's own `Move it:` command, which deletes the package; then commit `app/package.json` and `app/package-lock.json`, push, confirm `app-deps` is green, then cut the next patch tag |
 | `deploy` fails with `app_not_deployable` | the app was stopped, or its repo lost the platform GitHub App, while this deploy was starting | if the repo was unlinked, have the user reinstall the GitHub App on it first (re-linking leaves the app stopped); then `start_app` (`inno-manage-app`) and cut the next patch tag |
 | `deploy` fails at finalize with `app_not_deploying` | the app was stopped or purged while the deploy ran; nothing went live | `app_status` to see which; if stopped, `start_app`, then cut the next patch tag |
 | `deploy` fails with `No scanned image recorded` (container apps) | the platform has no record of the image this run's `container` job scanned (that job's best-effort SBOM upload failed, or the record could not be read), so the deploy cannot prove which image passed the gates | re-run the whole tag run (`gh run rerun <run-id>`); if it repeats, stop and offer a support bundle |
@@ -217,6 +217,38 @@ finding that's a false positive gets a **central admin ignore** (see
 `inno-safety-preflight`), never an in-code workaround. Gitleaks is the one
 exception: it has no central ignore family, so a false-positive `secrets`
 finding is suppressed with a `.gitleaksignore` entry in the app's own repo.
+
+#### Moving a devDependency into dependencies
+
+When the deploy reports `devDependency imported at runtime` for a package,
+move that package's entry from `devDependencies` to `dependencies` as it
+stands. From the repo root, with the package's name in place of
+`<package>`:
+
+```bash
+cd app && p='<package>' && spec="$(npm pkg get "devDependencies[$p]" | tr -d '"')" && test "$spec" != "{}" && npm pkg set "dependencies[$p]=$spec" && npm pkg delete "devDependencies[$p]" && npm install --package-lock-only
+```
+
+The specifier moves exactly as written: an exact pin stays exact, a range
+keeps its range, and a `file:` or git specifier is untouched. The bracket
+form reads a name with a dot or a scope correctly, and `test` stops the line
+when the package is not under `devDependencies`. `--package-lock-only`
+rewrites only the lockfile and keeps the version it already holds, so the
+one change in `app/package-lock.json` is that package's `"dev": true`
+dropping (and the same flag on anything only it pulls in). Check that with
+`git diff app/package.json app/package-lock.json`, then run §0's install
+block (`npm ci --ignore-scripts --omit=dev`, what `app-deps` runs).
+
+Two commands look like this move and are not:
+
+- The error's own `Move it:` command, a plain `npm install <package>`
+  followed by `npm uninstall --save-dev <package>`, deletes the package: the
+  plain install leaves an existing devDependency where it is, and the
+  uninstall then removes it.
+- `npm install --save-prod <package>@<specifier>` re-resolves a registry
+  package to the newest release its range allows and saves the specifier
+  with a `^`, so an exact pin `1.2.3` becomes `^1.2.3`, and a version the
+  author never chose ships in the next deploy.
 
 ### When you're stuck — offer to build a support bundle
 
