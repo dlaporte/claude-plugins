@@ -203,7 +203,7 @@ and ask first, whether or not the row below says so.
 | `scaffold-check` | not a failure — it suppresses `deploy` while `app/.needs-build` exists (see §0) | build the app, remove the marker |
 | `deploy` fails with `app_stopped` | the app was stopped by the lifecycle (or deliberately), and **stopped apps cannot be deployed**. Only the release tag's `deploy` job fails this way; a push to the default branch still runs every gate green on a stopped app, so a clean preflight is not evidence that the app can deploy | `inno-manage-app`: `start_app` first, then cut the next patch tag |
 | `app-deps` fails with `Missing app/package-lock.json` (function-shaped apps) | `app/package.json` exists but no lockfile is committed; CI installs only from a committed lockfile and never resolves ranges fresh. This job runs on pushes too, so the failure blocks before any tag exists | run `npm install` inside `app/`, commit `app/package-lock.json`, push, confirm `app-deps` is green, then tag |
-| `app-deps` fails in `npm ci` (on pushes as well as tags), or the `deploy` bundle step reports `Could not resolve "<package>"` with the titled error `Undeclared import` (function-shaped apps), or reports it with the titled error `devDependency imported at runtime` | the lockfile no longer matches `app/package.json`, or the code imports a package not declared anywhere (nothing is installed at the repo root), or the code imports at runtime a package declared only under `devDependencies` (`app-deps` installs `--omit=dev`, so that tree was never installed) | for an undeclared package: declare it in `app/package.json`, run `npm install` inside `app/`, commit both files, push, confirm `app-deps` is green, then cut the next patch tag. For a devDependency: move it with the command under **Moving a devDependency into dependencies**, below this table, and never with the error's own `Move it:` command, which deletes the package; then commit `app/package.json` and `app/package-lock.json`, push, confirm `app-deps` is green, then cut the next patch tag |
+| `app-deps` fails in `npm ci` (on pushes as well as tags), or the `deploy` bundle step reports `Could not resolve "<package>"` with the titled error `Undeclared import` (function-shaped apps), or reports it with the titled error `devDependency imported at runtime` | the lockfile no longer matches `app/package.json`, or the code imports a package not declared anywhere (nothing is installed at the repo root), or the code imports at runtime a package declared only under `devDependencies` (`app-deps` installs `--omit=dev`, so that tree was never installed) | for an undeclared package: declare it in `app/package.json`, run `npm install` inside `app/`, commit both files, push, confirm `app-deps` is green, then cut the next patch tag. For a devDependency: move it with the command under **Moving a devDependency into dependencies**, below this table (since platform v0.16.4 the error's own `Move it:` line carries that same command; an older platform's deletes the package, so never run that one); then commit `app/package.json` and `app/package-lock.json`, push, confirm `app-deps` is green, then cut the next patch tag |
 | `deploy` fails with `app_not_deployable` | the app was stopped, or its repo lost the platform GitHub App, while this deploy was starting | if the repo was unlinked, have the user reinstall the GitHub App on it first (re-linking leaves the app stopped); then `start_app` (`inno-manage-app`) and cut the next patch tag |
 | `deploy` fails at the token request (`deploy-token request failed (HTTP 409)`) with a message that the app "is a browser app whose members the platform holds" and that the deploy's gateway "cannot enforce them" (`gateway_too_old`, since platform v0.16.4) | the app is a browser app in platform mode and the gateway this deploy would ship is below capability 1. No browser app is in platform mode before platform v0.16.5, so this cannot arise until then; it is never a code bug, and nothing was deployed | not the owner's to fix: a platform admin moves `gateway.ref` to a gateway of capability 1 or more (`sync_gateway_ref`) or removes the app's own `gateway.ref` override (`remove_config`), as `inno-fleet-admin` describes; then cut the next patch tag |
 | `deploy` fails at finalize with `app_not_deploying` | the app was stopped or purged while the deploy ran; nothing went live | `app_status` to see which; if stopped, `start_app`, then cut the next patch tag |
@@ -224,7 +224,9 @@ finding is suppressed with a `.gitleaksignore` entry in the app's own repo.
 When the deploy reports `devDependency imported at runtime` for a package,
 move that package's entry from `devDependencies` to `dependencies` as it
 stands. From the repo root, with the package's name in place of
-`<package>`:
+`<package>` (since platform v0.16.4 the error's own `Move it:` line carries
+this same command with the package already named; on an older platform it
+carries a different one, below, so use this one):
 
 ```bash
 (cd app && p='<package>' && spec="$(npm pkg get "devDependencies[$p]" | tr -d '"')" && test "$spec" != "{}" && npm pkg set "dependencies[$p]=$spec" && npm pkg delete "devDependencies[$p]" && npm install --package-lock-only)
@@ -244,10 +246,12 @@ block (`npm ci --ignore-scripts --omit=dev`, what `app-deps` runs).
 
 Two commands look like this move and are not:
 
-- The error's own `Move it:` command, a plain `npm install <package>`
-  followed by `npm uninstall --save-dev <package>`, deletes the package: the
-  plain install leaves an existing devDependency where it is, and the
-  uninstall then removes it.
+- The `Move it:` command in the error from a platform before v0.16.4, a
+  plain `npm install <package>` followed by
+  `npm uninstall --save-dev <package>`, deletes the package: the plain
+  install leaves an existing devDependency where it is, and the uninstall
+  then removes it. Check which of the two commands the log shows before
+  running it.
 - `npm install --save-prod <package>@<specifier>` re-resolves a registry
   package to the newest release its range allows, and can save the
   specifier with a `^`, so an exact pin `1.2.3` becomes `^1.2.3`. Either

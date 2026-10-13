@@ -103,8 +103,9 @@ your code runs (never route `/.well-known/oauth-protected-resource`
 yourself). Identity is still `X-Forwarded-User` / `X-Forwarded-Groups`, but
 what admits a caller is not the app's Okta group, which is what admits one to
 a browser app (an MCP app registered from platform v0.16.4 has no Okta group
-at all, though the header still carries its group names). An MCP app admits a person when the platform's member list for
-the app holds them, or while the app is open to every SSO user, and it reads
+at all, though the header still carries its group names). An MCP app admits
+a person when the platform's member list for the app holds them, or while
+the app is open to every SSO user, and it reads
 both facts at every request (`get_app_contract` §1.2). The groups header is
 derived from the same two facts, so a grant, a revoke or a change to open
 access reaches your app within the gateway's introspection cache (60 seconds
@@ -178,10 +179,11 @@ accident now fails the bundle. A package your production code imports belongs
 under `dependencies`: one listed only under `devDependencies` is never
 installed, and the bundle fails with `devDependency imported at runtime`. Move
 it with `inno-ship`'s **Moving a devDependency into dependencies**, which keeps
-its specifier and its locked version. **Do not run the command on that error's
-`Move it:` line.** It is wrong: it deletes the package from `app/package.json`
-instead of moving it. The platform will correct that message in a later
-release; until then, ignore it. For a container app the deploy does not require
+its specifier and its locked version. Since platform v0.16.4 that error's
+`Move it:` line carries the same move. On an older platform it carries a
+command that deletes the package from `app/package.json` instead of moving
+it: do not run that one (`inno-ship`'s section says how to tell them apart).
+For a container app the deploy does not require
 the lockfile, but commit it anyway: while an admin has the release-age
 cooldown on (`safety.min_release_age_days` above 0), an app shipping
 `app/package.json` with no committed, parseable `app/package-lock.json` fails
