@@ -233,9 +233,10 @@ partial update cannot blank the client credentials by accident. On a live
 connection this still means you can silently retarget or break something the
 app's users are connecting through right now. A change to the strategy, or to
 any endpoint a credential is sent to, deletes every user's stored credential
-for the connection (see the warning under "Make the call"); any other change
-leaves those credentials in place while the definition around them moves, and
-they were minted against the old backend.
+for the connection in the same write as the change (see the warning under
+"Make the call"); any other change leaves those credentials in place while
+the definition around them moves, and they were minted against the old
+backend.
 
 So before you call it, **write into your visible reply** what you are about to
 write and what it touches — the same rule `inno-new-app` §1b and
@@ -268,15 +269,18 @@ Then stop and get an explicit yes. Don't fold it into the tool-approval prompt
 > **Re-running this on an EXISTING connection is destructive.** If the
 > strategy or any endpoint a credential is sent to changes —
 > `authorize_endpoint`, `token_endpoint`, `revocation_endpoint`, `probe_url` —
-> the platform deletes every user's stored credential for that connection and
-> notifies them to reconnect. That is deliberate: stored credentials must
+> the platform deletes every user's stored credential for that connection, in
+> the same write as the change, and notifies them to reconnect. That is
+> deliberate: stored credentials must
 > never start flowing to an endpoint the user never consented to. But it means
 > **iterating on a live connection's config costs your users a reconnect each
 > time.** Get the endpoints right before the first call (that is what the
 > approval step above is for); if you must correct one later, tell the user
 > that everyone connected will have to reconnect, and expect the tool's
 > response to report how many credentials it invalidated. Re-supplying an
-> unchanged config is free — the cascade compares values, not calls.
+> unchanged config is free, because the cascade compares values, not calls,
+> with one exception below: a definition changed by another call while yours
+> ran.
 >
 > Users are shown the destination **hostname** before their credential goes
 > anywhere, so an endpoint that doesn't visibly match the backend they expect
@@ -335,8 +339,10 @@ private address is not caught, so read the endpoint you were handed rather than
 treating the gate as proof it is external. If it rejects the call, read the
 message it returns — it's meant to be actionable (a non-public endpoint, a
 missing field, a bad strategy/config pairing) — fix the specific thing named
-and retry. Three responses that are **not** rejections, so don't
-retry blindly:
+and retry. Since platform v0.16.5 the definition and any credential delete
+are one write, so a call that fails changed nothing (only the audit row it
+writes first may remain), and a retry repeats the whole of it. Four responses that are **not** rejections, so don't retry
+blindly:
 
 - **`connections_disabled`**, a real precondition rather than a bad argument:
   passing a `client_secret` requires the platform's encryption key to already
@@ -366,6 +372,15 @@ retry blindly:
   `amazonaws.com`) the platform compares the full hostname, so
   `dev1.service-now.com` and `dev2.service-now.com` count as different sites
   and raise the note.
+- **A `Note:` that stored credentials were invalidated although no endpoint
+  changed**: "the connection was changed by another call while this one ran,
+  or credentials were left under its name". The call **succeeded**. Either
+  someone else changed this connection between your read and your write, so
+  credentials stored under their version were removed rather than carried
+  back to yours, or this is a new connection and credentials left under its
+  name by an earlier one were removed. Those users were notified to
+  reconnect. Run `list_connections` and check the stored definition is the
+  one you meant before anyone connects.
 
 Tell the user in plain terms what just got stored (the backend's address and
 how the app will reach it, kept encrypted on the platform) — **never echo a
@@ -637,13 +652,21 @@ meaning. Read the page title the user reports before changing anything:
   Start again from the chat to see the current destination.
 - **"Connection not stored"**. The person's stored credential changed while
   they were connecting (their access was revoked, or another connect attempt
-  finished first), so nothing from this attempt was kept. Check with
+  finished first), or, on their first connect, the connection's strategy or
+  configuration was changed after the page checked it (since platform
+  v0.16.5 a first credential is stored only under the definition it was
+  fetched under). Nothing from this attempt was kept. Check with
   `list_user_connections` whether a credential is on file and whether the
-  person still has access, then start again from the chat if it is not.
+  person still has access, and with `list_connections` that the definition
+  is the one expected, then start again from the chat if it is not.
 
 The last three are audited `connection_connect_refused` with the reason
 (`browser_mismatch`, `endpoint_changed` or `sink_changed_after_exchange`,
 `revoked_mid_exchange`), which a platform admin can read with `query_audit`.
+A "Connection not stored" caused by a definition change is audited
+`revoked_mid_exchange` too, so read it beside the
+`connection_credentials_invalidated` and `connection_set` rows of the same
+moment.
 
 ## References
 
