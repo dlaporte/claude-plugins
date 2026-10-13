@@ -1,12 +1,20 @@
 #!/usr/bin/env bash
 # Fails if the innovation-platform plugin names an MCP tool the platform does
-# not serve: a misspelling, or a tool the platform has retired. The platform's
-# tool names are pinned in scripts/platform-tools.txt (refreshed at each resync
-# by scripts/platform-tools.sh), so this needs no platform checkout.
+# not serve (a misspelling, or a tool the platform has retired), or if it
+# never names a tool the platform does serve (a new tool no skill covers yet,
+# the reverse direction of the 2026-10-12 review's D06). The platform's tool
+# names are pinned in scripts/platform-tools.txt (refreshed at each resync by
+# scripts/platform-tools.sh), so this needs no platform checkout.
 #
-# Usage: bash scripts/check-tool-names.sh [--list] [path]   (default plugins/innovation-platform)
-#   --list  also prints every tool name the plugin uses, the allowlisted names
-#           it met, and the pinned tools it never names.
+# Usage: bash scripts/check-tool-names.sh [--list] [--partial] [path]   (default plugins/innovation-platform)
+#   --list     also prints every tool name the plugin uses, the allowlisted
+#              names it met, and the pinned tools it never names.
+#   --partial  skips the reverse check, for a tree that is not the whole
+#              plugin (the fixture scripts/test-check-tool-names.sh runs).
+#
+# A pinned tool counts as named when any checked span below names it: a
+# snake_case name in backticks, a name on a front-matter description: line,
+# or a call in a fenced code block.
 #
 # What counts as a tool name. In the plugin's Markdown, a snake_case name in
 # backticks is checked when either:
@@ -32,10 +40,14 @@
 set -euo pipefail
 
 list=0
-if [ "${1:-}" = "--list" ]; then
-  list=1
-  shift
-fi
+partial=0
+while [ $# -gt 0 ]; do
+  case "$1" in
+    --list) list=1; shift ;;
+    --partial) partial=1; shift ;;
+    *) break ;;
+  esac
+done
 target="${1:-plugins/innovation-platform}"
 here="$(cd "$(dirname "$0")" && pwd)"
 pinned_file="$here/platform-tools.txt"
@@ -78,7 +90,7 @@ fenced="$(find "$target" -type f -name '*.md' -exec awk '
 
 # The awk program reads the pinned list, then the allowlist, then the hits,
 # with a marker line between them.
-awk -v list="$list" -v target="$target" '
+awk -v list="$list" -v partial="$partial" -v target="$target" '
   function strip(s) { sub(/#.*/, "", s); gsub(/[[:space:]]+/, "", s); return s }
   section == 0 {
     if ($0 == "\034") { section = 1; next }
@@ -154,12 +166,27 @@ awk -v list="$list" -v target="$target" '
       fflush(); for (n in pinned) if (!(n in used)) print "  " n | "LC_ALL=C sort"; close("LC_ALL=C sort")
     }
     if (bad) exit 2
+    # The reverse check: every pinned tool is named somewhere in the plugin.
+    # One line per tool, sorted, with no backticks, so a line here never
+    # reads as a planted name to scripts/test-check-tool-names.sh.
+    unnamed = 0
+    if (!partial) {
+      fflush()
+      for (n in pinned) if (!(n in used)) {
+        printf "%s: pinned tool %s is never named\n", target, n | "LC_ALL=C sort"
+        unnamed++
+      }
+      close("LC_ALL=C sort")
+    }
     if (hits) {
       fflush()
       printf "check-tool-names: FAIL, %d name(s) above are not in scripts/platform-tools.txt. Fix the name, or if it is not a tool (a refusal code, a field), add it to scripts/tool-name-allowlist.txt.\n", hits > "/dev/stderr"
-      exit 1
     }
-    printf "check-tool-names: OK (%s, %d pinned tools)\n", target, npinned
+    if (unnamed) {
+      printf "check-tool-names: FAIL, %d pinned tool(s) above are never named in %s. Name each where a skill uses it, or, if the platform no longer serves it, refresh scripts/platform-tools.txt with scripts/platform-tools.sh.\n", unnamed, target > "/dev/stderr"
+    }
+    if (hits || unnamed) exit 1
+    printf "check-tool-names: OK (%s, %d pinned tools, all named)\n", target, npinned
   }
 ' <(
   cat "$pinned_file"; printf '\034\n'

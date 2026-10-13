@@ -6,8 +6,9 @@ name: CI
 # innovation-platform skill's Version gate block must stay byte-identical to
 # the rest, the plugin must name no one platform instance
 # (scripts/instance-neutral.sh), and every MCP tool it names must be one the
-# platform serves (scripts/check-tool-names.sh, against the pinned
-# scripts/platform-tools.txt, which needs no platform checkout).
+# platform serves, and it must name every one the platform serves
+# (scripts/check-tool-names.sh, against the pinned scripts/platform-tools.txt,
+# which needs no platform checkout).
 #
 # Why the bump is a HARD gate rather than a convention: delivery is keyed on
 # the declared version. Claude Code caches an installed plugin at
@@ -247,7 +248,7 @@ jobs:
       # Against scripts/platform-tools.txt, the pinned copy of the platform's
       # tool names. Refresh that file at each resync with
       # scripts/platform-tools.sh; the script's header says what it checks.
-      - name: The innovation-platform plugin names only tools the platform serves
+      - name: The innovation-platform plugin names only tools the platform serves, and all of them
         run: |
           set -euo pipefail
           bash scripts/check-tool-names.sh plugins/innovation-platform
