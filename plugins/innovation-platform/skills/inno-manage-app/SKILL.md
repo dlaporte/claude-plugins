@@ -1,6 +1,6 @@
 ---
 name: inno-manage-app
-description: Use to share, check on, start, stop, export, open up, or configure a deployed Innovation Platform app via the inno-platform MCP tools (grant_access, revoke_access, set_app_access, app_status, start_app, stop_app, restart_app, request_start, transfer_app (admin-only), revoke_sessions (admin-only), claim_instance_objects and accept_naming_change (admin-only), export_app_data, get_app_metrics, get_app_usage, get_app_logs, set_config, set_app_variable/list_app_variables/remove_app_variable, create_support_bundle). Use when the user wants to give someone access, open an app to everyone with SSO, check deploy status, bring back a stopped app, restart a wedged app, read its logs, set an environment variable or API key for their app, reassign ownership (admins), sign someone out of the platform panel everywhere (admins), download their app's data, or shut one down.
+description: Use to share, check on, start, stop, export, open up, or configure a deployed Innovation Platform app via the inno-platform MCP tools (grant_access, revoke_access, set_app_access, app_status, start_app, stop_app, restart_app, request_start, export_app_data, get_app_metrics, get_app_usage, get_app_logs, get_config, set_config for one's own notification settings, set_app_variable/list_app_variables/remove_app_variable, create_support_bundle). Use when the user wants to give someone access, open an app to everyone with SSO, check deploy status, bring back a stopped app, restart a wedged app, read its logs, set an environment variable or API key for their app, download their app's data, or shut one down. A platform admin's fleet work (the admin list, transfers, purges, sessions, naming, settings, audit) is inno-fleet-admin.
 ---
 
 # inno-manage-app
@@ -32,11 +32,23 @@ Carry on.
 
 All operations here call tools on the `inno-platform` MCP server (see the
 plugin's `.mcp.json`). Every tool authorizes the caller server-side against
-the signed-in Okta identity from the MCP OAuth session — **you can only
-manage apps you own, unless you are a member of the platform admins Okta group
-(the `Admin group:` line of the status you read in the Version gate)**. A `forbidden` error back from any of these tools means exactly
-that; don't retry it and don't try to work around it locally (there is no
-local escalation — authorization lives in the platform, not the client).
+the signed-in Okta identity from the MCP OAuth session: **you can only manage
+apps you own, unless you are a platform admin.** Since platform v0.16.1 the
+platform's own admin list decides who that is (`list_admins` shows it). The
+Okta group on the `Admin group:` line of the status you read in the Version
+gate is a copy, read only while that list is empty, so adding or removing
+someone there by hand changes nothing here. A `forbidden` error back from any
+of these tools means exactly that; don't retry it and don't try to work
+around it locally: there is no local escalation, because authorization lives
+in the platform, not the client. `forbidden` is one of the refusals every
+tool can answer, named once in the platform's MCP server note;
+`inno-platform-conventions`' **Refusals every tool shares** section says what
+each means.
+
+A platform admin's work across the fleet (the admin list and the Okta import,
+ownership transfers, purges, rebuilds, ending someone's panel sessions,
+naming, settings, the audit log and the platform's logs) is
+`inno-fleet-admin`.
 
 **Call budget** (this section is the plugin's one home for the rule; the other
 skills state one sentence and point here). Every platform tool call counts
@@ -60,8 +72,13 @@ If the panel, a download link, or a Connections page answers
 `account_inactive` (HTTP 401, "This account can no longer sign in"), that
 person's Okta account is suspended or deprovisioned. The platform has ended
 their session and nothing in this skill can undo it: the account itself has to
-be restored by a platform admin or the identity team. The same account also
-can no longer refresh an MCP client authorization for any app.
+be restored by a platform admin or the identity team. Its MCP access ends
+too, and not only at the next token refresh: every request an MCP app
+receives checks the account, using an answer at most
+`auth.status_check_minutes` old, so a connected client is refused within that
+window plus the gateway's 60-second introspection cache. Its calls to the
+platform's own tools are refused `account_inactive` the same way, and an
+admin whose account is suspended loses admin standing.
 
 **Speak the user's language.** Plain terms with the user, no provider or
 product names unless they have shown technical fluency. The full rule is the
@@ -90,15 +107,19 @@ States: `created` → `deploying` → `active` ⇄ `warned` → `stopped` → *(
   connected, is the tell. Say it plainly: to keep an MCP app active, make a
   real request to it; a client that stays connected and only lists tools does
   not count.
-- After 14 idle days (default) an app is **warned** — still fully serving,
-  just a notice. 14 days later it is **stopped**: its domain is detached, so
-  it can't serve and **can't be deployed**. A push to the default branch still
-  runs the gates green on a stopped app; it is the **release tag's** `deploy`
-  job that fails with `app_stopped`, because the deploy broker refuses to mint
-  a token for a stopped app. Start it first, then cut the next patch tag (a
-  tag is immutable, so never force-move one).
-- A stopped app's data is kept for 30 days (default), then **purged**:
-  infrastructure, database, and files permanently deleted, every MCP client
+- After `lifecycle.idle_warn_days` idle days an app is **warned**: still fully
+  serving, just a notice. `lifecycle.warn_stop_days` days later it is
+  **stopped**: its domain is detached, so it can't serve and **can't be
+  deployed**. Each platform sets these windows (and `lifecycle.stop_purge_days`
+  below) for itself, so never quote a number from memory: `get_config
+  app=<name>` shows the app's own values, and `app_status` gives its dates.
+  A push to the default branch still runs the gates green on a stopped app;
+  it is the **release tag's** `deploy` job that fails with `app_stopped`,
+  because the deploy broker refuses to mint a token for a stopped app. Start
+  it first, then cut the next patch tag (a tag is immutable, so never
+  force-move one).
+- A stopped app's data is kept for `lifecycle.stop_purge_days` days, then
+  **purged**: infrastructure, database, and files permanently deleted, every MCP client
   authorization for the app revoked, and its usage and cost history deleted.
   The GitHub repo, audit history, notification history, and finished data
   exports survive purge. The app's name is held for seven days afterward
@@ -149,6 +170,15 @@ user-scope override. **Do NOT propose or offer to stop specific apps to make
 room on a start** — that trade-off (taking down something running) is the
 user's to initiate, unprompted.
 
+On a platform with an empty host prefix, where apps sit at `{name}.{domain}`,
+`start_app` is refused with **`host_in_use`** when the app's hostname now has
+a DNS record that is not this app's own, and with **`host_check_failed`**
+when the platform cannot read the zone's DNS to check (an operator must grant
+the platform's Cloudflare token Zone DNS read). Neither is the owner's to fix
+from here: report it to a platform admin. In the rare race where another
+change moved the app out of stopped and the result cannot be read back, it
+answers **`app_not_stopped`**: call `app_status` to see where the app is now.
+
 `start_app` also refuses with **`app_unlinked`**: the platform's GitHub App has
 been uninstalled from the app's repo, or the repo has been deselected from the
 installation's repository list, so the repository link is severed. No
@@ -161,9 +191,10 @@ back.
 ## `stop_app({ app })` — destructive-ish, confirm first
 
 Detaches the app's domain now: it stops serving, can't be deployed, and its
-30-day purge countdown begins. Everything is intact and `start_app` fully
-reverses it until the window closes — but **always confirm with the user by
-name before calling**, and tell them the purge date from the response.
+purge countdown (`lifecycle.stop_purge_days`) begins. Everything is intact
+and `start_app` fully reverses it until the window closes, but **always
+confirm with the user by name before calling**, and tell them the purge date
+from the response.
 **A stop does not win a race with a deploy: it is refused.** While a deploy is
 in flight `stop_app` answers `app_deploying`; wait for the deploy to finish or
 fail, then stop. While another change to the app is in flight it answers
@@ -178,65 +209,111 @@ and `register_app` refuses it with `name_quarantined` until then. No admin can
 lift the hold, so do not suggest asking one. After the hold a fresh
 registration (`register_app`, see `inno-new-app`) can take the name again.
 Purge also releases the repo binding, so the same repo can be registered again
-right away under a different name. An admin's `purge_app` loses the same race
-a stop does; its description says: "Refused with app_deploying while a deploy
-is in flight: wait for it to finish or fail, then purge. Answers app_busy when
-another change to this app is in flight; retry in a moment." Retry once, never
-in a loop.
+right away under a different name. An admin's immediate `purge_app` is
+`inno-fleet-admin`'s.
 
 ## `grant_access({ app, email })` / `revoke_access({ app, email })`
 
-Adds or removes a user from the app's members Okta group (the `(members)` name in
-the `App groups:` line of the status you read in the Version gate, with the
-app's name in place of `{app}`). This group is what the gateway's Cloudflare
-Access policy checks, so granting access here is what actually lets someone
-past the Okta login on the app's address (the `App host pattern:` line, with
-the app's name in place of `{app}`). Quote the real group and hostname from
-`app_status` or `register_app`'s answer when you can, rather than building
-them.
+An app's members are held in two places, and each tool writes both, in this
+order: first the platform's **member list** for the app, then the app's
+members group in Okta (the `(members)` name in the `App groups:` line of the
+status you read in the Version gate, with the app's name in place of
+`{app}`). What admits a person depends on the app's type:
 
-- `email` must look like a real, unquoted email address — the platform
+- an **MCP app** (`mcp-function`, `mcp-container`) admits a person when the
+  platform's member list holds them, or while the app is open to every SSO
+  user, and reads both facts at every request;
+- a **browser app** (`container`, `function`) admits a person when they sign
+  in on its address (the `App host pattern:` line, with the app's name in
+  place of `{app}`), through the app's Okta group.
+
+So grant and revoke with these tools, never by hand in Okta: someone removed
+from the group by hand stays on the member list and keeps their MCP access.
+Quote the real group and hostname from `app_status` or `register_app`'s
+answer when you can, rather than building them. If Okta refuses either write,
+the call fails, and its message says whether the member list was put back as
+it was: relay that message as it stands, and retry once Okta accepts the
+change.
+
+- `email` must look like a real, unquoted email address: the platform
   rejects anything containing quotes, backslashes, or whitespace.
-- If the target email has no matching Okta user, the tool refuses rather
-  than silently no-op'ing. Its description says: "Answers
-  okta_user_not_found when the address has no Okta account." Surface that to
-  the user.
-- Note: membership grants access to the **app**, not to the platform panel —
+- Note: membership grants access to the **app**, not to the platform panel:
   the panel shows people only the apps they own.
+- On an **MCP app**, a person the app does not admit is stopped when they
+  authorize their MCP client, with "You don't have access to this app. Ask
+  its owner to share it with you." The platform remembers each person's
+  approval of an MCP client per app instance, so being asked to approve
+  again is not a fault: platform v0.14.2 reset every remembered approval once
+  (one re-approval per user per app), v0.14.14 keyed the memory to the
+  client's redirect URI as well and reset it the same way once more, and an
+  app that was purged and later registered again under the same name is a
+  new instance that asks again. A client that never reaches the approval page
+  at all may be sending `response_type=code` with no `code_challenge`: the
+  platform's OAuth server requires PKCE with `S256` on every
+  authorization-code request, confidential clients included, and refuses a
+  missing challenge, an unsupported method or `plain` with a 400. Two layers
+  enforce that: the pinned provider library
+  (`@cloudflare/workers-oauth-provider`, exact `0.10.3`) rejects an
+  unsupported method and `plain`, and the platform adds a floor of its own at
+  `/authorize` refusing any code flow with no `code_challenge`, which is the
+  part that covers confidential clients because the library checks only
+  public ones. Neither is a setting anyone can relax: it is the client's bug
+  to fix.
+
+**`grant_access` refusals:**
+
+- `email_domain_not_allowed`: the platform lists allowed email domains and
+  the address is outside them (a listed domain's subdomains are inside). The
+  message names the address and the list. Check the address; if it is right,
+  only a platform admin can change which domains are allowed.
+- `okta_user_not_found`: its description says "Answers okta_user_not_found
+  when the address has no Okta account." The tool refuses rather than
+  silently no-op'ing. Surface that to the user.
+- `no_okta_group`: the app has no Okta group provisioned yet, so its
+  registration never got that far. Running `register_app` again finishes an
+  app still mid-registration (`inno-new-app`).
+- `app_busy`: another change to this app is in flight, or to an app it reads
+  data from through a link. Retry once after a moment, never in a loop.
 - **`link_containment`** refuses the grant when this app reads another app's
   data through a link and the person you are granting cannot see that source
   app: letting them in here would expose the source's data. The message names
   every blocked source. Grant them access to the named source app first, or
   drop the link with `unlink_app_data`, then grant again.
-- For an **mcp-function** or **mcp-container** app the same group governs
-  access, checked when the user authorizes their MCP client and re-checked on
-  every token refresh. A person who is not a member is stopped at
-  authorization with "You don't have access to this app. Ask its owner to
-  share it with you." The platform remembers each person's approval of an MCP
-  client per app instance, so being asked to approve again is not a fault:
-  platform v0.14.2 reset every remembered approval once (one re-approval per
-  user per app), v0.14.14 keyed the memory to the client's redirect URI as
-  well and reset it the same way once more, and an app that was purged and
-  later registered again under the same name is a new instance that asks
-  again. A client that never reaches the approval page at all may be sending
-  `response_type=code` with no `code_challenge`: the platform's OAuth server
-  requires PKCE with `S256` on every authorization-code request, confidential
-  clients included, and refuses a missing challenge, an unsupported method or
-  `plain` with a 400. Two layers enforce that: the pinned provider library
-  (`@cloudflare/workers-oauth-provider`, exact `0.10.3`) rejects an
-  unsupported method and `plain`, and the platform adds a floor of its own at
-  `/authorize` refusing any code flow with no `code_challenge`, which is the
-  part that covers confidential clients because the library checks only public
-  ones. Neither is a setting anyone can relax: it is the client's bug to fix.
-  `revoke_access` additionally deletes the user's OAuth grants for the app
-  outright, so access ends at once: the only lag is the gateway's
-  introspection cache, 60 seconds at most. The exception is the one case
-  where the tool says so in its own response text: if the grant store could
-  not be reached, the grants are still live and access instead ends within
-  60 minutes (the MCP access-token lifetime), via the membership re-check
-  every token refresh runs. Read the
-  result text, not just the absence of an error, before telling an admin the
-  person is off.
+- **`membership_stores_disagree`**: a source app counts a person only when
+  both its member list and its Okta group hold them, so the grant is refused
+  while a source holds them in only one of the two. The message names the
+  source, which store holds them, and how to settle each person:
+  `grant_access` on the source keeps them, and `revoke_access` on the source
+  removes them. A platform admin's import dry run scoped to that source shows
+  the difference (`inno-fleet-admin`). On a platform with no Okta token each
+  app's member list is its only store, and this refusal does not arise.
+
+**`revoke_access` refusals and outcomes:**
+
+- `owner_not_revocable`: the address is the app's current owner, whose access
+  comes from owning it. A platform admin's `transfer_app` comes first, or
+  `stop_app`. A former owner, after a transfer, is revoked like any member.
+- A person Okta no longer has a user for (deleted at offboarding) is still
+  revoked: their member-list row, their MCP token grants and their stored
+  credentials go, here and down the link cascade, and only the Okta group
+  change is skipped, which the result says. `okta_user_not_found` comes back
+  only when Okta has no user for the address, no sign-in of theirs is
+  recorded, and this app's member list does not hold them.
+- `no_okta_group` as for the grant, and `app_busy` when another change to
+  this app is in flight: retry once after a moment, never in a loop.
+- An app open to every SSO user still admits a removed person, MCP and
+  browser alike, through its open flag, until the app is closed
+  (`set_app_access`).
+- **On an MCP app the removal bites within a minute.** The person comes off
+  the member list first, so their next request is refused as soon as the
+  gateway's introspection cache lets go of their token, 60 seconds at most.
+  Their OAuth grants for the app are deleted too, so the client has nothing
+  left to refresh with. If the grant store could not be reached, the result
+  says "Could not verify token revocation", and then, in its own words:
+  "Their tokens still stop working at the gateway's next introspection,
+  because MCP access is read from the platform's member list and the member
+  row is gone." Access still ends in the same window. Read the result text,
+  not just the absence of an error, before telling anyone the person is off.
 - **On a browser app (`container`, `function`) the removal is not immediate.**
   That user sits behind Cloudflare Access, whose session the platform cannot
   end: their existing Access session stays valid for the rest of its 24-hour
@@ -248,19 +325,29 @@ them.
 - `revoke_access` also deletes that user's stored Connection credentials for
   the app, on every app type, so requests made as them stop reaching the
   connected backend. The platform audits this as `connection_cascade_revoked`.
-- The revoke **cascades to consumer apps**, transitively: every app that reads
-  this app's data through a link, and every app that reads one of those in
-  turn, removes the same user too and deletes that user's stored Connection
-  credentials there. The response names the apps it removed them from. A
-  consumer whose removal fails does not undo the source revoke, but it is not
-  silent either: the response then carries a `WARNING:` naming the apps that
-  could not be updated and saying the user may still reach the data through
-  them. Relay that warning plainly, do not report the revoke as complete, and
-  offer to run `revoke_access` again (it is safe to repeat) or to have the
-  membership removed by hand. Beyond the immediate report, the consumer apps'
-  `access_revoked` audit rows carry a `cascade_from` field naming the source
-  app (a failed one is audited `access_revoke_failed`), and `list_app_links`
-  enumerates the consumers at any time.
+- The revoke **cascades to consumer apps**, transitively: every app that
+  reads this app's data through a link, and every app that reads one of
+  those in turn, removes the same user too and deletes that user's stored
+  Connection credentials there. The one exception is a consumer the person
+  **owns**: an owner keeps their own app, so it is left as it is, and the
+  result names it and says they may still reach the data there (a platform
+  admin's `transfer_app` first, or unlink with `unlink_app_data`). The
+  response names the apps it removed them from. A consumer whose removal
+  fails does not undo the source revoke, but it is not silent either: the
+  response then carries a `WARNING:` naming the apps that could not be
+  updated and saying the user may still reach the data through them. Relay
+  that warning plainly, do not report the revoke as complete, and offer to
+  run `revoke_access` again, which is safe to repeat; when the warning names
+  `revoke_access` on a particular app, run that. The warning may also offer
+  removing the membership by hand: removing someone from an Okta group alone
+  leaves them on the member list that MCP apps read, so `revoke_access` is
+  the repair either way. A warning that the two stores
+  "may now disagree" also says not to repair it with an
+  `import_okta_memberships` apply, which would re-admit the person to MCP
+  apps: retrying the revoke finishes it. Beyond the immediate report, the
+  consumer apps' `access_revoked` audit rows carry a `cascade_from` field
+  naming the source app (a failed one is audited `access_revoke_failed`), and
+  `list_app_links` enumerates the consumers at any time.
 
 ## `app_status({ app })` / `get_app_metrics({ app, days?, hours? })`
 
@@ -311,10 +398,8 @@ the source: `container` on a line the container wrote to stdout, and
 Cloudflare's own origin label on a Worker line. That is what
 separates the container's own output from the gateway's. It does **not**
 separate a function app's gateway from the app's own Worker, so do not offer
-that distinction to a user. The fleet-wide `get_platform_logs` renders the app
-name first and the source second (`[ts] LEVEL <app source> | message`); ask it
-for an app that does not exist and it answers `app_not_found`, as does the
-panel's fleet log filter.
+that distinction to a user. Admins also have a fleet-wide twin,
+`get_platform_logs` (`inno-fleet-admin`).
 
 **Adoption caveat:** log lines only flow from deploys made after
 observability shipped (2026-07-23) — an app that hasn't respun or released
@@ -342,19 +427,9 @@ drop. If the app was never deployed (or was purged), it returns
 `no_deployments`. The same lever is the ↻ icon next to the container name
 on the app's panel page.
 
-**`rebuild_app({ app })` is its admin-only neighbor.** It dispatches a rebuild
-of the app's already-released code at its live release tag: the full CI gates
-run and the app deploys only if they pass, with no new commit and no code
-change. It exists for the cases an owner cannot self-serve, such as picking up
-a newly promoted platform gateway on a third-party-owned repo an admin cannot
-push a tag to. The app must be active or warned with a release-tagged
-deployment on record: any other status returns `app_not_deployed` (start it
-first), and an app predating the release-model deploy flow returns
-`no_release_tag` and needs one owner-cut `v*` tag first. It also answers
-`app_not_installed` when the platform GitHub App is no longer installed on the
-repo (only the repo owner can reinstall it on GitHub) and `repo_not_linked`
-when registration never finished. Owners never need this
-tool: they redeploy by tagging their own repo, which is `inno-ship`.
+Its admin-only neighbor, `rebuild_app`, rebuilds an app's released code at
+its live tag (`inno-fleet-admin`). Owners never need it: they redeploy by
+tagging their own repo, which is `inno-ship`.
 
 ## `set_app_access({ app, open })` — open to everyone, or members-only
 
@@ -365,12 +440,11 @@ returns it to the named member list (open: false). Owner or admin only.
   exactly the configured access. Say so when confirming.
 - The app's owner is notified of the change whenever the caller is not the
   owner.
-- Takes effect at each user's **next sign-in**; already-signed-in users keep
-  their session up to 24h. For an **mcp-function** or **mcp-container** app
-  "sign-in" is the client's OAuth authorization — a change applies on the
-  user's next authorize or token
-  refresh (≤1h). Set expectations when the user asks "why can they still get
-  in?"
+- In the tool's words it takes effect "at each user's next sign-in for
+  browser apps (sessions last up to 24 hours) and within 60 seconds for MCP
+  apps": an MCP app reads its open flag at every request, through the
+  gateway's introspection cache. Set expectations when the user asks "why can
+  they still get in?"
 - `open_access_disallowed` means an admin has restricted open access for
   this app or owner (`access.allow_open`) — a platform admin can change it
   with `set_config`; do not try to work around it by mass grant_access.
@@ -393,121 +467,34 @@ returns it to the named member list (open: false). Owner or admin only.
   admits only the members group will refuse them, so check the app before promising that
   opening it lets everyone in. What that header can and cannot carry has one
   home: `inno-platform-conventions`' **Identity** section.
-- Closing an app that an open consumer app reads through a data link revokes
-  that link, and the consumer's owner gets a `link_rebuild_pending`
-  notification telling them to redeploy it.
+- **Closing revokes data links the app no longer contains.** When this app
+  is a link's source, closing it revokes its link to every consumer it no
+  longer contains: one open to every SSO user, and a members-only one
+  admitting someone this app's member list and Okta group do not both hold,
+  or whose members cannot be read to check. The link gives way and never
+  stops the close. The result says which links went and why, and each of
+  those consumers' owners gets a `link_rebuild_pending` notification: a
+  container-shaped consumer is cut off within about a minute with no
+  redeploy, while a function-shaped one keeps its binding until it next
+  deploys. A link the close could not revoke stays live and is named in the
+  result, with the `unlink_app_data` call that removes it: relay that.
+- `app_busy`: another change to this app, or to an app linked to it, is in
+  flight (a source it reads, when opening; a consumer reading it, when
+  closing). Retry once after a moment, never in a loop.
+- `idp_object_foreign` refuses opening or closing when the Okta rule of the
+  app's name does not assign to this app's own open group: another platform
+  instance sharing the Okta org owns it, and the message names the rule.
+  `okta_rule_search_exhausted` means an Okta search by name returned a full
+  page with no exact match, so the platform cannot tell whether the rule
+  exists. Neither is the owner's to fix: a platform admin must look into it.
 
-## `transfer_app({ app, new_owner_email, force? })`: reassign ownership (ADMINS ONLY)
+## Transferring an app: ask an admin
 
-**Platform admins only** (tightened 2026-07-21): there is no accept step, so
-owner-initiated transfers could dump unwanted apps on people. When an app
-OWNER asks to transfer their app, do NOT call this tool for them. Tell them
-a platform admin must do it, and offer to draft the request.
-
-When the caller IS an admin: immediate. The recipient becomes the owner
-(lifecycle notices, quota, and management rights move to them) and is added
-to the app's access group; the previous owner **keeps access as a regular
-member**. The recipient is notified; the previous owner is notified whenever
-the caller is not the owner, so an admin transferring their own app leaves no
-notice for themselves. The recipient must be an Okta user.
-
-- Counts against the recipient's `apps.max_active` **unless the app is
-  stopped**. An `app_limit_reached` error means the recipient is at their
-  cap: an admin can raise their limit. Do NOT offer to stop the recipient's
-  apps for them.
-- **Data links block it.** Data links are same-owner only, so a transfer has
-  to revoke every link that touches the app. While any of those links still
-  has a deployed binding (a live link, or one unlinked since the consumer app
-  last deployed), the transfer is refused with `link_transfer_blocked`, naming
-  each `consumer->source` pair. There are two ways forward and the choice is
-  the admin's: unlink with `unlink_app_data` and redeploy each consumer, then
-  transfer (unlinking alone does not clear the block, the consumer's redeploy
-  does), or call again with `force: true`. **Never add `force: true` on your
-  own.** Explain what it does, name the affected apps, and get an explicit yes.
-- **What `force: true` does.** It revokes those links, dispatches a rebuild of
-  each affected consumer at its current release tag, and notifies each
-  consumer's owner (`link_rebuild_pending`). Until that rebuild lands the
-  consumer's deployed binding still exists. A container-shaped consumer
-  deployed on platform v0.14.2 or later is cut off within 60 seconds anyway by
-  the platform's live link check (its reads then fail `link_revoked`); a
-  function-shaped consumer keeps read-write access to the other app's database
-  until its rebuild finishes. If the response says `REBUILD NOT DISPATCHED` for
-  an app, that app keeps its binding until someone redeploys it by hand: tell
-  the admin and that app's owner.
-- `link_containment` means this app reads another app's data through a link
-  and the recipient cannot see that source app, so the transfer would widen
-  who can reach it. `force` does not override this. Grant the recipient access
-  to the named source app first, or unlink, then transfer.
-- A data export the previous owner started and that has not finished fails
-  once ownership moves; the new owner starts a fresh one if they want it.
-- Confirm before calling: this takes effect immediately and there is no
-  accept step. State plainly who gains and who keeps what, and which data
-  links (if any) it will break.
-
-## `revoke_sessions({ email })`: sign someone out of the panel (ADMINS ONLY)
-
-Ends every live platform panel session for one person, immediately: they are
-signed out everywhere and must sign in through Okta again. Use it when
-offboarding someone or when a session may be compromised. It does NOT touch
-MCP client authorizations (`revoke_access` does that, one app at a time) and
-changes no group membership, so a full offboarding is `revoke_sessions` plus
-`revoke_access` on each app they can reach. It is deliberately not part of
-`transfer_app`: a previous owner usually stays a legitimate user.
-
-- Sessions created before platform v0.14.1 were never indexed and cannot be
-  ended this way until that person signs in again (at most 7 days later).
-  A response of "has no live panel sessions" can therefore still leave an old
-  session alive; say so when the admin is responding to a compromise.
-- Confirm with the admin by name before calling. The response says how many
-  sessions were ended.
-
-## `claim_instance_objects({ apply?, include_admin_group? })`: mark this instance's Okta groups (ADMINS ONLY)
-
-Only needed where several platform instances share one Okta org. Every group
-the platform creates carries an ownership marker (`[instance:<id>]` at the end
-of its description); groups an earlier release created do not, and the platform
-never adopts an unmarked group by name on a shared org (`register_app` refuses
-it with `idp_object_foreign`). The tool lists the groups this instance recorded
-(each app's members and open group, any group the open rule assigns to, and the
-platform admin group) with each one's marker: unmarked, this instance, or
-another instance.
-
-- **Dry run first, always.** The default (`apply` false) lists and changes
-  nothing. Show the admin the list. If other instances share the org, they
-  should compare their lists before either applies, because two registries can
-  record one group id and whichever claims it first takes it.
-- `apply: true` marks each unmarked recorded group and audits it
-  (`idp_object_claimed`). A group marked for another instance is never
-  touched. It is idempotent, so a second apply changes nothing.
-- **Leave `include_admin_group` off unless the admin says otherwise.** On a
-  shared org, another instance on this release refuses an admin group marked
-  for this one and is left with no admins. Ask the admin to confirm before
-  setting it.
-- A group too long to carry the marker is reported "too long to mark"; an Okta
-  failure shows on that group's line and the run carries on. Relay both.
-- It marks only groups this instance recorded. A group `register_app` refused
-  that this instance never recorded is not fixed by this tool; that case is
-  `docs/OPERATIONS.md` "Instances sharing an IdP" (`get_platform_docs`).
-
-## `accept_naming_change()`: acknowledge a deliberate rename (ADMINS ONLY)
-
-The platform finds each app's Okta objects, Cloudflare resources and hostname
-by the instance's naming keys (`naming.hostPrefix`, `naming.resourcePrefix`,
-`naming.groupPrefix`, `naming.platformName`, `naming.platformHost`,
-`cloudflare.domain`). When a deployed key differs from the one recorded while
-apps exist, `get_platform_status` and the panel report "naming changed since
-apps were registered", naming the old and new values. Use this tool only after
-every app's names were moved to the new values by hand; it records the
-deployed values and ends the report.
-
-- **It renames nothing.** Accepting a change the apps were not moved for
-  leaves them broken and silences the report about them. Confirm with the
-  admin that each app was moved before calling.
-- **To undo an accidental change, do not call it.** Revert the manifest and
-  deploy; the report clears by itself.
-- If nothing differs, it answers that there is nothing to accept and changes
-  nothing. Audited as `naming_change_accepted`. `naming.adminGroup` is not
-  recorded and may change at any time.
+Only a platform admin can transfer an app's ownership (`transfer_app`): there
+is no accept step, so in an owner's hands a transfer could dump unwanted apps
+on people. When an app OWNER asks to transfer their app, do NOT call it for
+them. Tell them a platform admin must do it, and offer to draft the request,
+naming the app and the new owner. How an admin runs it is `inno-fleet-admin`.
 
 ## `get_app_usage({ app, days? })` — meters and estimated cost
 
@@ -538,11 +525,15 @@ for a limited time (default 30 days). Owner or admin only.
 
 - **One export at a time per app** — `export_in_progress` means wait for the
   current one to finish or fail; the platform times out a dead job after 6 h.
+- `export_dispatch_failed`: the platform could not start the export job.
+  That export is recorded as failed, so a new call can start another.
 - Offer this proactively when a user is about to stop an app they may not
   restart, or asks about leaving/migrating off the platform.
-- The platform also builds an archive **automatically before any purge** and
-  links it in the purge notice — so "my app was purged, is my data gone?" has
-  a real answer: the emailed link keeps working for the retention window.
+- The platform also builds an archive **automatically before the lifecycle's
+  own purge** and links it in the purge notice, so "my app was purged, is my
+  data gone?" usually has a real answer: the emailed link keeps working for
+  the retention window. An admin's immediate `purge_app` builds no archive,
+  and it fails an export still in flight.
 
 ## Configuration (`get_config` / `set_config` / `remove_config`)
 
@@ -552,7 +543,7 @@ scope covers every app that user owns), `start.self_max`, `lifecycle.*_days`,
 `container.sleep_after` (applies on the app's next deploy),
 `notify.email.<event>`.
 
-**Reading is scoped, not admin-only.** Three forms:
+**Reading is scoped, not admin-only.** Two forms are for owners:
 
 - `get_config app=<name>` — that app's effective configuration, for anyone who
   can manage it. **Reach for this before theorizing about platform behavior on
@@ -560,7 +551,8 @@ scope covers every app that user owns), `start.self_max`, `lifecycle.*_days`,
   really has before a stop, what an admin changed and why.
 - `get_config user=<email>` — that account's, for the user themselves or an
   admin.
-- `get_config` with no arguments — the fleet catalog. Admin-only.
+- With no arguments it is the fleet catalog, which is admin-only
+  (`inno-fleet-admin`).
 - Passing both `app` and `user` is refused (`bad_request`): an app's chain
   already resolves through its owner's user scope, so the combination has no
   single meaning.
@@ -570,22 +562,14 @@ Each line carries the effective value, its source (`factory` / `platform` /
 beneath it — who set each override and the note they left. An app's own
 `safety.ignore.*` suppressions appear here too, with their expiry state, which
 is how an owner learns why a finding stopped failing their build. `get_config`
-only reads them. Adding or lifting one is an admin act, done with `set_config`
-/ `remove_config` on the key
-`safety.ignore.<semgrep|trivy|deps|a11y>.<finding-id>` at platform, app, or
-user scope; for `a11y` the id is an accessibility rule id (such as
-`color-contrast`), and the waiver applies at the deploy check only, because
-accessibility findings never reach the safety sweep. The VALUE is the expiry
-date (`YYYY-MM-DD`, honored through that day) or empty for never expires.
-The panel's Platform screen is the same act on a visual surface, not the
-only way in. The policy those waivers sit under is `safety.a11y.mode` (since
-platform v0.14.30, contract version 22): `report` (the default, never
-blocks), `enforce` or `off`, where `off` is its danger value and `set_config`
-warns on it; what each mode does is the table `get_app_accessibility` serves.
+only reads them. Adding or lifting one is an admin act (`inno-fleet-admin`),
+and the accessibility policy they sit under, `safety.a11y.mode`, is the table
+`get_app_accessibility` serves.
 
-**Writing** is admin-only, with one exception: every user may set their own
-**Notifications** settings — `notify.email.enabled` (the personal master
-switch) and any `notify.email.<event>` — at their own user scope. So "stop
+**Writing** is admin-only (`inno-fleet-admin`), with one exception: every
+user may set their own **Notifications** settings, `notify.email.enabled` (the
+personal master switch) and any `notify.email.<event>`, at their own user
+scope. So "stop
 emailing me about deploys but keep the purge warnings" is self-service. Those
 same keys at app or platform scope stay admin-only.
 
@@ -596,6 +580,9 @@ cannot take is refused `invalid_value`, and the message now names the rule in
 one sentence: the value does not fit this setting's type or grammar,
 `get_config` names the type, and no stored value may exceed 1000 characters.
 Read that sentence and fix the named thing rather than guessing at the format.
+The other refusals name their rule too: `unknown_setting` for a key that names
+no setting, `scope_not_allowed` for a scope the setting does not take, and
+`bad_request` when the scope is `user` and `scope_id` (the email) is missing.
 
 ## Variables (`set_app_variable` / `list_app_variables` / `remove_app_variable`)
 
@@ -619,7 +606,8 @@ Things to relay to the user in plain terms:
   its own injected names (`ENVIRONMENT`, `SLEEP_AFTER`, `ACCESS_TEAM_DOMAIN`,
   `ACCESS_AUD`, `OAUTH_RS_MODE`, `OAUTH_RS_RESOURCE`, `MCP_AUTH_SERVER`,
   `PORT`, `DATA`, `FILES`, `DB`, `APP`, `APP_WORKER`, `PLATFORM`) and
-  anything starting with `LINKED_` or `APPVAR_`, with a message naming the
+  anything starting with `LINKED_` or `APPVAR_` with `variables_invalid`, as
+  it does an empty value or one over the byte cap, and the message names the
   rule. Values up to 4 KB; up to 32 per app. **Hidden by
   default**: the value is write-only and never shown again, anywhere — tell
   the user that before sending it, and never echo it back into the chat.
@@ -652,7 +640,9 @@ Things to relay to the user in plain terms:
   with `variables_disabled`: "The platform's encryption key is not
   configured, so the platform cannot store this value. Ask a platform admin
   to set CONNECTIONS_ENC_KEY; retrying will not help." That is an admin-side
-  precondition, not an argument problem: relay it and stop.
+  precondition, not an argument problem: relay it and stop. While the key it
+  has is malformed it refuses `connections_key_invalid` instead, which only a
+  platform admin can fix too.
 - **`app_busy`** means another change to this app is in flight: retry **once**
   after a moment, never in a loop; it comes back from `set_app_variable` and
   `remove_app_variable` alike. **`variables_limit_reached`** refuses the
@@ -661,7 +651,8 @@ Things to relay to the user in plain terms:
 - `list_app_variables {app}` — names, hidden/visible, who set each and when;
   hidden values never appear, and each hidden one reports which state it is
   in (`delivered` or `pending delivery`). `remove_app_variable {app, name}`
-  removes the deployed copy first, then the record; idempotent.
+  removes the deployed copy first, then the record; idempotent. It refuses a
+  name that is not environment-variable shaped with `variables_invalid`.
 - An app may declare the variables it reads in its own
   `app/inno-variables.json`, sent to the platform on each successful
   deploy. `list_app_variables` then also lists a declared name nobody has
@@ -690,19 +681,24 @@ Stages worth acting on when one appears: `respin_failed`, `auto_restarted`,
 a source that closed, or an ownership transfer): the app's deployed binding to
 the other app's database keeps working until the app is rebuilt, and the entry
 says whether a rebuild was dispatched or the owner has to redeploy (for an
-owner that is `inno-ship`). Admins also see two admin-only stages:
-`start_requested` (an owner asked for a start) and `connection_sink_new_host`
-(a connection was pointed at a credential destination no connection on the
-platform was using; check that the host belongs to the backend the connection
-claims to be). The tool filters on one app, one `stage`, or unread only, and
-returns **at most 50 rows** per call, so narrow the filter rather than trying
-to read a long history in one go.
-`mark_all_notifications_read` clears the caller's whole feed in one call, which
-is what a user asking to dismiss a backlog wants.
+owner that is `inno-ship`). Admins also see two admin-only stages, which
+`inno-fleet-admin` explains. The tool filters on one app, one `stage`, or
+unread only, and returns **at most 50 rows** per call, so narrow the filter
+rather than trying to read a long history in one go.
+`mark_notification_read` answers `notification_not_found` for an id that
+names no notification. `mark_all_notifications_read` clears the caller's
+whole feed in one call, which is what a user asking to dismiss a backlog
+wants; called by an admin it marks everyone's.
 
 ## Authorization summary
 
-In this table, "platform admins" is the `Admin group:` line of the status you read in the Version gate.
+In this table, "platform admins" are the platform's own admin list, which
+`list_admins` shows; the `Admin group:` line of the status is only its Okta
+copy. The tools only admins may call (the admin list and the Okta import,
+`transfer_app`, `purge_app`, `rebuild_app`, `revoke_sessions`,
+`claim_instance_objects`, `accept_naming_change`, `sync_gateway_ref`,
+`list_users`, `query_audit`, `get_platform_logs`, `export_platform_backup`)
+are in `inno-fleet-admin`'s table.
 
 | Tool | Who can call it |
 |---|---|
@@ -710,19 +706,13 @@ In this table, "platform admins" is the `Admin group:` line of the status you re
 | `app_status` / `get_app_metrics` / `get_app_usage` / `get_app_logs` | app owner, or platform admins |
 | `start_app` / `stop_app` / `request_start` | app owner (starts limited), or admins (unlimited) |
 | `restart_app` | app owner, or platform admins |
-| `rebuild_app` | platform admins only (owners redeploy by tagging their own repo) |
 | `export_app_data` | app owner, or platform admins |
-| `transfer_app` | platform admins only (owners ask an admin) |
-| `revoke_sessions` | platform admins only |
-| `purge_app` | platform admins only |
-| `claim_instance_objects` / `accept_naming_change` | platform admins only |
 | `link_app_data` | the owner of both apps, or platform admins |
 | `unlink_app_data` | the consumer app's owner, or platform admins |
 | `list_app_links` | app owner, or platform admins |
 | `set_app_access` | app owner, or platform admins (opening gated by `access.allow_open`) |
 | `register_app` | any signed-in Okta user (becomes the owner) |
 | `create_support_bundle` | app owner, or platform admins |
-| `list_users` / `query_audit` | platform admins only |
 | `get_config` | `app=`: that app's owner, or admins. `user=`: the user themselves, or admins. No arguments (the fleet catalog): admins only |
 | `set_config` / `remove_config` | admins; users for their own Notifications settings, at their own user scope |
 | `set_app_variable` / `list_app_variables` / `remove_app_variable` | app owner, or platform admins |
@@ -746,11 +736,13 @@ credential is sealed to the user, and the key needed to read the token being
 revoked rides a browser session, which an MCP call does not have.) If the user
 needs the backend to actually invalidate it, they must disconnect from the
 Connections tab on their account page instead. Confirm with the user before calling it; it is not reversible for
-them beyond reconnecting. It refuses **`invalid_app_name`** before it looks
-anything up when `app` is not a well-formed app name, and
-`unlink_app_data`'s `source` is refused by the schema the same way, so a typo
-or a padded name comes back as a refusal rather than as "no connections
-match".
+them beyond reconnecting. Over MCP its `app` argument is checked by the
+tool's input schema before the tool runs, as `unlink_app_data`'s `source` is:
+a malformed name is refused with "must be an app name; call check_name for
+the verdict on a candidate", so a typo or a padded name comes back as a
+refusal rather than as "no connections match". A connection name outside
+the grammar is refused with `connections_config_invalid`, here and by
+`list_user_connections`.
 
 If you're unsure whether the signed-in user owns an app, call `app_status`
 first: its `forbidden` vs. success response is itself the authorization
@@ -760,6 +752,9 @@ check.
 and the refusals it can answer.** When a user asks who gets told about an
 action, or who may call it, read the tool's description rather than this
 skill's summary: the description is generated from the platform's own source.
+The seven refusals every tool shares are not in each description: they are
+in the server's note, and `inno-platform-conventions`' **Refusals every tool
+shares** section explains them.
 The MCP server also reports the live platform version as its
 `serverInfo.version`, so an MCP client's server listing tells you which
 release you are talking to.
