@@ -207,9 +207,12 @@ make, with your recommendation**:
     server-initiated features (notifications, sampling, elicitation,
     long-lived subscriptions) do not; if the design needs those, it does not
     fit this type today — surface that HERE, not after registration. Access
-    is the same Okta member group as the other types (`grant_access` etc.);
-    there is no browser SSO — the platform issues OAuth tokens and the
-    gateway validates them (`get_app_contract` §1.2). **One hard constraint:**
+    is given and taken away with the same tools as the other types
+    (`grant_access`, `revoke_access`, `set_app_access`), but what admits a
+    caller differs: an MCP app admits a person on the platform's member list
+    for the app, or every SSO user while the app is open, and reads both at
+    every request (`get_app_contract` §1.2). There is no browser SSO: the
+    platform issues OAuth tokens and the gateway validates them. **One hard constraint:**
     if §1 flagged that the app must reach another service *as each person using
     it* (a per-user **Connection**), this type **cannot** — only
     `mcp-container` can consume a Connection in v1. Choose `mcp-container`
@@ -231,9 +234,10 @@ make, with your recommendation**:
     elicitation, or long-lived subscriptions) layered on the container
     baseline: a Dockerfile serving `0.0.0.0:8080`, non-root `USER`, and
     `GET /healthz` (`get_app_contract` §1.3). Same OAuth perimeter and access
-    story as `mcp-function` — no browser SSO, the platform issues OAuth tokens
-    and the gateway validates them; access is still the app's Okta member
-    group. Default stack: **Python + the official MCP Python SDK** (FastMCP).
+    story as `mcp-function`: no browser SSO, the platform issues OAuth tokens
+    and the gateway validates them, and the platform's member list and the
+    open flag decide access at every request. Default stack: **Python + the
+    official MCP Python SDK** (FastMCP).
     CRITICAL (Python SDK): keep the starter's `transport_security` setting,
     which `get_app_contract` §1.3 states and explains; changing it breaks every
     gateway-forwarded `/mcp` request. Also: after deploying a fix to a RUNNING
@@ -364,9 +368,16 @@ register_app({ app, repo, description, type, members, accept_guardrails: true, c
   shape. Omit for container. The type is fixed at registration and can't be
   switched later (register a new app to change it).
 - `accept_guardrails: true` — required; you must have done the §1a review.
-- `members` is an optional list of Okta emails. Each address is notified that
-  the app was shared with them, in-platform plus email per their own
+- `members` is an optional list of Okta emails. Each address Okta knows is
+  added to the app's member list and its Okta group and notified that the
+  app was shared with them, in-platform plus email per their own
   notification settings, so name only people who should hear about it now.
+  An address Okta does not know is skipped: it gets no access and no
+  notice, and call 2's answer names it under `Warnings:` (`member not found
+  in Okta: <address>`). Grant it later with `grant_access`, once that person
+  has an account. On a platform that lists allowed email domains, an
+  address outside them refuses the whole call with `email_domain_not_allowed`
+  before anything is created.
 - `connections` — optional list of names, when §1 step 5 flagged a per-user
   backend. Pass what you plan to set up; it **creates nothing** (a connection
   needs a strategy and config only `set_app_connection` can supply) and is
@@ -508,6 +519,26 @@ repo). It returns text beginning **`App
   window to wait out.
 - **`invalid_member_email`**: one of `members` is not a plain email address.
   Fix or drop it and call again.
+- **`email_domain_not_allowed`**: an address in `members` is outside the
+  platform's allowed email domains (a listed domain's subdomains are
+  inside); the message names the address and the domains. Nothing was
+  created: fix or drop that address and call again.
+- **`idp_object_foreign`**: an access group of the app's name already
+  exists and is not this platform's own (another platform sharing the same
+  sign-in directory may hold it); the message names the group. Choose
+  another app name and check it with `check_name`. Only when that group
+  really is this platform's own, unmarked, can an operator mark it as such
+  (OPERATIONS, "Instances sharing an IdP") so the same name registers;
+  `claim_instance_objects` cannot, because it marks only the groups this
+  platform recorded.
+- **`host_in_use`**: the app's hostname already has a DNS record that is
+  not this app's (on a platform whose apps sit directly under its domain,
+  an unrelated record can). Nothing was created: choose another name, or
+  have the record removed if it is unused.
+- **`host_check_failed`**: on such a platform, the platform could not read
+  its DNS to check the hostname. Nothing was created, and this is not the
+  user's to fix: an operator must grant the platform's Cloudflare token
+  Zone DNS read.
 - **`upstream_error`** (could not re-check the repository with GitHub): a
   transient GitHub failure during call 2's re-check. Wait a moment and call
   again with the same arguments.
@@ -544,7 +575,9 @@ repo). It returns text beginning **`App
   error to retry. Treat it as the empty-repo path in §4 below.
 - **`registration_disabled`** — an admin has turned off self-service
   registration; a platform admin must re-enable it (`registration.enabled`).
-- Any other non-empty error — surface it verbatim rather than retrying blindly.
+- Any other non-empty error: surface it verbatim rather than retrying
+  blindly. The refusals any platform tool can give are explained once, in
+  `inno-platform-conventions`' **Refusals every tool shares** section.
 
 ## 4. Pull and scaffold
 
@@ -732,7 +765,7 @@ headers** paragraph.
 **Container apps: two caps on the storage endpoints.** A `{sql, params}` body
 over **4 MiB** and a file `PUT` whose declared `Content-Length` is over
 **25 MiB** are both refused, as is a `PUT` sent with no `Content-Length` at
-all (since platform v0.14.21, and contract version 21 states it). So a route
+all (since platform v0.14.21, and contract version 19 states it). So a route
 that writes in bulk sends batches, and an upload route needs its own size
 check and its own message. The exact codes and the reasoning are
 `inno-platform-conventions`' **Persistence** section. A function app reaches
