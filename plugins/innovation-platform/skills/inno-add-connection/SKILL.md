@@ -544,10 +544,13 @@ Rules that hold regardless of language:
     Copying the current client, as above, brings the rest of it too,
     `ConnectionsError` and the `truncated` flag on the file listing's key
     list, and keeps the old shapes: the listing is still a list,
-    `NotConnected` is unchanged, and `ConnectionsError` is still an
-    `httpx.HTTPStatusError`. One thing differs in Python only: a failed seam
-    call's message, `str(e)`, is now `connections_error:<status>` rather than
-    httpx's own text, which matters only to code that logs or matches it.
+    `NotConnected` is unchanged, the Python `ConnectionsError` is still an
+    `httpx.HTTPStatusError`, and the JS message is still
+    `connections_error:<status>`. What did change is the text of a failed
+    seam call's error as a whole, in both clients: in Python `str(e)` is now
+    `connections_error:<status>` rather than httpx's own text, and in JS
+    `String(e)` names `ConnectionsError` where it used to name `Error`. That
+    matters only to code that logs or matches that text.
 - Add a small `whoami` / status tool so the user (and you, while testing) can
   confirm the Connection is live and see which backend identity it resolves to,
   without needing to exercise a real feature first.
