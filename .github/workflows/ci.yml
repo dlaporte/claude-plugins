@@ -1,10 +1,13 @@
 name: CI
 
-# Four jobs, all cheap and dependency-free (jq is preinstalled on the
-# runner): manifests must be well-formed, any change to a plugin must come
-# with a version bump for that plugin, and every innovation-platform skill's
-# Version gate block must stay byte-identical to the rest, and the plugin
-# must name no one platform instance (scripts/instance-neutral.sh).
+# Five jobs, all cheap and dependency-free (jq is preinstalled on the
+# runner): the manifests and the marketplace catalog must be well-formed, any
+# change to a plugin must come with a version bump for that plugin, every
+# innovation-platform skill's Version gate block must stay byte-identical to
+# the rest, the plugin must name no one platform instance
+# (scripts/instance-neutral.sh), and every MCP tool it names must be one the
+# platform serves (scripts/check-tool-names.sh, against the pinned
+# scripts/platform-tools.txt, which needs no platform checkout).
 #
 # Why the bump is a HARD gate rather than a convention: delivery is keyed on
 # the declared version. Claude Code caches an installed plugin at
@@ -64,6 +67,15 @@ jobs:
           done
           [ "$fail" -eq 0 ] || exit 1
           echo "All plugin manifests OK."
+
+      - name: The marketplace catalog is well-formed
+        run: |
+          set -euo pipefail
+          if ! jq empty .claude-plugin/marketplace.json; then
+            echo "::error file=.claude-plugin/marketplace.json::not valid JSON"
+            exit 1
+          fi
+          echo "Marketplace catalog OK."
 
   version-bump:
     runs-on: ubuntu-26.04
@@ -218,3 +230,17 @@ jobs:
         run: |
           set -euo pipefail
           bash scripts/instance-neutral.sh plugins/innovation-platform
+
+  tool-names:
+    runs-on: ubuntu-26.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      # Against scripts/platform-tools.txt, the pinned copy of the platform's
+      # tool names. Refresh that file at each resync with
+      # scripts/platform-tools.sh; the script's header says what it checks.
+      - name: The innovation-platform plugin names only tools the platform serves
+        run: |
+          set -euo pipefail
+          bash scripts/check-tool-names.sh plugins/innovation-platform

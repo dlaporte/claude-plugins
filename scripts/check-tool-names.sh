@@ -1,0 +1,143 @@
+#!/usr/bin/env bash
+# Fails if the innovation-platform plugin names an MCP tool the platform does
+# not serve: a misspelling, or a tool the platform has retired. The platform's
+# tool names are pinned in scripts/platform-tools.txt (refreshed at each resync
+# by scripts/platform-tools.sh), so this needs no platform checkout.
+#
+# Usage: bash scripts/check-tool-names.sh [--list] [path]   (default plugins/innovation-platform)
+#   --list  also prints every tool name the plugin uses, the allowlisted names
+#           it met, and the pinned tools it never names.
+#
+# What counts as a tool name. In the plugin's Markdown, a snake_case name in
+# backticks is checked when either:
+#   - it is called like a tool: "call `x`", "`x` tool", "`x` MCP tool",
+#     "`x(...)`", "`x {...}`" or "`x arg=...`"; or
+#   - it is named like one: its first word is a verb a pinned tool begins with
+#     (get_, list_, set_, grant_ and the rest, read from the pinned list). The
+#     one tool named noun first, app_status, does not make app_ a verb, since
+#     app_ also begins many refusal codes.
+# Every snake_case word on a skill's front-matter description: line is checked
+# the second way. A checked name passes if it is pinned, or listed in
+# scripts/tool-name-allowlist.txt (refusal codes, fields and app-code functions
+# that happen to begin with a tool verb).
+#
+# Anything else in backticks, such as an argument, a field, a settings key or a
+# refusal code, is not checked. So a misspelling that is neither called like a
+# tool nor begins with a tool verb (`app_statsu` on its own) is not caught.
+set -euo pipefail
+
+list=0
+if [ "${1:-}" = "--list" ]; then
+  list=1
+  shift
+fi
+target="${1:-plugins/innovation-platform}"
+here="$(cd "$(dirname "$0")" && pwd)"
+pinned_file="$here/platform-tools.txt"
+allow_file="$here/tool-name-allowlist.txt"
+
+if [ ! -d "$target" ]; then
+  echo "check-tool-names: no such directory: $target" >&2
+  exit 2
+fi
+for f in "$pinned_file" "$allow_file"; do
+  if [ ! -r "$f" ]; then
+    echo "check-tool-names: cannot read $f" >&2
+    exit 2
+  fi
+done
+
+# grep exits 1 for "no match", which is not an error here; 2 is.
+grep_or_none() {
+  local rc=0
+  grep "$@" || rc=$?
+  [ "$rc" -le 1 ] || { echo "check-tool-names: grep failed ($rc)" >&2; exit 2; }
+}
+
+spans="$(grep_or_none -rnoE --include='*.md' \
+  '([Cc]all(s|ed|ing)? )?`[a-z][a-z0-9]*(_[a-z0-9]+)+(`( (MCP )?tools?)?|[(]| [{]| [a-z_]+=)' \
+  -- "$target")"
+descriptions="$(grep_or_none -rnE --include='SKILL.md' '^description:' -- "$target")"
+
+# The awk program reads the pinned list, then the allowlist, then the hits,
+# with a marker line between them.
+awk -v list="$list" -v target="$target" '
+  function strip(s) { sub(/#.*/, "", s); gsub(/[[:space:]]+/, "", s); return s }
+  section == 0 {
+    if ($0 == "\034") { section = 1; next }
+    n = strip($0); if (n == "") next
+    pinned[n] = 1; npinned++
+    v = n; sub(/_.*/, "", v)
+    if (n != "app_status") verb[v] = 1
+    next
+  }
+  section == 1 {
+    if ($0 == "\034") { section = 2; next }
+    n = strip($0); if (n == "") next
+    if (n in pinned) { printf "check-tool-names: %s is in the allowlist but is a pinned tool; remove it from %s\n", n, "scripts/tool-name-allowlist.txt" > "/dev/stderr"; bad = 1 }
+    allow[n] = 1
+    next
+  }
+  # Judges one name met at where (file:line); cue is 1 when it was called
+  # like a tool.
+  function judge(where, name, cue,    v) {
+    if (name in pinned) { used[name] = 1; return }
+    if (name in allow) { allowed[name] = 1; return }
+    v = name; sub(/_.*/, "", v)
+    if (v in verb) { printf "%s: `%s` is named like a tool but is not one the platform serves\n", where, name; hits++; return }
+    if (cue) { printf "%s: `%s` is called like a tool but is not one the platform serves\n", where, name; hits++; return }
+  }
+  section == 2 && /^S/ {
+    # S<file>:<line>:<span>
+    line = substr($0, 2)
+    i = index(line, ":"); file = substr(line, 1, i - 1); line = substr(line, i + 1)
+    i = index(line, ":"); where = file ":" substr(line, 1, i - 1); m = substr(line, i + 1)
+    cue = 0
+    if (m ~ /^[Cc]all/) { cue = 1; sub(/^[^`]*/, "", m) }
+    m = substr(m, 2)
+    match(m, /^[a-z][a-z0-9]*(_[a-z0-9]+)+/)
+    name = substr(m, 1, RLENGTH); rest = substr(m, RLENGTH + 1)
+    if (rest !~ /^`/ || rest ~ /tools?$/) cue = 1
+    judge(where, name, cue)
+    next
+  }
+  section == 2 && /^D/ {
+    # D<file>:<line>:description: ...
+    line = substr($0, 2)
+    i = index(line, ":"); file = substr(line, 1, i - 1); line = substr(line, i + 1)
+    i = index(line, ":"); where = file ":" substr(line, 1, i - 1); m = substr(line, i + 1)
+    while (match(m, /[a-z][a-z0-9]*(_[a-z0-9]+)+/)) {
+      w = substr(m, RSTART, RLENGTH)
+      before = (RSTART > 1) ? substr(m, RSTART - 1, 1) : " "
+      after = substr(m, RSTART + RLENGTH, 1)
+      m = substr(m, RSTART + RLENGTH)
+      if (before ~ /[A-Za-z0-9_.\/-]/ || after ~ /[A-Za-z0-9_\/-]/) continue
+      judge(where, w, 0)
+    }
+    next
+  }
+  END {
+    if (npinned == 0) { print "check-tool-names: the pinned list is empty" > "/dev/stderr"; exit 2 }
+    if (list) {
+      nu = 0; for (n in used) nu++
+      printf "Tool names the plugin uses (%d of %d pinned):\n", nu, npinned
+      fflush(); for (n in used) print "  " n | "LC_ALL=C sort"; close("LC_ALL=C sort")
+      print "Allowlisted names it met:"
+      fflush(); for (n in allowed) print "  " n | "LC_ALL=C sort"; close("LC_ALL=C sort")
+      print "Pinned tools it never names:"
+      fflush(); for (n in pinned) if (!(n in used)) print "  " n | "LC_ALL=C sort"; close("LC_ALL=C sort")
+    }
+    if (bad) exit 2
+    if (hits) {
+      fflush()
+      printf "check-tool-names: FAIL, %d name(s) above are not in scripts/platform-tools.txt. Fix the name, or if it is not a tool (a refusal code, a field), add it to scripts/tool-name-allowlist.txt.\n", hits > "/dev/stderr"
+      exit 1
+    }
+    printf "check-tool-names: OK (%s, %d pinned tools)\n", target, npinned
+  }
+' <(
+  cat "$pinned_file"; printf '\034\n'
+  cat "$allow_file"; printf '\034\n'
+  if [ -n "$spans" ]; then printf '%s\n' "$spans" | sed 's/^/S/'; fi
+  if [ -n "$descriptions" ]; then printf '%s\n' "$descriptions" | sed 's/^/D/'; fi
+)
