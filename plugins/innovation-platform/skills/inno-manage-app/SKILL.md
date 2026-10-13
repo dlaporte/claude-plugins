@@ -155,8 +155,11 @@ immediately with **no redeploy needed**. The app's owner is notified that it
 is serving again, which matters when the caller is an admin rather than the
 owner. It answers `app_busy` when another change to the app is in flight:
 retry once after a moment, never in a loop. Owners have a limited number of
-self-service starts (default 1, lifetime, per app — check `app_status`);
-admins are unlimited and don't consume the owner's allowance. When the owner
+self-service starts per app, counted over the app's whole lifetime. Each
+platform sets that number as `start.self_max`, so never quote one from memory:
+`get_config app=<name>` shows the app's own value, and while the app is
+stopped `app_status` shows how many of them are used. Admins are unlimited
+and don't consume the owner's allowance. When the owner
 is out of starts, `start_app` returns `start_limit_reached`. Use
 `request_start({ app, reason })` instead, which notifies every platform
 admin and lands in their panel notification feed. Call it once: a repeat
@@ -527,7 +530,10 @@ SQL dump, every stored file, and a `manifest.json` (app record, members,
 effective config). The owner is notified when it's ready, in-platform plus
 email per their own notification settings;
 the archive appears on the app's panel page (Data exports card) and is kept
-for a limited time (default 30 days). Owner or admin only.
+for a limited time. Each platform sets that time platform-wide as
+`export.retention_days`, which `get_config app=<name>` does not list, so never
+quote a number: each finished archive shows the date it is deleted on that
+card. Owner or admin only.
 
 - **One export at a time per app** — `export_in_progress` means wait for the
   current one to finish or fail; the platform times out a dead job after 6 h.
