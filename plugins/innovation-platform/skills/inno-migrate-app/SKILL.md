@@ -122,7 +122,7 @@ order:
    around: a `{sql, params}` body over **4 MiB** and a file `PUT` over
    **25 MiB** of declared `Content-Length` are both refused, as is a `PUT`
    sent with no `Content-Length` at all (since platform v0.14.21, and
-   contract version 21 states it). So a one-shot import of an existing SQLite
+   contract version 19 states it). So a one-shot import of an existing SQLite
    table has to go in batches. The exact codes and the reasoning are
    `inno-platform-conventions`' **Persistence** section. Neither cap applies
    on the bindings path.
@@ -294,7 +294,9 @@ restore point is.
    response the same way `inno-new-app` §3 documents (`repo_control_unproven`,
    `name_quarantined`, `repo_already_registered`, `repo_owner_claimed`,
    `repo_identity_changed`, `app_limit_reached`, `repo_mismatch`,
-   `guardrails_not_accepted`, …). For `repo_identity_changed` the tool's
+   `guardrails_not_accepted`, `email_domain_not_allowed`,
+   `idp_object_foreign`, `host_in_use`, …), including what happens to each
+   address in `members`. For `repo_identity_changed` the tool's
    description says: "Answers repo_identity_changed when the repo was
    renamed, transferred or recreated since it was verified: call again for a
    new proof file."
