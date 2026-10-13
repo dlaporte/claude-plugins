@@ -127,7 +127,7 @@ changed in between: pin the base to the digest `get_app_contract` serves.
    probe token on an OAuth-RS-perimeter app (`mcp-function`,
    `mcp-container`). The probe fired by a deploy never judges a failure: it
    defers **every** unhealthy result to the next hourly pass, whatever the
-   cause (a timeout, an answer other than 200 from the app, or a connection
+   cause (a timeout, an error answer from the app, or a connection
    failure such as a DNS or TCP error or a Cloudflare origin-reach status
    520-527 or 530 while a container is still cold-starting). It leaves the
    app's health status as it was and notifies no one; `app_status` then
