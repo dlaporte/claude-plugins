@@ -146,8 +146,9 @@ do not pass it until you've actually done this review.
   you cannot grant one, and you must not register the app without it.
 
 Confirm the name, repo, purpose, and members back to the user before going
-further — registration provisions real resources (an access group, a database,
-and file storage) and binds them to the user's repo.
+further: registration provisions real resources (a database and file
+storage, plus access groups for a browser app) and binds them to the user's
+repo.
 
 ## 1b. Design the app before registering
 
@@ -296,8 +297,9 @@ approval** (of the design *and* the name) before §2. Ask the approval question
 in your own words referencing the design the user can now read; put genuinely
 separate decisions (name choice, deployment type, members) in their own
 questions rather than folding them into the approval. Registration provisions
-real resources — an Okta access group, a database, and file storage — and binds
-them to the user's repo; the type is fixed at registration.
+real resources (a database and file storage, plus Okta access groups for a
+browser app; an MCP app gets none, since its member list alone decides) and
+binds them to the user's repo; the type is fixed at registration.
 
 The type and design seed the scaffolding in §4.
 
@@ -368,16 +370,29 @@ register_app({ app, repo, description, type, members, accept_guardrails: true, c
   shape. Omit for container. The type is fixed at registration and can't be
   switched later (register a new app to change it).
 - `accept_guardrails: true` — required; you must have done the §1a review.
-- `members` is an optional list of Okta emails. Each address Okta knows is
-  added to the app's member list and its Okta group and notified that the
-  app was shared with them, in-platform plus email per their own
+- `members` is an optional list of Okta emails. Each one added is notified
+  that the app was shared with them, in-platform plus email per their own
   notification settings, so name only people who should hear about it now.
-  An address Okta does not know is skipped: it gets no access and no
-  notice, and call 2's answer names it under `Warnings:` (`member not found
-  in Okta: <address>`). Grant it later with `grant_access`, once that person
-  has an account. On a platform that lists allowed email domains, an
-  address outside them refuses the whole call with `email_domain_not_allowed`
-  before anything is created.
+  What happens to each address depends on the type:
+  - **A browser app** (`container`, `function`): each address Okta knows is
+    added to the app's member list and its Okta group and notified. An
+    address Okta does not know is skipped: it gets no access and no notice,
+    and call 2's answer names it under `Warnings:` (`member not found in
+    Okta: <address>`). Grant it later with `grant_access`, once that person
+    has an account.
+  - **An MCP app** (`mcp-function`, `mcp-container`, registered on platform
+    v0.16.4 or later): each address is added to the app's member list alone
+    (the app has no Okta group) and notified. While the platform has an Okta
+    token, an address Okta does not know is still added but not notified,
+    and call 2's answer names it under `Warnings:` (`member not found in
+    Okta: <address>; added to the app's member list anyway and not
+    notified`). Check its spelling with the user, and if it is mistyped,
+    remove it with `revoke_access` (`inno-manage-app`). An address the
+    platform could not check in Okta is added too, with its own warning.
+
+  On a platform that lists allowed email domains, an address outside them
+  refuses the whole call with `email_domain_not_allowed` before anything is
+  created.
 - `connections` — optional list of names, when §1 step 5 flagged a per-user
   backend. Pass what you plan to set up; it **creates nothing** (a connection
   needs a strategy and config only `set_app_connection` can supply) and is
@@ -454,8 +469,8 @@ they've installed the App (or the App already covered the repo), call
 `register_app` **again with the same arguments**. This re-checks the proof file,
 then finishes the job server-side (prunes the template scaffold to the chosen
 type in a new commit on the repo's default branch, pushed via the
-installation token, provisions the Okta group + D1 + R2, and binds the
-repo). It returns text beginning **`App
+installation token, provisions D1 + R2, plus the Okta groups for a browser
+app, and binds the repo). It returns text beginning **`App
 "{name}" registered from {repo}`** and containing:
 
 - `URL (after first deploy): https://<app host>`: **quote
@@ -523,7 +538,15 @@ repo). It returns text beginning **`App
   platform's allowed email domains (a listed domain's subdomains are
   inside); the message names the address and the domains. Nothing was
   created: fix or drop that address and call again.
-- **`idp_object_foreign`**: an access group of the app's name already
+- **`browser_apps_need_okta`** (browser apps, until platform v0.16.5): the
+  platform has no Okta token configured, and a browser app (`container`,
+  `function`) needs the identity provider until the gateway switch in
+  v0.16.5. Nothing was created. It is a platform operator's fix, not the
+  user's: an MCP app (`mcp-function`, `mcp-container`) registers without
+  it, so offer that type only when the design really is an MCP server;
+  otherwise ask the platform's operator to configure Okta, and stop.
+- **`idp_object_foreign`** (browser apps only: an MCP app gets no Okta
+  group, so it never answers this): an access group of the app's name already
   exists and is not this platform's own (another platform sharing the same
   sign-in directory may hold it); the message names the group. Choose
   another app name and check it with `check_name`, knowing that a clean

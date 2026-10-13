@@ -102,7 +102,8 @@ is the Resource Server, and the `Authorization` header is consumed before
 your code runs (never route `/.well-known/oauth-protected-resource`
 yourself). Identity is still `X-Forwarded-User` / `X-Forwarded-Groups`, but
 what admits a caller is not the app's Okta group, which is what admits one to
-a browser app. An MCP app admits a person when the platform's member list for
+a browser app (an MCP app registered from platform v0.16.4 has no Okta group
+at all, though the header still carries its group names). An MCP app admits a person when the platform's member list for
 the app holds them, or while the app is open to every SSO user, and it reads
 both facts at every request (`get_app_contract` §1.2). The groups header is
 derived from the same two facts, so a grant, a revoke or a change to open

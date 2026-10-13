@@ -295,8 +295,9 @@ restore point is.
    `name_quarantined`, `repo_already_registered`, `repo_owner_claimed`,
    `repo_identity_changed`, `app_limit_reached`, `repo_mismatch`,
    `guardrails_not_accepted`, `email_domain_not_allowed`,
-   `idp_object_foreign`, `host_in_use`, …), including what happens to each
-   address in `members`. For `repo_identity_changed` the tool's
+   `browser_apps_need_okta`, `idp_object_foreign`, `host_in_use`, …),
+   including what happens to each address in `members`, which differs for a
+   browser app and an MCP app. For `repo_identity_changed` the tool's
    description says: "Answers repo_identity_changed when the repo was
    renamed, transferred or recreated since it was verified: call again for a
    new proof file."
