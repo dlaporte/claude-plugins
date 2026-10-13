@@ -76,9 +76,17 @@ not); still answer `GET /healthz`; and there is **no Cloudflare Access and no
 sign-out link** — the platform is the OAuth Authorization Server, the gateway
 is the Resource Server, and the `Authorization` header is consumed before
 your code runs (never route `/.well-known/oauth-protected-resource`
-yourself). Identity is still `X-Forwarded-User` / `X-Forwarded-Groups`,
-resolved from the same Okta member group when the human authorizes their MCP
-client.
+yourself). Identity is still `X-Forwarded-User` / `X-Forwarded-Groups`, but
+what admits a caller is not the app's Okta group, which only a browser app's
+sign-in reads. An MCP app admits a person when the platform's member list for
+the app holds them, or while the app is open to every SSO user, and it reads
+both facts at every request (`get_app_contract` §1.2). The groups header is
+derived from the same two facts, so a grant, a revoke or a change to open
+access reaches your app within the gateway's introspection cache (60 seconds
+at most). Every request and every refresh also check that the person's
+account may still sign in, using an answer at most `auth.status_check_minutes`
+old, so a suspended account stops reaching your app without any change to
+the member list.
 
 The **`mcp-container`** type serves that same MCP contract from the container
 shape instead — the container baseline below plus `POST /mcp`, for a non-TS/JS
