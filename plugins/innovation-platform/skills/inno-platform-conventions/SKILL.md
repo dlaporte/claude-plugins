@@ -51,11 +51,11 @@ the instructions the platform's MCP server sends when a client connects, and
 not in each tool's description, which names only the refusals of its own.
 When a tool answers one of these, this is what it means:
 
-- `account_inactive`: every tool, read tools included, first checks that the
-  caller's account can still sign in, using an answer held for
-  `auth.status_check_minutes`. An account Okta no longer lets sign in
-  (suspended, deprovisioned or deleted) is refused on every tool, with the
-  message "This account can no longer sign in. Contact a platform admin."
+- `account_inactive`: the caller's account is one Okta no longer lets sign
+  in (suspended, deprovisioned or deleted). Every tool, read tools included,
+  checks this first, using an answer held for `auth.status_check_minutes`,
+  and its message is "This account can no longer sign in. Contact a
+  platform admin."
 - `rate_limited`: the caller made more calls in a minute than the
   instructions allow. Wait a minute.
 - `internal_error`: the call failed in a way the platform did not expect,
