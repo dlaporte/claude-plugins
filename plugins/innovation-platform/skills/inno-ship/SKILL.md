@@ -196,14 +196,14 @@ and ask first, whether or not the row below says so.
 | `config-integrity` | the repo carries a platform-owned or forbidden path, or `CLAUDE.md` lacks a required header. The failure message names each path; the full list, with the reason for each, is `inno-platform-conventions`' **Files you must not touch** section | **stop and ask; this is not a quiet fix.** Files under `src/` and a root `package.json` can be the user's own code: show the user every flagged path first. Only with their okay, move author code and manifests under `app/` (for example `app/src/`), update the Dockerfile `COPY` paths and the code's imports to match, and delete only what they confirm is not theirs (such as `src/gateway/` or `src/node_modules/`). Never move or delete author code unprompted before a tagged deploy. See `inno-platform-conventions` |
 | `secrets` | gitleaks found a committed credential | rotate + scrub history, then set the new value as an app Variable (`set_app_variable`) |
 | `sast` | a semgrep OWASP finding anywhere the gate scans, which is the whole repository and not just `app/` (the scope is `inno-platform-conventions`' **Rendering** section; the log names the file). A `secrets: inherit` line in `.github/workflows/deploy.yml` (older template copies carry one) is a blocking finding too | `inno-platform-conventions` (escaping, SQL); for `secrets: inherit`, tell the user and, with their okay, delete the line (the platform workflow needs no caller secrets) |
-| `deps` | CVE in `app/requirements.txt` or a prod npm dep. `npm audit` runs `--omit=dev`; since platform v0.14.21, and contract version 21 states it, `app-deps` installs with `--omit=dev` too, so the audited set and the installed set are the same, and a devDependency is never installed either | bump the pinned dep |
+| `deps` | CVE in `app/requirements.txt` or a prod npm dep. `npm audit` runs `--omit=dev`; since platform v0.14.21, and contract version 19 states it, `app-deps` installs with `--omit=dev` too, so the audited set and the installed set are the same, and a devDependency is never installed either | bump the pinned dep |
 | `dep-age` | a pinned dep is **too new** for the platform's release-age cooldown (`safety.min_release_age_days`; off by default, so this only fires once an admin enabled it), or `app/package.json` ships with no committed, parseable `app/package-lock.json` so there is nothing to date | **not** a version bump — bumping to the newest release makes it worse. Wait out the cooldown, pin an older vetted version, commit `app/package-lock.json`, or ask a platform admin for an app-scope `safety.min_release_age_days: 0` |
 | `container` | Trivy CVE, a `USER` the non-root gate refuses (the gate accepts only a plain uid 1 to 2147483647 or a portable name on one clean `/etc/passwd` line; see `inno-containerize` item 2), missing `EXPOSE 8080`, or the image never answered `GET /healthz` | `inno-containerize` |
 | `container` fails with `Accessibility check failed` (only when the app's `safety.a11y.mode` is `enforce`) | the accessibility report found a critical or serious violation that no waiver covers, or the landing page `/` could not be scanned because of the app (a 4xx, a redirect off the app, a blank page, or a page that never finished loading) or answered something other than HTML while another page served HTML, or the app left no page scannable at all. A 5xx is never held against the app, because CI runs it without stored data, and a scan the platform could not run only warns | read what the report marks as blocking (`inno-safety-preflight` §1c) and fix it, push, confirm the gates are green, then cut the next patch tag. A failing `/` has to render in CI, where there is no stored data, as a real page (an empty state, not an error or a redirect off the app): `app/inno-a11y.json` adds pages that render without stored data, but it never stands in for `/`. A rule that is wrong for this app: name its rule id and have the user ask a platform admin for a time-limited waiver, `safety.ignore.a11y.<rule-id>` with an expiry date as its value |
 | `scaffold-check` | not a failure — it suppresses `deploy` while `app/.needs-build` exists (see §0) | build the app, remove the marker |
 | `deploy` fails with `app_stopped` | the app was stopped by the lifecycle (or deliberately), and **stopped apps cannot be deployed**. Only the release tag's `deploy` job fails this way; a push to the default branch still runs every gate green on a stopped app, so a clean preflight is not evidence that the app can deploy | `inno-manage-app`: `start_app` first, then cut the next patch tag |
 | `app-deps` fails with `Missing app/package-lock.json` (function-shaped apps) | `app/package.json` exists but no lockfile is committed; CI installs only from a committed lockfile and never resolves ranges fresh. This job runs on pushes too, so the failure blocks before any tag exists | run `npm install` inside `app/`, commit `app/package-lock.json`, push, confirm `app-deps` is green, then tag |
-| `app-deps` fails in `npm ci` (on pushes as well as tags), or the `deploy` bundle step reports `Could not resolve "<package>"` with the titled error `Undeclared import` (function-shaped apps), or reports it with the titled error `devDependency imported at runtime` | the lockfile no longer matches `app/package.json`, or the code imports a package not declared anywhere (nothing is installed at the repo root), or the code imports at runtime a package declared only under `devDependencies` (`app-deps` installs `--omit=dev`, so that tree was never installed) | for an undeclared package: declare it in `app/package.json`, run `npm install` inside `app/`, commit both files, push, confirm `app-deps` is green, then cut the next patch tag. For a devDependency: move it to dependencies instead, `cd app && npm install <package> && npm uninstall --save-dev <package>`, commit `app/package.json` and `app/package-lock.json`, push, confirm `app-deps` is green, then cut the next patch tag |
+| `app-deps` fails in `npm ci` (on pushes as well as tags), or the `deploy` bundle step reports `Could not resolve "<package>"` with the titled error `Undeclared import` (function-shaped apps), or reports it with the titled error `devDependency imported at runtime` | the lockfile no longer matches `app/package.json`, or the code imports a package not declared anywhere (nothing is installed at the repo root), or the code imports at runtime a package declared only under `devDependencies` (`app-deps` installs `--omit=dev`, so that tree was never installed) | for an undeclared package: declare it in `app/package.json`, run `npm install` inside `app/`, commit both files, push, confirm `app-deps` is green, then cut the next patch tag. For a devDependency: move it with `cd app && npm install --save-prod <package>@<version>`, where `<version>` is the specifier `devDependencies` already gives it (a `file:`, git or other non-registry specifier stays exactly as written), and run no uninstall: npm takes the entry out of `devDependencies` itself. The error's own `Move it:` command, a plain `npm install <package>` followed by `npm uninstall --save-dev <package>`, deletes the package instead, because the plain install leaves an existing devDependency where it is and the uninstall then removes it: do not run it. Check that `app/package.json` now lists the package under `dependencies` only, run §0's install block (`npm ci --ignore-scripts --omit=dev`, what `app-deps` runs), commit `app/package.json` and `app/package-lock.json`, push, confirm `app-deps` is green, then cut the next patch tag |
 | `deploy` fails with `app_not_deployable` | the app was stopped, or its repo lost the platform GitHub App, while this deploy was starting | if the repo was unlinked, have the user reinstall the GitHub App on it first (re-linking leaves the app stopped); then `start_app` (`inno-manage-app`) and cut the next patch tag |
 | `deploy` fails at finalize with `app_not_deploying` | the app was stopped or purged while the deploy ran; nothing went live | `app_status` to see which; if stopped, `start_app`, then cut the next patch tag |
 | `deploy` fails with `No scanned image recorded` (container apps) | the platform has no record of the image this run's `container` job scanned (that job's best-effort SBOM upload failed, or the record could not be read), so the deploy cannot prove which image passed the gates | re-run the whole tag run (`gh run rerun <run-id>`); if it repeats, stop and offer a support bundle |
@@ -316,21 +316,32 @@ deployment timestamp are the authoritative, side-effect-free signals — use
 those. If the user wants to see the app for themselves, let them visit it
 in their own browser; don't pre-check it for them.
 
-### A brand-new app's first health status may briefly read `unknown`, not `unhealthy`
+### Right after a deploy, health may read `re-probe pending`, which is not a verdict
 
-Don't read a still-`unknown` `app_status` right after a first deploy as a
-problem: the deploy-time probe defers rather than alarms when it cannot reach
-the origin at all, which is exactly what a freshly-attached hostname looks
-like while a container finishes cold-starting. The status stays untouched and
-clears on the next hourly cron pass. A genuinely broken deploy still surfaces
-immediately, because an application-level 5xx is a real answer from a
-reachable app and is never deferred.
+The probe a deploy fires never judges a failure. It defers every unhealthy
+result, a timeout and an error answer from the app included, not only a
+hostname that is still propagating: the recorded status stays as it was, no
+one is notified, and `app_status` reads `Health: re-probe pending (not
+answering yet: <what the probe saw>, checked again within the hour)`,
+followed by `; last recorded: <status>` when an earlier probe recorded one.
+That last-recorded status is from before this deploy and says nothing about
+it. On a brand-new app this is normal while a container finishes
+cold-starting, and one failing answer right after any deploy can be
+transient, which is why the platform waits. A healthy answer, by contrast,
+is recorded at once. So a broken deploy alarms only when an hourly pass
+judges it, within about 70 minutes, never at once: do not tell the user a
+broken deploy would already have alarmed, and do not read a pending line,
+or an old `healthy`, as proof the new deploy works.
 
-The probe clocks themselves have one home, `inno-containerize` item 4: which
-statuses defer, the 45-second attempt with its single retry, the roughly
-95-second verdict, the hourly floor, and `health.probe_interval_hours`. Two
-things this skill adds. `restart_app` does **not** re-fire the probe or update
-the deployment record, so it will not clear or refresh a pending status. And
-to get a fresh signal sooner than the next hourly pass, re-run the whole tag
-run (`gh run rerun <run-id>`, without `--job`: a container deploy needs the
-image that same run's `container` job scanned, kept for only one day).
+The probe clocks themselves have one home, `inno-containerize` item 4: what
+defers and when an hourly pass judges, the 45-second attempt with its single
+retry, the roughly 95-second verdict, the hourly floor, and
+`health.probe_interval_hours`. Two things this skill adds. `restart_app` does
+**not** re-fire the probe or update the deployment record, so it will not
+clear or refresh a pending status. And re-running the whole tag run
+(`gh run rerun <run-id>`, without `--job`: a container deploy needs the image
+that same run's `container` job scanned, kept for only one day) finalizes
+another deploy, whose probe records a healthy answer at once but defers a
+failing one again and restarts the 10 minutes in which an hourly pass
+defers: a re-run can confirm a fix sooner than the next hourly pass, but it
+never surfaces a failure sooner, and it can delay the alarm.
