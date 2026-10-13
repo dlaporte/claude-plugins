@@ -276,10 +276,10 @@ The written design covers, at minimum:
 - **Data model** — the tables and files it will store
 - **Routes / pages** — what the user can actually open and do
 - **Access model**: who can see what, and who can edit. The platform manages
-  only membership: `X-Forwarded-Groups` carries at most this app's own
-  the members group (a member) and the open group (a caller who reached
-  an open app), the names in the `App groups:` line of the status you read in
-  the Version gate; `app_status` reports the real names. Any finer role (an editor, an admin view) needs the app's own
+  only membership: `X-Forwarded-Groups` carries at most this app's own two
+  groups, the members group (a member) and the open group (a caller who
+  reached an open app), whose names are on the `App groups:` line of the
+  status you read in the Version gate; `app_status` reports the real names. Any finer role (an editor, an admin view) needs the app's own
   role table keyed on `X-Forwarded-User`; do not design around reading other
   groups from the header. The full header rule, including when an older live
   app still sees more, is `inno-platform-conventions`' **Identity** section.
@@ -542,7 +542,10 @@ repo). It returns text beginning **`App
 - **`upstream_error`** (could not re-check the repository with GitHub): a
   transient GitHub failure during call 2's re-check. Wait a moment and call
   again with the same arguments.
-- **`too_many_members`** — `members` held more than 50 emails. Register with a
+- **More than 50 `members`**: on the MCP surface the tool's schema refuses
+  the list before the tool runs, with an argument-validation error on
+  `members` rather than a platform code (the handler behind it answers
+  `too_many_members`, which an MCP caller never sees). Register with a
   shorter list and add the rest afterward with `grant_access`.
 - **`app_limit_reached`** — the user is at their active-app limit; resolve per
   §1 (the user chooses to stop one of their own apps, or an admin raises the
