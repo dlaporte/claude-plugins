@@ -489,7 +489,7 @@ Rules that hold regardless of language:
   instead of a plain-language sentence — it's a real link the user must click.
 - **`NotConnected` is not the only non-success branch, and the others are
   not the user's fault**, so don't send any of them down the connect-link
-  path. Every failed seam call (any answer but a 200) raises
+  path. Every failed seam call (any answer that is not a 2xx) raises
   `ConnectionsError` in both template clients, with the HTTP status as
   `.status` and the answer's `error` code as `.code` (`null` in JS, `None`
   in Python, when the body carried none). In Python it is also an
@@ -529,14 +529,7 @@ Rules that hold regardless of language:
     `storage.py` with no `ConnectionLocked`, which raises plain `NotConnected`
     for both cases and cannot tell them apart: copy the current
     `app/storage.py` from the template repo (the `Template repo:` line of the status you read in the Version gate) before writing the locked branch
-    (in a JS container, `lib/storage.js`). The copy brings the rest of the
-    current client too, `ConnectionsError` above and the `truncated` flag on
-    the file listing's key list, and keeps the old shapes: the listing is
-    still a list, `NotConnected` is unchanged, and `ConnectionsError` is
-    still an `httpx.HTTPStatusError`. One thing differs in Python only: a
-    failed seam call's message, `str(e)`, is now `connections_error:<status>`
-    rather than httpx's own text, which matters only to code that logs or
-    matches it.
+    (in a JS container, `lib/storage.js`).
     Two situations produce it:
     the MCP client authorized the app **before** the user's first connection,
     or the user's sealing key was reset after they last connected. **The fix is re-authorizing the MCP client**, never
@@ -548,6 +541,13 @@ Rules that hold regardless of language:
     loop, connecting over and over while the app reports the same thing. The
     platform also notifies the affected user directly, once per app per day
     (the flag that suppresses repeats expires after 24 hours).
+    Copying the current client, as above, brings the rest of it too,
+    `ConnectionsError` and the `truncated` flag on the file listing's key
+    list, and keeps the old shapes: the listing is still a list,
+    `NotConnected` is unchanged, and `ConnectionsError` is still an
+    `httpx.HTTPStatusError`. One thing differs in Python only: a failed seam
+    call's message, `str(e)`, is now `connections_error:<status>` rather than
+    httpx's own text, which matters only to code that logs or matches it.
 - Add a small `whoami` / status tool so the user (and you, while testing) can
   confirm the Connection is live and see which backend identity it resolves to,
   without needing to exercise a real feature first.
