@@ -147,8 +147,8 @@ do not pass it until you've actually done this review.
 
 Confirm the name, repo, purpose, and members back to the user before going
 further: registration provisions real resources (a database and file
-storage, plus access groups for a browser app) and binds them to the user's
-repo.
+storage, and for a browser app a sign-in in front of its address) and binds
+them to the user's repo.
 
 ## 1b. Design the app before registering
 
@@ -280,7 +280,8 @@ The written design covers, at minimum:
   only membership: `X-Forwarded-Groups` carries at most this app's own two
   groups, the members group (a member) and the open group (a caller who
   reached an open app), whose names are on the `App groups:` line of the
-  status you read in the Version gate; `app_status` reports the real names. Any finer role (an editor, an admin view) needs the app's own
+  status you read in the Version gate, with the app's name in place of
+  `{app}`. Any finer role (an editor, an admin view) needs the app's own
   role table keyed on `X-Forwarded-User`; do not design around reading other
   groups from the header. The full header rule, including when an older live
   app still sees more, is `inno-platform-conventions`' **Identity** section.
@@ -297,8 +298,9 @@ approval** (of the design *and* the name) before §2. Ask the approval question
 in your own words referencing the design the user can now read; put genuinely
 separate decisions (name choice, deployment type, members) in their own
 questions rather than folding them into the approval. Registration provisions
-real resources (a database and file storage, plus Okta access groups for a
-browser app; an MCP app gets none, since its member list alone decides) and
+real resources (a database and file storage, and for a browser app a
+sign-in in front of its address; from platform v0.16.5 no new app gets an
+Okta access group, since its member list alone decides who may use it) and
 binds them to the user's repo; the type is fixed at registration.
 
 The type and design seed the scaffolding in §4.
@@ -373,22 +375,25 @@ register_app({ app, repo, description, type, members, accept_guardrails: true, c
 - `members` is an optional list of Okta emails. A member who is notified
   hears that the app was shared with them, in-platform plus email per their
   own notification settings, so name only people who should hear about it
-  now. What happens to each address depends on the type:
-  - **A browser app** (`container`, `function`): each address Okta knows is
-    added to the app's member list and its Okta group and notified. An
-    address Okta does not know is skipped: it gets no access and no notice,
-    and call 2's answer names it under `Warnings:` (`member not found in
-    Okta: <address>`). Grant it later with `grant_access`, once that person
-    has an account.
-  - **An MCP app** (`mcp-function`, `mcp-container`, registered on platform
-    v0.16.4 or later): each address is added to the app's member list alone
-    (the app has no Okta group) and notified. While the platform has an Okta
-    token, an address Okta does not know is still added but not notified,
-    and call 2's answer names it under `Warnings:` (`member not found in
-    Okta: <address>; added to the app's member list anyway and not
-    notified`). Check its spelling with the user, and if it is mistyped,
-    remove it with `revoke_access` (`inno-manage-app`). An address the
-    platform could not check in Okta is added too, with its own warning.
+  now. What happens to each address depends on the app's mode, which
+  `inno-manage-app`'s `grant_access` section explains:
+  - **An app in platform mode**: every app registered on platform v0.16.5
+    or later, and an MCP app (`mcp-function`, `mcp-container`) registered on
+    v0.16.4. Each address is added to the app's member list alone (the app
+    has no Okta group) and notified. While the platform has an Okta token,
+    an address Okta does not know is still added but not notified, and call
+    2's answer names it under `Warnings:` (`member not found in Okta:
+    <address>; added to the app's member list anyway and not notified`).
+    Check its spelling with the user, and if it is mistyped, remove it with
+    `revoke_access` (`inno-manage-app`). An address the platform could not
+    check in Okta is added too, with its own warning.
+  - **An app in okta mode**: a browser app (`container`, `function`) on a
+    platform before v0.16.5, or a registration begun before then and
+    finished now. Each address Okta knows is added to the app's member list
+    and its Okta group and notified. An address Okta does not know is
+    skipped: it gets no access and no notice, and call 2's answer names it
+    under `Warnings:` (`member not found in Okta: <address>`). Grant it
+    later with `grant_access`, once that person has an account.
 
   On a platform that lists allowed email domains, an address outside them
   refuses the whole call with `email_domain_not_allowed` before anything is
@@ -469,8 +474,9 @@ they've installed the App (or the App already covered the repo), call
 `register_app` **again with the same arguments**. This re-checks the proof file,
 then finishes the job server-side (prunes the template scaffold to the chosen
 type in a new commit on the repo's default branch, pushed via the
-installation token, provisions D1 + R2, plus the Okta groups for a browser
-app, and binds the repo). It returns text beginning **`App
+installation token, provisions D1 + R2, plus the sign-in in front of a
+browser app's address, and binds the repo; only a registration begun before
+platform v0.16.5 also gets Okta groups). It returns text beginning **`App
 "{name}" registered from {repo}`** and containing:
 
 - `URL (after first deploy): https://<app host>`: **quote
@@ -478,7 +484,11 @@ app, and binds the repo). It returns text beginning **`App
   the instance's). For an **mcp-function** or **mcp-container** app the
   response surfaces the **MCP endpoint** (`…/mcp`) instead — same rule: quote
   it from the response. The
-  URL 404s until the first successful `inno-ship`.
+  URL 404s until the first successful `inno-ship`. A browser app registered
+  on platform v0.16.5 or later needs the platform's newer gateway for that
+  first deploy: until a platform admin has promoted it, the deploy is
+  refused `gateway_too_old`, which is not the user's to fix (`inno-ship`'s
+  failure table).
 - A `.github/workflows/deploy.yml` — the thin caller workflow that wires the
   repo to the platform's reusable CI. **Overwrite the repo's copy with the
   snippet the response returned** (an older template may still carry one). The template ships no `deploy.yml`: this file
@@ -538,17 +548,8 @@ app, and binds the repo). It returns text beginning **`App
   platform's allowed email domains (a listed domain's subdomains are
   inside); the message names the address and the domains. Nothing was
   created: fix or drop that address and call again.
-- **`browser_apps_need_okta`** (browser apps, until platform v0.16.5): the
-  platform has no Okta token configured, and a browser app (`container`,
-  `function`) needs the identity provider until the gateway switch in
-  v0.16.5. It comes back on the first call, before any proof file, though
-  the repo from §2 already exists; nothing on the platform was created. It
-  is a platform operator's fix, not the user's: an MCP app
-  (`mcp-function`, `mcp-container`) registers without it, so offer that
-  type only when the design really is an MCP server. Otherwise tell the
-  user plainly, for example "this platform can't host website-style apps
-  yet: its operator still has to finish setting up sign-in", and stop.
-- **`idp_object_foreign`** (browser apps only: an MCP app gets no Okta
+- **`idp_object_foreign`** (only a registration begun before platform
+  v0.16.5, and only for a browser app: from v0.16.5 no new app gets an Okta
   group, so it never answers this): an access group of the app's name already
   exists and is not this platform's own (another platform sharing the same
   sign-in directory may hold it); the message names the group. Choose

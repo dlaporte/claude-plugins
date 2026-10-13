@@ -103,11 +103,12 @@ order:
    `X-Forwarded-User` / `X-Forwarded-Groups` (see `inno-platform-conventions`).
    List each file/route to remove. Keep the app's own **authorization** (who may
    edit what), rewired to key on `X-Forwarded-User`: `X-Forwarded-Groups`
-   carries only this app's two groups (the names in the `App groups:` line of the status you read in the Version gate; `app_status` reports the real ones), never the
-   repo's existing role groups, so existing role checks cannot move onto that
-   header. The full header rule is `inno-platform-conventions`' **Identity**
-   section. This is about the app's *own* front-door
-   login — a separate thing to look for is auth to a *backend the app calls
+   carries only this app's two groups (the names in the `App groups:` line
+   of the status you read in the Version gate, with the app's name in place
+   of `{app}`), never the repo's existing role groups, so existing role
+   checks cannot move onto that header. The full header rule is
+   `inno-platform-conventions`' **Identity** section. This is about the
+   app's *own* front-door login — a separate thing to look for is auth to a *backend the app calls
    out to*: if the repo runs its own OAuth flow against some other service,
    holds a long-lived per-user token for that service, or ships a sidecar
    whose whole job is minting/refreshing that credential, don't port any of
@@ -295,9 +296,10 @@ restore point is.
    `name_quarantined`, `repo_already_registered`, `repo_owner_claimed`,
    `repo_identity_changed`, `app_limit_reached`, `repo_mismatch`,
    `guardrails_not_accepted`, `email_domain_not_allowed`,
-   `browser_apps_need_okta`, `idp_object_foreign`, `host_in_use`, …),
-   including what happens to each address in `members`, which differs for a
-   browser app and an MCP app. For `repo_identity_changed` the tool's
+   `idp_object_foreign`, `host_in_use`, …), including what happens to each
+   address in `members`, which depends on the app's mode. A browser app's
+   first deploy also needs the platform's newer gateway (`gateway_too_old`,
+   in `inno-ship`'s failure table). For `repo_identity_changed` the tool's
    description says: "Answers repo_identity_changed when the repo was
    renamed, transferred or recreated since it was verified: call again for a
    new proof file."
