@@ -243,9 +243,10 @@ make, with your recommendation**:
     mcp-container app, `restart_app` — a live instance keeps serving the old image
     until it recycles.
     Note the idle **cold start**: a sleeping container wakes on request, so
-    expect a seconds-scale delay on the first `POST /mcp` after idle
-    (`sleep_after` default 10m) — mention this if responsiveness matters to
-    the user. The idle-clock rule under `mcp-function` applies here too, from
+    expect a seconds-scale delay on the first `POST /mcp` after idle (how
+    long it stays up with no requests is the `container.sleep_after`
+    setting, which `get_config app=<name>` shows once the app exists).
+    Mention this if responsiveness matters to the user. The idle-clock rule under `mcp-function` applies here too, from
     the same served home.
   - State your recommendation and the reason, and go with the user's call.
 - **Deployment pattern** (contract §5): server-rendered is the default for
@@ -727,7 +728,8 @@ body describes the runtime this app actually has.
   SDK (FastMCP), pinned below `mcp` 2 in `app/requirements.txt` (2 renamed
   the `FastMCP` API the starter uses); build the container image per
   `inno-containerize`. Expect a seconds-scale cold start on the first
-  request after the container has been idle (`sleep_after` default 10m).
+  request after the container has been idle for the app's
+  `container.sleep_after`, which `get_config app=<name>` shows.
 
 **Delete the scaffold marker as you build.** The template repo ships
 `app/.needs-build`, which makes CI skip deployment until it's removed. Once you

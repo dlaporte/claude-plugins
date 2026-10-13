@@ -120,8 +120,8 @@ changed in between: pin the base to the digest `get_app_contract` serves.
    That CI clock is separate from the platform's own runtime health probe,
    which binds to the same endpoint after every deploy: immediately on each
    green one, then on the configured interval (`health.probe_interval_hours`,
-   24 hours by default, and an admin can change it platform-wide or per
-   app). The probe presents a credential chosen by the app's **perimeter**,
+   which an admin sets platform-wide or per app, and which
+   `get_config app=<name>` shows). The probe presents a credential chosen by the app's **perimeter**,
    which is why `/healthz` must not depend on the caller: the Access service
    token on an SSO-perimeter app (`container`, `function`) and the bearer
    probe token on an OAuth-RS-perimeter app (`mcp-function`,
