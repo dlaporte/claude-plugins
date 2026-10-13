@@ -144,15 +144,15 @@ produce is a Dockerfile and app code rather than sentences a user reads.
   keeping its own list.
 - **`skills/inno-fleet-admin`**: for platform admins only, the actions that
   reach across the fleet: the admin roster (`list_admins`, `grant_admin`,
-  `revoke_admin`), comparing the platform's membership tables with Okta,
-  closing the gaps and cutting MCP apps over to the platform's own member
-  list (`import_okta_memberships`), reassigning an app's owner,
-  purging an app, rebuilding an app's released code at its live tag
-  (`rebuild_app`), ending one person's panel sessions everywhere, claiming
-  the instance's Okta groups, accepting a naming change, platform
-  configuration, promoting the gateway (`sync_gateway_ref`), and the
-  fleet-wide reads (every app, every user, the audit log, the platform's logs
-  and its backup). An owner manages their own apps with `inno-manage-app`.
+  `revoke_admin`), filling an empty admin list from the Okta admin group
+  (`import_okta_memberships`, its only job from platform v0.16.8),
+  reassigning an app's owner, purging an app, rebuilding an app's released
+  code at its live tag (`rebuild_app`), ending one person's panel sessions
+  everywhere, marking the instance's Okta admin group, accepting a naming
+  change, platform configuration, promoting the gateway (`sync_gateway_ref`),
+  and the fleet-wide reads (every app, every user, the audit log, the
+  platform's logs and its backup). An owner manages their own apps with
+  `inno-manage-app`.
 
 ### How the skills are laid out
 

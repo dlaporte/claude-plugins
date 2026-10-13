@@ -375,26 +375,20 @@ register_app({ app, repo, description, type, members, accept_guardrails: true, c
 - `members` is an optional list of Okta emails. A member who is notified
   hears that the app was shared with them, in-platform plus email per their
   own notification settings, so name only people who should hear about it
-  now. What happens to each address depends on the app's mode, which
-  `inno-manage-app`'s `grant_access` section explains:
-  - **An app in platform mode**: every app registered on platform v0.16.5
-    or later, and an MCP app (`mcp-function`, `mcp-container`) registered on
-    v0.16.4. Each address is added to the app's member list alone (the app
-    has no Okta group) and notified. While the platform has an Okta token,
-    an address Okta does not know is still added but not notified, and call
-    2's answer names it under `Warnings:` (`member not found in Okta:
-    <address>; added to the app's member list anyway and not notified`).
-    Check its spelling with the user, and if it is mistyped, remove it with
-    `revoke_access` (`inno-manage-app`). An address the platform could not
-    check in Okta is added too, with its own warning.
-  - **An app in okta mode**: a browser app (`container`, `function`) on a
-    platform before v0.16.5, an MCP app on one before v0.16.4, or a
-    registration begun before those releases and finished after them. Each
-    address Okta knows is added to the app's member list
-    and its Okta group and notified. An address Okta does not know is
-    skipped: it gets no access and no notice, and call 2's answer names it
-    under `Warnings:` (`member not found in Okta: <address>`). Grant it
-    later with `grant_access`, once that person has an account.
+  now. On platform v0.16.5 or later (for an MCP app, v0.16.4 or later),
+  each address is added to the app's member list, its only store (the app
+  has no Okta group; `inno-manage-app`'s `grant_access` section says what
+  admits a person), and notified. While the platform has an Okta token, an
+  address Okta does not know is still added but not notified, and call 2's
+  answer names it under `Warnings:` (`member not found in Okta: <address>;
+  added to the app's member list anyway and not notified`). Check its
+  spelling with the user, and if it is mistyped, remove it with
+  `revoke_access` (`inno-manage-app`). An address the platform could not
+  check in Okta is added too, with its own warning. On an older platform,
+  or before v0.16.8 for a registration begun on one, an address Okta does
+  not know is skipped instead, with no access and no notice, and call 2's
+  answer names it under `Warnings:`: grant it later with `grant_access`,
+  once that person has an account.
 
   On a platform that lists allowed email domains, an address outside them
   refuses the whole call with `email_domain_not_allowed` before anything is
@@ -478,9 +472,11 @@ they've installed the App (or the App already covered the repo), call
 then finishes the job server-side (prunes the template scaffold to the chosen
 type in a new commit on the repo's default branch, pushed via the
 installation token, provisions D1 + R2, plus the sign-in in front of a
-browser app's address, and binds the repo; only a registration begun before
-platform v0.16.5 also gets Okta groups). It returns text beginning **`App
-"{name}" registered from {repo}`** and containing:
+browser app's address, and binds the repo; from platform v0.16.8 no app
+gets an Okta group, even one whose registration an earlier release began,
+while before it a registration begun before v0.16.5 does). It returns text
+beginning
+**`App "{name}" registered from {repo}`** and containing:
 
 - `URL (after first deploy): https://<app host>`: **quote
   this from the response, never construct it** (the host and domain are
@@ -562,19 +558,11 @@ platform v0.16.5 also gets Okta groups). It returns text beginning **`App
     operator can change, by editing the manifest and redeploying. Tell the
     user plainly that their address cannot own an app on this platform, and
     stop.
-- **`idp_object_foreign`** (only a registration begun in okta mode and
-  finished now: a browser app's begun before platform v0.16.5, or an MCP
-  app's begun before v0.16.4; a registration begun since gets no Okta group,
-  so it never answers this): an access group of the app's name already
-  exists and is not this platform's own (another platform sharing the same
-  sign-in directory may hold it); the message names the group. Choose
-  another app name and check it with `check_name`, knowing that a clean
-  check does not rule this out: `check_name` never looks at the sign-in
-  directory's groups, so only the next call can. Only when that group
-  really is this platform's own, unmarked, can an operator mark it as such
-  (OPERATIONS, "Instances sharing an IdP") so the same name registers;
-  `claim_instance_objects` cannot, because it marks only the groups this
-  platform recorded.
+- **`idp_object_foreign`** (only on a platform before v0.16.8, and only
+  when finishing a registration begun before v0.16.5, or v0.16.4 for an MCP
+  app): an access group of the app's name already exists and is not this
+  platform's own; the message names it. Choose another name and check it
+  with `check_name`, and read the tool's own description for the rest.
 - **`host_in_use`**: the app's hostname already has a DNS record that is
   not this app's (on a platform whose apps sit directly under its domain,
   an unrelated record can). Nothing was created: choose another name, or

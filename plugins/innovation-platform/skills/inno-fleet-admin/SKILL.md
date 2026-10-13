@@ -1,6 +1,6 @@
 ---
 name: inno-fleet-admin
-description: "Use when a platform admin manages the Innovation Platform fleet through the inno-platform MCP tools: the admin list (list_admins, grant_admin, revoke_admin), the Okta membership import (import_okta_memberships), ownership transfers (transfer_app), immediate purges (purge_app), rebuilds (rebuild_app), ending someone's panel sessions (revoke_sessions), the instance's Okta groups and naming (claim_instance_objects, accept_naming_change), platform settings (get_config, set_config, remove_config), the gateway promote (sync_gateway_ref), and the fleet-wide reads (list_apps, list_users, query_audit, get_platform_logs, export_platform_backup). Use when an admin wants to add or remove an admin, fill or check the admin list, settle a member_drift_detected notice, reassign an app, delete an app now, offboard someone, change a setting or a safety waiver, read the audit log or every app's logs, or take a registry snapshot. An owner's work on their own app is inno-manage-app."
+description: "Use when a platform admin manages the Innovation Platform fleet through the inno-platform MCP tools: the admin list (list_admins, grant_admin, revoke_admin), the Okta import (import_okta_memberships, which from platform v0.16.8 only fills an empty admin list), ownership transfers (transfer_app), immediate purges (purge_app), rebuilds (rebuild_app), ending someone's panel sessions (revoke_sessions), the instance's Okta admin group and naming (claim_instance_objects, accept_naming_change), platform settings (get_config, set_config, remove_config), the gateway promote (sync_gateway_ref), and the fleet-wide reads (list_apps, list_users, query_audit, get_platform_logs, export_platform_backup). Use when an admin wants to add or remove an admin, fill or check the admin list, fix a browser app an earlier release left on Okta groups, reassign an app, delete an app now, offboard someone, change a setting or a safety waiver, read the audit log or every app's logs, or take a registry snapshot. An owner's work on their own app is inno-manage-app."
 ---
 
 # inno-fleet-admin
@@ -150,147 +150,125 @@ Never fill an empty list on an instance with an Okta token by adding one row
 by hand: that ends the Okta fallback at once, and every other admin the group
 lists then needs `grant_admin`.
 
-## The membership import: `import_okta_memberships({ apply?, app? })`
+## The admin-list import: `import_okta_memberships({ apply? })`
 
-Since v0.16.1 the platform's own tables decide: each app's member list, which
-MCP apps read at every request, and the admin list. Okta's admin group is
-not kept in step with the admin list (since v0.16.7): it is read only while
-that list is empty, and this tool fills an empty list from it. Okta does
-hold a copy of the member list of each app in **okta mode** (a browser app
-registered before v0.16.5, and an MCP app registered before v0.16.4, until
-each is cut over): the app's members group, which Access reads when a person
-signs in to a browser app in okta
-mode. An app in **platform mode** (every app registered from v0.16.5, an MCP
-app registered on v0.16.4, and any app that was cut over) has its member
-list alone: the run names it and skips it ("platform mode, so its member
-list is the platform's own and is not compared with Okta; skipped"), and a
-skipped app does not count against parity. This tool compares the tables
-with Okta, reports how far apart they are, and with `apply: true` closes
-what it may and cuts MCP apps over to platform mode (below). It reads Okta
-and never writes it.
+Since platform v0.16.8 this tool fills an empty admin list and does nothing
+else. Every app's member list is the platform's own: no app's Okta group is
+read, compared or written, and no app is moved anywhere, since there is no
+okta mode left to move one from. Okta's admin group is not kept in step with
+the admin list either (since v0.16.7): the platform reads it only while that
+list is empty, and this tool fills an empty list from it. It reads Okta and
+never writes it. On a platform before v0.16.8 the tool also compares each
+app's members group, takes `app`, and moves apps off their Okta groups;
+this skill does not describe that: read the tool's own description, which
+that platform serves, and the v0.16.4 to v0.16.8 sections of the
+operator's upgrade guide (`docs/instances/UPGRADING.md` in the platform's
+repository).
+
+- **While the admin list is EMPTY** (an instance with an Okta token
+  upgraded to v0.16.1 before the import ran), it compares the list with the
+  admin group. The group's members who can sign in belong (one Okta reports
+  suspended or deprovisioned is listed as skipped, never added), and
+  `apply: true` fills the list with them in one write, all or none. An
+  admin-group read that does not list you stops the fill, and a group marked
+  for another instance, gone from Okta, or failing to read is reported and
+  nothing is written.
+- **Once the list holds anyone** it decides, and the group is not read or
+  compared: one line says `admins: the platform's admin list decides (N
+  admins); the Okta admin group is not compared`, and it counts toward no
+  parity, so a dry run reads `parity: clean` however far the group differs
+  from the list. `grant_admin` and `revoke_admin` change the list from then
+  on.
+- **From platform v0.16.8, never pass `app`.** The argument that scoped a
+  run to one app's members is retired there. The schema still lists it, but
+  a call that passes it is refused `bad_request` ("The app argument is
+  retired"), and nothing is compared or written. An app's members change
+  only through `grant_access` and `revoke_access` (`inno-manage-app`).
 
 **Run it as a loop, never as one apply:**
 
-1. **Dry run** (the default). For each app, and for the admin list while it
-   is empty, it reports who the table lacks and who it holds that do not
-   belong, and ends each group's block with its parity line. The last line
-   is the run's:
-   `parity: clean` only when every group it compares was read and every table matches it,
-   otherwise the number of differences and of groups not compared.
-2. **Read it with the admin.** A group marked for another instance, gone from
-   Okta, failed to read, or read with no members is reported, and nothing of
-   its is written. An admin-group read that does not list you stops a fill of
-   an empty admin list. Say why each skip happened before going on.
-3. **Apply** (`apply: true`), after an explicit yes. For each app it adds the
-   missing rows and prunes the extra ones while holding that app's lease; an
-   app another change holds is reported as not compared this run. It prints
-   `writes: clean` or `writes: N failed`, never parity, and `writes: clean`
-   is counted from its own writes, not read back, so it is not the proof.
-4. **A fresh dry run.** Every group reading `parity: clean` is the proof; keep
-   that answer. An MCP app the apply cut over now reads as platform mode and
-   skipped, which is the expected result, not a missing comparison. A
-   browser app it settled is cut over by its next deploy (below). A second
-   apply on a clean table writes and audits nothing.
+1. **Dry run** (the default). It reports who the admin list lacks, and its
+   last line is the run's: `parity: clean` only when every group it
+   compares was read and every table matches it, otherwise the number of
+   differences and of groups not compared.
+2. **Read it with the admin.** Say why each line that was not compared was
+   skipped before going on.
+3. **Apply** (`apply: true`), after an explicit yes. It answers
+   `Applied: N added` and then `writes: clean` or `writes: N failed`, never
+   parity, and `writes: clean` is counted from its own writes, not read
+   back, so it is not the proof. It never prunes. It audits `admin_granted`,
+   one row per admin with the admin as its target, with `detail.source` set
+   to `okta_import`.
+4. **A fresh dry run.** `parity: clean` is the proof; keep that answer. A
+   second apply writes and audits nothing.
 
-The rules it applies, as its description states them:
+From platform v0.16.8 no Okta import can rebuild an app's member list: it
+exists only in the platform's registry, the nightly database dumps and any
+`export_platform_backup` snapshot.
 
-- An app's members are every group member except those Okta reports
-  DEPROVISIONED: a SUSPENDED member keeps their row, and a DEPROVISIONED one
-  is listed, never added, and pruned. An app's owner is always a member,
-  never pruned, added when missing, and named when the group does not list
-  them.
-- The admins are compared with the admin group only while the admin list is
-  EMPTY: the group's members who can sign in belong, and an apply fills the
-  list with them in one write, all or none. Once the list holds anyone it
-  decides, and (since platform v0.16.7) the group is not read or compared:
-  one line says `admins: the platform's admin list decides (N admins); the
-  Okta admin group is not compared`, and it counts toward no parity, so a
-  dry run can read `parity: clean` however far the group differs from the
-  list. On an older platform the admins are compared on every run instead:
-  each difference is reported, never written (an apply's admin block ends
-  `writes: none, reported only`), its lines say how to settle it, and it
-  counts in a dry run's parity, so `parity: clean` waits until the group
-  matches the list; the list still decides.
-- `app` narrows the run to one app; the admins' line is still included, and
-  the last line names the scope, with the admins in it only while they are
-  compared (on a platform before v0.16.7, always).
-- **The cut-over (since platform v0.16.4).** With `apply`, an MCP app
-  (`mcp-function`, `mcp-container`) still in okta mode is then cut over to
-  platform mode, under its lease, when its writes all landed and a fresh read
-  of both stores finds its list equal to the group. Its block says "flipped
-  to platform mode", and the summary names every app flipped. From then on
-  its list alone decides and the import skips it. A dry run says of each
-  such app it compared that it "would flip to platform mode with apply", and
-  its summary names them. One that stays in okta mode (a write failed, or
-  the fresh read failed or found the two apart) says why on its own line
-  ("stays in okta mode: ...", or "failed to flip to platform mode" when the
-  mode write itself failed, which counts as a failed write), and a later
-  apply tries again. The cut-over writes nothing to Okta: the
-  group stays there and in the app's record until the app is purged. A
-  browser app is never cut over here. In the tool's words, "its next deploy
-  whose gateway asks the platform cuts it over once its list matches its
-  group, so an apply that settles the list is what lets it" (below).
-- With `apply` it audits `access_granted`, `access_revoked`,
-  `admin_granted` and, one row per app cut over, `app_authz_mode_set` (with
-  `detail.from` `okta` and `detail.to` `platform`), each with
-  `detail.source` set to `okta_import`.
+## Browser apps an earlier release left on Okta groups
 
-**A browser app's cut-over (since platform v0.16.5)** happens at
-`/deploy-complete`, never here, for a browser app in okta mode whose
-deployment reported a gateway of capability 1 or more (one that asks the
-platform on every request; **The gateway promote** below). Under the app's
-lease, and only when a fresh read finds its member list equal to its Okta
-group, the platform records the app's Access policies, marks the app as
-mid-switch (a marker that from then on holds every deploy of it to a
-gateway of capability 1 or more), gives its Access app a policy that only
-makes people sign in, deletes the two policies that admitted by the Okta
-groups, and sets the app to platform mode, audited `app_authz_mode_set`
-with `detail.source` `deploy_complete`. A step that fails is undone
-against that record and checked afterwards. When the old policies are
-verifiably back and the sign-in policy verifiably gone, the marker is
-cleared and the app is in okta mode as before (`app_cutover_failed` with
-`restored: true`). When the undo cannot be verified complete, the app stays
-in okta mode but keeps the sign-in policy and the marker (`app_cutover_failed`
-with `restored: false` and `marker_left`): Access then admits anyone who
-signs in, the app's gateway still checks its member list, every deploy of
-it needs a gateway of capability 1 or more (`gateway_too_old`, **The
-gateway promote** below), and the admins get a **`cutover_undo_failed`**
-notice. Look at the app's Access policies in the Cloudflare dashboard.
-Either way the deploy itself stays finalized, and the app's next deploy
-tries the cut-over again.
+From platform v0.16.8 there is no okta mode: migration 0056 moved every app
+to the platform's member list, and no grant, revoke, open or close touches
+an app's Okta groups, its Okta rule or its Access policies any more. A
+browser app (`container`, `function`) registered before v0.16.5 whose
+deploy never moved it off its Okta groups still has an Access application
+whose `members` policy, and `open` policy while it was open, admit only the
+people those groups hold, which nothing updates now. The operator's Access
+inventory, the read-only command in the upgrade guide's v0.16.8 section,
+lists these apps only when run **before migration 0056**: run it then and
+keep its list, because after the migration it lists nothing (every app is
+then in platform mode). Without a kept list, that section gives a fallback
+query, and in the Cloudflare dashboard (Zero Trust, Access, Applications)
+such an app's Access application still has a `members` policy. Until it is
+fixed:
 
-When the two stores disagree the app stays in okta mode
-(`app_cutover_held`, reason `stores_disagree`), and the admins get a
-**`member_drift_detected`** notice: until the stores agree, someone in only
-one of them cannot reach the app, because Access admits by the group and
-the gateway by the list. The fix is this tool's loop with `app` set to
-that app: a dry run shows the differences, an apply makes the list match
-the group, and the app's next deploy then cuts it over (the owner's next
-tag, or `rebuild_app`). Settle a difference the other way, with
-`grant_access` or `revoke_access`, when the group is the side that is
-wrong. While an earlier notice of the same kind for the app is still
-unread, a later deploy adds none. A cut-over can also be held with no
-notice, for a reason the `app_cutover_held` row names (a store could not be
-read, the group listed no one, the platform has no Okta token, or the app's
-record names no Access app or group); a later deploy tries again.
+- a person granted on the platform is refused at sign-in, and an open
+  reaches only the people those groups hold: for an app that was open at
+  the upgrade, whose `open` policy and still-active Okta rule stay, that is
+  everyone who signs in, so a close and a later open let every Okta user
+  back in;
+- on a gateway below capability 1 (an app not redeployed since the
+  platform adopted v0.16.5's gateway), which asks the platform nothing, a
+  revoke or a close reaches no one, and an OPEN app fails open: its `open`
+  policy and its still-active Okta rule keep admitting everyone who signs
+  in.
 
-**The cut-over is one way.** No tool moves an app back to okta mode, and
-once an app is in platform mode an Okta import can no longer rebuild its
-member rows: its member list exists only in the platform's registry, the
-nightly database dumps and any `export_platform_backup` snapshot. So the
-explicit yes before an apply covers both its writes and the apps the dry run
-says would flip; name those apps to the admin.
+The fix, after the upgrade, in this order:
 
-**Which way an apply settles a disagreement matters.** An apply copies the
-Okta group INTO the platform's list. After a grant that Okta refused half way,
-that settles it the other way, making the list match the group. After a
-revoke that Okta refused half way, the group may still hold the person, and an
-apply would add them back and give them MCP access again: retry the
-`revoke_access` instead. Every answer that warns the two stores may disagree
-says which case it is and names the repair; follow it. When `grant_access`,
-`transfer_app` or `link_app_data` answers `membership_stores_disagree`, run
-the dry run with `app` set to the source app it names to see the difference
-there.
+1. **Redeploy it** (`rebuild_app`, or its owner's next tag) on a gateway of
+   capability 1 or more, and check that the deploy finished and that no
+   restart followed it. **Do not restart it** with `restart_app` from the
+   redeploy until steps 2 and 3 are done, and if the platform's
+   auto-restart (`remediate.auto_restart`) is on for it, set it to false
+   for that app (`set_config` at app scope) before the redeploy and remove
+   that override (`remove_config`) once steps 2 and 3 are done: a restart
+   that lands inside the deploy can put the older, capability-0 version
+   back. The upgrade guide's v0.16.8 section says how to check.
+2. **Add a sign-in policy** to its Access application: an allow policy
+   named `signin` whose include is the Login Methods rule for the
+   instance's identity provider (the manifest's `cloudflare.accessIdpId`),
+   never Everyone.
+3. **Only then delete its `members` and `open` policies**, so the
+   application is never left with no allow policy.
+
+Keep that order: adding the sign-in policy first opens the app to everyone
+who signs in while a gateway below capability 1, which asks nothing, still
+fronts it. The other way out is to purge the app and register it again,
+which gives it a sign-in-only Access application; a purge deletes its data
+and its member list, so export the data first (`export_app_data`) and grant
+its people again. Either way its owner then re-grants with `grant_access`
+anyone who reached it only through its Okta group. Once fixed, its Okta
+groups and rule admit no one through any policy, and they stay in Okta
+until `purge_app` deletes them by their recorded ids.
+
+On an instance not yet on v0.16.8, cutting each such app over on v0.16.5
+to v0.16.7, before migration 0056 runs, avoids the dashboard steps; run
+the Access inventory again before the migration and keep that last list
+for the apps still on it. The operator's upgrade guide gives every step,
+the inventory command and its fallback: the v0.16.8 section of
+`docs/instances/UPGRADING.md` in the platform's repository (no tool serves
+it; the admin plugin's `platform-upgrade` skill reads it).
 
 ## `transfer_app({ app, new_owner_email, force? })`: reassign ownership
 
@@ -301,29 +279,33 @@ platform admin must do it, and offer to draft the request, naming the app and
 the new owner (`inno-manage-app` says the same).
 
 It takes effect at once. The recipient becomes the owner, and lifecycle
-notices, quota and management rights move to them. In the tool's words,
-"For an app in okta mode they are added to its Okta group, which Cloudflare
-Access reads for a browser app, and then, for every app, to its member list,
-which every MCP app and every browser app behind a capability-1 gateway
-reads, in the one write that makes them the owner". For an app in platform
-mode (the import section above says which apps those are), the transfer
-makes no Okta write: that one write is the whole of it.
+notices, quota and management rights move to them. From platform v0.16.8,
+in the tool's words, "They are added to its member list, which every MCP
+app and every browser app behind a capability-1 gateway reads, in the one
+write that makes them the owner", and "the transfer writes nothing to
+Okta": that one write is the whole of it. On a browser app an earlier
+release left on Okta groups (**Browser apps an earlier release left on Okta
+groups** above), Cloudflare Access still refuses anyone those groups do not
+hold, the new owner included, until it is fixed. This section describes
+v0.16.8 and later. On an earlier platform, an app registered before v0.16.5 (an
+MCP app before v0.16.4) may still keep its members in an Okta group too,
+which the transfer then writes as well, adding the recipient and taking out
+a dropped previous owner, and which can refuse it or leave a step to finish
+in ways this section does not list: read the tool's own description, which
+that platform serves, and follow what its answer says.
 
 The previous owner keeps access as a member, unless the instance lists
 allowed email domains and they are outside them (since platform v0.16.7).
 That is never a reason to refuse: the transfer goes ahead and does not keep
-them. The same write removes their member-list row; for an app in okta mode
-they are then taken out of its Okta group; their stored connections for the
-app are deleted; and for an MCP app their token grants for it are revoked,
-as `revoke_access` revokes them. The answer and their notice say they were
-not kept, and the `app_transferred` audit row records
+them. The same write removes their member-list row; after it their stored
+connections for the app are deleted, and for an MCP app their token grants
+for it are revoked, as `revoke_access` revokes them. The answer and their
+notice say they were not kept, and the `app_transferred` audit row records
 `previous_owner_removed` (and, for an MCP app, `previous_owner_revoked_grants`
 and `previous_owner_revoke_failed`). The steps after the write can fail
-without undoing the transfer, and the answer then says so: if Okta refuses
-the group removal, or cannot be asked who they are, `revoke_access` of them
-finishes it once Okta accepts it (never an import apply, which would give
-them MCP access again); if the connections delete fails,
-`list_user_connections` with their address and the app shows what is left,
+without undoing the transfer, and the answer then says so: if the
+connections delete fails, `list_user_connections` with their address and
+the app shows what is left,
 and `disconnect_user_connection` removes each (the audit row then records
 `previous_owner_connections_left`); if the grant revocation cannot be
 verified, the answer says so, and their tokens still stop at the gateway's
@@ -339,16 +321,14 @@ with nothing to transfer.
 - **Refusals about the recipient** (the previous owner is never one, above).
   `email_domain_not_allowed` when the instance lists allowed email domains
   and the address is outside them (a listed domain's subdomains are inside;
-  the list is the manifest's `identity.allowedEmailDomains`, as above);
-  `okta_user_not_found`, for an app in okta mode, when Okta has no user for
-  them (check the address; they need an account first); and
+  the list is the manifest's `identity.allowedEmailDomains`, as above), and
   `app_limit_reached` when they are at their active-app cap, which counts
   unless the app is stopped. Its message normally names the remedy,
   raising the recipient's `apps.max_active` at user scope with
   `set_config`. Do NOT offer to stop the recipient's apps
   for them.
-- **A recipient Okta does not know, on an app in platform mode**, is not
-  refused. While the platform has an Okta token the address is looked up
+- **A recipient Okta does not know** is not refused. While the platform has
+  an Okta token the address is looked up
   read-only, and the transfer still lands with a `WARNING:` that Okta has no
   user for it. The recipient is still sent the transfer notice, as the owner
   who now receives the app's lifecycle notices. If the address is mistyped,
@@ -357,9 +337,8 @@ with nothing to transfer.
   the previous owner; if their account is still being created, they can
   reach the app once it exists. If Okta cannot be asked,
   the answer says the address was not checked.
-- `no_okta_group` (okta mode only): the app has no Okta group provisioned
-  yet, so its registration never finished. `app_busy`: another change to
-  this app is in flight; retry once after a moment, never in a loop.
+- `app_busy`: another change to this app is in flight; retry once after a
+  moment, never in a loop.
 - **Data links block it.** Data links are same-owner only, so a transfer has
   to revoke every link that touches the app. While any of those links still
   has a deployed binding (a live link, or one unlinked since the consumer app
@@ -384,18 +363,10 @@ with nothing to transfer.
   and the recipient cannot see that source app, so the transfer would widen
   who can reach it. `force` does not override this. Grant the recipient
   access to the named source app first, or unlink, then transfer.
-- `membership_stores_disagree` means that source app's member list and Okta
-  group disagree about the recipient (a source in okta mode; one in platform
-  mode counts its list alone and never answers it). `force` does not
-  override it either. The message says how to settle each person, and the
-  import's dry run with `app` set to that source shows the difference.
-- **A refused or failed transfer of an app in okta mode takes the recipient
-  back out** of the app's Okta group, unless they were in it before the
-  call, and says so if Okta refuses that. The answer then says the two
-  stores may disagree, names the repair, and warns not to use an import
-  apply, which would give the recipient MCP access to the app: follow it.
-  Their member-list row is written only in the write that makes them the
-  owner, so a refused transfer leaves no row behind, in either mode.
+- **A refused transfer leaves nothing behind.** The recipient's member-list
+  row is written only in the write that makes them the owner, so a refused
+  transfer leaves no row, and from platform v0.16.8 there is nothing in
+  Okta to take back either.
 - **Outcome unknown.** Rarely the answer says the platform "could not tell
   whether the transfer ... was recorded". Nothing was undone. Check the owner
   with `app_status`, and finish by hand the steps the answer lists.
@@ -436,18 +407,27 @@ domains (above), keeps their panel sessions until this ends them.
    out its own 24-hour duration. On a browser app running a gateway of
    capability 1 or more that no longer matters, since its gateway asks the
    platform on every request: lever 3 reaches it within about 10 seconds.
-   On an older gateway the removal applies at their next sign-in, so if they
-   must lose such an app now, stop the app, or remove the app's Access
-   application. Which gateway an app runs is `inno-manage-app`'s
-   `grant_access` section.
+   Only a browser app registered before platform v0.16.5 and not redeployed
+   since the platform adopted v0.16.5's gateway can still run an older
+   gateway, and there Cloudflare Access alone decides, by the app's Okta
+   groups. From platform v0.16.8 no tool changes those groups, so lever 3
+   never reaches them there, and nothing else on this surface does either;
+   on an earlier platform the revoke also takes them out of the app's Okta
+   group, so it applies at their next sign-in.
+   If they must lose such an app now, stop it, or redeploy it on the newer
+   gateway (`rebuild_app`), which then refuses them, and do not restart it
+   until its Access policies are swapped; **Browser apps an earlier release
+   left on Okta groups** above has the rest of its fix.
+   Which gateway an app runs is `inno-manage-app`'s `grant_access` section.
 
 ## `purge_app({ app })`: delete an app now
 
 The scheduler's end-of-window teardown, on demand, and final. An owner who
 wants their own app gone now cannot call it: they stop the app (`stop_app`,
 `inno-manage-app`) and ask an admin for the purge. It deletes the
-app's container, worker, Access app, Okta group, database and files, every
-user's stored backend credentials for it, its connection definitions, its
+app's container, worker, Access app, any Okta groups and rule an earlier
+release made for it, database and files, every user's stored backend
+credentials for it, its connection definitions, its
 variables and their declarations, its deployment and support-bundle records,
 its app-scope config overrides, its member list, and its usage and cost
 history. For an MCP app every member's live OAuth grants are revoked first,
@@ -471,15 +451,24 @@ Before calling it:
 
 It refuses `app_deploying` while a deploy is in flight (wait for it to finish
 or fail, then purge) and `app_busy` while another change to the app is in
-flight (retry once after a moment, never in a loop). It answers
-`okta_group_search_exhausted` or `okta_rule_search_exhausted` when an Okta
-search by name returns a full page with no exact match, so the platform cannot
-tell whether the object exists: the purge stops at that step, a platform admin
-must look into it in Okta, and a later call finishes the purge. An app in
-platform mode is never searched by name: only the Okta groups and rule its
-record names are deleted (an app that was cut over, by the import or by
-its deploy, keeps those until its purge), so neither search code arises for
-it, and one whose record names none makes no Okta call at all.
+flight (retry once after a moment, never in a loop). From platform v0.16.8
+nothing is looked up in Okta by name: only the Okta groups and rule the
+app's record names are deleted, by id, and for an app whose record names
+none (every app registered from platform v0.16.5, and an MCP app from
+v0.16.4) the Okta teardown makes no call. On an earlier platform the purge
+of an app registered before those releases can search Okta by name, and
+can stop at that step with a refusal its description names; a later call
+finishes it. A recorded group another instance marked is left in place,
+which the `app_purged` audit row's `idp_skipped` detail lists. From
+platform v0.16.8 so is a recorded open group whose open rule the record
+never named (a registration before v0.16.5 that stopped part way), since
+a rule may still assign to it: its entry's `why` reads "its open rule was
+never recorded, so a rule may still assign to it", and it is this
+instance's own, for the procedure below to remove with that rule. An open
+group or rule the record never named stays in Okta; the operator guide's
+"Leftover app groups and rules" (`docs/OPERATIONS.md` in the platform's
+repository, its Teardown section; no tool serves it) says how to tell
+whether one is this instance's before removing it.
 
 If Cloudflare refuses to delete the app's Access application with code 10405
 (a delete its token is not allowed to make), the purge still finishes and
@@ -490,9 +479,9 @@ Trust, Access, Applications) before the name is registered again: a new app
 of that name adopts it with the policies it still has. Any other Access error
 stops the purge, and a later call finishes it once the error clears.
 
-`purge_app` then `register_app` is also the served remedy for an app whose
-open-access group or rule is missing (`open_access_unprovisioned`, in
-`inno-manage-app`), with the export first.
+`purge_app` then `register_app` is also one way out for a browser app an
+earlier release left on Okta groups (**Browser apps an earlier release left
+on Okta groups** above), with the export first.
 
 ## `rebuild_app({ app })`: rebuild the released code
 
@@ -516,47 +505,50 @@ not own, which cannot be recalled, so confirm first.
   `installation_token_failed`: a platform-side GitHub App fault, which only a
   platform admin can fix, on the platform's side rather than the app's.
 
-## `claim_instance_objects({ apply?, include_admin_group? })`: mark this instance's Okta groups
+## `claim_instance_objects({ apply?, include_admin_group? })`: mark this instance's admin group
 
-Only needed where several platform instances share one Okta org. Every group
-the platform creates carries an ownership marker (`[instance:<id>]` at the end
-of its description); groups an earlier release created do not, and the
-platform never adopts an unmarked group by name on a shared org
-(`register_app` refuses it with `idp_object_foreign`, which only a
-registration begun before platform v0.16.5 can still meet: from v0.16.5 a
-new app gets no Okta group, and an MCP app from v0.16.4). The tool lists the
-groups this instance recorded (each app's members and open group, every group
-an app's recorded open rule assigns to, and the platform admin group) with
-each one's marker: unmarked, this instance, or another instance.
+Only needed where several platform instances share one Okta org. An
+ownership marker (`[instance:<id>]` at the end of a group's description)
+tells the instances' groups apart; groups an earlier release created carry
+none. Since platform v0.16.8 the platform creates no Okta object for any
+app, so what is left to mark is the platform admin group, which the
+operator creates: the tool lists it by id with its marker (unmarked, this
+instance, or another instance), and nothing else. The Okta groups an earlier
+release recorded for apps are not listed, because `purge_app` deletes them
+by their recorded ids. On a platform before v0.16.8 the tool also lists,
+and with `apply` marks, the groups this instance recorded for apps: read
+its own description there, and compare the lists with any other instance
+sharing the org before either applies.
 
 - **Dry run first, always.** The default (`apply` false) lists and changes
-  nothing. Show the admin the list. If other instances share the org, they
-  should compare their lists before either applies, because two registries
-  can record one group id and whichever claims it first takes it.
-- `apply: true` marks each unmarked recorded group and audits it
-  (`idp_object_claimed`). A group marked for another instance is never
-  touched, and a group the open rule assigns to that is not itself recorded
-  is listed, not marked. It is idempotent, so a second apply changes nothing.
-- **Leave `include_admin_group` off unless the admin says otherwise.** In the
-  tool's words, "on a shared Okta org another instance that still reads that
-  group for its admins (one before v0.16.1, or one whose own admin table is
-  still empty) refuses an admin group marked for this one and is left with no
-  admins." Ask the admin to confirm before setting it.
-- A group too long to carry the marker is reported as too long to mark, and an
-  Okta failure shows on that group's line while the run carries on
-  (`idp_object_foreign` there means another instance marked the group since it
-  was read). Relay both.
-- It marks only groups this instance recorded. A group `register_app` refused
-  that this instance never recorded is not fixed by this tool: that case is
-  the operator guide's "Instances sharing an IdP" section (`docs/OPERATIONS.md`
-  in the platform's repository; no tool serves it).
+  nothing. Show the admin the answer. An unmarked admin group reads
+  "unmarked, marked only with include_admin_group: true".
+- **Leave `include_admin_group` off unless the admin says otherwise.** With
+  `apply: true` and `include_admin_group: true` it marks the admin group
+  when it is unmarked and audits it (`idp_object_claimed`); a group marked
+  for another instance is never touched. In the tool's words, "on a shared
+  Okta org another instance that still reads that group for its admins (one
+  before v0.16.1, or one whose own admin table is still empty) refuses an
+  admin group marked for this one and is left with no admins." Ask the admin
+  to confirm before setting it. It is idempotent, so a second apply changes
+  nothing.
+- A group too long to carry the marker is reported as too long to mark, and
+  an Okta failure shows on the group's line (`lookup failed:
+  okta_group_search_exhausted` when the search for the group by name returns
+  a full page with no exact match; `marking failed: idp_object_foreign` when
+  another instance marked the group since it was read). Relay both.
+- Sharing one Okta org between instances, and moving each to its own admin
+  group, is the operator guide's "Instances sharing an IdP" section
+  (`docs/OPERATIONS.md` in the platform's repository; no tool serves it).
 
 ## `accept_naming_change()`: acknowledge a deliberate rename
 
-The platform finds each app's Okta objects, Cloudflare resources and hostname
-by the instance's naming keys (`naming.hostPrefix`, `naming.resourcePrefix`,
+The platform finds each app's Cloudflare resources and hostname by the
+instance's naming keys (`naming.hostPrefix`, `naming.resourcePrefix`,
 `naming.groupPrefix`, `naming.platformName`, `naming.platformHost`,
-`cloudflare.domain`). When a deployed key differs from the one recorded while
+`cloudflare.domain`), and builds the group names it forwards to each app
+from them (before platform v0.16.8 it also found an app's Okta objects by
+them). When a deployed key differs from the one recorded while
 apps exist, `get_platform_status` and the panel report "naming changed since
 apps were registered", naming the old and new values. Use this tool only after
 every app's names were moved to the new values by hand; it records the
@@ -636,29 +628,33 @@ The promotion to a gateway from platform v0.16.5 or later (contract version
 26) is the gateway switch for browser apps, and each one picks it up at its
 next deploy (or `rebuild_app`), with no change to its code. From then on
 its gateway (capability 1) asks the platform on every request whether a
-person may use it, so a revoke or a close reaches them within about 10
-seconds rather than at their next sign-in, as do a grant and an open on an
-app in platform mode. A browser app in okta mode is cut over to platform
-mode at that deploy, when its two member stores agree (**A browser app's
-cut-over** above). Until it redeploys, a browser app keeps its older
-gateway, and Access alone admits by the Okta groups. An owner redeploys by
+person may use it, so a grant, a revoke, an open or a close reaches them
+within about 10 seconds. From platform v0.16.8, two kinds of browser app
+registered before v0.16.5 lag behind (**Browser apps an earlier release
+left on Okta groups** above): one whose Access application still admits by
+its Okta groups, where a grant or an open reaches no one those groups do
+not hold, and one not redeployed since, which keeps its older gateway,
+where Access alone admits, by Okta groups no tool changes any more. On an
+earlier platform such an app's deploy may move it off its Okta groups
+instead, and a grant or an open on one not yet moved reaches a person at
+their next sign-in; the v0.16.5 and v0.16.8 sections of the operator's
+upgrade guide say how. An owner redeploys by
 cutting a tag (`inno-ship`); `rebuild_app` covers an app whose owner will
 not. Because the promotion puts every browser app behind the platform's
 check at its next deploy, the tool's own advice is to sign in first to a
 canary browser app deployed on its own app-scope `gateway.ref` override at
-the new gateway, and to read a clean `import_okta_memberships` dry run; the
-upgrade procedure above carries that order.
+the new gateway; the upgrade procedure above carries that order.
 
 The deploy broker refuses `gateway_too_old` for any deploy whose gateway is
 older than capability 1, so it cannot ask the platform who may use the app,
-when the app is a browser app that needs one. That is two kinds of browser
-app: one whose access the platform checks itself (platform mode), and one
-whose switch to that started and did not finish (it carries the cut-over's
-marker, `access_signin`: **A browser app's cut-over** above). From v0.16.5
-every new browser app is in platform mode, so on a platform whose
-`gateway.ref` has not yet been promoted to a v0.16.5 gateway, every new
-browser app's first deploy is refused this way, as is any such app whose
-app-scope `gateway.ref` override points at an older gateway. The run's log
+when the app is a browser app: from platform v0.16.8 every browser app
+needs one (before it, only a browser app whose access the platform already
+checked itself, which includes every one registered from v0.16.5 and
+every one moved off its Okta groups). So on a
+platform from v0.16.8 whose `gateway.ref` has not been promoted to a
+gateway of capability 1 or more, every browser app's deploy is refused this
+way, as is any browser app whose app-scope `gateway.ref` override points at
+an older gateway. The run's log
 shows the refusal's message, not its code, after `deploy-token request
 failed (HTTP 409)`; the wording may change between releases, so go by this
 description, not by its text. The fix is an admin's, in one of three ways:
@@ -722,20 +718,22 @@ means when it asks for the tag again.
     instance whose apps were registered under the old names. The entry names
     the keys and both ways out, which **`accept_naming_change()`** above
     explains: revert the manifest, or move every app by hand and then accept.
-  - `member_drift_detected` (since platform v0.16.5): a browser app's deploy
-    could not cut it over to platform mode because its member list and its
-    Okta group disagree. The entry says how many differences, and that until
-    they agree someone in only one of the two cannot reach the app. Run the
-    import for that app, then let its next deploy cut it over: **A browser
-    app's cut-over** above.
-  - `cutover_undo_failed` (since platform v0.16.5): a browser app's cut-over
-    failed and could not be fully undone, and the entry says at which step
-    and what was left. The app stays in okta mode with the sign-in policy and
-    the cut-over's marker, so Access admits anyone who signs in, its gateway
-    checks its member list, and its deploys need a gateway of capability 1
-    or more. Look at the app's Access policies in the Cloudflare dashboard;
-    its next deploy tries the cut-over again (**A browser app's cut-over**
-    above).
+  - `member_drift_detected` (raised only by platform v0.16.5 to v0.16.7): a
+    browser app's deploy could not move it off its Okta groups, because its
+    member list and its Okta group disagreed.
+    From platform v0.16.8 nothing raises it, and its advice to run the
+    import for the app no longer applies: the app it names may still have an
+    Access application that admits by its Okta groups, so check, and fix it
+    as **Browser apps an earlier release left on Okta groups** above says.
+    On an earlier platform, follow the entry and the import's own
+    description.
+  - `cutover_undo_failed` (raised only by platform v0.16.5 to v0.16.7): a
+    browser app's move off its Okta groups failed and could not be fully
+    undone, and the entry says at which step and what was left. From
+    platform v0.16.8 nothing raises it. Look at the app's Access policies in
+    the Cloudflare dashboard: it should end with the sign-in policy alone,
+    as **Browser apps an earlier release left on Okta groups** above says
+    (on an earlier platform, the app's next deploy tries the move again).
   - `access_app_left` (since platform v0.16.6): a purge could not delete the
     app's Cloudflare Access application, because Cloudflare refused the
     delete, so it was left in place. The entry names the application. Delete

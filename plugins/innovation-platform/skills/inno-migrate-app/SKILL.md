@@ -296,9 +296,9 @@ restore point is.
    response the same way `inno-new-app` §3 documents (`repo_control_unproven`,
    `name_quarantined`, `repo_already_registered`, `repo_owner_claimed`,
    `repo_identity_changed`, `app_limit_reached`, `repo_mismatch`,
-   `guardrails_not_accepted`, `email_domain_not_allowed`,
-   `idp_object_foreign`, `host_in_use`, …), including what happens to each
-   address in `members`, which depends on the app's mode. A browser app's
+   `guardrails_not_accepted`, `email_domain_not_allowed`, `host_in_use`,
+   …), including what happens to each address in `members`, which on a
+   platform before v0.16.5 can differ. A browser app's
    first deploy also needs the platform's newer gateway (`gateway_too_old`,
    in `inno-ship`'s failure table). For `repo_identity_changed` the tool's
    description says: "Answers repo_identity_changed when the repo was

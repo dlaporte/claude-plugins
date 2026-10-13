@@ -102,8 +102,8 @@ is the Resource Server, and the `Authorization` header is consumed before
 your code runs (never route `/.well-known/oauth-protected-resource`
 yourself). Identity is still `X-Forwarded-User` / `X-Forwarded-Groups`, but
 what admits a caller is not an Okta group (an MCP app registered from
-platform v0.16.4 has no Okta group at all, though the header still carries
-its group names). An MCP app admits
+platform v0.16.4 never had one, from v0.16.8 no app's membership is kept in
+Okta, and the header still carries its group names). An MCP app admits
 a person when the platform's member list for the app holds them, or while
 the app is open to every SSO user, and it reads
 both facts at every request (`get_app_contract` §1.2). The groups header is
@@ -340,11 +340,15 @@ An MCP app's two are decided at each request, so a change reaches the header
 within the gateway's introspection cache. A browser app's are decided at
 each request too once it runs a gateway of capability 1, from platform
 v0.16.5 and contract version 26 (after a platform admin promotes
-`gateway.ref` and the app deploys; the app's code changes nothing for it):
-the gateway asks the platform whether the caller may use the app and takes
-the groups from its answer, never from the sign-in, so a change reaches
-them within about 10 seconds. On an older gateway they come from the
-caller's sign-in, so a change reaches them at their next sign-in. A person
+`gateway.ref` and the app deploys; the app's code changes nothing for it),
+and from platform v0.16.8 (contract version 27) every browser app deploys
+only on one: the gateway asks the platform whether the caller may use the
+app and takes the groups from its answer, never from the sign-in, so a
+change reaches them within about 10 seconds. Only a browser app deployed
+before v0.16.5's gateway and not since still runs an older one, where they
+come from the groups the caller signed in with: from platform v0.16.8 no
+change made on the platform reaches them, and before it a change reaches
+them at the caller's next sign-in. A person
 the platform refuses never reaches your code: that gateway answers them
 itself, with a plain 403 "No access" page, or a 503 "Try again shortly"
 page when it cannot ask. Treat an
