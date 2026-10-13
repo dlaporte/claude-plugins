@@ -34,10 +34,10 @@ All operations here call tools on the `inno-platform` MCP server (see the
 plugin's `.mcp.json`). Every tool authorizes the caller server-side against
 the signed-in Okta identity from the MCP OAuth session: **you can only manage
 apps you own, unless you are a platform admin.** Since platform v0.16.1 the
-platform's own admin list decides who that is (`list_admins` shows it). The
-Okta group on the `Admin group:` line of the status you read in the Version
-gate is a copy, read only while that list is empty, so adding or removing
-someone there by hand changes nothing here. A `forbidden` error back from any
+platform's own admin list decides who that is (`list_admins`, admin-only,
+shows it). The Okta group on the `Admin group:` line of the status you read
+in the Version gate is a copy, read only while that list is empty, so adding
+or removing someone there by hand changes nothing here. A `forbidden` error back from any
 of these tools means exactly that; don't retry it and don't try to work
 around it locally: there is no local escalation, because authorization lives
 in the platform, not the client. `forbidden` is one of the refusals every
@@ -693,7 +693,7 @@ wants; called by an admin it marks everyone's.
 ## Authorization summary
 
 In this table, "platform admins" are the platform's own admin list, which
-`list_admins` shows; the `Admin group:` line of the status is only its Okta
+`list_admins` (admin-only) shows; the `Admin group:` line of the status is only its Okta
 copy. The tools only admins may call (the admin list and the Okta import,
 `transfer_app`, `purge_app`, `rebuild_app`, `revoke_sessions`,
 `claim_instance_objects`, `accept_naming_change`, `sync_gateway_ref`,
