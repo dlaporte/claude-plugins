@@ -101,9 +101,9 @@ sign-out link** — the platform is the OAuth Authorization Server, the gateway
 is the Resource Server, and the `Authorization` header is consumed before
 your code runs (never route `/.well-known/oauth-protected-resource`
 yourself). Identity is still `X-Forwarded-User` / `X-Forwarded-Groups`, but
-what admits a caller is not the app's Okta group, which is what admits one to
-a browser app (an MCP app registered from platform v0.16.4 has no Okta group
-at all, though the header still carries its group names). An MCP app admits
+what admits a caller is not an Okta group (an MCP app registered from
+platform v0.16.4 has no Okta group at all, though the header still carries
+its group names). An MCP app admits
 a person when the platform's member list for the app holds them, or while
 the app is open to every SSO user, and it reads
 both facts at every request (`get_app_contract` §1.2). The groups header is
@@ -326,9 +326,10 @@ if you see it in a request dump.
 
 `X-Forwarded-Groups` carries at most two groups, both this app's own, in this
 order: the members group when the caller is a member, and the open group when
-the caller holds it (on an MCP app, exactly while the app is open). Their
-names are in the `App groups:` line of the status you read in the Version
-gate, and `app_status` reports the real names. Since contract version 12
+the caller holds it (exactly while the app is open, on an MCP app and on a
+browser app whose gateway asks the platform, below). Their names are in the
+`App groups:` line of the status you read in the Version gate, with the
+app's name in place of `{app}`. Since contract version 12
 (platform v0.14.3) it never carries the platform admin group, another app's
 groups, or any other group, so use it only to tell a member from an
 open-access visitor; any finer role (an editor, a staff view, an in-app admin)
@@ -336,8 +337,16 @@ needs your own role store keyed on `X-Forwarded-User`. Every person an app
 admits carries at least one of the two (contract R3, since version 25), so a
 visitor admitted only because the app is open carries the open group alone.
 An MCP app's two are decided at each request, so a change reaches the header
-within the gateway's introspection cache; a browser app's come from the
-caller's sign-in, so a change reaches them at their next sign-in. Treat an
+within the gateway's introspection cache. A browser app's are decided at
+each request too once it runs a gateway of capability 1, from platform
+v0.16.5 (after a platform admin promotes `gateway.ref` and the app deploys):
+the gateway asks the platform whether the caller may use the app and takes
+the groups from its answer, never from the sign-in, so a change reaches
+them within about 10 seconds. On an older gateway they come from the
+caller's sign-in, so a change reaches them at their next sign-in. A person
+the platform refuses never reaches your code: that gateway answers them
+itself, with a plain 403 "No access" page, or a 503 "Try again shortly"
+page when it cannot ask. Treat an
 empty header as "not a member", never as an error: no admitted caller
 arrives with one any more, but a request that never passed the gateway (the
 app run locally, a test) can.
