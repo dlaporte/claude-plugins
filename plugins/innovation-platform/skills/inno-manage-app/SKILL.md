@@ -1,6 +1,6 @@
 ---
 name: inno-manage-app
-description: Use to share, check on, start, stop, export, open up, or configure a deployed Innovation Platform app via the inno-platform MCP tools (grant_access, revoke_access, set_app_access, app_status, start_app, stop_app, restart_app, request_start, export_app_data, get_app_metrics, get_app_usage, get_app_logs, get_config, set_config for one's own notification settings, set_app_variable/list_app_variables/remove_app_variable, create_support_bundle). Use when the user wants to give someone access, open an app to everyone with SSO, check deploy status, bring back a stopped app, restart a wedged app, read its logs, set an environment variable or API key for their app, download their app's data, or shut one down. A platform admin's fleet work (the admin list, transfers, purges, sessions, naming, settings, audit) is inno-fleet-admin.
+description: Use to share, check on, start, stop, export, open up, or configure a deployed Innovation Platform app via the inno-platform MCP tools (grant_access, revoke_access, set_app_access, app_status, start_app, stop_app, restart_app, request_start, export_app_data, get_app_metrics, get_app_usage, get_app_logs, get_config, set_config for one's own notification settings, set_app_variable/list_app_variables/remove_app_variable, create_support_bundle). Use when the user wants to give someone access, open an app to everyone with SSO, check deploy status, bring back a stopped app, restart a wedged app, read its logs, set an environment variable or API key for their app, download their app's data, shut one down, or ask to transfer it to someone else (only an admin can; this skill says how to ask). A platform admin's fleet work (the admin list, transfers, purges, sessions, naming, settings, audit) is inno-fleet-admin.
 ---
 
 # inno-manage-app
@@ -36,11 +36,12 @@ the signed-in Okta identity from the MCP OAuth session: **you can only manage
 apps you own, unless you are a platform admin.** Since platform v0.16.1 the
 platform's own admin list decides who that is (`list_admins`, admin-only,
 shows it). The Okta group on the `Admin group:` line of the status you read
-in the Version gate is a copy, read only while that list is empty, so adding
-or removing someone there by hand changes nothing here. A `forbidden` error back from any
-of these tools means exactly that; don't retry it and don't try to work
-around it locally: there is no local escalation, because authorization lives
-in the platform, not the client. `forbidden` is one of the refusals every
+in the Version gate is a copy, and the platform reads it as the admin roster
+only while that list is empty. Once the list holds anyone, adding or removing
+someone in that group by hand changes nothing here. A `forbidden` error back
+from any of these tools means exactly that; don't retry it and don't try to
+work around it locally: there is no local escalation, because authorization
+lives in the platform, not the client. `forbidden` is one of the refusals every
 tool can answer, named once in the platform's MCP server note;
 `inno-platform-conventions`' **Refusals every tool shares** section says what
 each means.
@@ -75,8 +76,9 @@ their session and nothing in this skill can undo it: the account itself has to
 be restored by a platform admin or the identity team. Its MCP access ends
 too, and not only at the next token refresh: every request an MCP app
 receives checks the account, using an answer at most
-`auth.status_check_minutes` old, so a connected client is refused within that
-window plus the gateway's 60-second introspection cache. Its calls to the
+`auth.status_check_minutes` old, so while Okta can be reached a connected
+client is refused within that window plus the gateway's 60-second
+introspection cache. Its calls to the
 platform's own tools are refused `account_inactive` the same way, and an
 admin whose account is suspended loses admin standing.
 
@@ -264,8 +266,10 @@ change.
 
 - `email_domain_not_allowed`: the platform lists allowed email domains and
   the address is outside them (a listed domain's subdomains are inside). The
-  message names the address and the list. Check the address; if it is right,
-  only a platform admin can change which domains are allowed.
+  message names the address and the list. Check the address. If it is right,
+  no tool can let it in: the list is the instance manifest's
+  `identity.allowedEmailDomains`, which only the platform's operator can
+  change, by editing the manifest and redeploying.
 - `okta_user_not_found`: its description says "Answers okta_user_not_found
   when the address has no Okta account." The tool refuses rather than
   silently no-op'ing. Surface that to the user.
@@ -562,9 +566,9 @@ Each line carries the effective value, its source (`factory` / `platform` /
 beneath it — who set each override and the note they left. An app's own
 `safety.ignore.*` suppressions appear here too, with their expiry state, which
 is how an owner learns why a finding stopped failing their build. `get_config`
-only reads them. Adding or lifting one is an admin act (`inno-fleet-admin`),
-and the accessibility policy they sit under, `safety.a11y.mode`, is the table
-`get_app_accessibility` serves.
+only reads them. Adding or lifting one is an admin act (`inno-fleet-admin`).
+The accessibility waivers sit under the `safety.a11y.mode` setting, whose
+modes are described in the table `get_app_accessibility` serves.
 
 **Writing** is admin-only (`inno-fleet-admin`), with one exception: every
 user may set their own **Notifications** settings, `notify.email.enabled` (the
@@ -693,9 +697,9 @@ wants; called by an admin it marks everyone's.
 ## Authorization summary
 
 In this table, "platform admins" are the platform's own admin list, which
-`list_admins` (admin-only) shows; the `Admin group:` line of the status is only its Okta
-copy. The tools only admins may call (the admin list and the Okta import,
-`transfer_app`, `purge_app`, `rebuild_app`, `revoke_sessions`,
+`list_admins` (admin-only) shows; the `Admin group:` line of the status is
+only its Okta copy. The tools only admins may call (the admin list and the
+Okta import, `transfer_app`, `purge_app`, `rebuild_app`, `revoke_sessions`,
 `claim_instance_objects`, `accept_naming_change`, `sync_gateway_ref`,
 `list_users`, `query_audit`, `get_platform_logs`, `export_platform_backup`)
 are in `inno-fleet-admin`'s table.
@@ -716,7 +720,7 @@ are in `inno-fleet-admin`'s table.
 | `get_config` | `app=`: that app's owner, or admins. `user=`: the user themselves, or admins. No arguments (the fleet catalog): admins only |
 | `set_config` / `remove_config` | admins; users for their own Notifications settings, at their own user scope |
 | `set_app_variable` / `list_app_variables` / `remove_app_variable` | app owner, or platform admins |
-| `list_notifications` / `mark_notification_read` / `mark_all_notifications_read` | scoped to the caller |
+| `list_notifications` / `mark_notification_read` / `mark_all_notifications_read` | scoped to the caller; an admin sees and marks everyone's |
 | `get_platform_status` | any signed-in user |
 | `set_app_connection` / `remove_app_connection` | app owner, or platform admins (see `inno-add-connection`) |
 | `list_connections` | with `app`: that app's owner, or admins. Without `app` (the platform-wide fleet view): admins only |
