@@ -13,18 +13,17 @@ Before anything else in this skill, do these five steps in order.
    probably unset. Tell the user to open their platform's panel, copy the
    configure command from its Connect Claude Code card, run it in a terminal,
    and restart Claude Code. Then STOP.
-2. Read the `version` field of `../../.claude-plugin/plugin.json` (relative to
-   this skill's own directory) and call the `get_platform_status` MCP tool with
-   it as `plugin_version`.
-3. If the `Plugin:` line says **OUTDATED**, or says the version was not
-   reported or was unreadable, STOP. Tell the user to run the commands that
-   line gives, then restart Claude Code and start again. Do not continue on a
-   stale plugin: its guidance may describe platform behavior that no longer
-   exists. If there is no `Plugin:` line at all, the platform sets no
-   minimum version: go on to the next step.
-4. If the `Plugin:` line says a newer version is available, that is advice, not
-   a block. Mention it once, with the commands from the `Update commands:`
-   line, and go on to the next step.
+2. Read the `version` field of `${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json`
+   and call the `get_platform_status` MCP tool with it as `plugin_version`.
+3. If the `Plugin:` line says `OUTDATED`, `version not reported`, or
+   `reported version is not a MAJOR.MINOR.PATCH triple`, STOP. Tell the user
+   to run the commands that line gives, then restart Claude Code and start
+   again. Do not continue on a stale plugin: its guidance may describe
+   platform behavior that no longer exists. If there is no `Plugin:` line at
+   all, the platform sets no minimum version: go on to the next step.
+4. If the `Plugin:` line says `current` and adds that a newer version
+   `is available`, that is advice, not a block. Mention it once, with the
+   commands from the `Update commands:` line, and go on to the next step.
 5. If the status has no `Template repo:` line, the platform is older than
    v0.15.8. Say so, ask the user's admin to upgrade it, and STOP before any
    step that needs an instance value. Never fall back to a literal value.
