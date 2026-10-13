@@ -36,10 +36,11 @@ the signed-in Okta identity from the MCP OAuth session: **you can only manage
 apps you own, unless you are a platform admin.** Since platform v0.16.1 the
 platform's own admin list decides who that is (`list_admins`, admin-only,
 shows it). The Okta group on the `Admin group:` line of the status you read
-in the Version gate is a copy. On an instance with an Okta token, the platform
-reads that group as the admin roster only while the list is empty; with no
-token, an empty list is filled once from the instance's own configuration
-instead. Once the list holds anyone, adding or removing
+in the Version gate does not follow that list: since platform v0.16.7 an
+admin change reaches only the list. On an instance with an Okta token, the
+platform reads that group as the admin roster only while the list is empty;
+with no token, an empty list is filled once from the instance's own
+configuration instead. Once the list holds anyone, adding or removing
 someone in that group by hand changes nothing here. A `forbidden` error back
 from any of these tools means exactly that; don't retry it and don't try to
 work around it locally: there is no local escalation, because authorization
@@ -268,8 +269,9 @@ the gateway it runs:
   whether their account may still sign in. It holds each answer for about
   10 seconds (a refusal for about 2). A person it refuses sees a plain 403
   "No access" page that names no one. When the gateway cannot get an answer
-  it shows a 503 "Try again shortly" page instead: that is the platform
-  being unreachable, not a revoke. So a revoke or a close reaches a person
+  it shows a 503 "Try again shortly" page instead: that is an outage (the
+  platform, or the sign-in keys it checks people against, could not be
+  reached), not a revoke. So a revoke or a close reaches a person
   within that window in either mode, and so do a grant and an open on an
   app in platform mode. On an app still in okta mode, Access also
   admits only through the app's Okta group, so there a person needs both
@@ -828,10 +830,11 @@ wants; called by an admin it marks everyone's.
 ## Authorization summary
 
 In this table, "platform admins" are the platform's own admin list, which
-`list_admins` (admin-only) shows; the `Admin group:` line of the status is
-only its Okta copy. The tools only admins may call (the admin list and the
-Okta import, `transfer_app`, `purge_app`, `rebuild_app`, `revoke_sessions`,
-`claim_instance_objects`, `accept_naming_change`, `sync_gateway_ref`,
+`list_admins` (admin-only) shows; the Okta group on the `Admin group:` line
+of the status is read only while that list is empty. The tools only admins
+may call (the admin list and the Okta import, `transfer_app`, `purge_app`,
+`rebuild_app`, `revoke_sessions`, `claim_instance_objects`,
+`accept_naming_change`, `sync_gateway_ref`,
 `list_users`, `query_audit`, `get_platform_logs`, `export_platform_backup`)
 are in `inno-fleet-admin`'s table.
 

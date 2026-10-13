@@ -79,10 +79,12 @@ uses, held for `auth.status_check_minutes`. So:
 - While Okta cannot be reached, admin powers fail closed: an admin whose
   status is unknown is not an admin for that call. A `forbidden` during an
   Okta outage is not a lost standing; retry later.
-- The `Admin group:` line of `get_platform_status` names an Okta group that is
-  a copy. `grant_admin` and `revoke_admin` keep it in step, and the platform
-  reads it for admin standing only while its own list is empty: then the
-  group IS the roster, and both tools refuse `admin_table_empty` (below).
+- The `Admin group:` line of `get_platform_status` names an Okta group that
+  does not follow the list. Since platform v0.16.7 `grant_admin` and
+  `revoke_admin` change only the list, so the group can differ from it, and
+  `list_admins` is where to read who the admins are. The platform reads the
+  group for admin standing only while its own list is empty: then the group
+  IS the roster, and both tools refuse `admin_table_empty` (below).
   Once the list holds anyone, adding someone to that group by hand does not
   make them an admin, and removing someone from it by hand does not end their
   standing: use `grant_admin` or `revoke_admin`, or suspend the account in
@@ -101,9 +103,9 @@ uses, held for `auth.status_check_minutes`. So:
   empty list is seeded from `identity.initialAdmins` first (above), and the
   answer is that seeded list. An answer that the roster "could not be read right
   now" is an outage, not an empty list: try again shortly.
-- `grant_admin` writes the list first, and that write decides; it then copies
-  the change to the Okta admin group, and a failed copy is noted in the
-  answer, not fatal. It refuses:
+- `grant_admin` adds the person to the list. In its own words, it "changes
+  nothing else": since platform v0.16.7 the Okta admin group is not touched.
+  It refuses:
   - `email_domain_not_allowed` when the instance lists allowed email domains
     and the address is outside them (a listed domain's subdomains are
     inside). The message names the address and the list. Fix the address.
@@ -113,13 +115,14 @@ uses, held for `auth.status_check_minutes`. So:
   - `okta_user_not_found`, on an instance with an Okta token, for an address
     Okta does not know: the person needs an account first.
   - `admin_table_empty` while the list is empty (below).
-- `revoke_admin` removes the row first, then the Okta copy the same tolerated
-  way. It refuses `self_admin_change` when you name yourself (another admin
-  must do it), `last_admin` when the removal would leave the platform with no
-  admin, which changes nothing (grant another admin first), and
-  `admin_table_empty`. An address the list does not hold is answered as not
-  an admin, and the Okta group is left alone; if that group still lists them,
-  the import's admin report below says how to settle it.
+- `revoke_admin` removes the person from the list and, like `grant_admin`,
+  changes nothing else. It refuses `self_admin_change` when you name yourself
+  (another admin must do it), `last_admin` when the removal would leave the
+  platform with no admin, which changes nothing (grant another admin first),
+  and `admin_table_empty`. An address the list does not hold is answered as
+  not an admin. Either way, if the Okta admin group lists the person it
+  still does: that gives no standing while the list holds anyone (above),
+  and only a change in Okta by hand takes them out of that group.
 - Both are audited (`admin_granted`, `admin_revoked`). Confirm the person by
   name before either.
 
@@ -147,11 +150,13 @@ lists then needs `grant_admin`.
 ## The membership import: `import_okta_memberships({ apply?, app? })`
 
 Since v0.16.1 the platform's own tables decide: each app's member list, which
-MCP apps read at every request, and the admin list. Okta still holds a copy
-of the admin list, the admin group. It also holds a copy of the member list
-of each app in **okta mode** (a browser app registered before v0.16.5, and an
-MCP app registered before v0.16.4, until each is cut over): the app's members
-group, which Access reads when a person signs in to a browser app in okta
+MCP apps read at every request, and the admin list. Okta's admin group is
+not kept in step with the admin list (since v0.16.7): it is read only while
+that list is empty, and this tool fills an empty list from it. Okta does
+hold a copy of the member list of each app in **okta mode** (a browser app
+registered before v0.16.5, and an MCP app registered before v0.16.4, until
+each is cut over): the app's members group, which Access reads when a person
+signs in to a browser app in okta
 mode. An app in **platform mode** (every app registered from v0.16.5, an MCP
 app registered on v0.16.4, and any app that was cut over) has its member
 list alone: the run names it and skips it ("platform mode, so its member
@@ -163,9 +168,10 @@ and never writes it.
 
 **Run it as a loop, never as one apply:**
 
-1. **Dry run** (the default). For each app, and for the admin list, it reports
-   who the table lacks and who it holds that do not belong, and ends each
-   group's block with its parity line. The last line is the run's:
+1. **Dry run** (the default). For each app, and for the admin list while it
+   is empty, it reports who the table lacks and who it holds that do not
+   belong, and ends each group's block with its parity line. The last line
+   is the run's:
    `parity: clean` only when every group was read and every table matches it,
    otherwise the number of differences and of groups not compared.
 2. **Read it with the admin.** A group marked for another instance, gone from
@@ -190,15 +196,15 @@ The rules it applies, as its description states them:
   is listed, never added, and pruned. An app's owner is always a member,
   never pruned, added when missing, and named when the group does not list
   them.
-- The admins are the admin group's members who can sign in. While the admin
-  list is EMPTY, an apply fills it with them in one write, all or none. Once
-  it holds anyone it decides, and the run only reports how the group differs
-  (`writes: none, reported only`) and what settles each difference: someone
-  on the list but not in the group, `grant_admin` copies them again or
-  `revoke_admin` removes them; someone in the group but not on the list,
-  `grant_admin` if they should be an admin, otherwise removal from the Okta
-  group by hand.
-- `app` narrows the run to one app; the admins are still compared, and the
+- The admins are compared with the admin group only while the admin list is
+  EMPTY: the group's members who can sign in belong, and an apply fills the
+  list with them in one write, all or none. Once the list holds anyone it
+  decides, and (since platform v0.16.7) the group is not read or compared:
+  one line says `admins: the platform's admin list decides (N admins); the
+  Okta admin group is not compared`, and it counts toward no parity, so a
+  dry run can read `parity: clean` however far the group differs from the
+  list.
+- `app` narrows the run to one app; the admins are still included, and the
   last line names the scope.
 - **The cut-over (since platform v0.16.4).** With `apply`, an MCP app
   (`mcp-function`, `mcp-container`) still in okta mode is then cut over to
@@ -294,21 +300,38 @@ which every MCP app and every browser app behind a capability-1 gateway
 reads, in the one write that makes them the owner". For an app in platform
 mode (the import section above says which apps those are), the transfer
 makes no Okta write: that one write is the whole of it.
-The previous owner keeps access as a member. The recipient
-is notified; the previous owner is notified whenever the caller is not the
-owner, so an admin transferring their own app leaves no notice for
-themselves. A recipient who already owns the app is answered with nothing to
-transfer.
 
-- **Refusals about the recipient.** `email_domain_not_allowed` when the
-  instance lists allowed email domains and the address is outside them (a
-  listed domain's subdomains are inside; the list is the manifest's
-  `identity.allowedEmailDomains`, as above); `okta_user_not_found`, for an
-  app in okta mode, when Okta has no user for them (check the address; they
-  need an account first); and `app_limit_reached` when they are at their
-  active-app cap, which counts unless the app is stopped. Its message
-  normally names the remedy, raising the recipient's `apps.max_active` at
-  user scope with `set_config`. Do NOT offer to stop the recipient's apps
+The previous owner keeps access as a member, unless the instance lists
+allowed email domains and they are outside them (since platform v0.16.7).
+That is never a reason to refuse: the transfer goes ahead and does not keep
+them. The same write removes their member-list row; for an app in okta mode
+they are then taken out of its Okta group; and their stored connections for
+the app are deleted. The answer and their notice say they were not kept, and
+the `app_transferred` audit row records `previous_owner_removed`. The two
+steps after the write can fail without undoing the transfer, and the answer
+then says so: if Okta refuses the group removal, `revoke_access` of them
+finishes it once Okta accepts it (never an import apply, which would give
+them MCP access again); if the connections delete fails,
+`list_user_connections` with their address and the app shows what is left,
+and `disconnect_user_connection` removes each (the audit row then records
+`previous_owner_connections_left`). On an instance that lists no domains
+every previous owner is kept.
+
+The recipient is notified; the previous owner is notified whenever the
+caller is not the owner, so an admin transferring their own app leaves no
+notice for themselves. A recipient who already owns the app is answered
+with nothing to transfer.
+
+- **Refusals about the recipient** (the previous owner is never one, above).
+  `email_domain_not_allowed` when the instance lists allowed email domains
+  and the address is outside them (a listed domain's subdomains are inside;
+  the list is the manifest's `identity.allowedEmailDomains`, as above);
+  `okta_user_not_found`, for an app in okta mode, when Okta has no user for
+  them (check the address; they need an account first); and
+  `app_limit_reached` when they are at their active-app cap, which counts
+  unless the app is stopped. Its message normally names the remedy,
+  raising the recipient's `apps.max_active` at user scope with
+  `set_config`. Do NOT offer to stop the recipient's apps
   for them.
 - **A recipient Okta does not know, on an app in platform mode**, is not
   refused. While the platform has an Okta token the address is looked up
@@ -375,7 +398,9 @@ signed out of the panel everywhere and must sign in through Okta again. Use it
 when offboarding someone or when a session may be compromised. Its reach is
 narrow on purpose: it does NOT touch MCP tokens, does not end a browser app's
 session, and changes no membership. It is deliberately not part of
-`transfer_app`: a previous owner usually stays a legitimate user.
+`transfer_app`: a previous owner usually stays a member and a legitimate
+user, and even one a transfer does not keep, being outside the allowed email
+domains (above), keeps their panel sessions until this ends them.
 
 - Confirm with the admin by name before calling. The response says how many
   sessions were ended.

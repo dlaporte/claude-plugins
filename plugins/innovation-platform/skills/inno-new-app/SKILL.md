@@ -398,7 +398,9 @@ register_app({ app, repo, description, type, members, accept_guardrails: true, c
 
   On a platform that lists allowed email domains, an address outside them
   refuses the whole call with `email_domain_not_allowed` before anything is
-  created.
+  created. From platform v0.16.7 that includes the user's own address,
+  because the caller becomes the app's owner (**Reading register_app's
+  responses** below says what to tell them).
 - `connections` — optional list of names, when §1 step 5 flagged a per-user
   backend. Pass what you plan to set up; it **creates nothing** (a connection
   needs a strategy and config only `set_app_connection` can supply) and is
@@ -547,10 +549,19 @@ platform v0.16.5 also gets Okta groups). It returns text beginning **`App
   window to wait out.
 - **`invalid_member_email`**: one of `members` is not a plain email address.
   Fix or drop it and call again.
-- **`email_domain_not_allowed`**: an address in `members` is outside the
-  platform's allowed email domains (a listed domain's subdomains are
-  inside); the message names the address and the domains. Nothing was
-  created: fix or drop that address and call again.
+- **`email_domain_not_allowed`**: an address is outside the platform's
+  allowed email domains (a listed domain's subdomains are inside); the
+  message names the address and the domains. Either call can answer it, and
+  nothing was created.
+  - **An address in `members`**: fix or drop that address and call again.
+  - **The user's own address** (checked since platform v0.16.7, because the
+    caller becomes the app's owner; this holds even for a call that repeats
+    a registration they already finished, which then hands back no
+    `deploy.yml`): nothing on their side fixes it. The list is the instance
+    manifest's `identity.allowedEmailDomains`, which only the platform's
+    operator can change, by editing the manifest and redeploying. Tell the
+    user plainly that their address cannot own an app on this platform, and
+    stop.
 - **`idp_object_foreign`** (only a registration begun in okta mode and
   finished now: a browser app's begun before platform v0.16.5, or an MCP
   app's begun before v0.16.4; a registration begun since gets no Okta group,
