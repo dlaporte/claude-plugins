@@ -5,7 +5,7 @@ description: Use when the user wants to create a new app on the Innovation Platf
 
 # inno-new-app
 
-## Version gate — do this first
+## Version gate: do this first
 
 Before anything else in this skill, do these five steps in order.
 

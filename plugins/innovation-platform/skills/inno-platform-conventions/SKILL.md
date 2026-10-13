@@ -5,7 +5,7 @@ description: Use when writing or reviewing code inside an app repo's app/ direct
 
 # inno-platform-conventions
 
-## Version gate — do this first
+## Version gate: do this first
 
 Before anything else in this skill, do these five steps in order.
 

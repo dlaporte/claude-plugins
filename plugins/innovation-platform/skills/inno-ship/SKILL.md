@@ -5,7 +5,7 @@ description: Use when the user is ready to release an app: pushes, waits for the
 
 # inno-ship
 
-## Version gate — do this first
+## Version gate: do this first
 
 Before anything else in this skill, do these five steps in order.
 

@@ -5,7 +5,7 @@ description: Use when writing or editing the Dockerfile for an app repo. Encodes
 
 # inno-containerize
 
-## Version gate — do this first
+## Version gate: do this first
 
 Before anything else in this skill, do these five steps in order.
 

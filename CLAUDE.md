@@ -29,8 +29,9 @@ Which component to bump:
   renamed skill, a changed contract)
 
 Plain `MAJOR.MINOR.PATCH` only. No `v` prefix, no pre-release or build
-suffixes: the Innovation Platform parses this value server-side and treats
-anything else as "version not reported".
+suffixes: the Innovation Platform parses this value server-side, and its
+`Plugin:` line answers anything else with "reported version is not a
+MAJOR.MINOR.PATCH triple", which every skill's Version gate treats as a stop.
 
 `.claude-plugin/marketplace.json` entries deliberately carry no version of
 their own — `plugin.json` is the single source of truth, and

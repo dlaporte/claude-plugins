@@ -5,7 +5,7 @@ description: Use to share, check on, start, stop, export, open up, or configure 
 
 # inno-manage-app
 
-## Version gate — do this first
+## Version gate: do this first
 
 Before anything else in this skill, do these five steps in order.
 

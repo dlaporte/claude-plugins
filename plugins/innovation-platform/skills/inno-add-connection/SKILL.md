@@ -5,7 +5,7 @@ description: Use when an app needs to reach an external backend AS EACH INDIVIDU
 
 # inno-add-connection
 
-## Version gate — do this first
+## Version gate: do this first
 
 Before anything else in this skill, do these five steps in order.
 

@@ -5,7 +5,7 @@ description: Use when the user wants their app checked before shipping ("run the
 
 # inno-safety-preflight
 
-## Version gate — do this first
+## Version gate: do this first
 
 Before anything else in this skill, do these five steps in order.
 

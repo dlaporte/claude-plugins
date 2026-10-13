@@ -5,7 +5,7 @@ description: Use when the user has an EXISTING repo or codebase they want on the
 
 # inno-migrate-app
 
-## Version gate — do this first
+## Version gate: do this first
 
 Before anything else in this skill, do these five steps in order.
 
