@@ -226,10 +226,10 @@ stands. From the repo root, with the package's name in place of
 `<package>`:
 
 ```bash
-cd app && p='<package>' && spec="$(npm pkg get "devDependencies[$p]" | tr -d '"')" && test "$spec" != "{}" && npm pkg set "dependencies[$p]=$spec" && npm pkg delete "devDependencies[$p]" && npm install --package-lock-only
+(cd app && p='<package>' && spec="$(npm pkg get "devDependencies[$p]" | tr -d '"')" && test "$spec" != "{}" && npm pkg set "dependencies[$p]=$spec" && npm pkg delete "devDependencies[$p]" && npm install --package-lock-only)
 ```
 
-The specifier moves exactly as written: an exact pin stays exact, a range
+The parentheses run it in a subshell, so the shell stays at the repo root for the next step. The specifier moves exactly as written: an exact pin stays exact, a range
 keeps its range, and a `file:` or git specifier is untouched. The bracket
 form reads a name with a dot or a scope correctly, and `test` stops the line
 when the package is not under `devDependencies`. `--package-lock-only`
@@ -246,9 +246,9 @@ Two commands look like this move and are not:
   plain install leaves an existing devDependency where it is, and the
   uninstall then removes it.
 - `npm install --save-prod <package>@<specifier>` re-resolves a registry
-  package to the newest release its range allows and saves the specifier
-  with a `^`, so an exact pin `1.2.3` becomes `^1.2.3`, and a version the
-  author never chose ships in the next deploy.
+  package to the newest release its range allows, and can save the
+  specifier with a `^`, so an exact pin `1.2.3` becomes `^1.2.3`. Either
+  way a version the author never chose ships in the next deploy.
 
 ### When you're stuck — offer to build a support bundle
 
