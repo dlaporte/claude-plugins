@@ -73,9 +73,18 @@ jobs:
         with:
           fetch-depth: 0   # need the base commit to diff against
 
+      # Fails closed, by the policy of the platform's admin-plugin gate
+      # (inno-platform's scripts/admin-plugin-version-bump.mjs and the CI step
+      # that runs it): this step exists to fail, so a base it cannot read is
+      # not a pass. A base the checkout lacks is fetched, retried once. The
+      # only skips are a first push (no base at all) and a forced push whose
+      # old tip is gone from the remote (nothing left to compare). Any other
+      # failure, a network error, a bad SHA or a git diff error, stops the job
+      # with a message.
       - name: A touched plugin must declare a new version
         env:
           BASE_SHA: ${{ github.event_name == 'pull_request' && github.event.pull_request.base.sha || github.event.before }}
+          FORCED: ${{ github.event.forced }}
         run: |
           set -euo pipefail
           base="$BASE_SHA"
@@ -85,7 +94,26 @@ jobs:
             echo "No base commit to compare against — skipping."
             exit 0
           fi
-          git fetch --no-tags --depth=50 origin "$base" 2>/dev/null || true
+          if ! [[ "$base" =~ ^[0-9a-f]{40}([0-9a-f]{24})?$ ]]; then
+            echo "::error::the base \"$base\" is not a commit SHA, so the version check did not run"
+            exit 1
+          fi
+          if ! git rev-parse --verify --quiet --end-of-options "$base^{commit}" >/dev/null; then
+            if ! git fetch --no-tags --depth=50 origin "$base" && ! git fetch --no-tags --depth=50 origin "$base"; then
+              # The remote listing is captured before it is searched, so a
+              # failed ls-remote cannot read as "the base is not listed".
+              if [ "${FORCED:-}" = "true" ] && refs="$(git ls-remote origin)" && ! grep -q "^$base" <<<"$refs"; then
+                echo "Forced push: the old tip $base is gone from the remote, skipping."
+                exit 0
+              fi
+              echo "::error::could not fetch the base commit $base, so the version check did not run"
+              exit 1
+            fi
+            if ! git rev-parse --verify --quiet --end-of-options "$base^{commit}" >/dev/null; then
+              echo "::error::the base $base is not a commit in this checkout, so the version check did not run"
+              exit 1
+            fi
+          fi
 
           # Splits a MAJOR.MINOR.PATCH string into three numeric fields and
           # compares them component by component, so 1.10.0 correctly beats
@@ -110,7 +138,10 @@ jobs:
           fail=0
           for dir in plugins/*/; do
             plugin="$(basename "$dir")"
-            changed="$(git diff --name-only "$base" HEAD -- "$dir" || true)"
+            if ! changed="$(git diff --name-only "$base" HEAD -- "$dir")"; then
+              echo "::error::git diff against the base $base failed for $plugin, so its version was not checked"
+              exit 1
+            fi
             [ -n "$changed" ] || continue
 
             manifest="$dir.claude-plugin/plugin.json"
