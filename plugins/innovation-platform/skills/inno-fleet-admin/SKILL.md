@@ -116,13 +116,16 @@ uses, held for `auth.status_check_minutes`. So:
     Okta does not know: the person needs an account first.
   - `admin_table_empty` while the list is empty (below).
 - `revoke_admin` removes the person from the list and, like `grant_admin`,
-  changes nothing else. It refuses `self_admin_change` when you name yourself
-  (another admin must do it), `last_admin` when the removal would leave the
-  platform with no admin, which changes nothing (grant another admin first),
-  and `admin_table_empty`. An address the list does not hold is answered as
-  not an admin. Either way, if the Okta admin group lists the person it
-  still does: that gives no standing while the list holds anyone (above),
-  and only a change in Okta by hand takes them out of that group.
+  changes nothing else (since platform v0.16.7; before it, revoking an admin
+  also removed them from the Okta admin group). It refuses
+  `self_admin_change` when you name yourself (another admin must do it),
+  `last_admin` when the removal would leave the platform with no admin,
+  which changes nothing (grant another admin first), and
+  `admin_table_empty`. An address the list does not hold is answered as not
+  an admin. Since platform v0.16.7, either way, if the Okta admin group
+  lists the person it still does: that gives no standing while the list
+  holds anyone (above), and only a change in Okta by hand takes them out of
+  that group.
 - Both are audited (`admin_granted`, `admin_revoked`). Confirm the person by
   name before either.
 
@@ -203,7 +206,11 @@ The rules it applies, as its description states them:
   one line says `admins: the platform's admin list decides (N admins); the
   Okta admin group is not compared`, and it counts toward no parity, so a
   dry run can read `parity: clean` however far the group differs from the
-  list.
+  list. On an older platform the admins are compared on every run instead:
+  each difference is reported, never written (an apply's admin block ends
+  `writes: none, reported only`), its lines say how to settle it, and it
+  counts in a dry run's parity, so `parity: clean` waits until the group
+  matches the list; the list still decides.
 - `app` narrows the run to one app; the admins are still included, and the
   last line names the scope.
 - **The cut-over (since platform v0.16.4).** With `apply`, an MCP app
