@@ -47,7 +47,9 @@ Platform tool calls share one per-person budget, described in
 `inno-manage-app`'s **Call budget** section. This skill never needs anywhere
 near it, so an answer of `rate_limited` here means something is looping, or
 several subagents are calling at once; stop and reconsider rather than
-retrying.
+retrying. That refusal and the others any platform tool can give are
+explained once, in `inno-platform-conventions`' **Refusals every tool
+shares** section.
 
 **Speak the user's language,** per the plugin README's **House style**
 section. Here that means "connect your app to {backend} as each person,"
@@ -315,8 +317,8 @@ set_app_connection({ app, connection, label, strategy, config,
   canonical place for scopes and wins over any `config.scopes`; pass the
   minimal set the app needs.
 - `disabled` — optional `boolean`. Set `true` to register the connection in a
-  **paused** state (the seam returns "unavailable" for all users until you
-  re-enable it); omit or `false` for the normal case. Pausing is a reversible
+  **paused** state (the seam answers `503 connections_def_disabled` for all
+  users until you re-enable it); omit or `false` for the normal case. Pausing is a reversible
   switch, **not** a per-user credential wipe — stored credentials are kept and
   resume when re-enabled. Calling again with the opposite value flips it.
 
@@ -423,7 +425,7 @@ The sample below is written for the official SDK; the swap for standalone
 
 ```python
 from mcp.server.fastmcp import Context
-from storage import Connections, ConnectionLocked, NotConnected  # template helpers
+from storage import Connections, ConnectionLocked, ConnectionsError, NotConnected  # template helpers
 
 # On the standalone `fastmcp` package instead? Drop the Context import and the
 # ctx parameter, and get the request from the dependency:
@@ -451,6 +453,13 @@ async def list_incidents(ctx: Context) -> dict:
         # Do NOT swallow this — surface the link so the user can link once.
         return {"error": f"You're not connected to your CRM yet — open "
                          f"{e.connect_url} to link your account, then try again."}
+    except ConnectionsError as e:
+        # Any other failed seam call: e.status is the HTTP status and e.code
+        # the answer's error code (get_app_contract §2.2 says whose each is).
+        if e.code == "connections_def_disabled":
+            return {"error": "Your CRM connection is paused right now. "
+                             "Try again later; you don't need to reconnect."}
+        raise
     # cred is {"access_token": ..., "header": ..., "expires_at": ...}
     token = cred["access_token"]
     # ... make the backend call with `token`; keep it in memory only ...
@@ -478,14 +487,26 @@ Rules that hold regardless of language:
   *"You're not connected to {backend} yet — open {connect_url} to link your
   account, then try again."* That's the one time this flow surfaces a URL
   instead of a plain-language sentence — it's a real link the user must click.
-- **`NotConnected` is not the only non-success branch, and the other three are
-  not the user's fault** — don't send any of them down the connect-link
-  path:
-  - **`503`** — the Connection has been **paused** (`disabled`) by its owner or
-    a platform admin. Transient: the backend is switched off, the user's own
-    connection is intact. Treat it like any other temporary seam failure and
-    retry later; tell the user the connection is paused right now, not that
-    they need to reconnect.
+- **`NotConnected` is not the only non-success branch, and the others are
+  not the user's fault**, so don't send any of them down the connect-link
+  path. Every failed seam call (any answer but a 200) raises
+  `ConnectionsError` in both template clients, with the HTTP status as
+  `.status` and the answer's `error` code as `.code` (`null` in JS, `None`
+  in Python, when the body carried none). In Python it is also an
+  `httpx.HTTPStatusError`, the error older copies of the template raised
+  here, so an existing `except httpx.HTTPStatusError` still catches it.
+  Branch on `e.code`, as the sample above does, never on the message.
+  `get_app_contract` §2.2 lists every code and whose each is to fix. The
+  branches a working app meets:
+  - **`503 connections_def_disabled`**: the Connection has been **paused**
+    (`disabled`) by its owner or a platform admin. Transient: the backend is
+    switched off, the user's own connection is intact. Treat it like any
+    other temporary seam failure and retry later; tell the user the
+    connection is paused right now, not that they need to reconnect.
+  - **`503 connections_disabled`**: Connections is not provisioned on this
+    platform at all, and any other `503` code means the platform's own
+    Connections setup is broken. Nothing in the app fixes either: retry
+    later, and tell a platform admin.
   - **`429 rate_limited`** (with `Retry-After: 60`): the seam's abuse brake,
     sustained calling past roughly **120 requests/minute per (app, user)**. It
     is counted per Cloudflare location, so treat the number as approximate,
@@ -496,8 +517,8 @@ Rules that hold regardless of language:
     this call could not reach the user's own sealing key. It means "connected,
     and locked right now", not "never connected". Both template clients raise
     `ConnectionLocked` for it, a subclass of `NotConnected` carrying the same
-    connect link (`connectUrl` in `lib/storage.js`, `connect_url` in
-    `app/storage.py`), so an existing `catch (e) { if (e instanceof
+    connect link (`connect_url` in both clients; the JS one also keeps its
+    older name, `connectUrl`), so an existing `catch (e) { if (e instanceof
     NotConnected) ... }` block or `except NotConnected` clause keeps working
     unchanged. To tell the two cases apart, check for `ConnectionLocked`
     first: in JS test `instanceof ConnectionLocked` before `NotConnected`; in
@@ -507,7 +528,15 @@ Rules that hold regardless of language:
     clause. A repo created from an older copy of the template may have a
     `storage.py` with no `ConnectionLocked`, which raises plain `NotConnected`
     for both cases and cannot tell them apart: copy the current
-    `app/storage.py` from the template repo (the `Template repo:` line of the status you read in the Version gate) before writing the locked branch.
+    `app/storage.py` from the template repo (the `Template repo:` line of the status you read in the Version gate) before writing the locked branch
+    (in a JS container, `lib/storage.js`). The copy brings the rest of the
+    current client too, `ConnectionsError` above and the `truncated` flag on
+    the file listing's key list, and keeps the old shapes: the listing is
+    still a list, `NotConnected` is unchanged, and `ConnectionsError` is
+    still an `httpx.HTTPStatusError`. One thing differs in Python only: a
+    failed seam call's message, `str(e)`, is now `connections_error:<status>`
+    rather than httpx's own text, which matters only to code that logs or
+    matches it.
     Two situations produce it:
     the MCP client authorized the app **before** the user's first connection,
     or the user's sealing key was reset after they last connected. **The fix is re-authorizing the MCP client**, never
