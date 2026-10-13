@@ -427,12 +427,21 @@ try {
 }
 ```
 
-Four other seam responses are **not** the user's problem and must not be
+Every seam answer that is not a 2xx reaches your code as a
+`ConnectionsError`, from both template clients (`lib/storage.js` and
+`app/storage.py`): `.status` is the HTTP status and `.code` the answer's
+`error` code (`null` in JS, `None` in Python, when the body carried none),
+so branch on `e.code` for the codes below. In Python it is also an
+`httpx.HTTPStatusError`, so an existing `except httpx.HTTPStatusError`
+still catches it.
+
+Five other seam responses are **not** the user's problem and must not be
 shown as one:
 
-- **`503`** — the connection has been disabled by its owner or a platform
-  admin. Transient: the backend is paused, the user's connection is not
-  revoked. Treat it like any other transient seam failure and retry later.
+- **`503 connections_def_disabled`** (named in the contract since version
+  25): the connection has been disabled by its owner or a platform admin.
+  Transient: the backend is paused, the user's connection is not revoked.
+  Treat it like any other transient seam failure and retry later.
 - **`503 connections_disabled`** (named in the contract since version 24):
   Connections is not provisioned on this platform. A platform missing its
   gateway key issues no caller assertion, so the app's correct echo arrives
@@ -447,6 +456,10 @@ shown as one:
   21): the backend's own token endpoint failed while the platform was renewing
   the user's credential. A dependency failure, not the user's: retry later,
   and don't relay a `connect_url` or ask the user to reconnect.
+- **Any other `503`** (contract version 25): the platform's own Connections
+  setup is broken (a connection's stored configuration, a platform key, or a
+  stored credential the platform can no longer open). Nothing in the app
+  fixes it: retry later, and tell a platform admin.
 
 Two more are the **app's** to fix, not the user's, and never a connect prompt
 (contract §2.2 lists both):
