@@ -108,7 +108,7 @@ order:
    of `{app}`), never the repo's existing role groups, so existing role
    checks cannot move onto that header. The full header rule is
    `inno-platform-conventions`' **Identity** section. This is about the
-   app's *own* front-door login — a separate thing to look for is auth to a *backend the app calls
+   app's *own* front-door login. A separate thing to look for is auth to a *backend the app calls
    out to*: if the repo runs its own OAuth flow against some other service,
    holds a long-lived per-user token for that service, or ships a sidecar
    whose whole job is minting/refreshing that credential, don't port any of
