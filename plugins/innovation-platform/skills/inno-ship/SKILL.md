@@ -233,9 +233,11 @@ The parentheses run it in a subshell, so the shell stays at the repo root for th
 keeps its range, and a `file:` or git specifier is untouched. The bracket
 form reads a name with a dot or a scope correctly, and `test` stops the line
 when the package is not under `devDependencies`. `--package-lock-only`
-rewrites only the lockfile and keeps the version it already holds, so the
-one change in `app/package-lock.json` is that package's `"dev": true`
-dropping (and the same flag on anything only it pulls in). Check that with
+rewrites only the lockfile and keeps the version it already holds, so
+`app/package-lock.json` changes in two ways and keeps every version: the
+root entry (`packages[""]`) lists the package under `dependencies` instead
+of `devDependencies`, and the package's own entry drops `"dev": true`, as
+does the entry of anything only it pulls in. Check that with
 `git diff app/package.json app/package-lock.json`, then run §0's install
 block (`npm ci --ignore-scripts --omit=dev`, what `app-deps` runs).
 
