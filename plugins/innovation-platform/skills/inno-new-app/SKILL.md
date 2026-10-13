@@ -370,10 +370,10 @@ register_app({ app, repo, description, type, members, accept_guardrails: true, c
   shape. Omit for container. The type is fixed at registration and can't be
   switched later (register a new app to change it).
 - `accept_guardrails: true` — required; you must have done the §1a review.
-- `members` is an optional list of Okta emails. Each one added is notified
-  that the app was shared with them, in-platform plus email per their own
-  notification settings, so name only people who should hear about it now.
-  What happens to each address depends on the type:
+- `members` is an optional list of Okta emails. A member who is notified
+  hears that the app was shared with them, in-platform plus email per their
+  own notification settings, so name only people who should hear about it
+  now. What happens to each address depends on the type:
   - **A browser app** (`container`, `function`): each address Okta knows is
     added to the app's member list and its Okta group and notified. An
     address Okta does not know is skipped: it gets no access and no notice,

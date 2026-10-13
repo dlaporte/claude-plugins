@@ -232,9 +232,9 @@ what the tool answers.
   **member list** alone, with no Okta call. A new one has no Okta group at
   all; one the import cut over keeps its old group in Okta, unread and
   unwritten, until its purge.
-- **Okta mode**: every browser app (`container`, `function`) until platform
-  v0.16.5, and an MCP app registered before v0.16.4 until the import cuts it
-  over. Its members are held in two places, and each tool writes both, in
+- **Okta mode**: every browser app (`container`, `function`), since no
+  browser app is in platform mode before platform v0.16.5, and an MCP app
+  registered before v0.16.4 until the import cuts it over. Its members are held in two places, and each tool writes both, in
   this order: first the platform's member list for the app, then the app's
   members group in Okta (the `(members)` name in the `App groups:` line of
   the status you read in the Version gate, with the app's name in place of
@@ -301,8 +301,8 @@ stands, and retry once Okta accepts the change.
   never answers either of those two. While the platform has an Okta token,
   the address is looked up in Okta first, read-only, and one Okta has no user
   for is still granted, with a `WARNING:` in the result ("Okta has no user
-  for ... so no one can sign in as that address yet"); that address is not
-  sent the shared notice, since it may be a typo. Relay the warning, and
+  for <address>, so no one can sign in as that address yet"); that address
+  is not sent the shared notice, since it may be a typo. Relay the warning, and
   check the spelling with the user: if it is mistyped, `revoke_access`
   removes it; if the person's account is still being created, the grant
   applies once it exists. If Okta cannot be asked, the result says the
@@ -389,8 +389,8 @@ stands, and retry once Okta accepts the change.
   `revoke_access` on a particular app, run that. Since platform v0.16.4 the
   warning names `revoke_access` on each app that could not be updated; never
   repair it by hand in Okta, because removing someone from an Okta group
-  alone leaves them on the member list that MCP apps read. A warning that the two stores
-  "may now disagree" also says not to repair it with an
+  alone leaves them on the member list that MCP apps read. A warning that
+  the two stores "may now disagree" also says not to repair it with an
   `import_okta_memberships` apply, which would re-admit the person to MCP
   apps: retrying the revoke finishes it. Beyond the immediate report, the
   consumer apps' `access_revoked` audit rows carry a `cascade_from` field
@@ -506,8 +506,8 @@ returns it to the named member list (open: false). Owner or admin only.
   closed source. Unlink with `unlink_app_data`, or open the named source app
   deliberately first.
 - `open_access_unprovisioned` (okta mode only) means the app's open-access
-  group or rule is missing. Nothing re-creates it for a finished app: an app still
-  mid-registration is repaired by running `register_app` again; otherwise a
+  group or rule is missing. Nothing re-creates it for a finished app: an app
+  still mid-registration is repaired by running `register_app` again; otherwise a
   platform admin must `purge_app` it and `register_app` it again. Say plainly
   that `purge_app` permanently deletes the app's data and holds its name for
   seven days, and run `export_app_data` first.

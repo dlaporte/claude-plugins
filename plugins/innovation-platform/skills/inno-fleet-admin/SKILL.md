@@ -203,8 +203,8 @@ The rules it applies, as its description states them:
   of both stores finds its list equal to the group. Its block says "flipped
   to platform mode", and the summary names every app flipped. From then on
   its list alone decides and the import skips it. A dry run says of each
-  such app that it "would flip to platform mode with apply", and its summary
-  names them. One that stays in okta mode (a write failed, or the fresh read
+  such app it compared that it "would flip to platform mode with apply", and
+  its summary names them. One that stays in okta mode (a write failed, or the fresh read
   failed or found the two apart) says why on a "stays in okta mode" line,
   and a later apply tries again. The cut-over writes nothing to Okta: the
   group stays there and in the app's record until the app is purged. A
@@ -305,11 +305,11 @@ transfer.
   import's dry run with `app` set to that source shows the difference.
 - **A refused or failed transfer of an app in okta mode takes the recipient
   back out** of the app's Okta group, unless they were in it before the
-  call, and says so if Okta refuses that. The answer then says the two stores may disagree, names the
-  repair, and warns not to use an import apply, which would give the
-  recipient MCP access to the app: follow it. Their member-list row is written
-  only in the write that makes them the owner, so a refused transfer leaves
-  no row behind.
+  call, and says so if Okta refuses that. The answer then says the two
+  stores may disagree, names the repair, and warns not to use an import
+  apply, which would give the recipient MCP access to the app: follow it.
+  Their member-list row is written only in the write that makes them the
+  owner, so a refused transfer leaves no row behind, in either mode.
 - **Outcome unknown.** Rarely the answer says the platform "could not tell
   whether the transfer ... was recorded". Nothing was undone. Check the owner
   with `app_status`, and finish by hand the steps the answer lists.
@@ -420,8 +420,8 @@ Only needed where several platform instances share one Okta org. Every group
 the platform creates carries an ownership marker (`[instance:<id>]` at the end
 of its description); groups an earlier release created do not, and the
 platform never adopts an unmarked group by name on a shared org
-(`register_app` refuses a browser app's with `idp_object_foreign`; an MCP
-app registered from v0.16.4 gets no Okta group to collide). The tool lists the
+(for a browser app, `register_app` refuses it with `idp_object_foreign`; an
+MCP app registered from v0.16.4 gets no Okta group). The tool lists the
 groups this instance recorded (each app's members and open group, every group
 an app's recorded open rule assigns to, and the platform admin group) with
 each one's marker: unmarked, this instance, or another instance.
