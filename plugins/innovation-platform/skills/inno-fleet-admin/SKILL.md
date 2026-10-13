@@ -442,6 +442,13 @@ record names are deleted (an app that was cut over, by the import or by
 its deploy, keeps those until its purge), so neither search code arises for
 it, and one whose record names none makes no Okta call at all.
 
+If Cloudflare refuses to delete the app's Access application, the purge still
+finishes and leaves the application in place (since platform v0.16.6). Its
+answer says so and names the application, and the admins get an
+`access_app_left` notice. Tell the admin to delete that application in the
+Cloudflare dashboard (Zero Trust, Access, Applications) before the name's
+hold ends: a new app of that name adopts it with the policies it still has.
+
 `purge_app` then `register_app` is also the served remedy for an app whose
 open-access group or rule is missing (`open_access_unprovisioned`, in
 `inno-manage-app`), with the export first.
@@ -656,7 +663,7 @@ means when it asks for the tag again.
 - `list_connections` without `app`, and `list_user_connections` with no
   filters or for another person without an app you manage, are the fleet views
   of connections: admins only, and never any credential.
-- `list_notifications` shows an admin every app's feed, plus six admin-only
+- `list_notifications` shows an admin every app's feed, plus seven admin-only
   stages:
   - `start_requested`: an owner asked for a start. An admin's `start_app` is
     unlimited and does not use the owner's allowance.
@@ -688,6 +695,11 @@ means when it asks for the tag again.
     or more. Look at the app's Access policies in the Cloudflare dashboard;
     its next deploy tries the cut-over again (**A browser app's cut-over**
     above).
+  - `access_app_left` (since platform v0.16.6): a purge could not delete the
+    app's Cloudflare Access application, because Cloudflare refused the
+    delete, so it was left in place. The entry names the application. Delete
+    it in the Cloudflare dashboard (Zero Trust, Access, Applications) before
+    the name's hold ends (the `purge_app` section above).
 
   `mark_all_notifications_read` called by an admin marks every unread
   notification read, everyone's, not only the admin's own.
