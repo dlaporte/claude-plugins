@@ -43,6 +43,14 @@ if [ "$count" -eq 0 ]; then
   echo "platform-tools: no tool names found in $source_file at $ref" >&2
   exit 1
 fi
+# A second count, so an entry written in another shape (its name on the
+# def({ line, or without the trailing comma) fails here instead of dropping
+# out of the list: every tool is one def({ ... }) entry in TOOL_DEFS.
+entries="$(printf '%s\n' "$server" | grep -oE '(^|[^A-Za-z0-9_.])def\(\{' | grep -c . || true)"
+if [ "$entries" -ne "$count" ]; then
+  echo "platform-tools: $source_file at $ref has $entries def({ entries but $count name: lines matched; find the entries the pattern missed and fix it" >&2
+  exit 1
+fi
 if dupes="$(printf '%s\n' "$names" | uniq -d | grep .)"; then
   echo "platform-tools: a tool name appears twice in $source_file at $ref:" >&2
   printf '  %s\n' $dupes >&2
