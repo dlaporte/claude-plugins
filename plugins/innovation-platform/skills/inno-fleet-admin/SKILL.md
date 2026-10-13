@@ -449,7 +449,7 @@ and names the application, and the admins get an `access_app_left` notice.
 Tell the admin to delete that application in the Cloudflare dashboard (Zero
 Trust, Access, Applications) before the name is registered again: a new app
 of that name adopts it with the policies it still has. Any other Access error
-stops the purge, and a later call finishes it.
+stops the purge, and a later call finishes it once the error clears.
 
 `purge_app` then `register_app` is also the served remedy for an app whose
 open-access group or rule is missing (`open_access_unprovisioned`, in
