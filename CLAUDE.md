@@ -64,3 +64,8 @@ Skill content must match what the platform actually does. When in doubt,
 prefer having the skill call `get_app_contract` / `get_platform_docs` /
 `get_guardrails` at runtime over restating platform behavior here, since
 fetched content cannot go stale.
+
+The platform's tool names are pinned in `scripts/platform-tools.txt`, which
+the `tool-names` CI job reads. Refresh it at every resync with the platform:
+`bash scripts/platform-tools.sh <platform checkout> <release tag>`, then commit the
+new list with the skill changes that use any new tool.
