@@ -125,16 +125,27 @@ changed in between: pin the base to the digest `get_app_contract` serves.
    which is why `/healthz` must not depend on the caller: the Access service
    token on an SSO-perimeter app (`container`, `function`) and the bearer
    probe token on an OAuth-RS-perimeter app (`mcp-function`,
-   `mcp-container`). A deploy-time probe that cannot reach the origin at all, which is
-   what a container still cold-starting behind a just-attached hostname
-   looks like, defers to the next hourly pass instead of alarming, so a
-   brand-new app reading `unknown` right after its first deploy is normal
-   (see `inno-ship`). Only a connection error or a Cloudflare origin-reach
-   status (520-527, 530) defers, though. A probe that **times out**, or
-   answers with anything other than 200, does not: each attempt allows 45
-   seconds, and a failed attempt gets one retry 5 seconds later before it
-   is reported, so a verdict can take up to about 95 seconds. That roughly
-   95 second span is a third clock, neither the hourly re-probe nor
+   `mcp-container`). The probe fired by a deploy never judges a failure: it
+   defers **every** unhealthy result to the next hourly pass, whatever the
+   cause (a timeout, an answer other than 200 from the app, or a connection
+   failure such as a DNS or TCP error or a Cloudflare origin-reach status
+   520-527 or 530 while a container is still cold-starting). It leaves the
+   app's health status as it was and notifies no one; `app_status` then
+   reads `Health: re-probe pending (not answering yet: ...)`, which is
+   normal right after a deploy (see `inno-ship`). An hourly pass that comes
+   within 10 minutes of a deploy finishing defers the same way, and the
+   pass after it judges, so a deploy that leaves `/healthz` failing alarms
+   within about 70 minutes, not at once. Away from a deploy, the hourly
+   pass judges every result, a timeout included. Each attempt allows 45
+   seconds, and a timeout or an answer other than 200 (except 401, 403 and
+   302, which read as the probe being blocked, not as unhealthy) gets one
+   retry 5 seconds later before it is reported (or, right after a deploy,
+   deferred), so a verdict can take up to about 95 seconds. On the deploy's
+   probe a thrown connection error is the one result not retried: it is
+   deferred at once, since the hostname may still be propagating. When a
+   platform admin has turned on automatic restarts, the re-probe that
+   follows a restart judges its result rather than deferring it. That
+   roughly 95 second span is a third clock, neither the hourly re-probe nor
    `health.probe_interval_hours`. The hourly floor applies only while a
    status is pending: once it clears, the recurring check goes back to
    following `health.probe_interval_hours`, so it is not always literally
