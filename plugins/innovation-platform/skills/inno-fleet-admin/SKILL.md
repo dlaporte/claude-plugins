@@ -509,12 +509,25 @@ it there.
 - `list_connections` without `app`, and `list_user_connections` with no
   filters or for another person without an app you manage, are the fleet views
   of connections: admins only, and never any credential.
-- `list_notifications` shows an admin every app's feed, plus two admin-only
-  stages: `start_requested` (an owner asked for a start; an admin's
-  `start_app` is unlimited and does not use the owner's allowance) and
-  `connection_sink_new_host` (a connection was pointed at a credential
-  destination no connection on the platform was using: check that the host
-  belongs to the backend the connection claims to be).
+- `list_notifications` shows an admin every app's feed, plus four admin-only
+  stages:
+  - `start_requested`: an owner asked for a start. An admin's `start_app` is
+    unlimited and does not use the owner's allowance.
+  - `drift_detected`, about the platform rather than one app: a promoted
+    platform pointer no longer matches what was published, and the entry
+    names which one and its fix. Either the published gateway differs from
+    the promoted `gateway.ref`, so every app deploy injects the older build
+    (promote it with `sync_gateway_ref`, as one step of a platform upgrade:
+    **The gateway promote** above), or `plugin.min_version` is above the
+    newest published plugin, so no user can satisfy it.
+  - `connection_sink_new_host`: a connection was pointed at a credential
+    destination no connection on the platform was using. Check that the host
+    belongs to the backend the connection claims to be.
+  - `naming_changed`, about the platform too: a naming key changed on an
+    instance whose apps were registered under the old names. The entry names
+    the keys and both ways out, which **`accept_naming_change()`** above
+    explains: revert the manifest, or move every app by hand and then accept.
+
   `mark_all_notifications_read` called by an admin marks every unread
   notification read, everyone's, not only the admin's own.
 

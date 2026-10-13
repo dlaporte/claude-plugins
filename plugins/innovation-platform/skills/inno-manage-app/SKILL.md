@@ -685,8 +685,9 @@ Stages worth acting on when one appears: `respin_failed`, `auto_restarted`,
 a source that closed, or an ownership transfer): the app's deployed binding to
 the other app's database keeps working until the app is rebuilt, and the entry
 says whether a rebuild was dispatched or the owner has to redeploy (for an
-owner that is `inno-ship`). Admins also see two admin-only stages, which
-`inno-fleet-admin` explains. The tool filters on one app, one `stage`, or
+owner that is `inno-ship`). Admins also see four admin-only stages
+(`start_requested`, `drift_detected`, `connection_sink_new_host` and
+`naming_changed`), which `inno-fleet-admin` explains. The tool filters on one app, one `stage`, or
 unread only, and returns **at most 50 rows** per call, so narrow the filter
 rather than trying to read a long history in one go.
 `mark_notification_read` answers `notification_not_found` for an id that
