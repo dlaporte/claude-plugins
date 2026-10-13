@@ -44,6 +44,29 @@ the platform does NOT support, and the CURRENT digest-pinned recommended
 base images. The tool is the live source; never restate contract values from
 memory or hard-code a base-image digest.
 
+## Refusals every tool shares
+
+Seven refusals any of the platform's MCP tools can answer are named once, in
+the instructions the platform's MCP server sends when a client connects, and
+not in each tool's description, which names only the refusals of its own.
+When a tool answers one of these, this is what it means:
+
+- `account_inactive`: every tool, read tools included, first checks that the
+  caller's account can still sign in, using an answer held for
+  `auth.status_check_minutes`. An account Okta no longer lets sign in
+  (suspended, deprovisioned or deleted) is refused on every tool, with the
+  message "This account can no longer sign in. Contact a platform admin."
+- `rate_limited`: the caller made more calls in a minute than the
+  instructions allow. Wait a minute.
+- `internal_error`: the call failed in a way the platform did not expect,
+  and the failure is logged.
+- `forbidden`: the caller lacks the standing the tool's description names.
+- `app_not_found`: a tool that takes an app was given a name no app has.
+- `invalid_email`: a tool that takes an email address was given a value
+  that is not one.
+- `upstream_error`: a service the platform calls failed. Its message says
+  what failed, and a retry may succeed.
+
 ## Deployment types: `container` (below), `function`, `mcp-function`, `mcp-container`
 
 Most of this skill describes the **`container`** type (a Docker container the
