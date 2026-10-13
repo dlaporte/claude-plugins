@@ -4,9 +4,10 @@ Claude Code plugin for your organization's Innovation Platform. It works with
 any instance: every instance-specific value (hostnames, group names, the
 template repo, the CI workflow, the Connections callback) is read from the
 platform's `get_platform_status` tool, never written into a skill. Bundles the
-`inno-platform` MCP server and eight skills that walk Claude through the whole
-app lifecycle: create (or migrate existing code), write, containerize,
-connect to a per-user backend, gate-check, ship, and manage. Apps deploy as
+`inno-platform` MCP server and nine skills: eight walk Claude through the
+whole app lifecycle (create or migrate existing code, write, containerize,
+connect to a per-user backend, gate-check, ship, and manage), and one serves
+the platform's admins. Apps deploy as
 one of four **types** behind the
 same identity gateway: a **container** (any stack, a Dockerfile, and the type
 `register_app` defaults to when none is given), a **function** (its own
@@ -28,8 +29,7 @@ arguments, verifies both, finishes, and returns your `deploy.yml`. Installing
 the App proves the platform can see the repo; the committed file proves you can
 change it, and registration refuses with `repo_control_unproven` until it is
 there. There is no platform-owned repo: the repo is yours (any account, public
-or private), and uninstalling the App unlinks and stops the app. (The old
-`create_app` tool has been retired.)
+or private), and uninstalling the App unlinks and stops the app.
 
 ## Install
 
@@ -99,23 +99,12 @@ produce is a Dockerfile and app code rather than sentences a user reads.
 ## What's in the box
 
 - **`.mcp.json`**: points at the address you set as `platform_url`
-  (the platform's MCP address), the platform's remote MCP server (tools: `register_app`, `check_name`,
-  `list_apps`, `app_status`, `grant_access`, `revoke_access`, `set_app_access`, `stop_app`,
-  `start_app`, `request_start`, `export_app_data`, `get_app_metrics`, `get_app_usage`, `get_app_logs`, `restart_app`, `get_platform_status`,
-  `link_app_data`, `unlink_app_data`, `list_app_links`,
-  `list_notifications`, `mark_notification_read`, `mark_all_notifications_read`,
-  `get_platform_docs`, `get_guardrails`, `get_app_contract`, `get_app_security`, `get_app_accessibility`, `get_ci_status`, `create_support_bundle`,
-  `set_config`/`remove_config` (admin-only, with one exception: any user may set their own `notify.email.*` keys at their own user scope, so muting a notification is self-service),
-  `get_config` (scoped — `app=` for an app you manage, `user=` for your own account; the argument-less fleet catalog is admin-only),
-  `set_app_connection`/`list_connections`/`remove_app_connection`,
-  `list_user_connections`/`disconnect_user_connection` (connection sessions — yours; an app's for its owner; the fleet for admins),
-  `set_app_variable`/`list_app_variables`/`remove_app_variable` (per-app environment variables, owner-or-admin; hidden values are write-only), and the admin-only `transfer_app`
-  (reassign an app's owner; owners ask an admin), `rebuild_app`
-  (redeploy an app's released code at its live tag), `purge_app`,
-  `revoke_sessions` (end one person's panel sessions everywhere), `list_users`, `query_audit`, `sync_gateway_ref`,
-  `list_admins`, `grant_admin`, `revoke_admin`, `claim_instance_objects`, `accept_naming_change`, `export_platform_backup`,
-  `get_platform_logs`).
-  There's also a
+  (the platform's MCP address), the platform's remote MCP server. Its tools
+  are not listed here, because the platform is their one source: your MCP
+  client lists them (`/mcp` in Claude Code), each tool's own description says
+  what it does, who may call it and what it refuses (the refusals every tool
+  shares are in the server's instructions), and `get_platform_status` serves
+  your instance's own values. There's also a
   web panel with the same capabilities at
   the platform's address (the `Panel URL:` line of `get_platform_status`).
 - **`skills/inno-new-app`**: intake -> create a repo from the template repo ->
@@ -153,12 +142,21 @@ produce is a Dockerfile and app code rather than sentences a user reads.
   it. What counts as real use is served from one place, the **Lifecycle (idle
   clock)** section of `get_platform_docs`; this skill quotes it rather than
   keeping its own list.
+- **`skills/inno-fleet-admin`**: for platform admins only, the actions that
+  reach across the fleet: the admin roster (`list_admins`, `grant_admin`,
+  `revoke_admin`), comparing the platform's membership tables with Okta and
+  closing the gaps (`import_okta_memberships`), reassigning an app's owner,
+  purging an app, ending one person's panel sessions everywhere, claiming the
+  instance's Okta groups, accepting a naming change, platform configuration,
+  and the fleet-wide reads (every app, every user, the audit log, the
+  platform's logs and its backup). An owner manages their own apps with
+  `inno-manage-app`.
 
 ### How the skills are laid out
 
 Each skill loads on its own, so a few blocks are deliberately repeated rather
 than pointed at. The **Version gate** at the top of every skill is the main
-one: it is byte-identical across all eight by design, because a skill that
+one: it is byte-identical across all nine by design, because a skill that
 loads alone cannot follow a pointer to reach its own precondition. Check that
 it has stayed identical with:
 
@@ -168,7 +166,7 @@ for f in plugins/innovation-platform/skills/*/SKILL.md; do
 done | sort -u
 ```
 
-One line of output means the eight agree. That is the same block CI's
+One line of output means the nine agree. That is the same block CI's
 `version-gate-parity` job compares, so this check and CI cannot disagree. Everything else that appeared in
 several skills now has one home and pointers from the rest:
 `inno-platform-conventions` owns the semgrep scope, the forbidden-path list,
@@ -178,7 +176,8 @@ bundles and the active-app-limit rule; `inno-safety-preflight` owns the pre-push
 directory-symlink checks, how to read `get_ci_status`, and how to read the
 CI accessibility, response-header and Dockerfile reports;
 `inno-containerize` owns the health-probe clock; `inno-new-app` owns the
-name-check rules; and this README owns House style.
+name-check rules; `inno-fleet-admin` owns the admin-only actions; and this
+README owns House style.
 
 ## How the platform enforces security
 
