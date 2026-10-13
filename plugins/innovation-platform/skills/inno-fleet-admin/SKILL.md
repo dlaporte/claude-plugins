@@ -1,6 +1,6 @@
 ---
 name: inno-fleet-admin
-description: "Use when a platform admin manages the Innovation Platform fleet through the inno-platform MCP tools: the admin list (list_admins, grant_admin, revoke_admin), the Okta membership import (import_okta_memberships), ownership transfers (transfer_app), immediate purges (purge_app), rebuilds (rebuild_app), ending someone's panel sessions (revoke_sessions), the instance's Okta groups and naming (claim_instance_objects, accept_naming_change), platform settings (get_config, set_config, remove_config), the gateway promote (sync_gateway_ref), and the fleet-wide reads (list_apps, list_users, query_audit, get_platform_logs, export_platform_backup). Use when an admin wants to add or remove an admin, fill or check the admin list, reassign an app, delete an app now, offboard someone, change a setting or a safety waiver, read the audit log or every app's logs, or take a registry snapshot. An owner's work on their own app is inno-manage-app."
+description: "Use when a platform admin manages the Innovation Platform fleet through the inno-platform MCP tools: the admin list (list_admins, grant_admin, revoke_admin), the Okta membership import (import_okta_memberships), ownership transfers (transfer_app), immediate purges (purge_app), rebuilds (rebuild_app), ending someone's panel sessions (revoke_sessions), the instance's Okta groups and naming (claim_instance_objects, accept_naming_change), platform settings (get_config, set_config, remove_config), the gateway promote (sync_gateway_ref), and the fleet-wide reads (list_apps, list_users, query_audit, get_platform_logs, export_platform_backup). Use when an admin wants to add or remove an admin, fill or check the admin list, settle a member_drift_detected notice, reassign an app, delete an app now, offboard someone, change a setting or a safety waiver, read the audit log or every app's logs, or take a registry snapshot. An owner's work on their own app is inno-manage-app."
 ---
 
 # inno-fleet-admin
@@ -149,16 +149,17 @@ lists then needs `grant_admin`.
 Since v0.16.1 the platform's own tables decide: each app's member list, which
 MCP apps read at every request, and the admin list. Okta still holds a copy
 of the admin list, the admin group. It also holds a copy of the member list
-of each app in **okta mode** (every browser app, and an MCP app registered
-before v0.16.4 that has not been cut over): the app's members group, which
-browser apps' sign-in reads. An app in **platform mode** (an MCP app
-registered from v0.16.4, or one this tool cut over) has its member list
-alone: the run names it and skips it ("platform mode, so its member list is
-the platform's own and is not compared with Okta; skipped"), and a skipped
-app does not count against parity. This tool compares the tables with Okta,
-reports how far apart they are, and with `apply: true` closes what it may
-and cuts MCP apps over to platform mode (below). It reads Okta and never
-writes it.
+of each app in **okta mode** (a browser app registered before v0.16.5, and an
+MCP app registered before v0.16.4, until each is cut over): the app's members
+group, which Access reads when a person signs in to a browser app in okta
+mode. An app in **platform mode** (every app registered from v0.16.5, an MCP
+app registered on v0.16.4, and any app that was cut over) has its member
+list alone: the run names it and skips it ("platform mode, so its member
+list is the platform's own and is not compared with Okta; skipped"), and a
+skipped app does not count against parity. This tool compares the tables
+with Okta, reports how far apart they are, and with `apply: true` closes
+what it may and cuts MCP apps over to platform mode (below). It reads Okta
+and never writes it.
 
 **Run it as a loop, never as one apply:**
 
@@ -178,7 +179,8 @@ writes it.
    is counted from its own writes, not read back, so it is not the proof.
 4. **A fresh dry run.** Every group reading `parity: clean` is the proof; keep
    that answer. An MCP app the apply cut over now reads as platform mode and
-   skipped, which is the expected result, not a missing comparison. A second
+   skipped, which is the expected result, not a missing comparison. A
+   browser app it settled is cut over by its next deploy (below). A second
    apply on a clean table writes and audits nothing.
 
 The rules it applies, as its description states them:
@@ -211,11 +213,39 @@ The rules it applies, as its description states them:
   mode write itself failed, which counts as a failed write), and a later
   apply tries again. The cut-over writes nothing to Okta: the
   group stays there and in the app's record until the app is purged. A
-  browser app is never cut over here (that is platform v0.16.5).
+  browser app is never cut over here. In the tool's words, "its next deploy
+  whose gateway asks the platform cuts it over once its list matches its
+  group, so an apply that settles the list is what lets it" (below).
 - With `apply` it audits `access_granted`, `access_revoked`,
   `admin_granted` and, one row per app cut over, `app_authz_mode_set` (with
   `detail.from` `okta` and `detail.to` `platform`), each with
   `detail.source` set to `okta_import`.
+
+**A browser app's cut-over (since platform v0.16.5)** happens at
+`/deploy-complete`, never here, for a browser app in okta mode whose
+deployment reported a gateway of capability 1 or more (one that asks the
+platform on every request; **The gateway promote** below). Under the app's
+lease, and only when a fresh read finds its member list equal to its Okta
+group, the platform gives the app's Access app a policy that only makes
+people sign in, deletes the two policies that admitted by the Okta groups,
+and sets the app to platform mode, audited `app_authz_mode_set` with
+`detail.source` `deploy_complete`. A step that fails puts the policies back
+and leaves the app in okta mode (`app_cutover_failed`, whose detail says if
+anything could not be put back), the deploy itself stays finalized, and a
+later deploy tries again. When the two stores disagree it stays in okta
+mode (`app_cutover_held`, reason `stores_disagree`), and the admins get a
+**`member_drift_detected`** notice: until the stores agree, someone in only one of them cannot reach
+the app, because Access admits by the group and the gateway by the list.
+The fix is this tool's loop with `app` set to that app: a dry run shows
+the differences, an apply makes the list match the group, and the app's
+next deploy then cuts it over (the owner's next tag, or `rebuild_app`).
+Settle a difference the other way, with `grant_access` or `revoke_access`,
+when the group is the side that is wrong. While an earlier notice for the
+app is still unread, a later deploy adds none. A cut-over can also be held
+with no notice, for a reason the `app_cutover_held` row names (a store
+could not be read, the group listed no one, the platform has no Okta token,
+or the app's record names no Access app or group); a later deploy tries
+again.
 
 **The cut-over is one way.** No tool moves an app back to okta mode, and
 once an app is in platform mode an Okta import can no longer rebuild its
@@ -247,9 +277,9 @@ It takes effect at once. The recipient becomes the owner, and lifecycle
 notices, quota and management rights move to them. For an app in okta mode,
 in the tool's words, they "are added to the app's Okta group, which browser
 apps' sign-in reads, and then to its member list, which MCP apps read, in the
-one write that makes them the owner". For an app in platform mode (an MCP
-app registered from v0.16.4, or one the import cut over; the import section
-above), the transfer makes no Okta write: that one write is the whole of it.
+one write that makes them the owner". For an app in platform mode (the
+import section above says which apps those are), the transfer makes no Okta
+write: that one write is the whole of it.
 The previous owner keeps access as a member. The recipient
 is notified; the previous owner is notified whenever the caller is not the
 owner, so an admin transferring their own app leaves no notice for
@@ -341,17 +371,22 @@ session, and changes no membership. It is deliberately not part of
 1. **Suspend or deactivate the account in Okta.** Every platform tool call
    checks the caller's account, so their calls to the platform's own tools
    are refused `account_inactive` within `auth.status_check_minutes`, while
-   Okta can be reached. The same check ends their MCP access to every app and
-   their admin standing, if they had one.
+   Okta can be reached. The same check ends their MCP access to every app,
+   their access to every browser app running a capability-1 gateway (whose
+   check asks it too), and their admin standing, if they had one.
 2. **`revoke_sessions`** ends their panel sessions now.
 3. **`revoke_access` on each app they can reach** removes them from its member
    list and deletes their stored connections there (`inno-manage-app` has its
    rules). It refuses `owner_not_revocable` on an app they own: transfer it
    first, or stop it.
-4. **A browser app's sign-in session** cannot be ended from here: it runs out
-   its own 24-hour duration, and the removal applies at their next sign-in.
-   If they must lose a browser app now, stop the app, or remove the app's
-   Access application.
+4. **A browser app's sign-in session** cannot be ended from here: it runs
+   out its own 24-hour duration. On a browser app running a gateway of
+   capability 1 or more that no longer matters, since its gateway asks the
+   platform on every request: lever 3 reaches it within about 10 seconds.
+   On an older gateway the removal applies at their next sign-in, so if they
+   must lose such an app now, stop the app, or remove the app's Access
+   application. Which gateway an app runs is `inno-manage-app`'s
+   `grant_access` section.
 
 ## `purge_app({ app })`: delete an app now
 
@@ -389,9 +424,9 @@ search by name returns a full page with no exact match, so the platform cannot
 tell whether the object exists: the purge stops at that step, a platform admin
 must look into it in Okta, and a later call finishes the purge. An app in
 platform mode is never searched by name: only the Okta groups and rule its
-record names are deleted (an MCP app the import cut over keeps those until
-its purge), so neither search code arises for it, and one whose record names
-none makes no Okta call at all.
+record names are deleted (an app that was cut over, by the import or by
+its deploy, keeps those until its purge), so neither search code arises for
+it, and one whose record names none makes no Okta call at all.
 
 `purge_app` then `register_app` is also the served remedy for an app whose
 open-access group or rule is missing (`open_access_unprovisioned`, in
@@ -425,8 +460,9 @@ Only needed where several platform instances share one Okta org. Every group
 the platform creates carries an ownership marker (`[instance:<id>]` at the end
 of its description); groups an earlier release created do not, and the
 platform never adopts an unmarked group by name on a shared org
-(for a browser app, `register_app` refuses it with `idp_object_foreign`; an
-MCP app registered from v0.16.4 gets no Okta group). The tool lists the
+(`register_app` refuses it with `idp_object_foreign`, which only a
+registration begun before platform v0.16.5 can still meet: from v0.16.5 a
+new app gets no Okta group, and an MCP app from v0.16.4). The tool lists the
 groups this instance recorded (each app's members and open group, every group
 an app's recorded open rule assigns to, and the platform admin group) with
 each one's marker: unmarked, this instance, or another instance.
@@ -534,10 +570,24 @@ names. Run it as part of that procedure, never on its own: the operator's
 admin plugin (`innovation-platform-admin`, its `platform-upgrade` skill) runs
 it there.
 
-Since platform v0.16.4 the deploy broker refuses `gateway_too_old` when a
-browser app in platform mode would deploy a gateway below capability 1, one
-that cannot enforce the platform's member list. No browser app is in platform
-mode before v0.16.5, so it cannot arise yet. The fix is an admin's: move
+The promotion to a gateway from platform v0.16.5 or later is the gateway
+switch for browser apps, and each one picks it up at its next deploy. From
+then on its gateway (capability 1) asks the platform on every request
+whether a person may use it, so a revoke or a close reaches them within
+about 10 seconds rather than at their next sign-in, and a browser app in
+okta mode is cut over to platform mode at that deploy (**A browser app's
+cut-over** above). Until it redeploys, a browser app keeps its older
+gateway, and Access alone admits by the Okta groups. An owner redeploys by
+cutting a tag (`inno-ship`); `rebuild_app` covers an app whose owner will
+not.
+
+The deploy broker refuses `gateway_too_old` when a browser app in platform
+mode would deploy a gateway below capability 1, one that cannot enforce the
+platform's member list. From v0.16.5 every new browser app is in platform
+mode, so on a platform whose `gateway.ref` has not yet been promoted to a
+v0.16.5 gateway, every new browser app's first deploy is refused this way,
+as is any browser app in platform mode whose app-scope `gateway.ref`
+override points at an older gateway. The fix is an admin's: move
 `gateway.ref` to a gateway of capability 1 or more (`sync_gateway_ref`,
 within the upgrade procedure above), or remove the app's own `gateway.ref`
 override with `remove_config`; then the owner cuts the next patch tag
@@ -577,7 +627,7 @@ override with `remove_config`; then the owner cuts the next patch tag
 - `list_connections` without `app`, and `list_user_connections` with no
   filters or for another person without an app you manage, are the fleet views
   of connections: admins only, and never any credential.
-- `list_notifications` shows an admin every app's feed, plus four admin-only
+- `list_notifications` shows an admin every app's feed, plus five admin-only
   stages:
   - `start_requested`: an owner asked for a start. An admin's `start_app` is
     unlimited and does not use the owner's allowance.
@@ -595,6 +645,12 @@ override with `remove_config`; then the owner cuts the next patch tag
     instance whose apps were registered under the old names. The entry names
     the keys and both ways out, which **`accept_naming_change()`** above
     explains: revert the manifest, or move every app by hand and then accept.
+  - `member_drift_detected` (since platform v0.16.5): a browser app's deploy
+    could not cut it over to platform mode because its member list and its
+    Okta group disagree. The entry says how many differences, and that until
+    they agree someone in only one of the two cannot reach the app. Run the
+    import for that app, then let its next deploy cut it over: **A browser
+    app's cut-over** above.
 
   `mark_all_notifications_read` called by an admin marks every unread
   notification read, everyone's, not only the admin's own.
