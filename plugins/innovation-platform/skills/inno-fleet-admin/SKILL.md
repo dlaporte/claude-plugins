@@ -211,8 +211,9 @@ The rules it applies, as its description states them:
   `writes: none, reported only`), its lines say how to settle it, and it
   counts in a dry run's parity, so `parity: clean` waits until the group
   matches the list; the list still decides.
-- `app` narrows the run to one app; the admins are still included, and the
-  last line names the scope.
+- `app` narrows the run to one app; the admins' line is still included, and
+  the last line names the scope, with the admins in it only while they are
+  compared (on a platform before v0.16.7, always).
 - **The cut-over (since platform v0.16.4).** With `apply`, an MCP app
   (`mcp-function`, `mcp-container`) still in okta mode is then cut over to
   platform mode, under its lease, when its writes all landed and a fresh read
