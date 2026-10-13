@@ -10,6 +10,7 @@
 accept_guardrails         # register_app argument
 
 # Refusal codes and status labels that begin with a tool verb.
+export_dispatch_failed    # export_app_data refusal
 export_in_progress        # export_app_data refusal
 link_containment          # grant_access / set_app_access refusal
 link_rebuild_pending      # notification kind

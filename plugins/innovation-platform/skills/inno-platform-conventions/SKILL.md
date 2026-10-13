@@ -1,6 +1,6 @@
 ---
 name: inno-platform-conventions
-description: Use when writing or reviewing code inside an app repo's app/ directory: stack policy, storage, identity, and the files CI will reject if touched. Load this before writing any application code for an Innovation Platform app.
+description: "Use when writing or reviewing code inside an app repo's app/ directory: stack policy, storage, identity, and the files CI will reject if touched. Load this before writing any application code for an Innovation Platform app."
 ---
 
 # inno-platform-conventions
