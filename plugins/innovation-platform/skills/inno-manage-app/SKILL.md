@@ -225,39 +225,72 @@ Where an app's members are held depends on its **mode**. No status line
 prints it, and these tools handle either mode themselves, so you rarely need
 it: read what each answer says. A platform admin can confirm it:
 `export_platform_backup` carries each app's `authz_mode`, and `query_audit`
-shows the import's `app_authz_mode_set` row for an app it cut over.
+shows an `app_authz_mode_set` row for an app that was cut over (its
+`detail.source` says what did it: `okta_import` or `deploy_complete`).
 
-- **Platform mode**: an MCP app (`mcp-function`, `mcp-container`)
-  registered on platform v0.16.4 or later, or an older one that a platform
-  admin's `import_okta_memberships` apply cut over (`inno-fleet-admin`). Its
-  member list is its only store, and these tools write the platform's
-  **member list** alone, with no Okta write (where the platform has an Okta
-  token, a grant still looks the address up there, read-only, below). A new one has no Okta group at all; one the
-  import cut over keeps its old group in Okta, which the member tools no
-  longer read or write, until its purge.
-- **Okta mode**: every browser app (`container`, `function`), since no
-  browser app is in platform mode before platform v0.16.5, and an MCP app
-  registered before v0.16.4 until the import cuts it over. Its members are
-  held in two places, and each tool writes both, in
-  this order: first the platform's member list for the app, then the app's
-  members group in Okta (the `(members)` name in the `App groups:` line of
-  the status you read in the Version gate, with the app's name in place of
-  `{app}`).
+- **Platform mode**: every app registered on platform v0.16.5 or later,
+  browser and MCP alike; an MCP app (`mcp-function`, `mcp-container`)
+  registered on v0.16.4; and an older app that was cut over, an MCP app by a
+  platform admin's `import_okta_memberships` apply (`inno-fleet-admin`) and a
+  browser app by its own deploy (below). Its member list is its only store,
+  and these tools write the platform's **member list** alone, with no Okta
+  write (where the platform has an Okta token, a grant still looks the
+  address up there, read-only, below). A new one has no Okta group at all;
+  one that was cut over keeps its old group in Okta, which the member tools
+  no longer read or write, until its purge.
+- **Okta mode**: a browser app (`container`, `function`) registered before
+  platform v0.16.5, until a deploy cuts it over, and an MCP app registered
+  before v0.16.4, until the import cuts it over. A registration begun before
+  those releases and finished after them stays in okta mode too. Its members
+  are held in two places, and each tool writes both, in this order: first
+  the platform's member list for the app, then the app's members group in
+  Okta (the `(members)` name in the `App groups:` line of the status you read
+  in the Version gate, with the app's name in place of `{app}`).
 
-What admits a person depends on the app's type:
+A browser app in okta mode is cut over at its first deploy whose gateway
+asks the platform (capability 1, below), but only while its member list and
+its Okta group agree. If they disagree it stays in okta mode, the deploy
+still completes, and the platform admins get a `member_drift_detected`
+notice naming the import that settles it (`inno-fleet-admin`); a later
+deploy then cuts it over.
+
+What admits a person depends on the app's type, and for a browser app on
+the gateway it runs:
 
 - an **MCP app** (`mcp-function`, `mcp-container`) admits a person when the
   platform's member list holds them, or while the app is open to every SSO
   user, and reads both facts at every request;
-- a **browser app** (`container`, `function`) admits a person when they sign
-  in on its address (the `App host pattern:` line, with the app's name in
-  place of `{app}`), through the app's Okta group.
+- a **browser app** (`container`, `function`) running a gateway of
+  **capability 1** or more is decided the same way. Cloudflare Access signs
+  the person in on the app's address (the `App host pattern:` line, with the
+  app's name in place of `{app}`), and then the gateway asks the platform, on
+  every request, whether the member list holds them or the app is open, and
+  whether their account may still sign in. It holds each answer for about
+  10 seconds (a refusal for about 2). A person it refuses sees a plain 403
+  "No access" page that names no one. When the gateway cannot get an answer
+  it shows a 503 "Try again shortly" page instead: that is the platform
+  being unreachable, not a revoke. On an app still in okta mode, Access also
+  admits only through the app's Okta group, so there a person needs both
+  stores: someone in only one of the two cannot reach it;
+- a **browser app on an older gateway** (capability 0) admits a person when
+  they sign in, through the app's Okta group, so a change reaches them at
+  their next sign-in.
+
+A browser app runs a capability-1 gateway once a platform admin has promoted
+`gateway.ref` to a gateway from platform v0.16.5 or later and the app has
+deployed since. Every browser app in platform mode runs one, because the
+platform refuses to deploy one with an older gateway (`gateway_too_old`,
+`inno-ship`). No tool prints which gateway an older app runs, so when you
+cannot tell, say a change reaches a browser app "within about 10 seconds on
+the platform's newer gateway, and at the person's next sign-in at the
+latest".
 
 So grant and revoke with these tools, never by hand in Okta: on an app in
 okta mode, someone removed from the group by hand stays on the member list
 and keeps their MCP access, and on an app in platform mode nothing reads a
-group at all. Quote the real group and hostname from `app_status` or
-`register_app`'s answer when you can, rather than building them. If Okta
+group at all. Quote the app's hostname from the `URL:` line of `app_status`
+or from `register_app`'s answer, rather than building it. No tool prints an
+app's group names: the `App groups:` line is their one source. If Okta
 refuses either write on an app in okta mode, the call fails, and its message
 says whether the member list was put back as it was: relay that message as it
 stands, and retry once Okta accepts the change.
@@ -365,14 +398,19 @@ stands, and retry once Okta accepts the change.
   because MCP access is read from the platform's member list and the member
   row is gone." Access still ends in the same window. Read the result text,
   not just the absence of an error, before telling anyone the person is off.
-- **On a browser app (`container`, `function`) the removal is not immediate.**
-  That user sits behind Cloudflare Access, whose session the platform cannot
-  end: their existing Access session stays valid for the rest of its 24-hour
-  duration and is re-accepted without a revocation lookup, so the removal
-  applies at their **next sign-in**. Nothing on this surface shortens that
-  window, `revoke_sessions` included. If someone must lose a browser app NOW,
-  the levers are stopping the app or an admin removing its Access application.
-  Say this plainly when an admin is offboarding someone.
+- **On a browser app (`container`, `function`) the timing depends on its
+  gateway** (above). On a gateway of capability 1 or more the person comes
+  off the member list first, so the gateway refuses them once its held
+  answer runs out, within about 10 seconds, in either mode; their Cloudflare
+  Access session runs on, but it no longer gets them in. On an older gateway
+  they sit behind Access alone, whose session the platform cannot end: their
+  existing session stays valid for the rest of its 24-hour duration and is
+  re-accepted without a revocation lookup, so the removal applies at their
+  **next sign-in**, and nothing on this surface shortens that window,
+  `revoke_sessions` included. If someone must lose a browser app on an older
+  gateway NOW, the levers are stopping the app or an admin removing its
+  Access application. Say this plainly when an admin is offboarding
+  someone.
 - `revoke_access` also deletes that user's stored Connection credentials for
   the app, on every app type, so requests made as them stop reaching the
   connected backend. The platform audits this as `connection_cascade_revoked`.
@@ -493,11 +531,25 @@ returns it to the named member list (open: false). Owner or admin only.
   exactly the configured access. Say so when confirming.
 - The app's owner is notified of the change whenever the caller is not the
   owner.
-- In the tool's words it takes effect "at each user's next sign-in for
-  browser apps (sessions last up to 24 hours) and within 60 seconds for MCP
-  apps": an MCP app reads its open flag at every request, through the
-  gateway's introspection cache. Set expectations when the user asks "why can
-  they still get in?"
+- When it takes effect: an MCP app reads its open flag at every request,
+  through the gateway's introspection cache, so a change reaches it within
+  60 seconds. A browser app on a gateway of capability 1 or more reads the
+  flag through its gateway's check on every request too, so a close bites
+  within about 10 seconds; an open reaches a browser app in platform mode
+  within seconds, while one in okta mode still waits for each person's next
+  sign-in, because Access admits them through the app's open group. On an
+  older gateway every change waits for each person's next sign-in (sessions
+  last up to 24 hours). Which gateway an app runs is under
+  `grant_access` above. Set expectations when the user asks "why can they
+  still get in?"
+- On a browser app in okta mode, since platform v0.16.5 a close deletes the
+  app's Access policy that lets every SSO user in, and an open creates it
+  again. Its Okta rule is switched off too, but the close does not rely on
+  it: switching the rule off does not remove the people it added to the open
+  group. A browser app closed before v0.16.5 still had that policy; the
+  platform's hourly pass deletes it with no one's help (audited
+  `access_closed` with reason `stale_open_policy`), so there is nothing for
+  the owner to do.
 - On an app in platform mode, opening and closing set its open flag alone:
   no Okta rule or Access policy is read or moved, so it never answers
   `open_access_unprovisioned`, `idp_object_foreign` or
@@ -510,8 +562,10 @@ returns it to the named member list (open: false). Owner or admin only.
   would expose the source's data to every SSO user. The message names each
   closed source. Unlink with `unlink_app_data`, or open the named source app
   deliberately first.
-- `open_access_unprovisioned` (okta mode only) means the app's open-access
-  group or rule is missing. Nothing re-creates it for a finished app: an app
+- `open_access_unprovisioned` (okta mode only) means the app's Okta
+  open-access rule is missing. Since platform v0.16.5 only opening is
+  refused for it, and a close goes ahead without the rule. Nothing
+  re-creates the rule for a finished app: an app
   still mid-registration is repaired by running `register_app` again;
   otherwise a platform admin must `purge_app` it and `register_app` it again.
   Say plainly that `purge_app` permanently deletes the app's data and holds
@@ -519,8 +573,8 @@ returns it to the named member list (open: false). Owner or admin only.
 - Confirm before opening — state plainly that EVERY SSO user will have
   access, not just current members.
 - While an app is open, a person who is not a member reaches it carrying only
-  the app's open group (the `(open)` name in the `App groups:` line) in
-  `X-Forwarded-Groups`; `app_status` reports the real names. App code that
+  the app's open group (the `(open)` name in the `App groups:` line, with
+  the app's name in place of `{app}`) in `X-Forwarded-Groups`. App code that
   admits only the members group will refuse them, so check the app before promising that
   opening it lets everyone in. What that header can and cannot carry has one
   home: `inno-platform-conventions`' **Identity** section.
@@ -746,9 +800,10 @@ Stages worth acting on when one appears: `respin_failed`, `auto_restarted`,
 a source that closed, or an ownership transfer): the app's deployed binding to
 the other app's database keeps working until the app is rebuilt, and the entry
 says whether a rebuild was dispatched or the owner has to redeploy (for an
-owner that is `inno-ship`). Admins also see four admin-only stages
-(`start_requested`, `drift_detected`, `connection_sink_new_host` and
-`naming_changed`), which `inno-fleet-admin` explains. The tool filters on one app, one `stage`, or
+owner that is `inno-ship`). Admins also see five admin-only stages
+(`start_requested`, `drift_detected`, `connection_sink_new_host`,
+`naming_changed` and `member_drift_detected`), which `inno-fleet-admin`
+explains. The tool filters on one app, one `stage`, or
 unread only, and returns **at most 50 rows** per call, so narrow the filter
 rather than trying to read a long history in one go.
 `mark_notification_read` answers `notification_not_found` for an id that
