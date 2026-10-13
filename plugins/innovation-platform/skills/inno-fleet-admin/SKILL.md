@@ -94,10 +94,12 @@ uses, held for `auth.status_check_minutes`. So:
 
 ## The admin list: `list_admins`, `grant_admin({ email })`, `revoke_admin({ email })`
 
-- `list_admins` reads the list. While the list is empty it reads the Okta
-  admin group instead and says so ("read from the Okta group ... because the
-  platform's admin table is empty"): that line means the import below has not
-  run on this instance. An answer that the roster "could not be read right
+- `list_admins` reads the list. On an instance with an Okta token, while the
+  list is empty it reads the Okta admin group instead and says so ("read from
+  the Okta group ... because the platform's admin table is empty"): that line
+  means the import below has not run on this instance. With no Okta token an
+  empty list is seeded from `identity.initialAdmins` first (above), and the
+  answer is that seeded list. An answer that the roster "could not be read right
   now" is an outage, not an empty list: try again shortly.
 - `grant_admin` writes the list first, and that write decides; it then copies
   the change to the Okta admin group, and a failed copy is noted in the

@@ -36,8 +36,10 @@ the signed-in Okta identity from the MCP OAuth session: **you can only manage
 apps you own, unless you are a platform admin.** Since platform v0.16.1 the
 platform's own admin list decides who that is (`list_admins`, admin-only,
 shows it). The Okta group on the `Admin group:` line of the status you read
-in the Version gate is a copy, and the platform reads it as the admin roster
-only while that list is empty. Once the list holds anyone, adding or removing
+in the Version gate is a copy. On an instance with an Okta token, the platform
+reads that group as the admin roster only while the list is empty; with no
+token, an empty list is filled once from the instance's own configuration
+instead. Once the list holds anyone, adding or removing
 someone in that group by hand changes nothing here. A `forbidden` error back
 from any of these tools means exactly that; don't retry it and don't try to
 work around it locally: there is no local escalation, because authorization
