@@ -59,8 +59,8 @@ a green gate as proof that a scan actually happened, and you can tell a user
 "that CVE is ignored until 2026-12-31, after which this deploy stops passing"
 while there's still time to act.
 
-Six things are checked here. **The first five are hard requirements before
-`inno-ship`**; the sixth is advisory:
+Six things are checked here. **The first four are hard requirements before
+`inno-ship`**; the last two are advisory:
 
 1. The **safety gates** (CI) — eight jobs, all `needs:` prerequisites of
    `deploy`, plus the `policy` job that fetches the admin gate policy:
@@ -100,9 +100,11 @@ Six things are checked here. **The first five are hard requirements before
    platform's runtime requirements that CI can't see.
 4. The **app-code security notes** (you): the app-level risk classes the
    perimeter can't close — authorization/IDOR above all.
-5. **Declared variables** (you, repo-local): if `app/inno-variables.json`
-   exists, whether it's well-formed and whether any name it marks
-   `required` still has no value.
+5. **Declared variables** (you, repo-local; **advisory**): if
+   `app/inno-variables.json` exists, whether it's well-formed and whether
+   any name it marks `required` still has no value. §1b is the one
+   statement of what CI enforces about it, what you check, and what is the
+   user's decision.
 6. **Accessibility review** (you, plus CI's reports; **advisory**): the app's
    browser pages against `get_app_accessibility`, a keyboard pass, and the
    accessibility, response-header and Dockerfile reports the `container` job
@@ -160,17 +162,28 @@ real authorization hole is a hard stop: fix or guide the fix before
 stop: offer the fix, and for a `container` app item 6's header report shows
 what the app sends today.
 
-## 1b. Declared variables (repo-local, before you push)
+## 1b. Declared variables (repo-local, advisory)
 
-If the repo carries `app/inno-variables.json`, validate it the same way
-`inno-ship` does (same name grammar, reserved names, 32-entry cap, and the
-three allowed fields; see there for the exact rules) and, for every
-`required: true` name, check whether it already has a value
-(`list_app_variables`, or `app_status`, which names an unset required one
-directly). Nothing here is CI-enforced (the file is read only at the tag's
-`deploy` finalize step, never at a push), so this is purely advisory, and
-it's the only warning an author gets before their first deploy leaves a
-required key silently unset.
+If the repo carries `app/inno-variables.json`, this is the rule, in one
+place; `inno-ship`'s **Declared variables** section applies the same one
+before the tag.
+
+- **What CI enforces: nothing that blocks.** No gate reads the file, and no
+  push does. Only the tag's `deploy` job reads it, at its finalize step: a
+  file with a bad entry is refused whole (the platform keeps the app's
+  previous declarations), and one that cannot be read, is not valid JSON
+  or is over 32 KB is never sent. Neither fails a gate or stops the deploy, and a `required` name with no
+  value never does either.
+- **What you check:** validate the file the way `inno-ship` does (same name
+  grammar, reserved names, 32-entry cap, and the three allowed fields; see
+  there for the exact rules) and, for every `required: true` name, whether
+  it already has a value (`list_app_variables`, or `app_status`, which names
+  an unset required one directly).
+- **What is the user's decision:** whether to fix the file or set the value
+  before tagging. Report what you found beside the verdict (**Done**,
+  below), never as a blocker: it is purely advisory, and it is the only
+  warning an author gets before their first deploy leaves a required key
+  silently unset.
 
 ## 1c. Accessibility review (advisory: start while CI runs, then read its reports)
 
@@ -358,6 +371,12 @@ nothing. Do not report the lockfile as clear on such a run, and say that it
 will be checked for the first time on the re-push, so a lockfile failure
 arriving then is not a new regression. Checking the file yourself is
 otherwise belt, not the safeguard: it saves a round trip through CI.
+
+Report the declared variables (§1b) beside the verdict too, never inside
+it: each `required` name with no value, and any problem in
+`app/inno-variables.json`, with the note that the platform still deploys.
+They never turn "Safe to ship" into "Not yet"; setting them first is the
+user's call.
 
 Report the accessibility review (§1c) beside the verdict, not inside it:
 what a tool checked, what you checked by hand, and what was not checked. In
