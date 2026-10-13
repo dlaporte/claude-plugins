@@ -269,6 +269,15 @@ of the bucket: track keys in D1 rather than walk a bucket that size. The JS
 client's `listFiles` returns an array with the same flag, not enumerable, so
 deep equality and JSON see only the keys. A direct `GET /_storage/files`
 answers `truncated: true` beside `keys` only when the listing stopped short.
+These are the current template's clients, and the clients are your repo's
+own copies. A repo created from an older copy of the template has a listing
+that is a plain list with no `truncated`: reading it raises `AttributeError`
+in Python, and in JS it is `undefined`, so a partial listing reads as
+complete. Check the repo's `app/storage.py` or `lib/storage.js` before
+relying on the flag, and if it lacks it, copy the current one from the
+template repo (the `Template repo:` line of the status you read in the
+Version gate). The current client keeps the old shapes and adds the new
+fields, so code written against the old one keeps working.
 
 **Two body caps on that gateway, and the SQL one is the easy one to hit.**
 `POST /_storage/sql/query` and `/execute` accept at most **4 MiB** of
@@ -428,12 +437,25 @@ try {
 ```
 
 Every seam answer that is not a 2xx reaches your code as a
-`ConnectionsError`, from both template clients (`lib/storage.js` and
+`ConnectionsError`, from both current template clients (`lib/storage.js` and
 `app/storage.py`): `.status` is the HTTP status and `.code` the answer's
 `error` code (`null` in JS, `None` in Python, when the body carried none),
 so branch on `e.code` for the codes below. In Python it is also an
 `httpx.HTTPStatusError`, so an existing `except httpx.HTTPStatusError`
 still catches it.
+
+A repo created from an older copy of the template has no `ConnectionsError`:
+its JS client throws a plain `Error` with no `.code`, so a paused backend
+falls through to your rethrow as a hard failure, and its Python client
+raises a plain `httpx.HTTPStatusError`, on which `e.code` raises
+`AttributeError`. Check the repo's client before branching on `e.code`, and
+if it lacks `ConnectionsError`, copy the current `app/storage.py` or
+`lib/storage.js` from the template repo (the `Template repo:` line of the
+status you read in the Version gate). It keeps the old shapes: the Python
+error is still an `httpx.HTTPStatusError`, and the JS message is still
+`connections_error:<status>`. Only the Python message changed, to that same
+`connections_error:<status>`, which matters only to code that matches on
+`str(e)`.
 
 Five other seam responses are **not** the user's problem and must not be
 shown as one:
