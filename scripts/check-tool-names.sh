@@ -10,20 +10,25 @@
 #
 # What counts as a tool name. In the plugin's Markdown, a snake_case name in
 # backticks is checked when either:
-#   - it is called like a tool: "call `x`", "`x` tool", "`x` MCP tool",
-#     "`x(...)`", "`x {...}`" or "`x arg=...`"; or
+#   - it is called like a tool: "call `x`" (the word call, calls, called or
+#     calling, not "recall"), "`x` tool", "`x` MCP tool", "`x(...)`",
+#     "`x {...}`" or "`x arg=...`"; or
 #   - it is named like one: its first word is a verb a pinned tool begins with
 #     (get_, list_, set_, grant_ and the rest, read from the pinned list). The
 #     one tool named noun first, app_status, does not make app_ a verb, since
 #     app_ also begins many refusal codes.
 # Every snake_case word on a skill's front-matter description: line is checked
-# the second way. A checked name passes if it is pinned, or listed in
-# scripts/tool-name-allowlist.txt (refusal codes, fields and app-code functions
-# that happen to begin with a tool verb).
+# the second way, slash-joined lists (a/b/c) included. Inside a fenced code
+# block, a line that begins with a snake_case name followed by ( or { is a
+# call, and is checked the first way; a shell function definition, name() {,
+# is not. A checked name passes if it is pinned, or listed in
+# scripts/tool-name-allowlist.txt (arguments, refusal codes, fields and
+# app-code functions that happen to begin with a tool verb).
 #
-# Anything else in backticks, such as an argument, a field, a settings key or a
-# refusal code, is not checked. So a misspelling that is neither called like a
-# tool nor begins with a tool verb (`app_statsu` on its own) is not caught.
+# Anything else, such as an argument, a field, a settings key or a refusal
+# code, is not checked. So a misspelling that is neither called like a tool
+# nor begins with a tool verb (`app_statsu` on its own) is not caught.
+# scripts/test-check-tool-names.sh holds a fixture for each of these rules.
 set -euo pipefail
 
 list=0
@@ -55,9 +60,21 @@ grep_or_none() {
 }
 
 spans="$(grep_or_none -rnoE --include='*.md' \
-  '([Cc]all(s|ed|ing)? )?`[a-z][a-z0-9]*(_[a-z0-9]+)+(`( (MCP )?tools?)?|[(]| [{]| [a-z_]+=)' \
+  '((^|[^A-Za-z])[Cc]all(s|ed|ing)? )?`[a-z][a-z0-9]*(_[a-z0-9]+)+(`( (MCP )?tools?)?|[(]| [{]| [a-z_]+=)' \
   -- "$target")"
 descriptions="$(grep_or_none -rnE --include='SKILL.md' '^description:' -- "$target")"
+# Calls inside fenced code blocks: <file>:<line>:<name>, one per call.
+fenced="$(find "$target" -type f -name '*.md' -exec awk '
+  FNR == 1 { fence = 0 }
+  /^[[:space:]]*(```|~~~)/ { fence = !fence; next }
+  fence && /^[[:space:]]*[a-z][a-z0-9]*(_[a-z0-9]+)+[[:space:]]*[({]/ {
+    s = $0; sub(/^[[:space:]]*/, "", s)
+    match(s, /^[a-z][a-z0-9]*(_[a-z0-9]+)+/)
+    name = substr(s, 1, RLENGTH)
+    if (substr(s, RLENGTH + 1) ~ /^[[:space:]]*[(][[:space:]]*[)][[:space:]]*[{]/) next
+    print FILENAME ":" FNR ":" name
+  }
+' {} +)"
 
 # The awk program reads the pinned list, then the allowlist, then the hits,
 # with a marker line between them.
@@ -87,13 +104,18 @@ awk -v list="$list" -v target="$target" '
     if (v in verb) { printf "%s: `%s` is named like a tool but is not one the platform serves\n", where, name; hits++; return }
     if (cue) { printf "%s: `%s` is called like a tool but is not one the platform serves\n", where, name; hits++; return }
   }
+  # Splits <file>:<line>:<rest> into where and rest.
+  function locate(rec,    i, file) {
+    i = index(rec, ":"); file = substr(rec, 1, i - 1); rec = substr(rec, i + 1)
+    i = index(rec, ":"); where = file ":" substr(rec, 1, i - 1)
+    return substr(rec, i + 1)
+  }
   section == 2 && /^S/ {
-    # S<file>:<line>:<span>
-    line = substr($0, 2)
-    i = index(line, ":"); file = substr(line, 1, i - 1); line = substr(line, i + 1)
-    i = index(line, ":"); where = file ":" substr(line, 1, i - 1); m = substr(line, i + 1)
+    # S<file>:<line>:<span>; a span that does not open with its backtick
+    # opens with the word call.
+    m = locate(substr($0, 2))
     cue = 0
-    if (m ~ /^[Cc]all/) { cue = 1; sub(/^[^`]*/, "", m) }
+    if (substr(m, 1, 1) != "`") { cue = 1; sub(/^[^`]*/, "", m) }
     m = substr(m, 2)
     match(m, /^[a-z][a-z0-9]*(_[a-z0-9]+)+/)
     name = substr(m, 1, RLENGTH); rest = substr(m, RLENGTH + 1)
@@ -101,17 +123,21 @@ awk -v list="$list" -v target="$target" '
     judge(where, name, cue)
     next
   }
+  section == 2 && /^F/ {
+    # F<file>:<line>:<name>, a call in a fenced code block
+    name = locate(substr($0, 2))
+    judge(where, name, 1)
+    next
+  }
   section == 2 && /^D/ {
     # D<file>:<line>:description: ...
-    line = substr($0, 2)
-    i = index(line, ":"); file = substr(line, 1, i - 1); line = substr(line, i + 1)
-    i = index(line, ":"); where = file ":" substr(line, 1, i - 1); m = substr(line, i + 1)
+    m = locate(substr($0, 2))
     while (match(m, /[a-z][a-z0-9]*(_[a-z0-9]+)+/)) {
       w = substr(m, RSTART, RLENGTH)
       before = (RSTART > 1) ? substr(m, RSTART - 1, 1) : " "
       after = substr(m, RSTART + RLENGTH, 1)
       m = substr(m, RSTART + RLENGTH)
-      if (before ~ /[A-Za-z0-9_.\/-]/ || after ~ /[A-Za-z0-9_\/-]/) continue
+      if (before ~ /[A-Za-z0-9_.-]/ || after ~ /[A-Za-z0-9_-]/) continue
       judge(where, w, 0)
     }
     next
@@ -140,4 +166,5 @@ awk -v list="$list" -v target="$target" '
   cat "$allow_file"; printf '\034\n'
   if [ -n "$spans" ]; then printf '%s\n' "$spans" | sed 's/^/S/'; fi
   if [ -n "$descriptions" ]; then printf '%s\n' "$descriptions" | sed 's/^/D/'; fi
+  if [ -n "$fenced" ]; then printf '%s\n' "$fenced" | sed 's/^/F/'; fi
 )

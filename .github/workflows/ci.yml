@@ -237,6 +237,13 @@ jobs:
     steps:
       - uses: actions/checkout@v4
 
+      # The check first proves itself on its fixture: it must report exactly
+      # the names the fixture plants, and nothing the fixture marks as passing.
+      - name: The tool-name check catches what its fixture plants
+        run: |
+          set -euo pipefail
+          bash scripts/test-check-tool-names.sh
+
       # Against scripts/platform-tools.txt, the pinned copy of the platform's
       # tool names. Refresh that file at each resync with
       # scripts/platform-tools.sh; the script's header says what it checks.

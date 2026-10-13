@@ -1,8 +1,13 @@
 # Backticked snake_case names in the innovation-platform plugin that look like
 # MCP tool names to scripts/check-tool-names.sh but are not tools. One name per
 # line; the text after # says what it is. Add a name here only when it is
-# really not a tool (a refusal code, a field, an app-code function); a
-# misspelled or retired tool name is fixed in the skill instead.
+# really not a tool (an argument, a refusal code, a field, an app-code
+# function); a misspelled or retired tool name is fixed in the skill instead.
+# An allowlisted name passes everywhere, called or not, so a retired tool's
+# name never belongs here.
+
+# Arguments that begin with a tool verb.
+accept_guardrails         # register_app argument
 
 # Refusal codes and status labels that begin with a tool verb.
 export_in_progress        # export_app_data refusal
@@ -24,6 +29,3 @@ get_http_request          # FastMCP's request accessor
 get_access_token          # FastMCP's token accessor
 get_file                  # the storage client
 list_files                # the storage client
-
-# A retired tool, named only to say that it is gone (inno-new-app).
-create_app                # retired; drop this entry once no skill names it
