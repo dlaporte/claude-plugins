@@ -427,15 +427,19 @@ factory default. The reading forms an owner uses (`get_config app=` and
 an admin:
 
 - `get_config` with no arguments is the whole catalog plus every override.
-  Read a key's description there before setting a key you did not choose.
-  Passing both `app` and `user` is refused `bad_request`.
+  Each key's line gives its value, where that value comes from, its display
+  name and the scopes it takes. No form of `get_config` prints a key's
+  description: that is on the panel's Platform screen, Configuration tab, so
+  read it there before setting a key you did not choose. (`set_config`'s own
+  description says `get_config` shows it; it does not.) Passing both `app`
+  and `user` is refused `bad_request`.
 - `set_config({ key, scope, scope_id?, value, note? })` writes at `platform`,
   `app` or `user` scope; `scope_id` is the app's name or the user's email.
   `value` is always a string (`"14"`, `"true"`, `"10m"`) of at most 1000
   characters, and `note`, at most 200, is recorded with the override and shown
   in the panel. Every change is audited.
 - Some keys are marked dangerous. Setting one to its weakening value (false
-  for an on/off key; the description lists the others) disables a safety
+  for an on/off key; `set_config`'s description lists the others) disables a safety
   control for whatever scope you set it at, and the result carries an
   explicit warning. Relay it, and never set one without the admin's explicit
   yes.
@@ -445,7 +449,8 @@ an admin:
   `set_config` also refuses `invalid_value` for a value outside the setting's
   type or grammar, and its message names the rule.
 - `remove_config` removes an override so the inherited value applies again.
-- Keys admins reach for most, all described in the catalog:
+- Keys admins reach for most, all listed in the catalog and described on
+  that Configuration tab:
   `apps.max_active` (user scope) raises an owner's active-app cap;
   `lifecycle.pinned` exempts an app, or every app a user owns, from the idle
   clock; `lifecycle.*_days` set the idle windows; `start.self_max` sets the
