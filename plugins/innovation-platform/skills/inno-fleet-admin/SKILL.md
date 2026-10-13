@@ -148,10 +148,16 @@ lists then needs `grant_admin`.
 
 Since v0.16.1 the platform's own tables decide: each app's member list, which
 MCP apps read at every request, and the admin list. Okta still holds a copy of
-each: the app's members group, which browser apps' sign-in reads, and the
-admin group. This tool compares the tables with Okta, reports how far apart
-they are, and with `apply: true` closes what it may. It reads Okta and never
-writes it.
+each for an app in **okta mode** (every browser app, and an MCP app
+registered before v0.16.4 that has not been cut over): the app's members
+group, which browser apps' sign-in reads, and the admin group. An app in
+**platform mode** (an MCP app registered from v0.16.4, or one this tool cut
+over) has its member list alone: the run names it and skips it ("platform
+mode, so its member list is the platform's own and is not compared with
+Okta; skipped"), and a skipped app does not count against parity. This tool
+compares the tables with Okta, reports how far apart they are, and with
+`apply: true` closes what it may and cuts MCP apps over to platform mode
+(below). It reads Okta and never writes it.
 
 **Run it as a loop, never as one apply:**
 
@@ -170,7 +176,9 @@ writes it.
    `writes: clean` or `writes: N failed`, never parity, and `writes: clean`
    is counted from its own writes, not read back, so it is not the proof.
 4. **A fresh dry run.** Every group reading `parity: clean` is the proof; keep
-   that answer. A second apply on a clean table writes and audits nothing.
+   that answer. An MCP app the apply cut over now reads as platform mode and
+   skipped, which is the expected result, not a missing comparison. A second
+   apply on a clean table writes and audits nothing.
 
 The rules it applies, as its description states them:
 
@@ -189,8 +197,29 @@ The rules it applies, as its description states them:
   group by hand.
 - `app` narrows the run to one app; the admins are still compared, and the
   last line names the scope.
-- With `apply` it audits `access_granted`, `access_revoked` and
-  `admin_granted`, each with `detail.source` set to `okta_import`.
+- **The cut-over (since platform v0.16.4).** With `apply`, an MCP app
+  (`mcp-function`, `mcp-container`) still in okta mode is then cut over to
+  platform mode, under its lease, when its writes all landed and a fresh read
+  of both stores finds its list equal to the group. Its block says "flipped
+  to platform mode", and the summary names every app flipped. From then on
+  its list alone decides and the import skips it. A dry run says of each
+  such app that it "would flip to platform mode with apply", and its summary
+  names them. One that stays in okta mode (a write failed, or the fresh read
+  failed or found the two apart) says why on a "stays in okta mode" line,
+  and a later apply tries again. The cut-over writes nothing to Okta: the
+  group stays there and in the app's record until the app is purged. A
+  browser app is never cut over here (that is platform v0.16.5).
+- With `apply` it audits `access_granted`, `access_revoked`,
+  `admin_granted` and, one row per app cut over, `app_authz_mode_set` (with
+  `detail.from` `okta` and `detail.to` `platform`), each with
+  `detail.source` set to `okta_import`.
+
+**The cut-over is one way.** No tool moves an app back to okta mode, and
+once an app is in platform mode an Okta import can no longer rebuild its
+member rows: its member list exists only in the platform's registry, the
+nightly database dumps and any `export_platform_backup` snapshot. So the
+explicit yes before an apply covers both its writes and the apps the dry run
+says would flip; name those apps to the admin.
 
 **Which way an apply settles a disagreement matters.** An apply copies the
 Okta group INTO the platform's list. After a grant that Okta refused half way,
@@ -212,10 +241,13 @@ platform admin must do it, and offer to draft the request, naming the app and
 the new owner (`inno-manage-app` says the same).
 
 It takes effect at once. The recipient becomes the owner, and lifecycle
-notices, quota and management rights move to them. In the tool's words, they
-"are added to the app's Okta group, which browser apps' sign-in reads, and
-then to its member list, which MCP apps read, in the one write that makes
-them the owner"; the previous owner keeps access as a member. The recipient
+notices, quota and management rights move to them. For an app in okta mode,
+in the tool's words, they "are added to the app's Okta group, which browser
+apps' sign-in reads, and then to its member list, which MCP apps read, in the
+one write that makes them the owner". For an app in platform mode (an MCP
+app registered from v0.16.4, or one the import cut over; the import section
+above), the transfer makes no Okta write: that one write is the whole of it.
+The previous owner keeps access as a member. The recipient
 is notified; the previous owner is notified whenever the caller is not the
 owner, so an admin transferring their own app leaves no notice for
 themselves. A recipient who already owns the app is answered with nothing to
@@ -224,15 +256,24 @@ transfer.
 - **Refusals about the recipient.** `email_domain_not_allowed` when the
   instance lists allowed email domains and the address is outside them (a
   listed domain's subdomains are inside; the list is the manifest's
-  `identity.allowedEmailDomains`, as above); `okta_user_not_found` when Okta
-  has no user for them (check the address; they need an account first); and
-  `app_limit_reached` when they are at their active-app cap, which counts
-  unless the app is stopped. Its message normally names the remedy, raising
-  the recipient's `apps.max_active` at user scope with `set_config`. Do NOT
-  offer to stop the recipient's apps for them.
-- `no_okta_group`: the app has no Okta group provisioned yet, so its
-  registration never finished. `app_busy`: another change to this app is in
-  flight; retry once after a moment, never in a loop.
+  `identity.allowedEmailDomains`, as above); `okta_user_not_found`, for an
+  app in okta mode, when Okta has no user for them (check the address; they
+  need an account first); and `app_limit_reached` when they are at their
+  active-app cap, which counts unless the app is stopped. Its message
+  normally names the remedy, raising the recipient's `apps.max_active` at
+  user scope with `set_config`. Do NOT offer to stop the recipient's apps
+  for them.
+- **A recipient Okta does not know, on an app in platform mode**, is not
+  refused. While the platform has an Okta token the address is looked up
+  read-only, and the transfer still lands with a `WARNING:` that Okta has no
+  user for it. The recipient is still sent the transfer notice, as the owner
+  who now receives the app's lifecycle notices. If the address is mistyped,
+  transfer the app again to the right one; if their account is still being
+  created, they can reach the app once it exists. If Okta cannot be asked,
+  the answer says the address was not checked.
+- `no_okta_group` (okta mode only): the app has no Okta group provisioned
+  yet, so its registration never finished. `app_busy`: another change to
+  this app is in flight; retry once after a moment, never in a loop.
 - **Data links block it.** Data links are same-owner only, so a transfer has
   to revoke every link that touches the app. While any of those links still
   has a deployed binding (a live link, or one unlinked since the consumer app
@@ -258,12 +299,13 @@ transfer.
   who can reach it. `force` does not override this. Grant the recipient
   access to the named source app first, or unlink, then transfer.
 - `membership_stores_disagree` means that source app's member list and Okta
-  group disagree about the recipient. `force` does not override it either.
-  The message says how to settle each person, and the import's dry run with
-  `app` set to that source shows the difference.
-- **A refused or failed transfer takes the recipient back out** of the app's
-  Okta group, unless they were in it before the call, and says so if Okta
-  refuses that. The answer then says the two stores may disagree, names the
+  group disagree about the recipient (a source in okta mode; one in platform
+  mode counts its list alone and never answers it). `force` does not
+  override it either. The message says how to settle each person, and the
+  import's dry run with `app` set to that source shows the difference.
+- **A refused or failed transfer of an app in okta mode takes the recipient
+  back out** of the app's Okta group, unless they were in it before the
+  call, and says so if Okta refuses that. The answer then says the two stores may disagree, names the
   repair, and warns not to use an import apply, which would give the
   recipient MCP access to the app: follow it. Their member-list row is written
   only in the write that makes them the owner, so a refused transfer leaves
@@ -340,7 +382,11 @@ flight (retry once after a moment, never in a loop). It answers
 `okta_group_search_exhausted` or `okta_rule_search_exhausted` when an Okta
 search by name returns a full page with no exact match, so the platform cannot
 tell whether the object exists: the purge stops at that step, a platform admin
-must look into it in Okta, and a later call finishes the purge.
+must look into it in Okta, and a later call finishes the purge. An app in
+platform mode is never searched by name: only the Okta groups and rule its
+record names are deleted (an MCP app the import cut over keeps those until
+its purge), so neither search code arises for it, and one whose record names
+none makes no Okta call at all.
 
 `purge_app` then `register_app` is also the served remedy for an app whose
 open-access group or rule is missing (`open_access_unprovisioned`, in
@@ -374,7 +420,8 @@ Only needed where several platform instances share one Okta org. Every group
 the platform creates carries an ownership marker (`[instance:<id>]` at the end
 of its description); groups an earlier release created do not, and the
 platform never adopts an unmarked group by name on a shared org
-(`register_app` refuses it with `idp_object_foreign`). The tool lists the
+(`register_app` refuses a browser app's with `idp_object_foreign`; an MCP
+app registered from v0.16.4 gets no Okta group to collide). The tool lists the
 groups this instance recorded (each app's members and open group, every group
 an app's recorded open rule assigns to, and the platform admin group) with
 each one's marker: unmarked, this instance, or another instance.
@@ -430,11 +477,11 @@ an admin:
 
 - `get_config` with no arguments is the whole catalog plus every override.
   Each key's line gives its value, where that value comes from, its display
-  name and the scopes it takes. No form of `get_config` prints a key's
-  description: that is on the panel's Platform screen, Configuration tab, so
-  read it there before setting a key you did not choose. (`set_config`'s own
-  description says `get_config` shows it; it does not.) Passing both `app`
-  and `user` is refused `bad_request`.
+  name, its type and the scopes it takes. Since platform v0.16.4 every form
+  of `get_config` prints each key's type, and its description on the line
+  under it, so read the description there before setting a key you did not
+  choose (the panel's Platform screen, Configuration tab, shows it too).
+  Passing both `app` and `user` is refused `bad_request`.
 - `set_config({ key, scope, scope_id?, value, note? })` writes at `platform`,
   `app` or `user` scope; `scope_id` is the app's name or the user's email.
   `value` is always a string (`"14"`, `"true"`, `"10m"`) of at most 1000
@@ -451,8 +498,7 @@ an admin:
   `set_config` also refuses `invalid_value` for a value outside the setting's
   type or grammar, and its message names the rule.
 - `remove_config` removes an override so the inherited value applies again.
-- Keys admins reach for most, all listed in the catalog and described on
-  that Configuration tab:
+- Keys admins reach for most, all listed and described in the catalog:
   `apps.max_active` (user scope) raises an owner's active-app cap;
   `lifecycle.pinned` exempts an app, or every app a user owns, from the idle
   clock; `lifecycle.*_days` set the idle windows; `start.self_max` sets the
@@ -482,6 +528,15 @@ upgrade, with a canary and app rebuilds around it in the order the release
 names. Run it as part of that procedure, never on its own: the operator's
 admin plugin (`innovation-platform-admin`, its `platform-upgrade` skill) runs
 it there.
+
+Since platform v0.16.4 the deploy broker refuses `gateway_too_old` when a
+browser app in platform mode would deploy a gateway below capability 1, one
+that cannot enforce the platform's member list. No browser app is in platform
+mode before v0.16.5, so it cannot arise yet. The fix is an admin's: move
+`gateway.ref` to a gateway of capability 1 or more (`sync_gateway_ref`,
+within the upgrade procedure above), or remove the app's own `gateway.ref`
+override with `remove_config`; then the owner cuts the next patch tag
+(`inno-ship`).
 
 ## Fleet-wide reads
 
