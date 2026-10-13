@@ -151,7 +151,7 @@ them CVE-clean: the `deps` gate (pip-audit over `app/requirements.txt`,
 installed set are the same, and
 production code that imports a devDependency at runtime fails the deploy
 bundle with an error titled `devDependency imported at runtime`, naming the
-package and the fix) and the `container` gate (Trivy at HIGH and CRITICAL
+package; the **Node apps** paragraph below says how to move it) and the `container` gate (Trivy at HIGH and CRITICAL
 with a fix available, OS and language packages alike, any
 stack) fail the build otherwise. One known trap, informational not
 prohibitive: older **FastAPI** pins drag in a CVE-bearing Starlette line —
@@ -173,7 +173,14 @@ Regenerate the lockfile with `npm install` inside `app/` whenever you change
 dependencies, and commit both files together. Every package your Worker
 imports by bare name must be listed in `app/package.json` itself: nothing is
 installed at the repo root any more, so an import that used to resolve by
-accident now fails the bundle. For a container app the deploy does not require
+accident now fails the bundle. A package your production code imports belongs
+under `dependencies`: one listed only under `devDependencies` is never
+installed, and the bundle fails with `devDependency imported at runtime`. Move
+it with `inno-ship`'s **Moving a devDependency into dependencies**, which keeps
+its specifier and its locked version. **Do not run the command on that error's
+`Move it:` line.** It is wrong: it deletes the package from `app/package.json`
+instead of moving it. The platform will correct that message in a later
+release; until then, ignore it. For a container app the deploy does not require
 the lockfile, but commit it anyway: while an admin has the release-age
 cooldown on (`safety.min_release_age_days` above 0), an app shipping
 `app/package.json` with no committed, parseable `app/package-lock.json` fails
