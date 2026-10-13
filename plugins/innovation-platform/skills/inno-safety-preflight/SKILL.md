@@ -71,7 +71,7 @@ Six things are checked here. **The first five are hard requirements before
    `inno-platform-conventions`' **Rendering** section), `deps`
    (dependency audit: `npm audit` covers only `app/package.json`'s
    **production** dependencies, `--omit=dev`; since platform v0.14.21, and
-   contract version 21 states it, the `app-deps` job installs with
+   contract version 19 states it, the `app-deps` job installs with
    `--omit=dev` too, so the audited set and the installed set are the same,
    and a runtime import must therefore sit under `dependencies`),
    `dep-age` (the
@@ -299,7 +299,8 @@ Nothing deploys from this push. Watch the run either way:
   --log-failed`) when that happens. Two refusals are worth recognizing:
   `app_not_installed` (the App is no longer installed on the repo; the user
   reinstalls it on GitHub) and `repo_not_linked` (registration never
-  finished).
+  finished). The refusals any platform tool can give are explained once, in
+  `inno-platform-conventions`' **Refusals every tool shares** section.
   Poll every ~30s while `in_progress`; narrate transitions ("secrets ✓,
   container still building…"). Polling that slowly is well inside the
   platform's call budget, but never poll the same run from several subagents
