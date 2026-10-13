@@ -312,17 +312,23 @@ The previous owner keeps access as a member, unless the instance lists
 allowed email domains and they are outside them (since platform v0.16.7).
 That is never a reason to refuse: the transfer goes ahead and does not keep
 them. The same write removes their member-list row; for an app in okta mode
-they are then taken out of its Okta group; and their stored connections for
-the app are deleted. The answer and their notice say they were not kept, and
-the `app_transferred` audit row records `previous_owner_removed`. The two
-steps after the write can fail without undoing the transfer, and the answer
-then says so: if Okta refuses the group removal, `revoke_access` of them
+they are then taken out of its Okta group; their stored connections for the
+app are deleted; and for an MCP app their token grants for it are revoked,
+as `revoke_access` revokes them. The answer and their notice say they were
+not kept, and the `app_transferred` audit row records
+`previous_owner_removed` (and, for an MCP app, `previous_owner_revoked_grants`
+and `previous_owner_revoke_failed`). The steps after the write can fail
+without undoing the transfer, and the answer then says so: if Okta refuses
+the group removal, or cannot be asked who they are, `revoke_access` of them
 finishes it once Okta accepts it (never an import apply, which would give
 them MCP access again); if the connections delete fails,
 `list_user_connections` with their address and the app shows what is left,
 and `disconnect_user_connection` removes each (the audit row then records
-`previous_owner_connections_left`). On an instance that lists no domains
-every previous owner is kept.
+`previous_owner_connections_left`); if the grant revocation cannot be
+verified, the answer says so, and their tokens still stop at the gateway's
+next introspection, since their row is gone, unless the app is open to
+every SSO user. On an instance that lists no domains every previous owner
+is kept.
 
 The recipient is notified; the previous owner is notified whenever the
 caller is not the owner, so an admin transferring their own app leaves no
