@@ -231,8 +231,8 @@ shows the import's `app_authz_mode_set` row for an app it cut over.
   registered on platform v0.16.4 or later, or an older one that a platform
   admin's `import_okta_memberships` apply cut over (`inno-fleet-admin`). Its
   member list is its only store, and these tools write the platform's
-  **member list** alone, with no Okta write (a grant still looks the address
-  up in Okta, read-only, below). A new one has no Okta group at all; one the
+  **member list** alone, with no Okta write (where the platform has an Okta
+  token, a grant still looks the address up there, read-only, below). A new one has no Okta group at all; one the
   import cut over keeps its old group in Okta, which the member tools no
   longer read or write, until its purge.
 - **Okta mode**: every browser app (`container`, `function`), since no
