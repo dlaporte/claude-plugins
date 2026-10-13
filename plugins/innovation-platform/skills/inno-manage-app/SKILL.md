@@ -585,8 +585,9 @@ one sentence: the value does not fit this setting's type or grammar,
 `get_config` names the type, and no stored value may exceed 1000 characters.
 Read that sentence and fix the named thing rather than guessing at the format.
 The other refusals name their rule too: `unknown_setting` for a key that names
-no setting, `scope_not_allowed` for a scope the setting does not take, and
-`bad_request` when the scope is `user` and `scope_id` (the email) is missing.
+no setting, and `scope_not_allowed` for a scope the setting does not take. At
+`user` scope an omitted `scope_id` means your own account, and naming anyone
+else's is refused `forbidden`.
 
 ## Variables (`set_app_variable` / `list_app_variables` / `remove_app_variable`)
 
