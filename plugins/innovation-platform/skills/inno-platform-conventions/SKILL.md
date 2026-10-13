@@ -100,8 +100,8 @@ sign-out link** — the platform is the OAuth Authorization Server, the gateway
 is the Resource Server, and the `Authorization` header is consumed before
 your code runs (never route `/.well-known/oauth-protected-resource`
 yourself). Identity is still `X-Forwarded-User` / `X-Forwarded-Groups`, but
-what admits a caller is not the app's Okta group, which only a browser app's
-sign-in reads. An MCP app admits a person when the platform's member list for
+what admits a caller is not the app's Okta group, which is what admits one to
+a browser app. An MCP app admits a person when the platform's member list for
 the app holds them, or while the app is open to every SSO user, and it reads
 both facts at every request (`get_app_contract` §1.2). The groups header is
 derived from the same two facts, so a grant, a revoke or a change to open
@@ -456,10 +456,11 @@ shown as one:
   21): the backend's own token endpoint failed while the platform was renewing
   the user's credential. A dependency failure, not the user's: retry later,
   and don't relay a `connect_url` or ask the user to reconnect.
-- **Any other `503`** (contract version 25): the platform's own Connections
-  setup is broken (a connection's stored configuration, a platform key, or a
-  stored credential the platform can no longer open). Nothing in the app
-  fixes it: retry later, and tell a platform admin.
+- **Any other `503`** (named in the contract since version 25): the
+  platform's own Connections setup is broken (a connection's stored
+  configuration, a platform key, or a stored credential the platform can no
+  longer open). Nothing in the app fixes it: retry later, and tell a
+  platform admin.
 
 Two more are the **app's** to fix, not the user's, and never a connect prompt
 (contract §2.2 lists both):
