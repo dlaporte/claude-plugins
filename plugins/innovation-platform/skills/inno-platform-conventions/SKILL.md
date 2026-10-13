@@ -53,9 +53,9 @@ When a tool answers one of these, this is what it means:
 
 - `account_inactive`: the caller's account is one Okta no longer lets sign
   in (suspended, deprovisioned or deleted). Every tool, read tools included,
-  checks this first, using an answer held for `auth.status_check_minutes`,
-  and its message is "This account can no longer sign in. Contact a
-  platform admin."
+  checks this first, using an answer held for `auth.status_check_minutes`.
+  Its message is
+  "This account can no longer sign in. Contact a platform admin."
 - `rate_limited`: the caller made more calls in a minute than the
   instructions allow. Wait a minute.
 - `internal_error`: the call failed in a way the platform did not expect,
