@@ -457,7 +457,7 @@ re-reading the metrics call.
 
 Since platform v0.16.11 a browser app's (`container`, `function`) hourly
 section carries one more line, `Access checks (last <N>h):`, counting the
-gateway's own answers to its access check: people it refused (403), and
+gateway's own answers to its access check: requests it refused (403), and
 requests it could not check because the check itself was out (503). Those
 are the gateway's answers, never counted among the app's errors: a run of
 403s is people without access trying the app, and 503s are the platform or
@@ -487,7 +487,8 @@ one of those happens every tool that refuses `app_deploying` (`stop_app`,
 `restart_app`, `set_app_variable` and `remove_app_variable` says so in its
 own message: wait for the deploy to finish and retry, and if that deploy's
 run died, what ends the hold (the two ways this paragraph names). `stop_app`
-and `purge_app` answer the bare code, and their descriptions say the same.
+and `purge_app` answer the bare code, and their tool descriptions give the
+same way out.
 When a refusal persists, check the run with
 `get_ci_status`. If it has already failed, the way out now is the owner's
 next deploy: re-run that whole tag run, by the rule in `inno-ship`'s
@@ -829,8 +830,9 @@ Stages worth acting on when one appears: `respin_failed`, `auto_restarted`,
 `link_rebuild_pending` means a data link this app used was revoked (an unlink,
 a source that closed, an ownership transfer, or, since platform v0.16.11, the
 hourly containment check finding that a members-only source does not hold
-everyone this app admits): the app's deployed binding to
-the other app's database keeps working until the app is rebuilt, and the entry
+everyone this app admits). A function-shaped app's deployed binding to the
+other app's database keeps working until the app is rebuilt, while a
+container-shaped one is cut off within about a minute with no redeploy; the entry
 says whether a rebuild was dispatched or the owner has to redeploy (for an
 owner that is `inno-ship`). Admins also see seven admin-only stages
 (`start_requested`, `drift_detected`, `connection_sink_new_host`,
