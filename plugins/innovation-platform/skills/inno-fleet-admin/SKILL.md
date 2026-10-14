@@ -352,8 +352,9 @@ with nothing to transfer.
   deploy finished), the transfer is refused with `link_transfer_blocked`,
   naming each `consumer->source` pair. There are two ways forward and the
   choice is the admin's: unlink with `unlink_app_data` and redeploy each
-  consumer, then transfer (unlinking alone does not clear the block, the
-  consumer's redeploy does), or call again with `force: true`. **Never add
+  consumer, then transfer (unlinking alone does not clear the block: a
+  redeploy of the consumer begun after the unlink does, once it has
+  finished), or call again with `force: true`. **Never add
   `force: true` on your own.** Explain what it does, name the affected apps,
   and get an explicit yes.
 - **What `force: true` does.** It revokes those links, dispatches a rebuild of
