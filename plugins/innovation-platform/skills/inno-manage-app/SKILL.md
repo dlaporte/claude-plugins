@@ -184,7 +184,7 @@ a DNS record that is not this app's own, and with **`host_check_failed`**
 when the platform cannot read the zone's DNS to check (an operator must grant
 the platform's Cloudflare token Zone DNS read). Neither is the owner's to fix
 from here: report it to a platform admin. In the rare race where another
-change moved the app out of stopped and the result cannot be read back, it
+change moved the app out of stopped and back before this call could tell, it
 answers **`app_not_stopped`**: call `app_status` to see where the app is now.
 
 `start_app` also refuses with **`app_unlinked`**: the platform's GitHub App has
@@ -204,9 +204,12 @@ and `start_app` fully reverses it until the window closes, but **always
 confirm with the user by name before calling**, and tell them the purge date
 from the response.
 **A stop does not win a race with a deploy: it is refused.** While a deploy is
-in flight `stop_app` answers `app_deploying`; wait for the deploy to finish or
-fail, then stop. While another change to the app is in flight it answers
-`app_busy` instead: retry once after a moment, never in a loop.
+in flight `stop_app` answers `app_deploying`; wait for the deploy to finish,
+then stop (a run that died holds the app `deploying` until a later
+deploy finishes or the recovery sweep reverts it: **A deploy whose CI run
+died**, below, says how long and how to release it). While
+another change to the app is in flight it answers `app_busy` instead: retry
+once after a moment, never in a loop.
 Rejected with `app_pinned` if the app is marked pinned (an admin
 must turn that off first).
 
@@ -328,9 +331,15 @@ it was. Quote the app's hostname from the `URL:` line of
   is not sent the shared notice, since it may be a typo. Relay the warning, and
   check the spelling with the user: if it is mistyped, `revoke_access`
   removes it; if the person's account is still being created, the grant
-  applies once it exists. If Okta cannot be asked, the result says the
-  address was not checked, and the grant and its notice go ahead. With no
-  Okta token there is no lookup and no such sentence.
+  applies once it exists. Since platform v0.16.9 the `access_granted` audit
+  row of such a grant records `okta_unknown`. If Okta cannot be asked, the
+  result says the address was not checked, and the grant and its notice go
+  ahead. With no Okta token there is no lookup and no such sentence.
+- **A grant to someone the member list already holds changes nothing**, and
+  since platform v0.16.9 it says so
+  (`<address> already has access to "<app>"; nothing changed.`), with no
+  notice and no audit row. It is not an error: tell the user the person
+  already had access.
 - `app_busy`: another change to this app is in flight, or to an app it reads
   data from through a link. Retry once after a moment, never in a loop.
 - **`link_containment`** refuses the grant when this app reads another app's
@@ -403,10 +412,17 @@ it was. Quote the app's hostname from the `URL:` line of
   run `revoke_access` again, which is safe to repeat; when the warning names
   `revoke_access` on a particular app, run that. Since platform v0.16.4 the
   warning names `revoke_access` on each app that could not be updated; never
-  repair it by hand in Okta: retrying the revoke finishes it. Beyond the
+  repair it by hand in Okta: retrying the revoke finishes it. Since platform
+  v0.16.9 a cascade that cannot read a link, or a linked app, stops where it
+  is, and its `WARNING:` says which apps it removed the person from before
+  it stopped, that an app reading the source's data may still hold them, and
+  to run `list_app_links` on the source app, then `revoke_access` on each
+  consumer for that person. Relay it and run those calls. Beyond the
   immediate report, the
   consumer apps' `access_revoked` audit rows carry a `cascade_from` field
-  naming the source app (a failed one is audited `access_revoke_failed`), and
+  naming the source app (a failed one is audited `access_revoke_failed`, and
+  since v0.16.9 a stopped cascade is audited `access_revoke_failed` on the
+  source app, with `walk_stopped` naming the app whose read failed), and
   `list_app_links` enumerates the consumers at any time.
 
 ## `app_status({ app })` / `get_app_metrics({ app, days?, hours? })`
@@ -437,6 +453,24 @@ re-reading the metrics call.
 Deployment statuses: `pending`, `deploying`, `deployed`, `failed` (the
 deploy token was refused), and `abandoned` (a run that died, closed out when a
 later deploy finalizes or the recovery sweep finds it stale).
+
+**A deploy whose CI run died leaves the app `deploying` until a later deploy
+finishes or the recovery sweep reverts it.** A later deploy of the app may
+start while it is held, and releases it when it finishes; that is the
+"later deploy finalizes" above. The recovery sweep runs with the lifecycle
+pass, and reverts the app (to `active`, or to `created` if it never
+deployed) at the first pass after its latest deployment is two lifecycle
+intervals old (`lifecycle.run_interval_hours`, and at least 2 hours). Until
+one of those happens every tool that refuses `app_deploying` (`stop_app`,
+`restart_app`, `set_app_variable`, `remove_app_variable`, and an admin's
+`purge_app`) keeps refusing. When a refusal persists, check the run with
+`get_ci_status`. If it has already failed, the way out now is the owner's
+next deploy: re-run that whole tag run, by the rule in `inno-ship`'s
+**Right after a deploy, health may read `re-probe pending`, which is not a
+verdict** section, or cut the next patch tag (`inno-ship`). An admin's
+`rebuild_app` is not a way out: it refuses an app that is not active or
+warned. Without a new deploy, the app is held until the sweep, which runs
+only while the platform's lifecycle pass is enabled.
 
 ## Runtime issues — read the logs before you theorize
 
@@ -484,8 +518,14 @@ or admin. Reach for it when an app is wedged at
 runtime (hung process, poisoned in-memory state) and the logs don't point
 to a code fix — and say what it does before calling it, since live requests
 drop. If the app was never deployed (or was purged), it returns
-`no_deployments`. The same lever is the ↻ icon next to the container name
-on the app's panel page.
+`no_deployments`. Since platform v0.16.9 it is refused with `app_deploying`
+while a deploy is in flight: wait for the deploy to finish, then
+restart (a run that died holds the app `deploying` until a later deploy
+finishes or the recovery sweep reverts it, which **A deploy whose CI run
+died** above explains). It answers `app_busy`
+while another change to the app is in flight: retry once after a moment,
+never in a loop. The same lever is the ↻ icon next to the container name on
+the app's panel page.
 
 Its admin-only neighbor, `rebuild_app`, rebuilds an app's released code at
 its live tag (`inno-fleet-admin`). Owners never need it: they redeploy by
@@ -701,7 +741,9 @@ Things to relay to the user in plain terms:
   than only the last one. An admin reads it with `query_audit`. Names never
   appear beside their values there.
 - Refused while a deploy is running (`app_deploying`), by `set_app_variable`
-  and `remove_app_variable` alike: wait it out and retry.
+  and `remove_app_variable` alike: wait it out and retry (a run that died
+  holds the app `deploying` until a later deploy finishes or the recovery
+  sweep reverts it, which **A deploy whose CI run died** above explains).
 - **Variables need the platform's encryption key**, the same
   `CONNECTIONS_ENC_KEY` Connections use. Until an admin sets it,
   `set_app_variable` refuses every variable, `secret: false` ones included,
@@ -710,7 +752,8 @@ Things to relay to the user in plain terms:
   to set CONNECTIONS_ENC_KEY; retrying will not help." That is an admin-side
   precondition, not an argument problem: relay it and stop. While the key it
   has is malformed it refuses `connections_key_invalid` instead, which only a
-  platform admin can fix too.
+  platform admin can fix too; since platform v0.16.9 its message says so:
+  ask a platform admin to replace the key, and retrying will not help.
 - **`app_busy`** means another change to this app is in flight: retry **once**
   after a moment, never in a loop; it comes back from `set_app_variable` and
   `remove_app_variable` alike. **`variables_limit_reached`** refuses the
@@ -824,7 +867,7 @@ check.
 and the refusals it can answer.** When a user asks who gets told about an
 action, or who may call it, read the tool's description rather than this
 skill's summary: the description is generated from the platform's own source.
-The seven refusals every tool shares are not in each description: they are
+The six refusals every tool shares are not in each description: they are
 in the server's note, and `inno-platform-conventions`' **Refusals every tool
 shares** section explains them.
 The MCP server also reports the live platform version as its

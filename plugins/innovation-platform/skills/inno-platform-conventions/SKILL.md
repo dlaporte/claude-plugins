@@ -46,7 +46,7 @@ memory or hard-code a base-image digest.
 
 ## Refusals every tool shares
 
-Seven refusals any of the platform's MCP tools can answer are named once, in
+Six refusals any of the platform's MCP tools can answer are named once, in
 the instructions the platform's MCP server sends when a client connects,
 rather than in each tool's description. When a tool answers one of these,
 this is what it means. The instructions are the source: if they ever differ
@@ -59,14 +59,15 @@ from this list, they are right.
   "This account can no longer sign in. Contact a platform admin."
 - `rate_limited`: the caller made more calls in a minute than the
   instructions allow. Wait a minute.
-- `internal_error`: the call failed in a way the platform did not expect,
-  and the failure is logged.
 - `forbidden`: the caller lacks the standing the tool's description names.
 - `app_not_found`: a tool that takes an app was given a name no app has.
 - `invalid_email`: a tool that takes an email address was given a value
   that is not one.
-- `upstream_error`: a service the platform calls failed. Its message says
-  what failed, and a retry may succeed.
+- `upstream_error`: a service the platform calls failed, or the call failed
+  in a way the platform did not expect (the failure is logged). Its message
+  says what was running, and a retry may succeed. Before platform v0.16.9 an
+  unexpected failure answered `internal_error` instead, a seventh shared
+  refusal then.
 
 ## Deployment types: `container` (below), `function`, `mcp-function`, `mcp-container`
 

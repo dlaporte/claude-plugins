@@ -350,7 +350,13 @@ responses that are **not** rejections, so don't retry blindly:
   encryption key is not configured, so the platform cannot store this value.
   Ask a platform admin to set CONNECTIONS_ENC_KEY; retrying will not help."
   Relay that to the user and stop; nothing you change in the args fixes it,
-  and the person who can fix it is a platform admin, not them.
+  and the person who can fix it is a platform admin, not them. Its twin,
+  since platform v0.16.9, is **`connections_key_invalid`**: the key is set
+  but malformed, and the response reads "The platform's encryption key
+  (CONNECTIONS_ENC_KEY) is set but malformed, so the platform cannot store
+  this value. Ask a platform admin to replace it; retrying will not help."
+  Treat it the same way. (An earlier platform answered that case
+  `internal_error`.)
 - **A "rotating" refresh warning** — if you set `refresh: "rotating"`, the
   tool returns a warning that the platform has no per-user refresh lock, so
   concurrent refreshes for one user can race into a spurious disconnect. This

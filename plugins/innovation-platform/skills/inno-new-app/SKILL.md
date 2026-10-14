@@ -380,15 +380,22 @@ register_app({ app, repo, description, type, members, accept_guardrails: true, c
   has no Okta group; `inno-manage-app`'s `grant_access` section says what
   admits a person), and notified. While the platform has an Okta token, an
   address Okta does not know is still added but not notified, and call 2's
-  answer names it under `Warnings:` (`member not found in Okta: <address>;
-  added to the app's member list anyway and not notified`). Check its
-  spelling with the user, and if it is mistyped, remove it with
-  `revoke_access` (`inno-manage-app`). An address the platform could not
-  check in Okta is added too, with its own warning. On an older platform,
-  or before v0.16.8 for a registration begun on one, an address Okta does
-  not know is skipped instead, with no access and no notice, and call 2's
-  answer names it under `Warnings:`: grant it later with `grant_access`,
-  once that person has an account.
+  answer names it under `Warnings:`. Since platform v0.16.9 that warning
+  reads "Okta has no user for <address>, so no one can sign in as that
+  address yet. They were added to the app's member list anyway and not
+  notified. If it is mistyped, revoke_access removes it; if their account is
+  still being created, their access applies once it exists." (before it,
+  `member not found in Okta: <address>; added to the app's member list
+  anyway and not notified`). Check its spelling with the user, and if it is
+  mistyped, remove it with `revoke_access` (`inno-manage-app`). An address
+  the platform could not check in Okta is added too, with its own warning,
+  which since platform v0.16.9 reads "Okta could not be asked whether it has
+  a user for <address>, so the address was not checked." (before it, `could
+  not check <address> in Okta; added to the app's member list anyway`). On an
+  older platform, or before v0.16.8 for a registration begun on one, an
+  address Okta does not know is skipped instead, with no access and no
+  notice, and call 2's answer names it under `Warnings:`: grant it later
+  with `grant_access`, once that person has an account.
 
   On a platform that lists allowed email domains, an address outside them
   refuses the whole call with `email_domain_not_allowed` before anything is
