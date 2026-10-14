@@ -594,9 +594,11 @@ Two MCP tools read and reset the *sessions* — the per-user side — and you do
 need any app code to use them. Prefer them over inferring state from a failing
 tool call:
 
-- **`list_user_connections`** — who has connected their account to which
-  backend: user, app/connection, label, and the connected / last-used /
-  expires timestamps. Never any credential material. This is the fastest
+- **`list_user_connections`** answers who has connected their account to
+  which backend: user, app/connection, label, and the connected / last-used /
+  expires timestamps (`last_used=never` before the first use, and
+  `expires=unknown` when the platform has no expiry on record for that
+  credential). Never any credential material. This is the fastest
   answer to "did my connect actually land?", and it works before the app's own
   `whoami` tool exists. `user` = **yourself** is always allowed (alone, or with
   `app` to narrow to one app); `app` alone gives that app's sessions **to its

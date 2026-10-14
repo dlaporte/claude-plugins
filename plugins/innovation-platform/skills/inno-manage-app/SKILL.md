@@ -252,7 +252,10 @@ the gateway it runs:
   "No access" page that names no one. When the gateway cannot get an answer
   it shows a 503 "Try again shortly" page instead: that is an outage (the
   platform, or the sign-in keys it checks people against, could not be
-  reached), not a revoke. So from platform v0.16.8 a grant, a revoke, an
+  reached), not a revoke. On a gateway built before platform v0.16.10, a
+  failure to obtain those keys in the gateway itself answers 401 instead,
+  which a browser reads as "sign in again" (`inno-platform-conventions` has
+  the detail). So from platform v0.16.8 a grant, a revoke, an
   open or a close reaches a person within that window.
 
 From platform v0.16.8, two kinds of older browser app differ, both

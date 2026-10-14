@@ -189,8 +189,10 @@ the lockfile, but commit it anyway: while an admin has the release-age
 cooldown on (`safety.min_release_age_days` above 0), an app shipping
 `app/package.json` with no committed, parseable `app/package-lock.json` fails
 the `dep-age` gate, because ranges have no single publish date to check. That
-app-owned lockfile under `app/` is fine; a lockfile at the **repo root** is a
-platform-injected build input and the `config-integrity` gate rejects it.
+app-owned lockfile under `app/` is fine; a lockfile at the **repo root** is
+not, and the `config-integrity` gate rejects it. The gateway's own lockfile
+stays in the platform's build directory, outside your checkout, and nothing
+is installed at the repo root (**Files you must not touch** below).
 
 ## Rendering: escape by default, never string-built HTML
 
@@ -352,7 +354,10 @@ change made on the platform reaches them, and before it a change reaches
 them at the caller's next sign-in. A person
 the platform refuses never reaches your code: that gateway answers them
 itself, with a plain 403 "No access" page, or a 503 "Try again shortly"
-page when it cannot ask. Treat an
+page when it cannot ask. A gateway built from platform v0.16.10 on shows
+that 503 page too while it cannot obtain the sign-in keys it checks people
+against, where an older one answers 401; `GET /healthz` keeps its 401 on
+both. Treat an
 empty header as "not a member", never as an error: no admitted caller
 arrives with one any more, but a request that never passed the gateway (the
 app run locally, a test) can.
@@ -587,8 +592,10 @@ nothing for you to configure or accidentally flip here.
 
 ## Files you must not touch
 
-The platform injects several files worker-side at build time, and **none of
-them may exist in your repo at all**:
+The platform injects the gateway's build inputs at build time (its
+`package.json`, `package-lock.json`, `tsconfig.json` and `wrangler.jsonc`),
+into a build directory of its own outside your checkout, and **none of the
+following may exist in your repo at all**:
 
 - `src/`, all of it, at the repo root. The platform owns that directory (the
   gateway was bundled from `src/gateway/`), and anything of yours under it (a
@@ -596,16 +603,26 @@ them may exist in your repo at all**:
   could shadow the gateway's dependencies, so the gate fails the repo with a
   "delete src/" message naming what it found. Put your code under `app/`; an
   `app/src/` directory is yours and fine.
-- `package.json` and its lockfile (`package-lock.json`) — **at the repo
-  root**. Your app's own build files under `app/` (a Node app's
-  `app/package.json`, etc.) are yours and fine.
-- `tsconfig.json` — repo root only, same rule.
+- `package.json` and its lockfile (`package-lock.json`) **at the repo
+  root**. Nothing is installed there, and from platform v0.16.10 the deploy
+  puts neither file there either (before it, it copied the gateway's pair to
+  the root); its npm cache keys on the gateway's own lockfile, in the
+  platform's checkout. The gate rejects both all the same. Your app's own
+  build files under `app/` (a Node app's `app/package.json`, etc.) are yours
+  and fine.
+- `tsconfig.json`, repo root only, same rule. For a function-shaped app
+  (`function`, `mcp-function`) the deploy itself places the gateway's
+  `tsconfig.json` at the repo root, beside the app Worker's
+  `app-worker.jsonc`, because your app Worker builds from your checkout and
+  the bundler's nearest-tsconfig lookup from `app/index.ts` reaches it. That
+  copy is the platform's, made during the build; a committed one still fails
+  the gate.
 - `wrangler.jsonc` — including its `main` (`src/gateway/index.ts`, the
   injected gateway's entrypoint) and its resource blocks (container
   `max_instances`, D1/R2 bindings, DO migrations).
 
 The `config-integrity` gate fails outright if it finds any of these ("delete
-`<file>` — the platform injects …"); never create or restore one locally,
+`<file>`: the platform injects …"); never create or restore one locally,
 even to "match the template" — there is no version of these files that
 belongs in your repo. The one exception, checked by content rather than by
 absence, is `CLAUDE.md`'s required section headers: the gate checks that five
@@ -639,11 +656,17 @@ discovery and of redirects, so it is not something a committed file beats. The g
 belt to that pin: it is what still holds if the pin is ever dropped.
 
 A `scaffold/` directory is rejected too. Registration prunes the template's
-deployment-type scaffolds out of your repo, so a surviving `scaffold/` means
-the repo is carrying both variants' files. There is one exception: while
-`app/.needs-build` is present the directory is allowed, which is what keeps
-`config-integrity` green on a freshly generated, not-yet-registered repo's
-first run. It buys that one gate and nothing else. Deleting that marker to
+deployment-type scaffolds out of your repo, best effort, so a surviving
+`scaffold/` means the prune did not happen (it failed or could not run, or
+the template was copied by hand) and the repo is carrying both variants'
+files. There is one exception: while `app/.needs-build` is present the
+directory is allowed, because an unbuilt repo can run CI before a prune
+lands, or after one that could not run. `register_app` warns about the
+second: it tells the owner of an overlay preset (`function`, `mcp-function`
+or `mcp-container`) whose repository has no `scaffold/<preset>/` to delete
+`scaffold/`, and a prune that failed answers `scaffold not applied` and
+points at `get_app_contract`'s layout. The exception buys that one gate and nothing else, and
+`scaffold-check` skips that run's deploy anyway. Deleting that marker to
 start building re-arms the check, so delete `scaffold/` with it.
 
 The gate also rejects root-level `.env` / `.env.*` files (wrangler loads
