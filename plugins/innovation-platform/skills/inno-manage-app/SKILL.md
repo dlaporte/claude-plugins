@@ -168,7 +168,9 @@ request while one is already waiting (unread, and made since the app's current
 stop) is recorded but sends no second notification, and the tool says a
 request "is already waiting with the platform admins". Relay that instead of
 asking again. A new request notifies again only after an admin has read the
-waiting one.
+waiting one. Since platform v0.16.11 `request_start` answers `app_busy` too
+when another change to the app is in flight: retry once after a moment,
+never in a loop.
 
 `start_app` can also return **`app_limit_reached`**: starting would put the
 owner over their active-app limit (the message carries the numbers). Report
@@ -453,6 +455,21 @@ error body back to you, so there is nothing to read in the response beyond
 "unavailable". Reach for `get_app_logs` or a support bundle instead of
 re-reading the metrics call.
 
+Since platform v0.16.11 a browser app's (`container`, `function`) hourly
+section carries one more line, `Access checks (last <N>h):`, counting the
+gateway's own answers to its access check: people it refused (403), and
+requests it could not check because the check itself was out (503). Those
+are the gateway's answers, never counted among the app's errors: a run of
+403s is people without access trying the app, and 503s are the platform or
+its sign-in keys being unreachable, not the app's code. The line reads
+`none recorded` when the window holds no access-check points, which is also
+all a gateway older than v0.16.5 records, so read it as no data, not as
+proof that nobody was refused. It is left out for an MCP app and when the
+counts cannot be read, and goes with the rest of the hourly section while
+`signal.red_enabled` is off; it can still appear when the per-request lines
+read unknown or unavailable. The app's panel page shows the same counts
+under its daily chart.
+
 Deployment statuses: `pending`, `deploying`, `deployed`, `failed` (the
 deploy token was refused), and `abandoned` (a run that died, closed out when a
 later deploy finalizes or the recovery sweep finds it stale).
@@ -466,7 +483,12 @@ deployed) at the first pass after its latest deployment is two lifecycle
 intervals old (`lifecycle.run_interval_hours`, and at least 2 hours). Until
 one of those happens every tool that refuses `app_deploying` (`stop_app`,
 `restart_app`, `set_app_variable`, `remove_app_variable`, and an admin's
-`purge_app`) keeps refusing. When a refusal persists, check the run with
+`purge_app`) keeps refusing. Since platform v0.16.11 the refusal from
+`restart_app`, `set_app_variable` and `remove_app_variable` says so in its
+own message: wait for the deploy to finish and retry, and if that deploy's
+run died, what ends the hold (the two ways this paragraph names). `stop_app`
+and `purge_app` answer the bare code, and their descriptions say the same.
+When a refusal persists, check the run with
 `get_ci_status`. If it has already failed, the way out now is the owner's
 next deploy: re-run that whole tag run, by the rule in `inno-ship`'s
 **Right after a deploy, health may read `re-probe pending`, which is not a
@@ -525,7 +547,8 @@ drop. If the app was never deployed (or was purged), it returns
 while a deploy is in flight: wait for the deploy to finish, then
 restart (a run that died holds the app `deploying` until a later deploy
 finishes or the recovery sweep reverts it, which **A deploy whose CI run
-died** above explains). It answers `app_busy`
+died** above explains, and since platform v0.16.11 the refusal's own message
+says so). It answers `app_busy`
 while another change to the app is in flight: retry once after a moment,
 never in a loop. The same lever is the ↻ icon next to the container name on
 the app's panel page.
@@ -588,7 +611,16 @@ returns it to the named member list (open: false). Owner or admin only.
   container-shaped consumer is cut off within about a minute with no
   redeploy, while a function-shaped one keeps its binding until it next
   deploys. A link the close could not revoke stays live and is named in the
-  result, with the `unlink_app_data` call that removes it: relay that.
+  result, with the `unlink_app_data` call that removes it: relay that. Since
+  platform v0.16.11 the hourly containment pass revokes such a link within
+  the hour if this app still does not contain that consumer, and the result
+  says so, which makes unlinking now optional. The pass holds every live
+  link of a members-only source to the same rule, except that it keeps a
+  link whose members cannot be read and checks it again the next hour, and
+  tells the consumer's owner of each link it revokes
+  (`link_rebuild_pending`). `unlink_app_data`
+  answers `app_busy` while another change to the consumer is in flight (one
+  to the source does not count): retry once after a moment.
 - `app_busy`: another change to this app, or to an app linked to it, is in
   flight (a source it reads, when opening; a consumer reading it, when
   closing). Retry once after a moment, never in a loop.
@@ -635,6 +667,8 @@ card. Owner or admin only.
   current one to finish or fail; the platform times out a dead job after 6 h.
 - `export_dispatch_failed`: the platform could not start the export job.
   That export is recorded as failed, so a new call can start another.
+- `app_busy` (since platform v0.16.11): another change to the app is in
+  flight. Retry once after a moment, never in a loop.
 - Offer this proactively when a user is about to stop an app they may not
   restart, or asks about leaving/migrating off the platform.
 - The platform also builds an archive **automatically before the lifecycle's
@@ -746,7 +780,8 @@ Things to relay to the user in plain terms:
 - Refused while a deploy is running (`app_deploying`), by `set_app_variable`
   and `remove_app_variable` alike: wait it out and retry (a run that died
   holds the app `deploying` until a later deploy finishes or the recovery
-  sweep reverts it, which **A deploy whose CI run died** above explains).
+  sweep reverts it, which **A deploy whose CI run died** above explains, and
+  since platform v0.16.11 the refusal's own message says so).
 - **Variables need the platform's encryption key**, the same
   `CONNECTIONS_ENC_KEY` Connections use. Until an admin sets it,
   `set_app_variable` refuses every variable, `secret: false` ones included,
@@ -792,7 +827,9 @@ Stages worth acting on when one appears: `respin_failed`, `auto_restarted`,
 `usage_anomaly`, `quota_horizon`, `connection_expired`, `unlinked` /
 `relinked`, `transferred`, `access_changed`, `shared`, `exported`.
 `link_rebuild_pending` means a data link this app used was revoked (an unlink,
-a source that closed, or an ownership transfer): the app's deployed binding to
+a source that closed, an ownership transfer, or, since platform v0.16.11, the
+hourly containment check finding that a members-only source does not hold
+everyone this app admits): the app's deployed binding to
 the other app's database keeps working until the app is rebuilt, and the entry
 says whether a rebuild was dispatched or the owner has to redeploy (for an
 owner that is `inno-ship`). Admins also see seven admin-only stages
@@ -893,7 +930,9 @@ bundle also carries the image's dependency SBOM when one is on file. The tool
 can answer **`diagnostics_unavailable`** instead. Its description says:
 "Answers diagnostics_unavailable when the platform has no diagnostics storage
 configured, which only an admin can fix." That is a platform-side condition,
-not an argument problem, so say so and do not retry in a loop.
+not an argument problem, so say so and do not retry in a loop. Since platform
+v0.16.11 it also answers `app_busy` when another change to the app is in
+flight: retry once after a moment, never in a loop.
 
 This section is the plugin's one home for support bundles; `inno-ship` and
 `inno-safety-preflight` offer one at their own stuck points and point here for

@@ -280,7 +280,9 @@ Then stop and get an explicit yes. Don't fold it into the tool-approval prompt
 > response to report how many credentials it invalidated. Re-supplying an
 > unchanged config is free, because the cascade compares values, not calls,
 > with one exception below: a definition changed by another call while yours
-> ran.
+> ran. Since platform v0.16.11 such a second call is refused `app_busy`
+> instead, so an edit that moves no endpoint, made while yours runs, no
+> longer costs anyone their credential.
 >
 > Users are shown the destination **hostname** before their credential goes
 > anywhere, so an endpoint that doesn't visibly match the backend they expect
@@ -341,8 +343,12 @@ message it returns — it's meant to be actionable (a non-public endpoint, a
 missing field, a bad strategy/config pairing) — fix the specific thing named
 and retry. Since platform v0.16.5 the definition and any credential delete
 are one write, so a call that fails changed nothing (only the audit row it
-writes first may remain), and a retry repeats the whole of it. Four
-responses that are **not** rejections, so don't retry blindly:
+writes first may remain), and a retry repeats the whole of it. Since
+platform v0.16.11 a call made while another change to the app is in flight
+(another edit of this connection, or its pause, included) is refused
+**`app_busy`** and, like any failed call, changes nothing, so two
+overlapping edits no longer interleave: retry once after a moment, never in
+a loop. Four responses that are **not** rejections, so don't retry blindly:
 
 - **`connections_disabled`**, a real precondition rather than a bad argument:
   passing a `client_secret` requires the platform's encryption key to already
@@ -386,7 +392,11 @@ responses that are **not** rejections, so don't retry blindly:
   back to yours, or this is a new connection and credentials left under its
   name by an earlier one were removed. Those users were notified to
   reconnect. Run `list_connections` and check the stored definition is the
-  one you meant before anyone connects.
+  one you meant before anyone connects. Since platform v0.16.11 another edit
+  made while yours runs is refused `app_busy` instead (above), so on an
+  existing connection this note is a backstop that should be rare (the
+  platform's hold on the app running out mid-call); before it, an ordinary
+  overlapping edit that moved no endpoint could set it off.
 
 Tell the user in plain terms what just got stored (the backend's address and
 how the app will reach it, kept encrypted on the platform) — **never echo a
@@ -400,7 +410,9 @@ them, not just the field you're changing (omitting `scopes`, for instance,
 silently clears it). The exceptions: `client_id`, `client_secret`, and
 `disabled` are safe to omit. An omitted `client_id` or `client_secret` keeps
 the stored value, and an omitted `disabled` leaves the enabled/paused state
-as-is.
+as-is. Since platform v0.16.11 a pause or resume made from the panel cannot
+land in the middle of your call either (one of the two answers `app_busy`),
+so your call no longer silently undoes it.
 
 `list_connections` shows the app's configured Connections (definitions only,
 never credential material): one line per connection with its name, label,
@@ -417,7 +429,9 @@ which keeps every stored credential and resumes on re-enable. If the goal is
 "stop this for now," that is the pause switch; reach for removal only when the
 connection is genuinely going away, and confirm with the user by name first
 (it is idempotent, so a repeat call is a harmless no-op — but the first one
-already took the credentials).
+already took the credentials). Since platform v0.16.11 it answers `app_busy`
+while another change to the app is in flight, an edit of the same
+connection included: retry once after a moment, never in a loop.
 
 ## 5. Wire the app to consume it
 
