@@ -84,9 +84,10 @@ Every package the code imports must be declared under `dependencies` in
 If the repo has `app/inno-variables.json`, read it before tagging: nothing
 in CI validates or applies it before the tag's `deploy` job finalizes, so
 this is the only check that helps before the first deploy. Check it against
-the contract's §2.3 **Declaring what an app wants** paragraph
-(`get_app_contract` with `sections: ["2.3"]`): the name rule, the reserved
-names, the three allowed fields and the 32-entry cap. A file that breaks
+the contract's §2.3 **Secrecy.** and **Declaring what an app wants**
+paragraphs (`get_app_contract` with `sections: ["2.3"]`): the name rule and
+the reserved names from the first, the three allowed fields with their
+defaults and the 32-entry cap from the second. A file that breaks
 them never fails the deploy, and the platform keeps its previous
 declarations; the reason shows in one of two places:
 
@@ -213,8 +214,10 @@ a `deploy-sbom failed (403)` line naming `app_mismatch` or saying the app is
 no longer linked to its repository, `Gate policy unavailable`, or
 `Gateway not promoted` (the broker refusing `app_mismatch` or
 `repo_unlinked`); `policy` failing with `Invalid app name`; or a
-`Gateway dependency advisory` or `Cloudflare not ready` warning. On a push,
-a `deploy-sbom failed (403)` line reading `deploy_denied:ref` is normal.
+`Gateway dependency advisory` or `Cloudflare not ready` warning (either can
+appear on a run that succeeded; neither is about the app's code, so change
+nothing in the app before reading the row). On a push, a
+`deploy-sbom failed (403)` line reading `deploy_denied:ref` is normal.
 
 A gate failure is real signal; there is no override or admin bypass. A
 finding that's a false positive gets a **central admin ignore** (see

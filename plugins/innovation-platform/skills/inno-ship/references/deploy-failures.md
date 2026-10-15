@@ -2,9 +2,10 @@
 
 `inno-ship` loads this when a run shows one of the failures or warnings
 below, which its own failure table leaves out because few runs meet them.
-They are read and fixed the same way: diagnose privately, tell the user one
-plain sentence, fix the root cause, and cut the next patch tag (a tag is
-immutable: never force-move one). Before any fix that moves, deletes or
+They are read and fixed the same way unless the row says otherwise:
+diagnose privately, tell the user one plain sentence, fix the root cause,
+and cut the next patch tag (a tag is immutable: never force-move one).
+Before any fix that moves, deletes or
 replaces the user's files, or edits anything under `.github/workflows/`,
 show the user the change and ask first. When a row says to offer a support
 bundle, `inno-ship`'s **When you're stuck** section says how.

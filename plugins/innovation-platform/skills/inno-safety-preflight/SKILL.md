@@ -54,10 +54,10 @@ the defaults:
   container job still builds the image, uploads the SBOM, and asserts a
   non-root user and `EXPOSE 8080`. So a green gate is not proof that a scan
   actually happened.
-- A finding you expect to fail may be suppressed until a date that has
-  since passed, or suppressed now until a date that is coming. Tell the user
-  while there's still time to act: "that CVE is ignored until 2026-12-31,
-  after which this deploy stops passing".
+- A finding you expect to be ignored may fail because its ignore's date has
+  passed, and one you expect to fail may be suppressed until a date still to
+  come. Tell the user while there's still time to act: "that CVE is ignored
+  until 2026-12-31, after which this deploy stops passing".
 
 Six things are checked here. **The first four are hard requirements before
 `inno-ship`**; the last two are advisory:
@@ -112,10 +112,12 @@ have the whole repo in front of you; this is judgment, not grep.
 
 Then call the `get_app_contract` MCP tool with `sections: ["2", "5", "6"]`
 (the requirements R1 to R9, the deployment patterns with what is not
-supported today, and the enforcement map). Add the app's own shape section:
-`"1.1"` for a `function` app, `"1.1"` and `"1.2"` for an `mcp-function` app,
-`"1.3"` for an `mcp-container` app. Add `"2.1"`, `"2.2"` or `"2.3"` when the
-app links data, uses a connection or declares variables. Judge the app
+supported today, and the enforcement map). Add to that call the app's own
+shape section: `"1.1"` for a `function` app, `"1.1"` and `"1.2"` for an
+`mcp-function` app, `"1.3"` for an `mcp-container` app (a `container` app
+adds none: section 2 is its baseline). Add to it too `"2.1"`, `"2.2"` or
+`"2.3"` when the app links data, uses a connection or declares variables.
+Judge the app
 against the MUSTs, focusing on the ones the enforcement map (§6) leaves to
 preflight review because CI cannot judge them: R3 (identity only from the
 gateway headers, no home-grown auth), R4 (the sign-out link; not applicable
@@ -136,7 +138,8 @@ highest-impact app bug, **authorization and IDOR** (its §1), is invisible to
 them; for any app with **per-user data, an admin surface, a state-changing
 write, or a call to a paid or external upstream**, verify its §1 to §5
 against the code. That `X-Forwarded-User` is an email address, which can
-pass to another person (the contract's R3), is not a finding: no header
+pass to another person (the contract's R3, or on a platform before v0.16.12
+`inno-platform-conventions`' **Identity** section), is not a finding: no header
 carries the account itself yet, so keying on the address is right. A real
 authorization hole is a hard stop: fix or guide the fix before `inno-ship`.
 A missing response header (its §9) is a recommendation, not a stop: offer
@@ -147,14 +150,16 @@ app sends today.
 
 If the repo carries `app/inno-variables.json`, this is the plugin's rule for
 it; `inno-ship`'s **Declared variables** section applies the same one before
-the tag. What the platform does with the file is the contract's §2.3
-**Declaring what an app wants** (`get_app_contract` with `sections: ["2.3"]`).
+the tag. What the platform does with the file is the contract's §2.3, in
+its **Secrecy.** and **Declaring what an app wants** paragraphs
+(`get_app_contract` with `sections: ["2.3"]`).
 
 - **What CI enforces: nothing that blocks.** No gate reads the file, and no
   push does. Only the tag's `deploy` job reads it, and neither a bad file
   nor a `required` name with no value fails a gate or stops the deploy.
-- **What you check:** the file against §2.3's rules (the name rule, the
-  reserved names, the three allowed fields and the 32-entry cap) and, for
+- **What you check:** the file against §2.3's rules (the name rule and the
+  reserved names, from **Secrecy.**; the three allowed fields with their
+  defaults and the 32-entry cap, from **Declaring what an app wants**) and, for
   every `required: true` name, whether it already has a value
   (`list_app_variables`, or `app_status`, which names an unset required one
   directly).
