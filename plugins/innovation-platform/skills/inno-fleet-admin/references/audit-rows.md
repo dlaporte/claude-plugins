@@ -22,7 +22,9 @@ the import changes the admin list (an import row carries `detail.source`
 - `access_granted` and `app_transferred` with `okta_unknown` when Okta had no
   user for the address (from platform v0.16.9).
 - `variables_sync_failed`, naming each variable that did not land and why.
-- `connection_cascade_revoked`.
+- `connection_cascade_revoked`: a revoke (on the app, or down its cascade,
+  with `cascade_from`) or a transfer that did not keep the previous owner
+  deleted that person's stored connection credentials for the app.
 
 ## The hourly passes
 
