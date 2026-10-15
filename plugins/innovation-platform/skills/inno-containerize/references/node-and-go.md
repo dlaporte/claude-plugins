@@ -1,0 +1,36 @@
+# Recipe sketches: Node and Go
+
+Read this from `inno-containerize` when the app is a Node app, or a Go (or
+similar compiled) app. Each sketch meets the same contract as the Python
+reference recipe in `SKILL.md`; take the base from the current pinned refs
+`get_app_contract` serves.
+
+## Node
+
+```dockerfile
+FROM node:24-slim              # use the current pinned ref from get_app_contract
+RUN apt-get update && apt-get -y upgrade && rm -rf /var/lib/apt/lists/*
+WORKDIR /app
+COPY app/package*.json ./
+RUN npm ci --omit=dev
+COPY app/ .
+USER node                      # the official node images ship this user
+EXPOSE 8080
+CMD ["node", "server.js"]      # server must bind 0.0.0.0:8080 and serve /healthz
+```
+
+## Go (multi-stage; only the runtime stage ships)
+
+```dockerfile
+FROM golang:1-alpine AS build
+WORKDIR /src
+COPY app/ .
+RUN CGO_ENABLED=0 go build -o /server .
+
+# Runtime stage: use the current pinned distroless ref from get_app_contract.
+# :nonroot variants satisfy the non-root gate with no useradd needed.
+FROM gcr.io/distroless/static-debian12:nonroot
+COPY --from=build /server /server
+EXPOSE 8080
+CMD ["/server"]                # must bind 0.0.0.0:8080 and serve /healthz
+```

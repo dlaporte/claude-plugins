@@ -36,9 +36,9 @@ repo **they own** from the platform template -> `register_app` (first call)
 -> `register_app` (second call) provisions + binds it -> pull + scaffold. Requires the
 `inno-platform` MCP server (ships with this plugin's `.mcp.json`) to be
 connected. The first call to any `inno-platform` tool triggers an Okta browser
-login — that's expected, not an error; wait for it to complete. **If the
+login. That's expected, not an error: wait for it to complete. **If the
 connector wasn't already authorized when the session started, waiting isn't
-enough** — mid-session authorization alone does not expose the tools (the MCP
+enough**: mid-session authorization alone does not expose the tools (the MCP
 client enumerates tools at startup); the user must authorize it AND you must
 restart the session before calling any `inno-platform` tool.
 
@@ -49,7 +49,7 @@ gate), with the platform's GitHub App installed on it; `register_app`
 finishes the job. The platform never creates a repo on the user's behalf.
 
 **What is genuinely user-only.** Exactly two steps in this flow require the user
-personally: **installing the platform GitHub App** (§3 — a third-party token
+personally: **installing the platform GitHub App** (§3: a third-party token
 cannot install a GitHub App on someone's account) and any **browser SSO login**.
 Everything else (creating the repo, committing the registration proof file,
 cloning, scaffolding, committing, pushing, tagging, setting variables) you can
@@ -60,26 +60,26 @@ in the conversation transcript), not a **cannot**.
 
 **Already have an existing repo?** If the user wants to put a repo/codebase they
 *already* have on the platform (not create a fresh one from the template), use
-the `inno-migrate-app` skill instead — it registers the existing repo in place
-and adapts it to the contract, no scaffolding-from-template.
+the `inno-migrate-app` skill instead: it registers the existing repo in place
+and adapts it to the contract, with no scaffolding from the template.
 
 **Speak the user's language.** Plain terms with the user, no provider or
 product names unless they have shown technical fluency. The full rule is the
 plugin README's **House style** section, and it applies to every user-facing
 sentence in this flow.
 
-## 1. Intake — ask the user for five things
+## 1. Intake: ask the user for five things
 
-1. **App name** — lowercase letters, digits, hyphens only, 3-29 chars,
+1. **App name**: lowercase letters, digits, hyphens only, 3-29 chars,
    starting with a letter. This drives the app's **hostname** on the platform
    domain (the `App host pattern:` line of the status you read in the Version gate, with the app's name in place of `{app}`; `register_app`'s answer gives the real hostname), so keep it short and DNS-safe. It is NOT
-   the repo name — the repo name is the user's choice (see below). A handful of
-   names are reserved server-side — `check_name` reports those, so don't
+   the repo name, which is the user's choice (see below). A handful of
+   names are reserved server-side; `check_name` reports those, so don't
    enumerate or guess. A name ending in **`-app`** is rejected as well: the
    server returns `invalid_name` for `todo-app`, so propose `todo` instead.
    Steer the user off that suffix before you check the name.
 
-   **Verify availability before you settle on a name — never recommend or
+   **Verify availability before you settle on a name: never recommend or
    confirm a name without checking it first.** (This step is the plugin's one
    home for the name rules and the registration-time active-app check, whose
    rule is `inno-manage-app`'s; `inno-migrate-app` points here.) Call the **`check_name`** MCP
@@ -88,39 +88,35 @@ sentence in this flow.
    invalid, ask the user for a different one; a name it refuses as unusable is
    echoed back inside `«»` guillemets, which fence it as untrusted text rather
    than marking it as quoted by the user. If it says the name **was
-   recently purged and is held until** a UTC time, it belonged to an app purged
-   within the last seven days and nobody, admins included, can register it
-   before then (`register_app` refuses it as `name_quarantined`): offer a
-   different name or wait. If it's the caller's *own*
-   existing app, tell them that (a stopped app is brought back with
-   `start_app`, not by re-registering it). `list_apps` shows the caller's own
-   apps, and every app on the platform only when the caller is a platform
-   admin. For an ordinary user it therefore cannot prove a name is free
-   platform-wide: use `check_name`.
+   recently purged and is held until** a UTC time, nobody, admins included,
+   can register it before then: offer a different name or wait. If it's the
+   caller's *own* existing app, tell them that (a stopped app is brought back
+   with `start_app`, not by re-registering it). `list_apps` cannot prove a
+   name is free, since an ordinary user sees only their own apps there: use
+   `check_name`.
 
    **Active-app limit.** `check_name` also warns when the user is at their
-   active-app limit ("you are at your active-app limit (N of M)") — at the cap,
-   `register_app` WILL fail with `app_limit_reached`, so resolve this BEFORE any
-   build work. Report the limit factually and name the remedies, the rule
-   `inno-manage-app` sets for `start_app`: the user stops one of their own
-   apps when THEY choose to, or a platform admin raises their limit
-   (`apps.max_active`, user scope). **Do NOT propose or offer to stop specific
-   apps to make room**; that trade-off is the user's to initiate. If the user
-   asks to stop one, `stop_app` it only with their explicit confirmation by
-   name (stopping detaches the app's domain and starts its purge countdown).
-   Otherwise stop here: an admin raising the limit, or not building the app,
-   are the remaining options.
-2. **Repo** — the `owner/repo` slug of the GitHub repo the user will create
+   active-app limit. At the cap, `register_app` WILL fail with
+   `app_limit_reached`, so resolve this BEFORE any build work. Report the
+   limit factually and name the remedies, the rule `inno-manage-app` sets for
+   `start_app`: the user stops one of their own apps when THEY choose to, or
+   a platform admin raises their limit (`apps.max_active`, user scope). **Do
+   NOT propose or offer to stop specific apps to make room**; that trade-off
+   is the user's to initiate. If the user asks to stop one, `stop_app` it
+   only with their explicit confirmation by name (stopping detaches the app's
+   domain and starts its purge countdown). Otherwise stop here: an admin
+   raising the limit, or not building the app, are the remaining options.
+2. **Repo**: the `owner/repo` slug of the GitHub repo the user will create
    from the template (§2). The **owner is the user's** account or org, and the
    repo name is **their choice**: suggest the app name itself, but it
    is not required and can be anything. The repo may be public or private.
 3. **One-line purpose**: becomes the app's `description` (at most 500
    characters; the tool schema rejects a longer one).
-4. **Initial members' emails** (optional, can be empty) — Okta emails to grant
+4. **Initial members' emails** (optional, can be empty): Okta emails to grant
    access alongside the owner. The list can be added to later with the
    `inno-manage-app` skill's `grant_access`.
 5. **Does the app need to reach another service *as each person using it*?**
-   Not the app's own sign-in (every app gets that for free) — this is about
+   Not the app's own sign-in (every app gets that for free): this is about
    your app calling out to some *other* system that also tells its own users
    apart (a departmental system, a niche tool, a per-user account on some
    outside service). If yes, note it now: today that only works for an MCP
@@ -128,21 +124,21 @@ sentence in this flow.
    once the app is registered you'll set it up with the `inno-add-connection`
    skill.
 
-## 1a. Guardrails check — HARD STOP on conflict
+## 1a. Guardrails check: HARD STOP on conflict
 
 Before confirming anything, call the **`get_guardrails`** MCP tool and evaluate
 the proposed **name** and **purpose** against the platform's acceptable-use
 policy. This is qualitative judgment (impersonation, misleading authority,
-offensive names, prohibited purposes, data handling) — apply the policy's
+offensive names, prohibited purposes, data handling): apply the policy's
 spirit, not just its examples. `register_app` requires you to pass
-`accept_guardrails: true`, which asserts the app will follow these guardrails —
-do not pass it until you've actually done this review.
+`accept_guardrails: true`, which asserts the app will follow these guardrails,
+so do not pass it until you've actually done this review.
 
 - **Clean** → proceed; no need to mention it unless the user asks.
 - **Conflict** → do NOT call `register_app`. Name the specific policy line,
   explain the problem in one plain sentence, and help the user pick a compliant
   name/purpose. If they believe their use is legitimate anyway (e.g. sanctioned
-  research), direct them to a platform admin for an explicit exception first —
+  research), direct them to a platform admin for an explicit exception first:
   you cannot grant one, and you must not register the app without it.
 
 Confirm the name, repo, purpose, and members back to the user before going
@@ -153,14 +149,16 @@ them to the user's repo.
 ## 1b. Design the app before registering
 
 Before registering, produce and present a real design. The approval gate at the
-end of this section is a hard one — `register_app` provisions real resources.
+end of this section is a hard one: `register_app` provisions real resources.
 
-**Fetch the `get_app_contract` MCP tool first** — it carries the four deployment
-**types** and their requirement deltas (§1.1–§1.3), the deployment patterns (and what
-the platform does NOT support: background jobs, machine-to-machine APIs,
-guaranteed long-lived connections), the stack policy, and the current
-recommended base images. Evaluate the user's idea against it before designing; a
-not-supported requirement surfaces HERE, not after registration.
+**Fetch the contract first:** call the `get_app_contract` MCP tool with
+`sections: ["1", "1.1", "1.2", "1.3", "4", "5"]`. Those sections carry the
+four deployment **types** and their requirement deltas (§1.1 to §1.3), the
+stack policy (§4), and the deployment patterns with what the platform does
+NOT support (§5: background jobs, machine-to-machine APIs, guaranteed
+long-lived connections); the answer opens with the contract version and the
+current recommended base images. Evaluate the user's idea against it before
+designing; a not-supported requirement surfaces HERE, not after registration.
 
 For an app people will open in a browser (a `container` or `function`
 design), **fetch `get_app_accessibility` beside it.** It serves the
@@ -170,123 +168,107 @@ Accessibility line below and the scaffold in §4. The two MCP types have no
 browser UI, so it does not apply to them.
 
 Invoke the **`superpowers:brainstorming`** skill to design the app: what it does,
-its data model (what it stores — tables, files), its routes/pages, and its
+its data model (what it stores: tables, files), its routes/pages, and its
 access model (who can see and edit). If that skill isn't available in the
 session, run an equivalent inline pass over the same points yourself. Either
-way, the design still has to be written into your reply and approved — see
-"Present the design, THEN ask for approval" below; the skill's absence is not a
+way, the design still has to be written into your reply and approved (see
+"Present the design, THEN ask for approval" below); the skill's absence is not a
 reason to skip that.
 
 The design includes three contract-informed choices that are **the user's to
 make, with your recommendation**:
 
-- **Deployment type** — `function`, `container`, `mcp-function`, or
-  `mcp-container` (passed to `register_app`; default container server-side,
-  but for a **greenfield** app you recommend and default to **`function`** — or
-  **`mcp-function`**/**`mcp-container`** when the product is an MCP server).
-  `function` and `mcp-function` were formerly named `worker` and `mcp-worker`;
-  the cutover is hard, so pass only the four names above. `type` is a schema
-  enum, so on the MCP surface a retired name never reaches the tool: it fails
-  argument validation with a plain enum error that does not name the
-  replacement. The four types:
+- **Deployment type**: `function`, `container`, `mcp-function`, or
+  `mcp-container` (passed to `register_app`; the server defaults to
+  container, but for a **greenfield** app you recommend and default to
+  **`function`**, or **`mcp-function`**/**`mcp-container`** when the product
+  is an MCP server). Pass only these four names. The four types:
 
   - **`function` (recommend for greenfield):** the app is its own Cloudflare
-    Worker (JS/TS) behind the gateway — ms cold starts, no Dockerfile,
-    Workers-native bindings. This is the right fit for the common citizen-dev
-    shape (a small web UI + JSON API in TS/JS).
+    Worker (JS/TS) behind the gateway: ms cold starts and no Dockerfile. This
+    is the right fit for the common citizen-dev shape (a small web UI + JSON
+    API in TS/JS).
   - **`container`:** choose this when the description gives a **clear signal**
-    for it — an explicit **non-TS/JS stack** (Python, Go, Ruby, …), **native
+    for it: an explicit **non-TS/JS stack** (Python, Go, Ruby, ...), **native
     dependencies** or system binaries, **long-running / heavy compute**, or a
     port of existing non-JS code (that's `inno-migrate-app`, which defaults to
     container). Absent such a signal, prefer function.
-  - **`mcp-function` (named `mcp`, then `mcp-worker`, before the current name):** choose when the product is an **MCP server for AI assistants**
-    (Claude Code, claude.ai) rather than a browser UI. Function-shaped (JS/TS,
-    no Dockerfile): the app serves the MCP **Streamable HTTP** transport at
-    `POST /mcp`, and users add the app's MCP address (the `App MCP address pattern:` line, with the app's name in place of `{app}`) as an MCP
-    server in their client. **Stateless only** — tools work normally, but
-    server-initiated features (notifications, sampling, elicitation,
-    long-lived subscriptions) do not; if the design needs those, it does not
-    fit this type today — surface that HERE, not after registration. Access
-    is given and taken away with the same tools as the other types
-    (`grant_access`, `revoke_access`, `set_app_access`), but what admits a
-    caller differs: an MCP app admits a person on the platform's member list
-    for the app, or every SSO user while the app is open, and reads both at
-    every request (`get_app_contract` §1.2). There is no browser SSO: the
-    platform issues OAuth tokens and the gateway validates them. **One hard constraint:**
-    if §1 flagged that the app must reach another service *as each person using
-    it* (a per-user **Connection**), this type **cannot** — only
-    `mcp-container` can consume a Connection in v1. Choose `mcp-container`
-    instead; do not land such an app on `mcp-function` and discover the gap
-    after registration (the type is fixed at registration).
+  - **`mcp-function`:** choose when the product is an **MCP server for AI
+    assistants** (Claude Code, claude.ai) rather than a browser UI. It is
+    function-shaped (JS/TS, no Dockerfile) and serves MCP at `POST /mcp`;
+    users add the app's MCP address (the `App MCP address pattern:` line, with
+    the app's name in place of `{app}`) as an MCP server in their client.
+    **Stateless only** (§1.2): tools work normally, but server-initiated
+    features (notifications, sampling, elicitation, long-lived subscriptions)
+    do not; if the design needs those, it does not fit this type today, so
+    surface that HERE, not after registration. Access is given and taken away
+    with the same tools as the other types (`grant_access`, `revoke_access`,
+    `set_app_access`); there is no browser SSO, and §1.2 says what admits a
+    caller. **One hard constraint:** if §1 flagged that the app must reach
+    another service *as each person using it* (a per-user **Connection**),
+    this type **cannot**: only `mcp-container` can consume a Connection in
+    v1. Choose `mcp-container` instead; do not land such an app on
+    `mcp-function` and discover the gap after registration (the type is
+    fixed at registration).
     **Idle clock:** an MCP app that is built and then left connected but
     unused is warned and then stopped like any idle app. What counts as use
     is served from one place, the **Lifecycle (idle clock)** section of
-    `get_platform_docs`, and `inno-manage-app`'s lifecycle section quotes it:
-    fetch or quote that sentence rather than describing the rule in your own
-    words. Tell the user when you hand the app over (`inno-manage-app`).
+    `get_platform_docs`, and `inno-manage-app`'s lifecycle section points to
+    it: fetch and quote that sentence rather than describing the rule in your
+    own words. Tell the user when you hand the app over (`inno-manage-app`).
   - **`mcp-container`:** choose when the product is an **MCP server** that
-    needs the **container** shape instead — a **non-TS/JS stack** (Python,
-    Go, Ruby, …), **native dependencies**, **heavy/long-running compute**
-    a Cloudflare Worker can't give it, **or an MCP server that must consume a
-    per-user Connection** (this is the only type that can, in v1 — see
-    `inno-add-connection`). Same MCP contract as `mcp-function` (Streamable
-    HTTP at `POST /mcp`, **stateless only** — no notifications, sampling,
-    elicitation, or long-lived subscriptions) layered on the container
-    baseline: a Dockerfile serving `0.0.0.0:8080`, non-root `USER`, and
-    `GET /healthz` (`get_app_contract` §1.3). Same OAuth perimeter and access
-    story as `mcp-function`: no browser SSO, the platform issues OAuth tokens
-    and the gateway validates them, and the platform's member list and the
-    open flag decide access at every request. Default stack: **Python + the
-    official MCP Python SDK** (FastMCP).
+    needs the **container** shape instead: a **non-TS/JS stack**, **native
+    dependencies**, **heavy/long-running compute** a Cloudflare Worker can't
+    give it, **or an MCP server that must consume a per-user Connection**
+    (this is the only type that can, in v1; see `inno-add-connection`). It
+    is `mcp-function`'s MCP contract (`POST /mcp`, **stateless only**, no
+    browser SSO) on the container baseline (§1.3). Default stack: **Python +
+    the official MCP Python SDK** (FastMCP).
     CRITICAL (Python SDK): keep the starter's `transport_security` setting,
     which `get_app_contract` §1.3 states and explains; changing it breaks every
     gateway-forwarded `/mcp` request. Also: after deploying a fix to a RUNNING
-    mcp-container app, `restart_app` — a live instance keeps serving the old image
-    until it recycles.
+    mcp-container app, `restart_app`, because a live instance keeps serving
+    the old image until it recycles.
     Note the idle **cold start**: a sleeping container wakes on request, so
     expect a seconds-scale delay on the first `POST /mcp` after idle (how
     long it stays up with no requests is the `container.sleep_after`
     setting, which `get_config app=<name>` shows once the app exists).
-    Mention this if responsiveness matters to the user. The idle-clock rule under `mcp-function` applies here too, from
-    the same served home.
+    Mention this if responsiveness matters to the user. The idle-clock rule
+    under `mcp-function` applies here too, from the same served home.
   - State your recommendation and the reason, and go with the user's call.
 - **Deployment pattern** (contract §5): server-rendered is the default for
-  internal tools; SPA+API when rich client interactivity is the point — applies
-  to either type.
-- **Stack** — follows from the type: a **function** or **mcp-function** app is TS/JS
-  (that is what Cloudflare Workers run; an mcp-function app builds on the MCP TypeScript SDK). A
-  **container** app defaults to Python/Starlette (the tested
-  container stack, with a working reference app), or the user's chosen stack —
-  any language is supported; the container contract is HTTP on port 8080, not a
-  language. An **mcp-container** app defaults to **Python + the official MCP
-  Python SDK** (FastMCP) — but any language is equally supported, same
-  contract.
+  internal tools; SPA+API when rich client interactivity is the point. It
+  applies to either browser type.
+- **Stack** follows from the type: a **function** or **mcp-function** app is
+  TS/JS (that is what Cloudflare Workers run; an mcp-function app builds on
+  the MCP TypeScript SDK). A **container** app defaults to Python/Starlette
+  (the tested container stack, with a working reference app; contract §4),
+  or the user's chosen stack: any language is supported. An
+  **mcp-container** app defaults to **Python + the official MCP Python SDK**
+  (FastMCP), but any language is equally supported.
 
 ### Present the design, THEN ask for approval
 
 The user deserves to see what they're approving. **Write the full design into
-your visible reply as a structured section — never a one-line summary buried
+your visible reply as a structured section, never a one-line summary buried
 inside a tool-approval prompt.** An approval question that references "the
 design as described" when no design appears in the conversation is a defect,
 not a shortcut: the user cannot approve what they have not seen.
 
 The written design covers, at minimum:
 
-- **What the app does** — in the user's own terms, a short paragraph
+- **What the app does**: in the user's own terms, a short paragraph
 - **Deployment type** and why (and the Connection constraint if §1 flagged it)
-- **Data model** — the tables and files it will store
-- **Routes / pages** — what the user can actually open and do
+- **Data model**: the tables and files it will store
+- **Routes / pages**: what the user can actually open and do
 - **Access model**: who can see what, and who can edit. The platform manages
   only membership: `X-Forwarded-Groups` carries at most this app's own two
-  groups, the members group (a member) and the open group (a caller who
-  reached an open app), whose names are on the `App groups:` line of the
-  status you read in the Version gate, with the app's name in place of
-  `{app}`. Any finer role (an editor, an admin view) needs the app's own
-  role table keyed on `X-Forwarded-User`, the caller's email address, which
-  can change for one person and pass to another; do not design around
-  reading other groups from the header. The full header rule, including
-  when an older live app still sees more, is `inno-platform-conventions`'
-  **Identity** section.
+  groups (the `App groups:` line of the status you read in the Version gate,
+  with the app's name in place of `{app}`). Any finer role (an editor, an
+  admin view) needs the app's own role table keyed on `X-Forwarded-User`,
+  the caller's email address, which can change for one person and pass to
+  another; do not design around reading other groups from the header. The
+  header rule is `inno-platform-conventions`' **Identity** section.
 - **Accessibility** (a browser-facing app): who will use it, the main flows
   a person has to complete, and how each one works from the keyboard alone
   and with a screen reader. For an MCP app, say it does not apply.
@@ -301,15 +283,14 @@ in your own words referencing the design the user can now read; put genuinely
 separate decisions (name choice, deployment type, members) in their own
 questions rather than folding them into the approval. Registration provisions
 real resources (a database and file storage, and for a browser app a
-sign-in in front of its address; from platform v0.16.5 no new app gets an
-Okta access group, since its member list alone decides who may use it) and
-binds them to the user's repo; the type is fixed at registration.
+sign-in in front of its address) and binds them to the user's repo; the
+type is fixed at registration.
 
 The type and design seed the scaffolding in §4.
 
 ## 2. Create the repo from the template
 
-The repo must land in the **user's own** ownership — the platform has no
+The repo must land in the **user's own** ownership: the platform has no
 create-on-behalf path and never creates a repo itself. That constrains *whose
 account* it lands in, not *who runs the command*.
 
@@ -331,7 +312,7 @@ status you read in the Version gate.
 - Template copying is **asynchronous**: an immediate `git clone` can land an
   empty repo. Poll `git fetch` until `origin/main` exists before checking out.
 
-**Fallback: walk them through the browser** — when `gh` is absent or
+**Fallback: walk them through the browser** when `gh` is absent or
 unauthenticated, the account it holds is not theirs, or they simply prefer it:
 
 1. Open the `new repo:` link on the `Template repo:` line of the status you
@@ -344,7 +325,7 @@ unauthenticated, the account it holds is not theirs, or they simply prefer it:
 3. Click **Create repository**. The repo lands in **their** ownership, already
    scaffolded from the template.
 
-Note the resulting `owner/repo` slug — that's the `repo` argument for
+Note the resulting `owner/repo` slug: that's the `repo` argument for
 `register_app`.
 
 ## 3. Register the app (two calls)
@@ -360,65 +341,45 @@ then call it again.
 register_app({ app, repo, description, type, members, accept_guardrails: true, connections })
 ```
 
-- `app` — the app name from §1 (drives the hostname). The wire parameter is
-  `app`; no tool names the target app `name`. Every tool takes the app as
-  `app`: the two variable tools, `set_app_variable` and `remove_app_variable`,
-  use `name` for the *variable's* name, not the app.
-- `repo` — the `owner/repo` slug from §2 (a **slug, not a URL**). `app` and
+- `app`: the app name from §1 (drives the hostname). The wire parameter is
+  `app`; no tool names the target app `name` (the variable tools use `name`
+  for the *variable's* name).
+- `repo`: the `owner/repo` slug from §2 (a **slug, not a URL**). `app` and
   `repo` are the only two the schema requires; everything below is optional to
   the schema, though the handler still refuses the call without
   `accept_guardrails: true`.
-- `type` — from the design decision (§1b): `"function"` for the greenfield
+- `type`: from the design decision (§1b): `"function"` for the greenfield
   default, `"container"` when the description warranted it, `"mcp-function"` for
   an MCP server, `"mcp-container"` for an MCP server that needs the container
   shape. Omit for container. The type is fixed at registration and can't be
   switched later (register a new app to change it).
-- `accept_guardrails: true` — required; you must have done the §1a review.
-- `members` is an optional list of Okta emails. A member who is notified
-  hears that the app was shared with them, in-platform plus email per their
-  own notification settings, so name only people who should hear about it
-  now. On platform v0.16.5 or later (for an MCP app, v0.16.4 or later),
-  each address is added to the app's member list, its only store (the app
-  has no Okta group; `inno-manage-app`'s `grant_access` section says what
-  admits a person), and notified. While the platform has an Okta token, an
-  address Okta does not know is still added but not notified, and call 2's
-  answer names it under `Warnings:`. Since platform v0.16.9 that warning
-  reads "Okta has no user for <address>, so no one can sign in as that
-  address yet. They were added to the app's member list anyway and not
-  notified. If it is mistyped, revoke_access removes it; if their account is
-  still being created, their access applies once it exists." (before it,
-  `member not found in Okta: <address>; added to the app's member list
-  anyway and not notified`). Check its spelling with the user, and if it is
+- `accept_guardrails: true`: required; you must have done the §1a review.
+- `members` is an optional list of Okta emails (at most 50). Each address is
+  added to the app's member list and notified that the app was shared with
+  them, in-platform plus email per their own notification settings, so name
+  only people who should hear about it now. An address Okta does not know
+  is handled as `register_app`'s description says, and call 2's answer
+  names it under `Warnings:`. Check its spelling with the user, and if it is
   mistyped, remove it with `revoke_access` (`inno-manage-app`). An address
-  the platform could not check in Okta is added too, with its own warning,
-  which since platform v0.16.9 reads "Okta could not be asked whether it has
-  a user for <address>, so the address was not checked." (before it, `could
-  not check <address> in Okta; added to the app's member list anyway`). On an
-  older platform, or before v0.16.8 for a registration begun on one, an
-  address Okta does not know is skipped instead, with no access and no
-  notice, and call 2's answer names it under `Warnings:`: grant it later
-  with `grant_access`, once that person has an account. From platform
-  v0.16.12 each added address is pinned to an account as `grant_access`
-  pins it (`inno-manage-app`), and the owner's own row to the account that
-  registers the app. A member whose address resolves to an account the
-  list already holds under another address (such as the owner's own
-  alias) gets no second row and is not notified, and the answer names it
+  the platform could not check in Okta is added too, with its own warning.
+  From platform v0.16.12 each added address is pinned to an account as
+  `grant_access` pins it (`inno-manage-app`), and the owner's own row to the
+  account that registers the app. A member whose address resolves to an
+  account the list already holds under another address (such as the owner's
+  own alias) gets no second row and is not notified, and the answer names it
   among the warnings.
 
   On a platform that lists allowed email domains, an address outside them
   refuses the whole call with `email_domain_not_allowed` before anything is
-  created. From platform v0.16.7 that includes the user's own address,
-  because the caller becomes the app's owner (**Reading register_app's
-  responses** below says what to tell them).
-- `connections` — optional list of names, when §1 step 5 flagged a per-user
-  backend. Pass what you plan to set up; it **creates nothing** (a connection
-  needs a strategy and config only `set_app_connection` can supply) and is
-  echoed back in the response as a reminder to configure each one. A
-  badly-shaped name is noted in the response and never fails the registration.
-  The list itself is bounded: **at most 16 names, each at most 64
-  characters**. On the MCP surface the schema refuses a longer list or an
-  over-long name before the tool runs; the handler behind it answers
-  `too_many_connections`. Names beyond the bound are added afterwards with
+  created. That includes the user's own address, because the caller becomes
+  the app's owner (**Reading register_app's responses** below says what to
+  tell them).
+- `connections`: optional list of names, when §1 step 5 flagged a per-user
+  backend. Pass what you plan to set up; it **creates nothing** (only
+  `set_app_connection` can) and is echoed back in the response as a reminder
+  to configure each one. A badly-shaped name is noted in the response and
+  never fails the registration. The schema bounds the list (at most 16
+  names, each at most 64 characters); add any beyond that afterwards with
   `set_app_connection`.
 
 The first call returns text beginning **`Registration started for "{name}" ←
@@ -484,28 +445,22 @@ response names a NEW proof path, and that new file is the one to commit.
 Once the proof file is pushed to the default branch AND the user confirms
 they've installed the App (or the App already covered the repo), call
 `register_app` **again with the same arguments**. This re-checks the proof file,
-then finishes the job server-side (prunes the template scaffold to the chosen
-type in a new commit on the repo's default branch, pushed via the
-installation token, provisions D1 + R2, plus the sign-in in front of a
-browser app's address, and binds the repo; from platform v0.16.8 no app
-gets an Okta group, even one whose registration an earlier release began,
-while before it a registration begun before v0.16.5 does). It returns text
-beginning
+then finishes the job server-side: it prunes the template scaffold to the
+chosen type in a new commit on the repo's default branch, provisions the
+app, and binds the repo. It returns text beginning
 **`App "{name}" registered from {repo}`** and containing:
 
 - `URL (after first deploy): https://<app host>`: **quote
   this from the response, never construct it** (the host and domain are
   the instance's). For an **mcp-function** or **mcp-container** app the
-  response surfaces the **MCP endpoint** (`…/mcp`) instead — same rule: quote
-  it from the response. The
-  URL 404s until the first successful `inno-ship`. A browser app registered
-  on platform v0.16.5 or later needs the platform's newer gateway for that
-  first deploy: until a platform admin has promoted it, the deploy is
-  refused `gateway_too_old`, which is not the user's to fix (`inno-ship`'s
-  failure table). Tell them plainly: "The platform needs an update from its
-  operator before your app can go live; nothing on your side needs to
-  change."
-- A `.github/workflows/deploy.yml` — the thin caller workflow that wires the
+  response surfaces the **MCP endpoint** (`…/mcp`) instead; same rule: quote
+  it from the response. The URL 404s until the first successful `inno-ship`.
+  A browser app's first deploy needs the platform's newer gateway: until a
+  platform admin has promoted it, the deploy is refused `gateway_too_old`,
+  which is not the user's to fix (`inno-ship`'s failure table). Tell them
+  plainly: "The platform needs an update from its operator before your app
+  can go live; nothing on your side needs to change."
+- A `.github/workflows/deploy.yml`: the thin caller workflow that wires the
   repo to the platform's reusable CI. **Overwrite the repo's copy with the
   snippet the response returned** (an older template may still carry one). The template ships no `deploy.yml`: this file
   always comes from `register_app`'s second call. It carries the explicit
@@ -516,7 +471,9 @@ beginning
   `secrets: inherit` is a blocking finding for the `sast` gate, and the
   platform workflow needs no caller secrets.
 
-### Reading register_app's responses — branch, don't assume
+### Reading register_app's responses: branch, don't assume
+
+`register_app`'s description states what each refusal means. What to do next:
 
 - **`Registration started …`** on call 1: commit the proof file, hand over the
   install link, and wait (above). The same text on call 2 means the platform
@@ -525,92 +482,67 @@ beginning
   registration expired. Compare the proof `path:` with the one you committed:
   if it changed, commit the new file. Then have the user install the App on the
   repo (or widen its repository access) and call again.
-- **`App "{name}" registered …`** — call 2 succeeded; proceed to §4.
-- **`guardrails_not_accepted`** — you didn't pass `accept_guardrails: true`; do
-  the §1a review, then pass it.
-- **`invalid_name` / reserved** — the name broke the shape rule, hit a reserved
-  word, or ended in `-app`; pick another (you should have caught this with
-  `check_name`).
-- **`name_unavailable`** — an app with that name already exists and is not the
+- **`App "{name}" registered …`**: call 2 succeeded; proceed to §4.
+- **`guardrails_not_accepted`**: do the §1a review, then pass
+  `accept_guardrails: true`.
+- **`invalid_name` / reserved**: pick another name (you should have caught
+  this with `check_name`).
+- **`name_unavailable`**: an app with that name already exists and is not the
   caller's own partial registration; pick another name.
-- **`invalid_type`** — `type` was not one of the four preset names. On the MCP
-  surface a retired name (`worker`, `mcp-worker`, `mcp`) fails schema validation
-  before it ever gets this far.
-- **`invalid_repo`** — `repo` wasn't a valid `owner/repo` slug (you passed a URL
-  or a bare name); fix it.
-- **`repo_control_unproven`**: the App can reach the repo, but the
-  proof-of-control file is missing from its default branch or its contents
-  don't match. The error text repeats the exact path and contents: commit that
-  file (call 1 above) and call again. It can come back at call 2 even after the
-  setup page said verified, because call 2 re-checks the file right before
-  provisioning, so never delete it early.
-- **`name_quarantined`**: the name belonged to an app purged within the last
-  seven days and is held until the UTC time the message names. There is no
-  admin bypass: pick another name (check it with `check_name`), or wait until
-  that time.
-- **`repo_unreachable`**: between verification and call 2 the platform GitHub
-  App lost access to the repo. Have the user reinstall the App on the repo, then
+- **`invalid_type`**: pass one of the four type names.
+- **`invalid_repo`**: pass an `owner/repo` slug, not a URL or a bare name.
+- **`repo_control_unproven`**: the error text repeats the exact path and
+  contents: commit that file (call 1 above) and call again. It can come back
+  at call 2 even after the setup page said verified, because call 2 re-checks
+  the file right before provisioning, so never delete it early.
+- **`name_quarantined`**: the name is held after a purge until the UTC time
+  the message names, with no admin bypass: pick another name (check it with
+  `check_name`), or wait until that time.
+- **`repo_unreachable`**: have the user reinstall the App on the repo, then
   call again.
-- **`repo_identity_changed`**: the repo was renamed, transferred to another
-  account, or deleted and recreated after it was verified. Confirm the repo's
-  current `owner/repo` slug with the user and call again with it; a new slug
-  starts a fresh registration with a new proof file and a new install link
-  (have the user open that link and save). The platform retires the stale
-  verification as it answers, so the very next call starts clean: there is no
+- **`repo_identity_changed`**: confirm the repo's current `owner/repo` slug
+  with the user and call again with it; a new slug starts a fresh
+  registration with a new proof file and a new install link (have the user
+  open that link and save). The very next call starts clean: there is no
   window to wait out.
 - **`invalid_member_email`**: one of `members` is not a plain email address.
   Fix or drop it and call again.
-- **`email_domain_not_allowed`**: an address is outside the platform's
-  allowed email domains (a listed domain's subdomains are inside); the
-  message names the address and the domains. Either call can answer it, and
-  nothing was created.
+- **`email_domain_not_allowed`**: the message names the address and the
+  domains. Either call can answer it, and nothing was created.
   - **An address in `members`**: fix or drop that address and call again.
-  - **The user's own address** (checked since platform v0.16.7, because the
-    caller becomes the app's owner; this holds even for a call that repeats
-    a registration they already finished, which then hands back no
+  - **The user's own address** (this holds even for a call that repeats a
+    registration they already finished, which then hands back no
     `deploy.yml`): nothing on their side fixes it. The list is the instance
     manifest's `identity.allowedEmailDomains`, which only the platform's
     operator can change, by editing the manifest and redeploying. Tell the
     user plainly that their address cannot own an app on this platform, and
     stop.
-- **`idp_object_foreign`** (only on a platform before v0.16.8, and only
-  when finishing a registration begun before v0.16.5, or v0.16.4 for an MCP
-  app): an access group of the app's name already exists and is not this
-  platform's own; the message names it. Choose another name and check it
-  with `check_name`, and read the tool's own description for the rest.
-- **`host_in_use`**: the app's hostname already has a DNS record that is
-  not this app's (on a platform whose apps sit directly under its domain,
-  an unrelated record can). Nothing was created: choose another name, or
-  have the record removed if it is unused.
-- **`host_check_failed`**: on such a platform, the platform could not read
-  its DNS to check the hostname. Nothing was created, and this is not the
-  user's to fix: an operator must grant the platform's Cloudflare token
-  Zone DNS read.
+- **`host_in_use`**: nothing was created. Choose another name, or have the
+  record removed if it is unused.
+- **`host_check_failed`**: nothing was created, and this is not the user's to
+  fix: an operator must grant the platform's Cloudflare token Zone DNS read.
 - **`upstream_error`** (could not re-check the repository with GitHub): a
   transient GitHub failure during call 2's re-check. Wait a moment and call
   again with the same arguments.
-- **More than 50 `members`**: on the MCP surface the tool's schema refuses
-  the list before the tool runs, with an argument-validation error on
-  `members` rather than a platform code (the handler behind it answers
-  `too_many_members`, which an MCP caller never sees). Register with a
+- **More than 50 `members`**: the tool's schema refuses the list before the
+  tool runs, with an argument-validation error on `members`. Register with a
   shorter list and add the rest afterward with `grant_access`.
-- **`app_limit_reached`** — the user is at their active-app limit; resolve per
+- **`app_limit_reached`**: the user is at their active-app limit; resolve per
   §1 (the user chooses to stop one of their own apps, or an admin raises the
   limit; never propose which to stop).
-- **`repo_already_registered`** — that GitHub repo is already bound to an app
+- **`repo_already_registered`**: that GitHub repo is already bound to an app
   (one repo binds to at most one app). Use a different repo, or manage the
   existing app via `inno-manage-app`. (`repo_id_conflict` is the audit action
   the platform records for this refusal; callers never see it as an error code.)
-- **`repo_owner_claimed`** — repositories under that GitHub account are already
-  registered on the platform by someone else, and only that first user may bind
-  more repos under it. The message names who holds it: ask them or a platform
-  admin to register on the user's behalf, or use a repo under an account of
-  the user's own. Platform admins bypass this check, so an admin can register
-  under a shared-org account directly without going through the first user.
-- **`repo_mismatch`** — a partially-finished registration exists for this name
+- **`repo_owner_claimed`**: the message names who holds that GitHub account:
+  ask them or a platform admin to register on the user's behalf, or use a
+  repo under an account of the user's own. Platform admins bypass this check,
+  so an admin can register under a shared-org account directly without going
+  through the first user.
+- **`repo_mismatch`**: a partially-finished registration exists for this name
   with a *different* repo; finish it with the original repo, or start over with
   a consistent `repo`.
-- **`github_app_not_configured`** — the platform's GitHub App isn't set up on
+- **`github_app_not_configured`**: the platform's GitHub App isn't set up on
   this deployment; nobody can register until an admin configures it.
 - **Repo wasn't template-derived.** The user registered a repo that didn't
   come from §2's "Use this template" flow (a blank GitHub "New repository" is
@@ -623,8 +555,8 @@ beginning
   second cue is the one that holds for every type: after call 2 finishes, the
   repo shows none of the type-specific files described in §4. This is not an
   error to retry. Treat it as the empty-repo path in §4 below.
-- **`registration_disabled`** — an admin has turned off self-service
-  registration; a platform admin must re-enable it (`registration.enabled`).
+- **`registration_disabled`**: a platform admin must re-enable self-service
+  registration (`registration.enabled`).
 - Any other non-empty error: surface it verbatim rather than retrying
   blindly. The refusals any platform tool can give are explained once, in
   `inno-platform-conventions`' **Refusals every tool shares** section.
@@ -645,136 +577,94 @@ If the proof file was committed through GitHub's web UI instead, clone now:
 `git clone <the user's repo>` (e.g. `git@github.com:<owner>/<repo>.git`), then
 `cd <repo>`.
 
-After call 2, the repo has been **pruned to the deployment type you chose** —
+After call 2, the repo has been **pruned to the deployment type you chose**:
 the template carries every scaffold and the platform rewrote the repo at
 registration. No type ships `.github/workflows/deploy.yml`: you write it
 from call 2's snippet per §3. A
 **function** repo has the TS reference (`app/index.ts`),
 an **mcp-function** repo the MCP-server TS reference (also `app/index.ts`), and
-a **container** repo the Python/Starlette reference (`app/` — incl. `main.py`,
-`storage.py`, `templates/`, `requirements.txt` — plus `Dockerfile` and `lib/`).
-An **mcp-container** repo ships **its own overlay** (`scaffold/mcp-container/`,
-platform v0.14.5): a stateless FastMCP starter for `app/main.py`, plus its own
-`README.md`, `CLAUDE.md`, and `app/requirements.txt`, applied over the
-container root (see the bullet below); `Dockerfile`, `lib/`, and
-`app/storage.py` stay as the container reference's. Everything
-else is platform-owned and must NOT be in the repo: a repo-root `src/`, the
-repo-root `package.json` / `package-lock.json` / `tsconfig.json`, any wrangler
-config or `.wrangler/`, a `scaffold/` that outlives `app/.needs-build`, a root
-`.env*` or package-manager config, a `.npmrc` at any depth, and any committed
-symlink that resolves to a directory. Don't create any of them. The full list,
-with the reason for each and what to do when a migrated repo already carries
-one, is `inno-platform-conventions`' **Files you must not touch** section.
-Load that skill before writing any application code (stack
-policy, storage, identity, the do-not-touch file list), and — for a container
-or mcp-container app — the `inno-containerize` skill before editing the
+a **container** repo the Python/Starlette reference (`app/`, incl. `main.py`,
+`storage.py`, `templates/`, `requirements.txt`, plus `Dockerfile` and `lib/`).
+An **mcp-container** repo ships **its own overlay** (`scaffold/mcp-container/`):
+a stateless FastMCP starter for `app/main.py`, plus its own `README.md`,
+`CLAUDE.md`, and `app/requirements.txt`, applied over the container root
+(see the bullet below); `Dockerfile`, `lib/`, and `app/storage.py` stay as
+the container reference's. Everything else is platform-owned and must NOT be
+in the repo: don't create any of it. The `config-integrity` gate's list is
+contract R7 and `get_platform_docs`' **Environment & config integrity**
+section; the plugin's copy, with what to do when a migrated repo already
+carries one, is `inno-platform-conventions`' **Files you must not touch**
+section. Load that skill before writing any application code (stack
+policy, storage, identity, the do-not-touch file list), and, for a container
+or mcp-container app, the `inno-containerize` skill before editing the
 Dockerfile.
 
-**If the repo wasn't template-derived, there's nothing to prune — author the
-layout by hand.** A repo created via GitHub's blank "New repository" flow
-(instead of §2's "Use this template") arrives with no scaffold, so call 2
-leaves it as-is. Recognize this early — the repo is missing the type-specific
-files described below, and hand-author the full layout out of the template repo,
-then write `.github/workflows/deploy.yml` from call 2's response. Where you copy
-from depends on the type, because three of the four have an overlay
-directory:
+**The empty-repo path: if the repo wasn't template-derived, there's nothing
+to prune, so author the layout by hand.** A repo created via GitHub's blank
+"New repository" flow (instead of §2's "Use this template") arrives with no
+scaffold, so call 2 leaves it as-is. Recognize this early: the repo is
+missing the type-specific files described above. Then read
+`references/hand-authored-layout.md`, which says what to copy from the
+template repo for each type and why `CLAUDE.md` is copied rather than
+written, and write `.github/workflows/deploy.yml` from call 2's response.
 
-- **`function` / `mcp-function`:** copy `scaffold/function/` or
-  `scaffold/mcp-function/`. Each carries `CLAUDE.md`, `README.md`, and an
-  `app/` (`index.ts`, plus `package.json` and its lockfile for
-  `mcp-function`). Take `.gitignore` from the template root.
-- **`mcp-container`:** copy `scaffold/mcp-container/` (platform v0.14.5):
-  `CLAUDE.md`, `README.md`, `app/main.py`, and `app/requirements.txt`. Fill
-  in the rest from the template root, which the overlay does not carry:
-  `Dockerfile`, `.dockerignore`, `lib/`, `app/storage.py`, and `.gitignore`
-  (skip `app/templates/`, which this type has no use for).
-- **`container`:** there is no `scaffold/container/`, because the container
-  files ARE the template root. Copy those: `Dockerfile`, `.dockerignore`,
-  `lib/`, `app/main.py`, `app/storage.py`, `app/templates/`,
-  `app/requirements.txt`, the root `CLAUDE.md`, `README.md`, and `.gitignore`.
-
-Copy `CLAUDE.md` rather than writing one: the `config-integrity` gate checks
-five required section headers, and the check is **type-blind**, so a container
-app carrying the function headers passes and the reverse passes as well.
-`inno-platform-conventions`' **Files you must not touch** section names the
-five and the two variant groups. Copy your own type's version anyway, so the
-body describes the runtime this app actually has.
-
-**Scaffold by the deployment type you chose in §1b** (fetch `get_app_contract`
-§1.1 for the authoritative function deltas):
+**Scaffold by the deployment type you chose in §1b.** The contract sections
+you read in §1b (§1.1 to §1.3) are the authority for each type's deltas.
 
 - **`function` app (greenfield default):** the entry is **`app/index.ts`**
-  exporting `export default { fetch(request, env, ctx) }`. The request is
-  already Access-verified — read identity from `request.headers`
+  exporting `export default { fetch(request, env, ctx) }`; extend it rather
+  than re-scaffolding. Read identity from `request.headers`
   (`X-Forwarded-User` / `X-Forwarded-Groups`), serve **`GET /healthz` as a
   route** returning **exactly 200** (a 204 or a redirect to `/healthz/` fails
-  both the CI smoke gate and the runtime probe), and reach storage through the
-  app's **own bindings**:
-  `env.DATA` (D1), `env.FILES` (R2), not `storage.internal`. Declare every
-  npm package the code imports in a **non-root** `app/package.json`, and commit
-  the `app/package-lock.json` that `npm install` (run inside `app/`) produces,
-  kept in sync with `package.json`. The install rule and everything it
-  refuses have one home, `inno-platform-conventions`' **Node apps** paragraph;
-  the short of it is that a runtime import must sit under `dependencies`,
-  because CI installs `--omit=dev`. The repo is already function-shaped
-  (no Dockerfile, no Python reference — the CI image gates are skipped for this
-  type); extend `app/index.ts` rather than re-scaffolding. Never interpolate
-  user data into hand-built HTML — even escaped, the SAST gate blocks it; return
-  dynamic data as JSON (like the scaffold's `/me`) or use an auto-escaping
-  template library. Do NOT create `wrangler.jsonc`/`app-worker.jsonc` — those
-  are platform-injected. Include the required **sign-out link** (R4) — same as
-  the container reference: a static link to the team-domain logout, its URL
-  sourced from the `Sign-out URL (all apps):` line of the status you read in the Version gate (see
-  `inno-platform-conventions`'s "Sign out" section for the exact convention);
-  nothing in this type's scaffold provides it for you.
-- **`mcp-function` app:** function-shaped — everything in the function bullet applies
-  (entry `app/index.ts`, identity headers, `GET /healthz` as a route,
-  `env.DATA`/`env.FILES`, non-root `app/package.json` with its committed
-  `app/package-lock.json` kept in sync (the scaffold ships both), no injected
-  files).
-  Deltas (authoritative: `get_app_contract` §1.2): serve the MCP **Streamable
-  HTTP** transport at `POST /mcp` using the MCP TypeScript SDK's
-  `WebStandardStreamableHTTPServerTransport`, constructed **without a
-  `sessionIdGenerator`** (stateless — every `POST /mcp` self-contained).
-  Implement **no auth of any kind**: the platform is the OAuth Authorization
-  Server and the gateway is the Resource Server — the `Authorization` header
-  never reaches the app, and the `/.well-known/oauth-protected-resource`
-  metadata is served by the platform; never route those paths yourself. No
-  sign-out link (there is no browser session).
+  both the CI smoke gate and the runtime probe), and reach storage through
+  the app's **own bindings** `env.DATA` (D1) and `env.FILES` (R2), not
+  `storage.internal`. Declare every npm package the code imports in a
+  **non-root** `app/package.json`, and commit the `app/package-lock.json`
+  that `npm install` (run inside `app/`) produces, kept in sync with
+  `package.json`. The install rule and everything it refuses have one home,
+  `inno-platform-conventions`' **Node apps** paragraph; the short of it is
+  that a runtime import must sit under `dependencies`, because CI installs
+  `--omit=dev`. Never interpolate user data into hand-built HTML: even
+  escaped, the SAST gate blocks it; return dynamic data as JSON (like the
+  scaffold's `/me`) or use an auto-escaping template library. Do NOT create
+  `wrangler.jsonc`/`app-worker.jsonc`: those are platform-injected. Include
+  the required **sign-out link** (R4), a static link whose URL is the
+  `Sign-out URL (all apps):` line of the status you read in the Version gate
+  (see `inno-platform-conventions`'s "Sign out" section for the exact
+  convention); nothing in this type's scaffold provides it for you.
+- **`mcp-function` app:** everything in the function bullet applies except
+  the sign-out link (there is no browser session); the scaffold ships both
+  `app/package.json` and its lockfile. Serve MCP at `POST /mcp` with the MCP
+  TypeScript SDK's `WebStandardStreamableHTTPServerTransport`, constructed
+  **without a `sessionIdGenerator`** (stateless), and implement **no auth of
+  any kind**: never route `/.well-known/oauth-protected-resource` yourself
+  (§1.2 says why).
 - **`container` app, tested stack (Python):** start from the reference app
-  (`app/main.py` + `Dockerfile`) and extend it — don't regenerate from scratch.
+  (`app/main.py` + `Dockerfile`) and extend it; don't regenerate from scratch.
 - **`container` app, another stack:** replace `app/` and the `Dockerfile`
   wholesale for that stack, honoring the contract (port 8080, `/healthz`,
   identity headers, the `storage.internal` endpoints, sign-out link).
-- **`mcp-container` app:** the template's `scaffold/mcp-container/` overlay
-  (platform v0.14.5) ships a stateless FastMCP starter for this type, so
-  pruning applies that overlay's `.scaffold-remove` (it deletes
-  `app/templates/`, which this type has no use for) then moves the overlay's
-  `app/main.py`, `README.md`, `CLAUDE.md`, and `app/requirements.txt` onto
-  the container root; `Dockerfile`, `lib/`, and `app/storage.py` stay as the
-  container reference's. `app/main.py` already speaks Streamable HTTP at
-  `POST /mcp` with two example tools (`whoami`, `echo`) and already answers
-  non-POST `/mcp` requests with 405: extend it rather than adapting a
-  Starlette demo into an MCP server. `app/storage.py` carries the storage
-  **and `Connections` helpers** your tools consume, see
-  `inno-add-connection`. Contract (authoritative: `get_app_contract` §1.3):
-  the container baseline (Dockerfile, `0.0.0.0:8080`, non-root `USER`,
-  `GET /healthz`, storage via `http://storage.internal`) PLUS the MCP
-  **Streamable HTTP** transport at `POST /mcp`, **stateless only** (no
-  `sessionIdGenerator`/session correlation, same restriction as
-  `mcp-function`). **Keep the starter's `transport_security` setting**, which
-  `get_app_contract` §1.3 states and explains; the contract is the one place
-  that carries it, and changing it breaks every gateway-forwarded `/mcp`
-  request. Identity: implement no auth of your own, the
-  platform is the OAuth Authorization Server, the gateway is the Resource
-  Server; read `X-Forwarded-User`/`X-Forwarded-Groups` only, and never route
-  `/.well-known/oauth-protected-resource` yourself; no sign-out link (there
-  is no browser session). Default stack: Python plus the official MCP Python
-  SDK (FastMCP), pinned below `mcp` 2 in `app/requirements.txt` (2 renamed
-  the `FastMCP` API the starter uses); build the container image per
-  `inno-containerize`. Expect a seconds-scale cold start on the first
-  request after the container has been idle for the app's
-  `container.sleep_after`, which `get_config app=<name>` shows.
+- **`mcp-container` app:** pruning applied the template's
+  `scaffold/mcp-container/` overlay: its `.scaffold-remove` deleted
+  `app/templates/` (this type has no use for it), and its `app/main.py`,
+  `README.md`, `CLAUDE.md`, and `app/requirements.txt` replaced the container
+  root's; `Dockerfile`, `lib/`, and `app/storage.py` stay as the container
+  reference's. `app/main.py` already speaks Streamable HTTP at `POST /mcp`
+  with two example tools (`whoami`, `echo`) and already answers non-POST
+  `/mcp` requests with 405: extend it rather than adapting a Starlette demo
+  into an MCP server, and keep it stateless (§1.3). `app/storage.py`
+  carries the storage **and `Connections` helpers** your tools consume (see
+  `inno-add-connection`).
+  Identity is §1.2's: implement no auth of your own, read
+  `X-Forwarded-User`/`X-Forwarded-Groups` only, never route
+  `/.well-known/oauth-protected-resource` yourself, and add no sign-out link.
+  **Keep the starter's `transport_security` setting**, which
+  `get_app_contract` §1.3 states and explains; changing it breaks every
+  gateway-forwarded `/mcp` request. The starter pins FastMCP below `mcp` 2 in
+  `app/requirements.txt` (2 renamed the `FastMCP` API the starter uses);
+  build the container image per `inno-containerize`. Expect a seconds-scale
+  cold start on the first request after the container has been idle for the
+  app's `container.sleep_after`, which `get_config app=<name>` shows.
 
 **Delete the scaffold marker as you build.** The template repo ships
 `app/.needs-build`, which makes CI skip deployment until it's removed. Once you
@@ -784,15 +674,15 @@ begin writing the real app (per the approved design), delete it:
 rm -f app/.needs-build
 ```
 
-Leaving it in place means `inno-ship` will refuse to deploy — by design.
+Leaving it in place means `inno-ship` will refuse to deploy, by design.
 
 Typical scaffolding steps for a new feature (Python **container** reference
 shown; a **function** app does the equivalent inside `app/index.ts`'s `fetch`
-handler — route on the URL, read identity from the request headers, read/write
+handler: route on the URL, read identity from the request headers, read/write
 `env.DATA`/`env.FILES`):
 - Add routes to `app/main.py` (container) or `app/index.ts` (function); split into
   modules under `app/` as it grows.
-- (Container, Python) add templates under `app/templates/` — never delete the
+- (Container, Python) add templates under `app/templates/`; never delete the
   directory while the reference Dockerfile is in use (a missing `templates/` is
   a common runtime 500, see `inno-containerize`).
 - Add pinned dependencies to the stack's manifest (`app/requirements.txt` for
@@ -813,20 +703,19 @@ take it from there, not from this list. The plugin's summary of both is
 `inno-platform-conventions`' **Accessibility** section and **Response
 headers** paragraph.
 
-**Container apps: two caps on the storage endpoints.** A `{sql, params}` body
-over **4 MiB** and a file `PUT` whose declared `Content-Length` is over
-**25 MiB** are both refused, as is a `PUT` sent with no `Content-Length` at
-all (since platform v0.14.21, and contract version 19 states it). So a route
-that writes in bulk sends batches, and an upload route needs its own size
-check and its own message. The exact codes and the reasoning are
+**Container apps: the storage endpoints cap request bodies.** Contract R5
+(fetch `get_app_contract` with `sections: ["2"]`) gives the SQL body cap, the
+file `PUT` cap, and the refusal of a `PUT` with no `Content-Length`. So a
+route that writes in bulk sends batches, and an upload route needs its own
+size check and its own message. The codes and the reasoning are
 `inno-platform-conventions`' **Persistence** section. A function app reaches
 `env.DATA`/`env.FILES` directly and has neither cap.
 
-**Rewrite `README.md` — this is required, not optional.** The template's README
+**Rewrite `README.md`: this is required, not optional.** The template's README
 is the template's own ("Use this template…", template internals) and describes
 nothing about this app. Replace it with a **high-level overview of the user's
-app**: what it does, who it's for, and the app's URL. Keep it short — a few
-paragraphs is right; the platform mechanics (identity, storage, CI) already live
+app**: what it does, who it's for, and the app's URL. Keep it short (a few
+paragraphs is right); the platform mechanics (identity, storage, CI) already live
 in `CLAUDE.md` and don't belong here. The README is the user's file from then
 on: they can deepen it to whatever level of detail they prefer, and later
 features should keep it truthful.
@@ -834,7 +723,7 @@ features should keep it truthful.
 ## 5. Hand off
 
 Once scaffolding is in place, tell the user the app was registered (their repo +
-future URL — for an **mcp-function** or **mcp-container** app, the `/mcp`
+future URL; for an **mcp-function** or **mcp-container** app, the `/mcp`
 endpoint their MCP client will use), and that the next steps are: write the
 app, run
 `inno-safety-preflight` (it pushes to the default branch, which runs the real
@@ -848,10 +737,9 @@ it, do that setup now, before writing the rest of the app: run the
 
 If the app needs an app-level key or config value instead (one API key the
 whole app shares, a base URL), set it after registration with
-`set_app_variable` — it reaches the app as a plain environment variable.
+`set_app_variable`: it reaches the app as a plain environment variable.
 Never put it in the repo; gitleaks fails the build on the full history.
 
-If the app will read platform Variables, consider adding
-`app/inno-variables.json` (name → `{required?, secret?, description?}`) so
-an owner without your source can see what it needs (see
-`inno-platform-conventions`).
+If the app will read platform Variables, consider declaring them in
+`app/inno-variables.json` (contract §2.3 gives the format) so an owner
+without your source can see what it needs (see `inno-platform-conventions`).

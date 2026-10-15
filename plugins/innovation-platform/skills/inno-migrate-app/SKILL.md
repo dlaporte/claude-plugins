@@ -1,6 +1,6 @@
 ---
 name: inno-migrate-app
-description: Use when the user has an EXISTING repo or codebase they want on the Innovation Platform ("deploy this to the innovation platform", "migrate this app", "put this repo on inno-platform"). Registers the user's existing repo in place via register_app and adapts it to the platform contract — no copying into a new repo, keeping its stack where the gates allow.
+description: Use when the user has an EXISTING repo or codebase they want on the Innovation Platform ("deploy this to the innovation platform", "migrate this app", "put this repo on inno-platform"). Registers the user's existing repo in place via register_app and adapts it to the platform contract, with no copying into a new repo, keeping its stack where the gates allow.
 ---
 
 # inno-migrate-app
@@ -32,7 +32,7 @@ Carry on.
 
 An existing repo now deploys **in place**. You register the user's **own** repo
 with the `register_app` MCP tool and make that same repo satisfy the platform
-contract, there is no porting into a freshly provisioned repo and
+contract: there is no porting into a freshly provisioned repo and
 no copying. The repo stays the user's, on their account/org, public or private.
 
 This differs from `inno-new-app` only in the starting point: new-app has the
@@ -44,16 +44,21 @@ names, install the platform GitHub App on the repo, and `register_app` again. If
 assess it, then adapt it in place before shipping.
 
 Requires the `inno-platform` MCP server (ships with this plugin). The first tool
-call triggers an Okta browser login — expected, not an error.
+call triggers an Okta browser login: expected, not an error.
 
-## Phase 1 — Assess (read-only; register nothing yet)
+## Phase 1: Assess (read-only; register nothing yet)
 
-**Fetch the `get_app_contract` MCP tool first — it IS the assessment
-checklist**: the full requirement list, the deployment patterns, what the
-platform does NOT support (background jobs, machine-to-machine APIs, guaranteed
-long-lived connections — instant blockers to surface), and the current
-recommended base images. Judge the repo against the contract, not a remembered
-summary of it.
+**Fetch the contract first: it IS the assessment checklist.** Call the
+`get_app_contract` MCP tool with
+`sections: ["1", "1.1", "1.2", "1.3", "2", "4", "4.1", "5"]`: the types and
+their deltas, the requirements R1 to R9, the stack policy, the base images,
+and the deployment patterns with what the platform does NOT support
+(background jobs, machine-to-machine APIs, guaranteed long-lived
+connections: instant blockers to surface). Fetch `"2.2"` too when the repo
+authenticates to a backend as each user (item 2), `"2.3"` when it reads
+configuration from its environment or a `.env` file (item 5), and `"2.1"`
+when its code reads another app's data through a data link. Judge the repo
+against the contract, not a remembered summary of it.
 
 If the app has pages people open in a browser, **fetch `get_app_accessibility`
 beside it.** It serves the platform's accessibility notes (WCAG 2.2 AA as the
@@ -65,37 +70,35 @@ blocker.
 Scan the existing repo and present a **migration assessment** covering, in
 order:
 
-1. **Stack — keep vs. adapt is the user's decision, informed by your analysis.**
+1. **Stack: keep vs. adapt is the user's decision, informed by your analysis.**
    Present findings to the user in plain language; the precision below is for
    your assessment, not recitation. The plugin README's **House style**
    section is the rule.
 
    The platform contract is **HTTP on port 8080** (container) or a Cloudflare
-   Worker `fetch` handler (function), **not a language**: no CI gate checks the language or
-   framework. Keeping the existing stack — TypeScript/Express, Go, Ruby,
-   Python, whatever — is usually the right call and the default bias. Present:
-   - **Can the current stack meet the platform requirements?** The container
-     contract (8080, `/healthz`, non-root, patched base image) and the security
-     gates (Trivy / `pip-audit` / `npm audit`, semgrep, no committed secrets).
-     Most stacks can, as-is.
-   - **Deployment type** — default **`container`** (keeps any stack). Only raise
+   Worker `fetch` handler (function), **not a language** (contract §4): no CI
+   gate checks the language or framework. Keeping the existing stack
+   (TypeScript/Express, Go, Ruby, Python, whatever) is usually the right call
+   and the default bias. Present:
+   - **Can the current stack meet R1 to R9?** Most stacks can, as-is; where
+     one fails, it is at the container gate or the security gates (R8).
+   - **Deployment type**: default **`container`** (keeps any stack). Only raise
      **`function`** when the source is already JS/TS and reimplementing it as a
      Cloudflare Worker is a deliberate choice the user opts into (closer to a
      rewrite; see `get_app_contract` §1.1). If the source is an **MCP server**,
-     raise **`mcp-function`** for a TS/JS source (MCP TypeScript SDK's Streamable
-     HTTP transport, stateless — `get_app_contract` §1.2) or **`mcp-container`**
-     for a Python/other-stack source (container contract plus `POST /mcp`,
-     stateless — §1.3). **Exception:** if the MCP source needs a per-user
-     **Connection** to a backend (step 2 below), it MUST be `mcp-container`
-     even when the source is TS/JS — `mcp-function` cannot consume a Connection
-     in v1. CRITICAL for a Python source using FastMCP (the `mcp` SDK): it
-     needs the `transport_security` setting `get_app_contract` §1.3 states,
-     or every gateway-forwarded `/mcp` request fails. The contract is where
-     that setting is written down; take it from there.
+     raise **`mcp-function`** for a TS/JS source (§1.2) or **`mcp-container`**
+     for a Python/other-stack source (§1.3); both are stateless only.
+     **Exception:** if the MCP source needs a per-user **Connection** to a
+     backend (step 2 below), it MUST be `mcp-container` even when the source
+     is TS/JS: `mcp-function` cannot consume a Connection in v1. CRITICAL for
+     a Python source using FastMCP (the `mcp` SDK): it needs the
+     `transport_security` setting `get_app_contract` §1.3 states, or every
+     gateway-forwarded `/mcp` request fails. The contract is where that
+     setting is written down; take it from there.
    - **Any deal-breakers?** A hard blocker that makes the platform unable to run
-     the app at all — call it out plainly. One known trap: **FastAPI** is
-     keepable only if its resolved Starlette version clears `pip-audit`/Trivy
-     (older pins drag in CVE-bearing `starlette 0.46.x` — check the lockfile).
+     the app at all: call it out plainly. Check the lockfile for the known
+     friction §4 names, a framework whose pins drag in a CVE-bearing
+     dependency (FastAPI's Starlette is its example).
    Note the entrypoint, framework, and listen port so you can adapt them to
    8080 + `/healthz`.
 2. **Auth to strip**: login routes, session middleware, password storage, OAuth
@@ -114,32 +117,29 @@ order:
    against some other service, holds a long-lived per-user token for that
    service, or ships a sidecar
    whose whole job is minting/refreshing that credential, don't port any of
-   it — that's exactly what a Connection replaces. Flag it in the assessment
+   it: that's exactly what a Connection replaces. Flag it in the assessment
    and point at the `inno-add-connection` skill for Phase 2 instead of
    carrying the old backend-auth code forward (note: needs the `mcp-container`
    type, per Phase 1 step 1's deployment-type bullet).
-3. **Persistence to port** — local files and SQLite move to the platform's
+3. **Persistence to port**: local files and SQLite move to the platform's
    storage (D1 for SQL, R2 for files) reached at `http://storage.internal`
    (container) or the app's own `env.DATA`/`env.FILES` bindings (function).
-   The gateway path caps two bodies, which is worth planning the port
-   around: a `{sql, params}` body over **4 MiB** and a file `PUT` over
-   **25 MiB** of declared `Content-Length` are both refused, as is a `PUT`
-   sent with no `Content-Length` at all (since platform v0.14.21, and
-   contract version 19 states it). So a one-shot import of an existing SQLite
-   table has to go in batches. The exact codes and the reasoning are
-   `inno-platform-conventions`' **Persistence** section. Neither cap applies
-   on the bindings path.
-   Dependencies the platform cannot provide — Postgres-specific SQL, Redis,
-   queues, third-party managed services — are **blockers**: name them, never
+   On the `storage.internal` path, R5 caps a SQL body and a file `PUT`, and
+   refuses a `PUT` with no `Content-Length`, which is worth planning the port
+   around: a one-shot import of an existing SQLite table has to go in
+   batches. The codes and the reasoning are `inno-platform-conventions`'
+   **Persistence** section. Neither cap applies on the bindings path.
+   Dependencies the platform cannot provide (Postgres-specific SQL, Redis,
+   queues, third-party managed services) are **blockers**: name them, never
    silently drop them.
-4. **Contract deltas** — listens on 8080, serves `/healthz`, runs non-root,
+4. **Contract deltas**: listens on 8080, serves `/healthz`, runs non-root,
    patched base image (container; see `inno-containerize`); app code arranged
    under `app/`; a root `CLAUDE.md` carrying the platform's required section
    headers (config-integrity checks them; copy the `CLAUDE.md` of the template repo, the `Template repo:` line of the status you read
    in the Version gate, and adapt its body). The repo's **default branch** needs no
    special handling: registration's scaffold prune and the `deploy.yml` that
    `register_app` returns both target the repo's actual default branch,
-   whatever it is named (platform v0.14.5), and `inno-safety-preflight` and
+   whatever it is named, and `inno-safety-preflight` and
    `inno-ship` push to that same branch.
 5. **Gate risks**: secrets **anywhere in git history** (gitleaks scans the full
    history, and this is the *same* repo: history is not left behind, so a
@@ -149,8 +149,7 @@ order:
    string-built HTML or raw SQL formatting. **Semgrep scans the whole
    repository, not just `app/`**: root-level scripts, tools, workflow files
    and the Dockerfile all count, so a migrated repo's non-app files can fail
-   the gate too. The exact scope, and what it skips, is
-   `inno-platform-conventions`' **Rendering** section. Then list every path
+   the gate too. R8 states the exact scope, and what it skips. Then list every path
    the `config-integrity` gate rejects. That list has one home too,
    `inno-platform-conventions`' **Files you must not touch** section; walk it
    against this repo and note every hit. The three that catch migrated repos
@@ -178,9 +177,8 @@ order:
    secrets that workflow needs.
 
    Also list every `.semgrepignore` file and `# nosemgrep` comment in the repo.
-   From platform v0.14.4 (contract version 13) the `sast` gate deletes every
-   `.semgrepignore` before it scans and ignores `# nosemgrep`, so whatever they
-   hid becomes a finding: list those findings and plan to fix them.
+   The `sast` gate honors neither (R8), so whatever they hid becomes a
+   finding: list those findings and plan to fix them.
 
    Inventory every value the app reads from its environment or a `.env` file:
    each becomes an app **Variable** (`set_app_variable`) after registration,
@@ -188,7 +186,7 @@ order:
    Consider also declaring them in `app/inno-variables.json` so the
    platform's Variables tab and `app_status` can tell the owner what's
    still unset.
-6. **What does not carry over** — custom domains, background jobs/cron, and any
+6. **What does not carry over**: custom domains, background jobs/cron, and any
    always-on/websocket assumptions.
 7. **Proposed app name.** The name rules, every `check_name` answer and the
    active-app limit have one home: `inno-new-app` §1's name bullet. Follow it
@@ -198,7 +196,7 @@ order:
    name across, and the name is independent of the repo name, though it does
    drive the app's hostname. Quote the exact URL from `register_app`'s
    response; never construct it.
-   Also ask who else needs access — optional Okta emails feed `register_app`'s
+   Also ask who else needs access: optional Okta emails feed `register_app`'s
    `members` and can be added later via `inno-manage-app`.
 8. **Accessibility** (an app with browser pages; an MCP server or an API-only
    app has none, so say it does not apply): who uses it, the main flows a
@@ -210,14 +208,14 @@ order:
    send.
 
 Run a **guardrails** review too: call `get_guardrails` and judge the app's name,
-purpose, and behavior against it. A conflict is a HARD STOP — you must not pass
+purpose, and behavior against it. A conflict is a HARD STOP: you must not pass
 `accept_guardrails: true` (which `register_app` requires) until it's clean or the
 user has an explicit admin exception.
 
 ### Present the plan, THEN ask for approval
 
 The user deserves to see what they're approving. **Write the full migration
-plan into your visible reply as a structured section — never a one-line
+plan into your visible reply as a structured section, never a one-line
 summary buried inside a tool-approval prompt.** An approval question that
 references "the plan as described" when no plan appears in the conversation
 is a defect, not a shortcut: the user cannot approve what they have not seen.
@@ -225,11 +223,11 @@ is a defect, not a shortcut: the user cannot approve what they have not seen.
 The written plan covers, at minimum, each assessment product above:
 
 - **Deployment type** and why (and the Connection constraint if it applied)
-- **Auth being stripped** — the specific files/routes removed, and what
+- **Auth being stripped**: the specific files/routes removed, and what
   replaces them (gateway headers; a Connection, if flagged in step 2)
-- **Persistence changes** — what moves to D1/R2, and every blocker by name
-- **Contract adaptations** — port/healthz/non-root/`app/` layout/CLAUDE.md
-- **Gate risks found** — secrets (including git history), CVEs, semgrep hits,
+- **Persistence changes**: what moves to D1/R2, and every blocker by name
+- **Contract adaptations**: port/healthz/non-root/`app/` layout/CLAUDE.md
+- **Gate risks found**: secrets (including git history), CVEs, semgrep hits,
   files that must be deleted before CI will pass
 - **Existing workflows**: each file under `.github/workflows/`, what happens to
   an existing `deploy.yml` (renamed or retired), and any `secrets: inherit` line
@@ -251,12 +249,12 @@ separate decisions (name choice, read-only default, members) in their own
 questions rather than folding them into the approval. If a blocker means the
 app cannot function on the platform at all, say so plainly and stop here.
 
-## Phase 2 — Register and adapt in place (only after approval)
+## Phase 2: Register and adapt in place (only after approval)
 
-**Protect the current state first — you're editing the user's real repo.**
+**Protect the current state first: you're editing the user's real repo.**
 Before adapting anything, make sure the repo's current state is safe to fall
 back to: confirm the working tree is committed and pushed (`git status`), and
-capture a restore point — a branch or tag on the pre-migration commit
+capture a restore point, either a branch or tag on the pre-migration commit
 (`git branch pre-inno-migration`), or do the adaptation on a feature branch
 and merge to the default branch once it's ready. Tell the user where the
 restore point is.
@@ -298,13 +296,9 @@ restore point is.
    `name_quarantined`, `repo_already_registered`, `repo_owner_claimed`,
    `repo_identity_changed`, `app_limit_reached`, `repo_mismatch`,
    `guardrails_not_accepted`, `email_domain_not_allowed`, `host_in_use`,
-   …), including what happens to each address in `members`, which on a
-   platform before v0.16.5 can differ. A browser app's
+   …), including what happens to each address in `members`. A browser app's
    first deploy also needs the platform's newer gateway (`gateway_too_old`,
-   in `inno-ship`'s failure table). For `repo_identity_changed` the tool's
-   description says: "Answers repo_identity_changed when the repo was
-   renamed, transferred or recreated since it was verified: call again for a
-   new proof file."
+   in `inno-ship`'s failure table).
 2. **Add the caller workflow.** Write `.github/workflows/deploy.yml` exactly as
    `register_app` returned it. If the repo already has a `deploy.yml`, never
    overwrite it silently: rename or retire it only as the approved plan says,
@@ -318,10 +312,10 @@ restore point is.
    platform re-dispatches it for security respins). The `with:` block matters
    most in a migration, because a migrated repo's name rarely matches the app's name. The broker resolves the real app
    from the signed repository id and refuses the run with `app_mismatch` when
-   the asserted name disagrees. It is a thin caller — editing
+   the asserted name disagrees. It is a thin caller: editing
    it can't bypass any gate (the broker's OIDC `job_workflow_ref` check enforces
    provenance), only break the deploy.
-3. **Make the repo contract-compliant** — in place, per
+3. **Make the repo contract-compliant**, in place, per
    `inno-platform-conventions` (and `inno-containerize` for a container):
    - App code under **`app/`**; entrypoint listens on **8080** and serves
      **`/healthz`** (container) or is `app/index.ts` exporting a `fetch` handler
@@ -330,10 +324,11 @@ restore point is.
      the reference `current_user(request)` helper), and any in-app roles kept
      in the app's own store keyed on that email (Phase 1 step 2). If the app
      trusts proxy headers (a proxy-fix middleware, a trust-proxy setting, or a
-     server's proxy-headers flag), trust only `X-Forwarded-For`,
-     `X-Forwarded-Host` and `X-Forwarded-Proto`, which the gateway sets itself;
-     `X-Real-IP`, `True-Client-IP` and `X-Forwarded-Port` stay caller-controlled
-     and must never feed identity, origin or access decisions.
+     server's proxy-headers flag), trust only the three that R3's table says
+     the gateway sets itself (`X-Forwarded-For`, `X-Forwarded-Host` and
+     `X-Forwarded-Proto`); every other forwarded header stays
+     caller-controlled and must never feed identity, origin or access
+     decisions.
    - **Persistence rewired** to the storage endpoints (container) or the app's
      `env.DATA`/`env.FILES` bindings (function).
    - **Dependencies** pinned in the stack's manifest under `app/`, CVE-clean.
@@ -367,14 +362,14 @@ restore point is.
      The served notes carry the detail; the plugin's summary is
      `inno-platform-conventions`' **Accessibility** section and **Response
      headers** paragraph.
-4. **Secrets in history** — because this is the same repo, a credential in any
+4. **Secrets in history**: because this is the same repo, a credential in any
    past commit still trips the `secrets` gate. Rotate it (a history rewrite
    alone doesn't un-leak it), scrub it from history before shipping, and set
-   the rotated value as an app **Variable** — never re-commit it.
+   the rotated value as an app **Variable**; never re-commit it.
 5. **Rewrite `README.md`** to describe the migrated app (what it does, who it's
    for, its URL), drawing on the existing README. Platform mechanics stay in
    `CLAUDE.md`, not here.
-6. **Backend auth Phase 1 flagged** — if the assessment (step 2 above) found
+6. **Backend auth Phase 1 flagged**: if the assessment (step 2 above) found
    the app running its own auth against an outside backend, set that up as a
    Connection now via the `inno-add-connection` skill instead of porting the
    old code.

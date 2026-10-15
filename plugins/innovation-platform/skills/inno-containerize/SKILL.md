@@ -31,127 +31,98 @@ Before anything else in this skill, do these five steps in order.
 Carry on.
 
 **Container-type apps only.** This skill is for the `container` deployment
-type — and applies equally to `mcp-container`: an mcp-container image follows
+type, and applies equally to `mcp-container`: an mcp-container image follows
 this exact same Dockerfile contract, plus it serves `POST /mcp`. A
 **`function`-type** app (its own Cloudflare Worker behind the gateway)
-has **no Dockerfile** — the container CI gates below are skipped for it, and
+has **no Dockerfile**: the container CI gates below are skipped for it, and
 its entry is `app/index.ts`, not a container image (see `get_app_contract`
 §1.1 and `inno-platform-conventions`). If the app is function-shaped (`function` or `mcp-function`), skip this
 skill entirely.
+
+**Fetch the contract first:** call the `get_app_contract` MCP tool with
+`sections: ["2", "4.1"]` (add `"1.3"` for an mcp-container app). Section 2's
+R1, R2, R7 and R8 state exactly the rules this skill applies, §4.1 is the
+base-image policy, and the answer opens with the platform's current
+digest-pinned recommended base images.
 
 The `container` CI job builds your Dockerfile with **no deploy credentials
 present** (an app author fully controls this build's inputs, and nothing of
 platform value is reachable from it), then runs four checks: a Trivy image
 scan, a non-root-user assertion, an `EXPOSE 8080` assertion, and a
-**`GET /healthz` smoke test** against the built image. The Trivy scan is
-policy-toggleable per app (`safety.gate.trivy`, admin-set): when enabled it
-hard-fails on HIGH/CRITICAL findings that have a fix available
-(`--severity HIGH,CRITICAL --ignore-unfixed`); when disabled the scan step
-is skipped and the job prints a loud `SAFETY GATE DISABLED` warning instead.
-The other three checks are not policy-toggleable and always run. A
-CycloneDX SBOM of the built image is generated and uploaded to the broker
-regardless of the Trivy gate's setting. A gate-disabled app sits outside
-image-vulnerability policy entirely, at this gate and in the daily safety
-sweep alike, which skips apps whose gate is off. The SBOM is captured
-anyway so that re-enabling the gate restores sweep coverage immediately,
-with no new deploy needed to regenerate it. Every check that runs must
-pass before `deploy` (which needs `container` to have succeeded) will run.
+**`GET /healthz` smoke test** against the built image. Every check that runs
+must pass before `deploy` will run. Only the Trivy scan can be turned off: an
+admin can set `safety.gate.trivy` off for an app (`get_config` says what that
+costs), and the job then skips the scan and prints a loud
+`SAFETY GATE DISABLED` warning instead. The other three checks always run.
+A CycloneDX SBOM of the built image is uploaded whatever the gate's setting,
+so turning the gate back on restores sweep coverage with no new deploy.
 
-Since platform v0.14.30 (contract version 22) the job also writes reports
-after the smoke test, which are not among those checks. Every
-container-shaped app gets a **Dockerfile misconfiguration report** (`trivy
-config`, HIGH and CRITICAL), advisory in every mode: a finding there is a
-Dockerfile fix to offer, never a red job. A `container` app also gets an
-accessibility and response-header report, which can fail the job only when
-an admin has set the app's `safety.a11y.mode` to `enforce`; the header check
-runs inside the accessibility scan, so with the mode `off` neither runs.
-`inno-safety-preflight` §1c is where both are read.
+After the smoke test the job also writes reports, which are not among those
+checks (R8 says which apps get which). The **Dockerfile misconfiguration
+report** is advisory in every mode: a finding there is a Dockerfile fix to
+offer, never a red job. A `container` app's accessibility and
+response-header report can fail the job only when an admin has set the
+app's `safety.a11y.mode` to `enforce`. `inno-safety-preflight` §1c is where
+both are read.
 
-The image the gates scanned is the image that ships. On a `v*` tag run the
-`container` job saves that exact image as a workflow artifact; the `deploy`
-job loads it, refuses unless its id matches the id the `container` job
-recorded with the platform, pushes it, and pins the deployment to its digest.
-Nothing rebuilds your Dockerfile at deploy time. Each run still builds its own
-image, though, so the tag run's scan can see a different image than the
-push preflight did when the base tag floats or upstream packages
-changed in between: pin the base to the digest `get_app_contract` serves.
+The image the gates scanned is the image that ships (§4.1): nothing rebuilds
+your Dockerfile at deploy time. Each run still builds its own image, though,
+so the tag run's scan can see a different image than the push preflight did
+when the base tag floats or upstream packages changed in between: pin the
+base to the digest `get_app_contract` serves.
 
-## The contract — identical for every stack
+## The contract: identical for every stack
 
-1. **Listen on `0.0.0.0:8080`** and declare `EXPOSE 8080` — the gate
+1. **Listen on `0.0.0.0:8080`** and declare `EXPOSE 8080`: the gate
    inspects `Config.ExposedPorts` for literally `"8080/tcp"`, and the
    gateway forwards traffic there regardless. Binding `127.0.0.1` is the
    classic "works locally, unreachable in the container" bug.
-2. **Non-root `USER` before `CMD`**: the gate is an allowlist. It checks the
-   part of `Config.User` before any `:` (the group is not checked) and accepts
-   exactly two forms:
-   - a plain decimal uid from 1 to 2147483647, such as `USER 1000` or
-     `USER 65532:65532` (leading zeros count as Docker counts them, so
-     `USER 00` is uid 0);
-   - a user name made only of letters, digits, `.`, `_` and `-`, not starting
-     with `-`, that appears on exactly one line of the image's own
-     `/etc/passwd` (copied out of the image, never run), where that line's uid
-     field is plain digits from 1 to 2147483647.
-
-   Everything else is refused: `root` or any uid 0, an unset `USER`, a signed
-   uid (`+0`), an empty user part (`:1000`), a name missing from
-   `/etc/passwd`, a name on more than one line (or on a line with leading
-   blanks, or with blanks inside the name field), a uid field that is not a
-   plain number, a uid above
-   2147483647, and a named user in an image with no readable `/etc/passwd`.
-   The platform enforces this exact rule from platform v0.14.4 (contract
-   version 13); earlier releases refuse a subset of these. On `scratch` or any
-   base without a passwd file, use a numeric uid (`USER 65532`). Switch user
-   *after* your last root-requiring `RUN`.
-3. **CVE-clean image** — patch the base's OS packages in the build
+2. **Non-root `USER` before `CMD`**: the gate is an allowlist on the part of
+   `Config.User` before any `:` (the group is not checked), and R1 states it
+   exactly. It accepts a plain decimal uid from 1 to 2147483647 (`USER 1000`,
+   `USER 65532:65532`), or a portable user name (letters, digits, `.`, `_`
+   and `-`, not starting with `-`) on exactly one line of the image's own
+   `/etc/passwd`, where that line's uid is such a number. Everything else is
+   refused, `root`, uid 0 (leading zeros count, so `USER 00` is uid 0) and
+   an unset `USER` among them. On `scratch` or any base without a passwd
+   file, use a numeric uid (`USER 65532`). Switch user *after* your last
+   root-requiring `RUN`.
+3. **CVE-clean image**: patch the base's OS packages in the build
    (`apt-get upgrade` / `apk upgrade`) so the Trivy gate passes; a stock
    base commonly ships fixable CVEs that have nothing to do with your code.
 4. **`GET /healthz` answers exactly 200.** A **hard CI gate**, not a nicety,
    and this item is the plugin's one home for the probe clocks (`inno-ship`
-   points here). The
-   `container` job runs the built image (`docker run -d -p 8080:8080`) and
-   polls `/healthz` 18 times, 5 seconds apart, with a 4 second per-try
-   timeout: about 90 seconds if the port refuses outright, up to about 162
-   seconds if it accepts the connection and then hangs. It requires **exactly
-   200** (true from platform v0.14.20), and so does the runtime probe: a 204,
-   and any 3xx, fail both, so a framework that redirects `/healthz` to
-   `/healthz/` fails both. Anything else, or no answer at all,
-   and it dumps the container logs and fails the job, which fails `deploy`.
-   That CI clock is separate from the platform's own runtime health probe,
-   which binds to the same endpoint after every deploy: immediately on each
-   green one, then on the configured interval (`health.probe_interval_hours`,
-   which an admin sets platform-wide or per app, and which
-   `get_config app=<name>` shows). The probe presents a credential chosen by the app's **perimeter**,
-   which is why `/healthz` must not depend on the caller: the Access service
-   token on an SSO-perimeter app (`container`, `function`) and the bearer
-   probe token on an OAuth-RS-perimeter app (`mcp-function`,
-   `mcp-container`). The probe fired by a deploy never judges a failure: it
-   defers **every** unhealthy result to the next hourly pass, whatever the
-   cause (a timeout, an error answer from the app, or a connection
-   failure such as a DNS or TCP error or a Cloudflare origin-reach status
-   520-527 or 530 while a container is still cold-starting). It leaves the
-   app's health status as it was and notifies no one; `app_status` then
-   reads `Health: re-probe pending (not answering yet: ...)`, which is
-   normal right after a deploy (see `inno-ship`). An hourly pass that comes
-   within 10 minutes of a deploy finishing defers the same way, and the
-   pass after it judges, so a deploy that leaves `/healthz` failing alarms
-   within about 70 minutes, not at once. Away from a deploy, the hourly
-   pass judges every result, a timeout included. Each attempt allows 45
-   seconds, and a timeout or an answer other than 200 (except 401, 403 and
-   302, which read as the probe being blocked, not as unhealthy) gets one
-   retry 5 seconds later before it is reported (or, right after a deploy,
-   deferred), so a verdict can take up to about 95 seconds. On the deploy's
-   probe a thrown connection error is the one result not retried: it is
-   deferred at once, since the hostname may still be propagating. When a
-   platform admin has turned on automatic restarts, the re-probe that
-   follows a restart judges its result rather than deferring it. That
-   roughly 95 second span is a third clock, neither the hourly re-probe nor
-   `health.probe_interval_hours`. The hourly floor applies only while a
-   status is pending: once it clears, the recurring check goes back to
-   following `health.probe_interval_hours`, so it is not always literally
-   daily. Size the boot
-   to answer inside that first 45 second attempt; a second attempt follows
-   5 seconds later, and nothing follows it. Keep it cheap and
+   points here). There are three separate clocks, and R2 states each one
+   exactly:
+   - **The CI smoke gate.** The `container` job runs the built image
+     (`docker run -d -p 8080:8080`) and polls `/healthz` 18 times, 5 seconds
+     apart, with a 4 second per-try timeout: about 90 seconds if the port
+     refuses outright, up to about 162 seconds if it accepts the connection
+     and then hangs. It requires **exactly 200**, and so does the runtime
+     probe: a 204, and any 3xx, fail both, so a framework that redirects
+     `/healthz` to `/healthz/` fails both. Anything else, or no answer at
+     all, and it dumps the container logs and fails the job, which fails
+     `deploy`.
+   - **The runtime health probe.** It binds to the same endpoint after every
+     deploy: immediately on each green one, then on the configured interval
+     (`health.probe_interval_hours`, which `get_config app=<name>` shows). It
+     presents a credential chosen by the app's perimeter, which is why
+     `/healthz` must not depend on the caller. The probe a deploy fires, and
+     an hourly pass within 10 minutes of a deploy finishing, never judge a
+     failure: they defer every unhealthy result and notify no one, so
+     `app_status` reading `Health: re-probe pending (not answering yet: ...)`
+     is normal right after a deploy (see `inno-ship`), and a deploy that
+     leaves `/healthz` failing alarms within about 70 minutes, not at once.
+     The hourly floor applies only while a status is pending: once it
+     clears, the recurring check goes back to following
+     `health.probe_interval_hours`, so it is not always literally daily.
+   - **One probe verdict.** Each attempt allows 45 seconds, and a failing
+     one gets a single retry 5 seconds later, so a verdict can take up to
+     about 95 seconds. That span is neither the hourly re-probe nor
+     `health.probe_interval_hours`.
+
+   Size the boot to answer inside that first 45 second attempt; a second
+   attempt follows 5 seconds later, and nothing follows it. Keep it cheap and
    **storage-independent**: a slow app boot is legitimate, but a `/healthz`
    that waits on storage is not. Never stub it as a TODO.
 5. **Keep build inputs where the gates allow them.** Put the app's code and
@@ -162,28 +133,27 @@ changed in between: pin the base to the digest `get_app_contract` serves.
    it, and never commit a symlink that points at a **directory**, anywhere in
    the repo, dangling ones included (a link to a *file* is fine). Copy the
    real directory in, or produce it during the image build. The full
-   forbidden-path list, with the reason for each, is
+   forbidden-path list is R7; the plugin's copy, with the reason for each, is
    `inno-platform-conventions`' **Files you must not touch** section.
 
-**Base image: call the `get_app_contract` MCP tool for the platform's
-current digest-pinned recommended bases (python/node/go) — never hard-code
-a digest from this skill, documentation, or memory.** Any base that passes
-these checks is allowed; the recommendations are simply known-good.
+**Base image: use the digest-pinned recommended bases (python/node/go) that
+`get_app_contract` serves; never hard-code a digest from this skill,
+documentation, or memory.** Any base that passes these checks is allowed;
+the recommendations are simply known-good.
 
 **Runtime config never lives in the image.** App-level values (API keys,
 base URLs) arrive as real environment variables from the platform's
-Variables facility (`set_app_variable` / the app page's Variables tab) —
-never `ENV`/`ARG` a secret into the committed Dockerfile: the image is
+Variables facility (`set_app_variable` / the app page's Variables tab).
+Never `ENV`/`ARG` a secret into the committed Dockerfile: the image is
 built in CI from the repo, so a baked-in value is a committed one, and
 gitleaks fails the build.
 
 **The Dockerfile is scanned too.** The `sast` gate's semgrep run covers the
 whole repository, not only `app/`, because the docker build context is the
-repo root: the Dockerfile and any root-level file it `COPY`s are checked. The
-exact scope, and what it skips, is `inno-platform-conventions`' **Rendering**
-section.
+repo root: the Dockerfile and any root-level file it `COPY`s are checked. R8
+states the exact scope, and what it skips.
 
-## Reference recipe — Python (the platform's tested stack)
+## Reference recipe: Python (the platform's tested stack)
 
 This is the template's Dockerfile; it ships in the template repo's scaffold (the `Template repo:` line of the
 status you read in the Version gate) that a container app is created from.
@@ -193,7 +163,7 @@ FROM python:3.12-slim          # or the current pinned ref from get_app_contract
 RUN apt-get update && apt-get -y upgrade && rm -rf /var/lib/apt/lists/*
 
 WORKDIR /app
-# Install pinned deps first (layer caching), then copy app/ WHOLE — a missing
+# Install pinned deps first (layer caching), then copy app/ WHOLE: a missing
 # templates/ dir is a common runtime 500 (Jinja2Templates raises at import).
 COPY app/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
@@ -207,116 +177,18 @@ HEALTHCHECK --interval=30s --timeout=3s CMD python -c "import urllib.request,sys
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]
 ```
 
-## Recipe sketch — Node
-
-```dockerfile
-FROM node:24-slim              # use the current pinned ref from get_app_contract
-RUN apt-get update && apt-get -y upgrade && rm -rf /var/lib/apt/lists/*
-WORKDIR /app
-COPY app/package*.json ./
-RUN npm ci --omit=dev
-COPY app/ .
-USER node                      # the official node images ship this user
-EXPOSE 8080
-CMD ["node", "server.js"]      # server must bind 0.0.0.0:8080 and serve /healthz
-```
-
-## Recipe sketch — Go (multi-stage; only the runtime stage ships)
-
-```dockerfile
-FROM golang:1-alpine AS build
-WORKDIR /src
-COPY app/ .
-RUN CGO_ENABLED=0 go build -o /server .
-
-# Runtime stage: use the current pinned distroless ref from get_app_contract.
-# :nonroot variants satisfy the non-root gate with no useradd needed.
-FROM gcr.io/distroless/static-debian12:nonroot
-COPY --from=build /server /server
-EXPOSE 8080
-CMD ["/server"]                # must bind 0.0.0.0:8080 and serve /healthz
-```
+For a Node app, or a Go app built in stages so that only the runtime stage
+ships, start from the sketches in `references/node-and-go.md`.
 
 ## Local sanity check before pushing
 
-The block below builds the image, then decides the non-root rule exactly the
-way the CI gate does (item 2 above) and prints one `OK:` or `FAIL:` line. It
-never runs the image to resolve the user: it reads `/etc/passwd` straight off
-the image, maps NUL bytes before reading, and hands the name to `awk` through
-the environment. Both `awk` compares append `""` to force a STRING compare,
-exactly as the workflow does, because awk compares numerically when both sides
-look numeric and a name like `1e3` would otherwise match a passwd name `1000`.
-It has no comments and no `!` outside single quotes, so it
-pastes cleanly into bash, zsh, or an interactive zsh. Everything after the
-`EXPOSE` check is the `/healthz` smoke gate, and it waits the way CI does:
-up to 18 tries 5 seconds apart, each with a 4 second timeout, stopping early
-if the container exits, and it tests for **exactly 200**, because `curl -f`
-would accept a 204 or a 301 that CI refuses. So an app that is still booting
-is not a `FAIL`; a `FAIL` prints the container's logs. If
-`docker build` fails, fix that
-first: the checks below read the last image that built, and with no image at
-all they print a misleading root `FAIL`.
+When Docker is available locally and you want the Dockerfile checked before
+a push, run the block in `references/local-check.md`. It builds the image,
+decides the non-root rule exactly the way the CI gate does (item 2), checks
+`EXPOSE 8080`, and runs the `/healthz` smoke gate with CI's clocks (item 4),
+printing one `OK:` or `FAIL:` line for each.
 
-```bash
-docker build -t app-under-test .
-user="$(docker inspect --format='{{.Config.User}}' app-under-test | tr '\000' '\001')"
-u="${user%%:*}"; uid=""; why=""
-case "$user" in 0|root|0:*|root:*|"") why="runs as root" ;; esac
-if [ -z "$why" ]; then
-  case "$u" in
-    "") why="has an empty user part, which Docker runs as uid 0" ;;
-    *[^0123456789]*)
-      case "$u" in
-        -*|*[^ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._-]*)
-          why="is neither a plain uid nor a portable user name" ;;
-        *)
-          docker rm -f uidprobe >/dev/null 2>&1
-          docker create --name uidprobe app-under-test >/dev/null 2>&1
-          pw="$(docker cp uidprobe:/etc/passwd - 2>/dev/null | tar -xO 2>/dev/null | tr '\000' '\001')"
-          docker rm -f uidprobe >/dev/null 2>&1
-          if [ -z "$pw" ]; then
-            why="cannot be resolved: the image has no readable /etc/passwd"
-          else
-            uid="$(printf '%s\n' "$pw" | U="$u" LC_ALL=C awk -F: '
-              { line = $0; sub(/^[^!-~]+/, "", line); sub(/[^!-~]+$/, "", line)
-                split(line, f, ":"); if ((f[1] "") == (ENVIRON["U"] "")) loose++
-                if (($1 "") == (ENVIRON["U"] "")) { exact++; field = $3 } }
-              END { if (loose == 0 && exact == 0) print "none"
-                    else if (loose != 1 || exact != 1) print "ambiguous"
-                    else if (field !~ /^[0-9]+$/) print "malformed"
-                    else print field }')"
-            case "$uid" in
-              none) why="matches no /etc/passwd entry" ;;
-              ambiguous) why="matches /etc/passwd ambiguously (on more than one line, or on a line with leading blanks, or with blanks inside the name field)" ;;
-              malformed) why="matches an /etc/passwd line whose uid field is not a plain number" ;;
-            esac
-          fi ;;
-      esac ;;
-    *) uid="$u" ;;
-  esac
-fi
-n="$(printf '%s' "$uid" | sed 's/^0*//')"
-if [ -z "$why" ] && [ -z "$n" ]; then why="resolves to uid 0"; fi
-if [ -z "$why" ] && { [ "${#n}" -gt 10 ] || [ "$n" -gt 2147483647 ]; }; then why="resolves to a uid above 2147483647"; fi
-shown="$(printf '%s' "$user" | LC_ALL=C tr -c ' -~' '?')"
-if [ -z "$why" ]; then echo "OK: User='$shown' runs as uid $n"; else echo "FAIL: User='$shown' $why"; fi
-docker inspect --format='{{json .Config.ExposedPorts}}' app-under-test | grep '8080/tcp'
-docker run -d -p 8080:8080 --name app-under-test-run app-under-test
-ok=""; last=""; exited=""
-for i in $(seq 1 18); do
-  last="$(curl -s -o /dev/null -w '%{http_code}' --max-time 4 http://localhost:8080/healthz || true)"
-  if [ "$last" = 200 ]; then ok=1; break; fi
-  running="$(docker inspect -f '{{.State.Running}}' app-under-test-run 2>/dev/null || echo false)"
-  if [ "$running" = true ]; then sleep 5; else exited=1; break; fi
-done
-if [ -n "$ok" ]; then echo "OK: /healthz 200"
-elif [ -n "$exited" ]; then echo "FAIL: the container exited before /healthz answered 200, last status: ${last:-none}"; docker logs app-under-test-run
-else echo "FAIL: /healthz did not answer 200 within 18 tries, last status: ${last:-none}"; docker logs app-under-test-run
-fi
-docker rm -f app-under-test-run
-```
-
-This block scans nothing. The image CVE scan is the `container` job's alone:
+That block scans nothing. The image CVE scan is the `container` job's alone:
 do not run an image scanner locally, because `inno-safety-preflight`'s house
 rule is never to install or run scanners locally (a local result drifts from
 CI's pinned scanner and knows nothing about the admin's central ignores or the
