@@ -313,10 +313,10 @@ gateway owns; this is how to apply it.
   `function`) not redeployed since its platform adopted v0.16.5's gateway
   takes its groups from the groups the caller signed in with, and no change
   made on the platform reaches them; one not redeployed since v0.14.3's
-  gateway still receives every group the caller holds, and there the
-  three proxy headers below may be caller-written, so an older live app
-  you are debugging may show extra groups. R3 names both cases; the app's
-  next deploy ends either.
+  gateway still receives every group the caller holds, so an older live app
+  you are debugging may show extra groups, and there the three proxy
+  headers below may be caller-written. R3 names both cases; the app's next
+  deploy ends either.
 
 The gateway also sets three proxy headers you may trust: `X-Forwarded-Host`
 (the hostname the request arrived on; build links from it),
