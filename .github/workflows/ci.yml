@@ -1,6 +1,6 @@
 name: CI
 
-# Five jobs, all cheap and dependency-free (jq is preinstalled on the
+# Six jobs, all cheap and dependency-free (jq is preinstalled on the
 # runner): the manifests and the marketplace catalog must be well-formed, any
 # change to a plugin must come with a version bump for that plugin
 # (scripts/version-bump.sh, which scripts/test-version-bump.sh first runs on a
@@ -8,10 +8,12 @@ name: CI
 # scripts/plugin-version.sh), every
 # innovation-platform skill's Version gate block must stay byte-identical to
 # the rest, the plugin must name no one platform instance
-# (scripts/instance-neutral.sh), and every MCP tool it names must be one the
+# (scripts/instance-neutral.sh), every MCP tool it names must be one the
 # platform serves, and it must name every one the platform serves
 # (scripts/check-tool-names.sh, against the pinned scripts/platform-tools.txt,
-# which needs no platform checkout).
+# which needs no platform checkout), and no file in it may hold an em or en
+# dash (scripts/check-dashes.sh, which scripts/test-check-dashes.sh first runs
+# on trees it plants).
 #
 # Why the bump is a HARD gate rather than a convention: delivery is keyed on
 # the declared version. Claude Code caches an installed plugin at
@@ -174,3 +176,22 @@ jobs:
         run: |
           set -euo pipefail
           bash scripts/check-tool-names.sh plugins/innovation-platform
+
+  no-dashes:
+    runs-on: ubuntu-26.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+
+      # The check first proves itself on trees it plants: a clean tree with
+      # look-alikes passes, and each planted em or en dash, built from its
+      # bytes, is reported by file:line with nothing else.
+      - name: The dash check catches what its fixture plants
+        run: |
+          set -euo pipefail
+          bash scripts/test-check-dashes.sh
+
+      - name: The innovation-platform plugin holds no em or en dash
+        run: |
+          set -euo pipefail
+          bash scripts/check-dashes.sh plugins/innovation-platform
