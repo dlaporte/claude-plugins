@@ -45,11 +45,11 @@ and the stack policy), adding the section for the app's type (`1.1` for
 and `2.2` or `2.3` when the app uses a connection or reads platform
 variables. If `get_app_contract` refuses the arguments, or the platform is
 older than v0.16.14, call it with no arguments and read the sections needed
-from the whole contract. Every answer opens with the CURRENT digest-pinned
-recommended base images. The tool is the live source: never restate
-contract values from memory or hard-code a base-image digest. This skill says how to apply
-the contract while writing code, and names the part of it that is
-authoritative for each rule.
+from the whole contract. Every contract or section answer opens with the
+CURRENT digest-pinned recommended base images. The tool is the live source:
+never restate contract values from memory or hard-code a base-image digest.
+This skill says how to apply the contract while writing code, and names the
+part of it that is authoritative for each rule.
 
 ## Refusals every tool shares
 

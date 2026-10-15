@@ -137,8 +137,8 @@ produce is a Dockerfile and app code rather than sentences a user reads.
   tag that deploys, and report the live URL.
 - **`skills/inno-manage-app`**: grant/revoke access, check status and metrics,
   stop, start, or restart an app, read its logs and notifications, set its
-  environment variables / API keys, and build support bundles (up to 5 per app in
-  any 24 hours). Idle apps are
+  environment variables / API keys, and build support bundles
+  (`create_support_bundle`'s description gives the cap). Idle apps are
   warned, stopped, then purged on a config-driven clock, and real use resets
   it. What counts as real use is served from one place, the **Lifecycle (idle
   clock)** section of `get_platform_docs`; this skill quotes it rather than
@@ -188,10 +188,11 @@ serves the whole current contract, with `sections` only the numbered
 sections named (for example `["2"]` for the requirements R1 to R9, or
 `["2.2"]` for Connections), and with `history: true` the contract's version
 notes alone, newest first. A contract or section answer opens with the
-contract version and the current base images, so each skill asks only for
-the sections its step needs. If `get_app_contract` refuses the arguments, or
-the platform is older than v0.16.14, call it with no arguments and read the
-sections needed from the whole contract.
+contract version and the current base images, so a narrow read never loses
+them, and each skill asks only for the sections its step needs. If
+`get_app_contract` refuses the arguments, or the platform is older than
+v0.16.14, call it with no arguments and read the sections needed from the
+whole contract.
 
 ## How the platform enforces security
 

@@ -711,8 +711,9 @@ headers** paragraph.
 **Container apps: the storage endpoints cap request bodies.** Contract R5
 (fetch `get_app_contract` with `sections: ["2"]`) gives the SQL body cap, the
 file `PUT` cap, and the refusal of a `PUT` with no `Content-Length`. So a
-route that writes in bulk sends batches, and an upload route needs its own
-size check and its own message. The codes and the reasoning are
+route that writes in bulk sends batches, and an upload route checks the size
+itself, with its own message, and sends the body with its length. The codes
+and the reasoning are
 `inno-platform-conventions`' **Persistence** section. A function app reaches
 `env.DATA`/`env.FILES` directly and has neither cap.
 

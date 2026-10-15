@@ -200,9 +200,8 @@ notified; `revoke_access`'s description and contract R3 (`get_app_contract`
 with `sections: ["2"]`) say when a change reaches a person. If
 `get_app_contract` refuses the arguments, or the platform is older than
 v0.16.14, call it with no arguments and read the sections needed from the
-whole contract. Quote the app's
-hostname from the `URL:` line of `app_status` or from `register_app`'s answer,
-rather than building it.
+whole contract. Quote the app's hostname from the `URL:` line of
+`app_status` or from `register_app`'s answer, rather than building it.
 
 **What admits a person.** An MCP app (`mcp-function`, `mcp-container`), and a
 browser app (`container`, `function`) on the platform's gateway, admit a

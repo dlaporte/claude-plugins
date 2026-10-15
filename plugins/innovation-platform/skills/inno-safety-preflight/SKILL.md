@@ -51,9 +51,9 @@ the defaults:
   logging a loud `SAFETY GATE DISABLED` warning instead of scanning. For
   `gitleaks`, `semgrep` and `deps` that means nothing is scanned at all. The
   `trivy` toggle is narrower, because it skips only the image CVE scan: the
-  container job still builds the image, uploads the SBOM, and asserts a
-  non-root user and `EXPOSE 8080`. So a green gate is not proof that a scan
-  actually happened.
+  container job still builds the image, uploads the SBOM, asserts a
+  non-root user and `EXPOSE 8080`, and runs the `/healthz` smoke test. So a
+  green gate is not proof that a scan actually happened.
 - A finding you expect to be ignored may fail because its ignore's date has
   passed, and one you expect to fail may be suppressed until a date still to
   come. Tell the user while there's still time to act: "that CVE is ignored
