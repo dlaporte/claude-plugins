@@ -135,10 +135,11 @@ day-to-day. Offer it as a short choice, not open-ended jargon:
 
 ## 3. Choose the strategy and fill in the configuration
 
-Three strategies. Prefer the first whenever the backend supports it: it
-needs no cooperation from anyone else. The `config` shape each one takes,
-with an example, is in `set_app_connection`'s description of its `config`
-argument; what follows is how to choose and fill it.
+Three strategies, which §2.2's **Configuring a connection** describes.
+Prefer the first whenever the backend supports it: it needs no cooperation
+from anyone else. The `config` shape each one takes, with an example, is in
+`set_app_connection`'s description of its `config` argument; what follows
+is how to choose and fill it.
 
 - **`secret_form`** (preferred, zero-admin): the backend issues
   user-generatable tokens (a personal access token or API key created in

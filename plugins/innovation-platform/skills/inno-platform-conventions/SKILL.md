@@ -40,7 +40,8 @@ preferences: each one maps to a CI gate that will fail the deploy.
 **Fetch the contract before writing app code:** call `get_app_contract` with
 `sections: ["2", "3", "4"]` (the requirements R1 to R9, the recommendations,
 and the stack policy), adding the section for the app's type (`1.1` for
-`function`, `1.1` and `1.2` for `mcp-function`, `1.3` for `mcp-container`)
+`function`, `1.1` and `1.2` for `mcp-function`, `1.2` and `1.3` for
+`mcp-container`)
 and `2.2` or `2.3` when the app uses a connection or reads platform
 variables. Every answer opens with the CURRENT digest-pinned recommended
 base images. The tool is the live source: never restate contract values
@@ -130,13 +131,16 @@ that the lockfile resolves a clean Starlette before committing to it.
 **Node apps: commit `app/package-lock.json`, and declare every import.**
 §1.1's **Dependencies** bullet and R8 are the rule; this is how to follow it:
 
-- Every package your code imports by bare name is listed in
-  `app/package.json` itself, under `dependencies`. Nothing is installed at
-  the repo root, and CI installs with `--omit=dev`, so an undeclared import
-  fails the bundle, and so does one listed only under `devDependencies`,
-  with an error titled `devDependency imported at runtime` naming the
-  package. Move such a package with `inno-ship`'s **Moving a devDependency
-  into dependencies**, which keeps its specifier and its locked version.
+- In a function-shaped app (`function`, `mcp-function`), every package
+  your Worker imports by bare name is listed in `app/package.json` itself,
+  under `dependencies`. Nothing is installed at the repo root, and CI
+  installs with `--omit=dev`, so an undeclared import fails the bundle, and
+  so does one listed only under `devDependencies`, with an error titled
+  `devDependency imported at runtime` naming the package. Move such a
+  package with `inno-ship`'s **Moving a devDependency into dependencies**,
+  which keeps its specifier and its locked version. A container app's
+  Dockerfile builds its own runtime tree, but list its runtime imports
+  under `dependencies` too: the `deps` gate audits only those (R8).
 - Regenerate the lockfile with `npm install` inside `app/` whenever you
   change dependencies, and commit both files together. A function-shaped app
   (`function`, `mcp-function`) that ships `app/package.json` must commit
@@ -253,8 +257,8 @@ JSON gets, so an oversized bulk insert reads as a syntax error rather than a
 size problem: send it in batches. A file `PUT` whose declared
 `Content-Length` is over **25 MiB** is refused `413 too_large`, and one sent
 with no `Content-Length` at all (a chunked body, for example) is refused
-`411 length_required`, so an upload route needs its own size check and its
-own message. Neither applies to a function-shaped app, which reaches
+`411 length_required`, so an upload route checks the size itself, with its
+own message, and sends the body with its length. Neither applies to a function-shaped app, which reaches
 `env.DATA`/`env.FILES` with no gateway in between.
 
 ## Identity: read the header, never build auth
@@ -309,7 +313,8 @@ gateway owns; this is how to apply it.
   `function`) not redeployed since its platform adopted v0.16.5's gateway
   takes its groups from the groups the caller signed in with, and no change
   made on the platform reaches them; one not redeployed since v0.14.3's
-  gateway still receives every group the caller holds, so an older live app
+  gateway still receives every group the caller holds, and there the
+  three proxy headers below may be caller-written, so an older live app
   you are debugging may show extra groups. R3 names both cases; the app's
   next deploy ends either.
 
@@ -371,7 +376,7 @@ the backend signs people in, choosing among the three strategies, calling
 must branch on, and what to do when the repo's template client is older)
 is a full workflow of its own: use the `inno-add-connection` skill rather
 than wiring this ad hoc. The rules the code must hold are §2.2 and
-`get_app_security` §8. Two shape every line of it:
+`get_app_security` §8. Two rules shape every line of that code:
 
 - Read the inbound `X-Caller-Assertion` header off the request you are
   serving and pass it straight through to the seam; never keep, persist or
