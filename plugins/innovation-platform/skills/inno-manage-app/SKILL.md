@@ -356,9 +356,7 @@ go `warned` or `stopped`? If it's up and still broken, call **`get_app_logs`**
 **before theorizing or editing any code**. Narrow with `level` (for example
 `error`) or `q` (a substring match) instead of pulling everything. The same
 data is also on the app's panel page, as a **Logs tab**, for anyone who'd
-rather look visually. An app not deployed since the platform began collecting
-logs (2026-07-23) returns nothing here even while it is broken; its next
-release (`inno-ship`) or a platform admin's `rebuild_app` starts them.
+rather look visually.
 
 The description gives each line's format. Its `<who>` column separates the
 container's own output from a Worker's, but it does **not** separate a
