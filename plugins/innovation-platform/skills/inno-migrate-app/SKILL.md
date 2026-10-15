@@ -102,11 +102,12 @@ order:
    flows. All of it goes: the gateway verifies the user against Okta and injects
    `X-Forwarded-User` / `X-Forwarded-Groups` (see `inno-platform-conventions`).
    List each file/route to remove. Keep the app's own **authorization** (who may
-   edit what), rewired to key on `X-Forwarded-User`: `X-Forwarded-Groups`
-   carries only this app's two groups (the names in the `App groups:` line
-   of the status you read in the Version gate, with the app's name in place
-   of `{app}`), never the repo's existing role groups, so existing role
-   checks cannot move onto that header. The full header rule is
+   edit what), rewired to key on `X-Forwarded-User` (the caller's email
+   address, which can change for one person and pass to another):
+   `X-Forwarded-Groups` carries only this app's two groups (the names in the
+   `App groups:` line of the status you read in the Version gate, with the
+   app's name in place of `{app}`), never the repo's existing role groups,
+   so existing role checks cannot move onto that header. The full header rule is
    `inno-platform-conventions`' **Identity** section. This is about the
    app's *own* front-door login. A separate thing to look for is auth to a
    *backend the app calls out to*: if the repo runs its own OAuth flow

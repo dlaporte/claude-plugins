@@ -156,7 +156,10 @@ user-owned data is scoped by the caller's `X-Forwarded-User` (not by an id
 from the request), privileged surfaces gate on a role the app keeps itself
 (keyed on `X-Forwarded-User`, never on `X-Forwarded-Groups`, whose rule is
 `inno-platform-conventions`' **Identity** section), values bind
-in SQL, output is escaped, and expensive actions are bounded per caller. A
+in SQL, output is escaped, and expensive actions are bounded per caller.
+That `X-Forwarded-User` is an email address, which can pass to another
+person (the same **Identity** section), is not a finding: no header
+carries the account itself yet, so keying on the address is right. A
 real authorization hole is a hard stop: fix or guide the fix before
 `inno-ship`. A missing response header (its §9) is a recommendation, not a
 stop: offer the fix, and for a `container` app item 6's header report shows

@@ -260,6 +260,26 @@ the gateway it runs:
   the detail). So from platform v0.16.8 a grant, a revoke, an
   open or a close reaches a person within that window.
 
+**A grant names an address and is pinned to one person** (from platform
+v0.16.12). The member list keeps each grant under the address it was made
+to, and pins it to the identity provider account that holds that address:
+at once when the platform has an Okta token and Okta resolves the address
+to exactly one account that can sign in, else at the first sign-in with
+the address; `grant_access`'s result says which ("pinned to their identity
+provider account", or "it is matched to the first account that signs in
+with this address"). An owner's own row is pinned at registration to the
+account that registers the app for itself, with no Okta lookup. From then on
+the grant admits only that account, under any later address, wherever the
+sign-in carries its identity provider subject: every panel and MCP sign-in
+does, and a browser app's does once the instance's Access login method passes
+the subject claim. There, a member whose address changes keeps their access
+and arrives under the new address, and an address that passes to another
+person does not take the access with it. Until a platform admin turns on
+`access.require_subject` (`inno-fleet-admin`), a sign-in that carries no
+subject is still matched by its address: on a browser app whose login method
+does not pass the claim yet, an address's new holder still gets in, and a
+member whose address changed does not.
+
 From platform v0.16.8, two kinds of older browser app differ, both
 registered before v0.16.5, until a platform admin fixes them
 (`inno-fleet-admin`, **Browser apps an earlier release left on Okta
@@ -344,29 +364,84 @@ it was. Quote the app's hostname from the `URL:` line of
   since platform v0.16.9 it says so
   (`<address> already has access to "<app>"; nothing changed.`), with no
   notice and no audit row. It is not an error: tell the user the person
-  already had access.
+  already had access. From platform v0.16.12, on a platform with an Okta
+  token, the result adds when that row is pinned to another account than
+  the one the address resolves to now: `<address> now belongs to a
+  different account than the one this grant is pinned to`, followed by the
+  re-share (**When a member's address passes to another person**, below).
+  And one person holds one row: an address that resolves to an account the
+  list already holds under another address writes nothing either, and the
+  result names the address that row is stored under, which is the one to
+  revoke. With no Okta token, when that row is pinned, the result says so
+  instead: the platform cannot ask whether the address has passed to
+  someone else since, and if it has, the fix is the same re-share, or for
+  the owner's own address a platform admin's hand-off (`transfer_app` to
+  another address, `revoke_access` for the owner's address on it, and
+  `transfer_app` back to it, whose new row is pinned at the address's next
+  sign-in).
 - `app_busy`: another change to this app is in flight, or to an app it reads
   data from through a link. Retry once after a moment, never in a loop.
 - **`link_containment`** refuses the grant when this app reads another app's
   data through a link and the person you are granting cannot see that source
   app: letting them in here would expose the source's data. The message names
   every blocked source. Grant them access to the named source app first, or
-  drop the link with `unlink_app_data`, then grant again.
+  drop the link with `unlink_app_data`, then grant again. From platform
+  v0.16.12 the source must hold the same person: the same account when both
+  rows are pinned, else the same address. So a source that lists the
+  address for the account that held it before can still refuse the grant
+  here; a grant on the source then answers that the address now belongs to
+  a different account, and names the fix: the re-share there
+  (`revoke_access`, then `grant_access`), or, for the source's owner's own
+  address, a platform admin's `transfer_app`.
+
+**When a member's address passes to another person** (from platform
+v0.16.12): the grant stays with the account it is pinned to, so the
+address's new holder is refused like anyone the app does not admit,
+wherever their sign-in carries its subject (above; and on a browser app,
+while the earlier holder keeps using it, the gateway's held answer for
+the address can still admit the new holder, as contract R3 says), and
+the app's owner gets a `member_reassigned` notification naming the
+address. If the new holder should have access, run `revoke_access` and
+then `grant_access` for that address: the revoke removes the row and the
+earlier account's MCP token grants for the app, and the new grant is
+pinned to whoever holds the address now (at once when Okta resolves it,
+else at their first sign-in). Confirm with the owner first: the revoke
+also ends the access of the account the row was pinned to, which may be
+the same colleague under a new address; if they should keep it, grant
+that new address too. For the owner's own address, only a platform admin
+moves the app to its new holder: `transfer_app` to that same address, or
+with no Okta token, a hand-off through another address (**Transferring an
+app: ask an admin**, below).
 
 **`revoke_access` refusals and outcomes:**
 
 - `owner_not_revocable`: the address is the app's current owner, whose access
   comes from owning it. A platform admin's `transfer_app` comes first, or
   `stop_app`. A former owner, after a transfer, is revoked like any member.
+  From platform v0.16.12 a row pinned to the owner's account under another
+  address is the owner's too, and is refused the same way.
 - `app_busy` when another change to this app is in flight: retry once after
   a moment, never in a loop.
 - **From platform v0.16.8 the revoke makes no Okta call.** It removes the
-  member row, the MCP token grants found under the subject recorded at the
-  person's last sign-in, and their stored credentials, so a person Okta no
+  member row, their MCP token grants (from platform v0.16.12 found under
+  the account the row is pinned to, and for a row still waiting for its
+  first sign-in, as before, under the subject recorded at the address's
+  last sign-in), and their stored credentials, so a person Okta no
   longer has a user for (deleted at offboarding) is revoked like anyone. When
   the member list did not hold the address, the result says so: a mistyped
   revoke leaves the member it was meant for in place, so check the address
   before telling anyone the person is off.
+- **From platform v0.16.12 a revoke acts on one row, by person.** It takes
+  the address the grant was made to, or the newest address the row's
+  account signs in with (the panel's member list shows such a row as
+  `<newest address> (shared as <address granted>)`), and the result names
+  the row it removed. When that account is still a member through another
+  row, the row comes out but its access, MCP token grants and stored
+  credentials stay, and the result names the address to revoke next. For a
+  row still waiting for its first sign-in, when the account last recorded
+  signing in with the address is a member under another row, the row comes
+  out but that account's MCP token grants and stored credentials here stay,
+  and the result says so.
 - An app open to every SSO user still admits a removed person, MCP and
   browser alike, through its open flag, until the app is closed
   (`set_app_access`).
@@ -405,7 +480,12 @@ it was. Quote the app's hostname from the `URL:` line of
   those in turn, removes the same user too and deletes that user's stored
   Connection credentials there. From platform v0.16.8 the cascade makes no
   Okta call either, and it goes on past each consumer to the apps that read
-  it. The one exception is a consumer the person **owns**: an owner keeps
+  it. From platform v0.16.12 it takes, in each consumer, the rows pinned to
+  the account the removed row was pinned to (for a row still waiting for
+  its first sign-in, that app's rows of the address still waiting too),
+  never a row pinned to another account, and an app where it took no row
+  is neither touched nor named. The one exception is a consumer the person
+  **owns**: an owner keeps
   their own app, so it is left as it is, and the result names it and says
   they may still reach the data there (a platform admin's `transfer_app`
   first, or unlink with `unlink_app_data`). The
@@ -606,22 +686,57 @@ returns it to the named member list (open: false). Owner or admin only.
   longer contains: one open to every SSO user, and a members-only one
   admitting someone this app's member list does not hold (on a platform
   before v0.16.8, for an app registered before v0.16.5, its Okta group
-  too), or whose members cannot be read to check. The link gives way and never
-  stops the close. The result says which links went and why, and each of
-  those consumers' owners gets a `link_rebuild_pending` notification: a
-  container-shaped consumer is cut off within about a minute with no
-  redeploy, while a function-shaped one keeps its binding until it next
-  deploys. A link the close could not revoke stays live and is named in the
-  result, with the `unlink_app_data` call that removes it: relay that. Since
-  platform v0.16.11 the hourly containment pass revokes such a link within
-  the hour if this app still does not contain that consumer, and the result
-  says so, which makes unlinking now optional. The pass holds every live
-  link of a members-only source to the same rule, except that it keeps a
+  too), or whose members cannot be read to check. From platform v0.16.12
+  the list must hold the same person, as for a grant (above): a consumer's
+  member whose address this app lists for another account is not
+  contained, and the result names the fix: the re-share here
+  (`revoke_access`, then `grant_access`), or, when that address is this
+  app's owner's own row, a platform admin's `transfer_app` of this app to
+  it (with no Okta token, a hand-off through another address). The link
+  gives way and never stops the close. The result says which links went
+  and why, and each of those consumers' owners gets a
+  `link_rebuild_pending` notification: a container-shaped consumer is cut
+  off within about a minute with no redeploy, while a function-shaped one
+  keeps its binding until it next deploys. From platform v0.16.12 the
+  platform rebuilds a function-shaped consumer another account owns
+  instead (**Data links across owners**, below), the result says what was
+  done for each, and it stops saying to redeploy when the platform rebuilds
+  every broken consumer. A link the close could not revoke stays live and is
+  named in the result, with the `unlink_app_data` call that removes it: relay
+  that. Since platform v0.16.11 the hourly containment pass revokes such a
+  link within the hour if this app still does not contain that consumer, and
+  the result says so, which makes unlinking now optional. The pass holds every
+  live link of a members-only source to the same rule, except that it keeps a
   link whose members cannot be read and checks it again the next hour, and
-  tells the consumer's owner of each link it revokes
-  (`link_rebuild_pending`). `unlink_app_data`
-  answers `app_busy` while another change to the consumer is in flight (one
-  to the source does not count): retry once after a moment.
+  tells the consumer's owner of each link it revokes (`link_rebuild_pending`);
+  from platform v0.16.12 it reads every live link, and also revokes one whose
+  two apps no longer have one owner (below). `unlink_app_data` answers
+  `app_busy` while another change to the consumer is in flight (one to the
+  source does not count): retry once after a moment.
+- **Data links across owners** (from platform v0.16.12). A data link joins
+  one owner's apps, and the same owner is the same account when both apps'
+  owner rows are pinned (else the same address), so `link_app_data`
+  refuses two apps one address owns under two accounts. A link can still
+  end up across owners, when a sign-in pins the two owner rows to
+  different accounts or a transfer step was lost, and the hourly
+  containment pass revokes any such live link, whether the source is open
+  or not. When the pass, a close, `unlink_app_data` or a forced
+  `transfer_app` revokes the link of a function-shaped consumer another
+  account owns, the platform rebuilds that consumer to remove its binding:
+  it dispatches the rebuild at once, and when the dispatch fails tries
+  again a day later (a platform admin can run `rebuild_app` sooner); it
+  rebuilds a stopped consumer within the hour after it next starts, since
+  `rebuild_app` refuses a stopped app; it leaves one never deployed or
+  mid-deploy to the hourly check; and it tries again each day while a
+  revoked link stays in the consumer's deployed code. The consumer's owner
+  is told (`link_rebuild_pending`), and so are the source's owner and the
+  platform admins (`cross_owner_link_revoked`), except for a consumer
+  never deployed or mid-deploy.
+  `unlink_app_data`'s answer says which of these happened, where it used to
+  say only to redeploy the consumer (it still does when the dispatch
+  failed). A container-shaped consumer's link across owners is revoked the
+  same way and cut off within about a minute with no rebuild, and only its
+  owner is told.
 - `app_busy`: another change to this app, or to an app linked to it, is in
   flight (a source it reads, when opening; a consumer reading it, when
   closing). Retry once after a moment, never in a loop.
@@ -633,6 +748,11 @@ is no accept step, so in an owner's hands a transfer could dump unwanted apps
 on people. When an app OWNER asks to transfer their app, do NOT call it for
 them. Tell them a platform admin must do it, and offer to draft the request,
 naming the app and the new owner. How an admin runs it is `inno-fleet-admin`.
+That includes an app whose owner's own address has passed to another
+person: from platform v0.16.12 the app stays with the account its owner
+row is pinned to, the platform tells the admins, and only an admin moves
+it to the address's new holder (`transfer_app` to that same address, or
+with no Okta token, a hand-off through another address).
 
 ## `get_app_usage({ app, days? })` — meters and estimated cost
 
@@ -826,25 +946,44 @@ corresponds to an entry here.
 Stages worth acting on when one appears: `respin_failed`, `auto_restarted`,
 `auto_restart_failed`, `link_severed`, `link_rebuild_pending`, `degraded`,
 `usage_anomaly`, `quota_horizon`, `connection_expired`, `unlinked` /
-`relinked`, `transferred`, `access_changed`, `shared`, `exported`.
+`relinked`, `transferred`, `access_changed`, `shared`, `exported`,
+`member_reassigned`, `cross_owner_link_revoked`.
+`member_reassigned` (from platform v0.16.12) means an address with access
+to the app now signs in as a different account than the one its access
+was pinned to, and that account is refused where its sign-in carries its
+identity provider subject; the entry names the address and the re-share,
+which **When a member's address passes to another person** above
+explains.
+`cross_owner_link_revoked` (from platform v0.16.12) tells this app's owner
+that a function-shaped app another account owns read this app's data
+through a data link, which was revoked while its binding is still
+deployed, and what the platform did to remove the binding: dispatched
+that app's rebuild, could not (it tries again a day later), or, for a
+stopped app, rebuilds it after it next starts (**Data links across
+owners** above). The platform admins see it in their feed too.
 `link_rebuild_pending` means a data link this app used was revoked (an unlink,
 a source that closed, an ownership transfer, or, since platform v0.16.11, the
 hourly containment check finding that a members-only source does not hold
-everyone this app admits). A function-shaped app's deployed binding to the
+every account this app admits, which from v0.16.12 includes a sign-in
+pinning one of this app's rows to another account than the source's row of
+that address; the check also revokes a link whose two apps no longer have
+one owner). A function-shaped app's deployed binding to the
 other app's database keeps working until the app is rebuilt, while a
 container-shaped one is cut off within about a minute with no redeploy; the entry
 says whether a rebuild was dispatched or the owner has to redeploy (for an
-owner that is `inno-ship`). Admins also see seven admin-only stages
-(`start_requested`, `drift_detected`, `connection_sink_new_host`,
-`naming_changed` and `access_app_left`, plus `member_drift_detected` and
+owner that is `inno-ship`), or, for a stopped app another account's data
+link left, that the platform rebuilds it after it next starts. Admins also see
+eight admin-only stages (`start_requested`, `drift_detected`,
+`connection_sink_new_host`, `naming_changed`, `access_app_left` and, from
+platform v0.16.12, `identity_reassigned`, plus `member_drift_detected` and
 `cutover_undo_failed`, which only a platform before v0.16.8 raised), which
 `inno-fleet-admin` explains. The tool filters on one app, one `stage`, or
 unread only, and returns **at most 50 rows** per call, so narrow the filter
-rather than trying to read a long history in one go.
-`mark_notification_read` answers `notification_not_found` for an id that
-names no notification. `mark_all_notifications_read` clears the caller's
-whole feed in one call, which is what a user asking to dismiss a backlog
-wants; called by an admin it marks everyone's.
+rather than trying to read a long history in one go. `mark_notification_read`
+answers `notification_not_found` for an id that names no notification.
+`mark_all_notifications_read` clears the caller's whole feed in one call,
+which is what a user asking to dismiss a backlog wants; called by an admin it
+marks everyone's.
 
 ## Authorization summary
 

@@ -105,7 +105,9 @@ yourself). Identity is still `X-Forwarded-User` / `X-Forwarded-Groups`, but
 what admits a caller is not an Okta group (an MCP app registered from
 platform v0.16.4 never had one, from v0.16.8 no app's membership is kept in
 Okta, and the header still carries its group names). An MCP app admits
-a person when the platform's member list for the app holds them, or while
+a person when the platform's member list for the app holds them (from
+platform v0.16.12, by the identity provider account their grant is pinned
+to, not by address: **Identity** below), or while
 the app is open to every SSO user, and it reads
 both facts at every request (`get_app_contract` §1.2). The groups header is
 derived from the same two facts, so a grant, a revoke or a change to open
@@ -326,6 +328,25 @@ user = request.headers.get("x-forwarded-user", "unknown")
 gateway injects both, so either one works and neither is more authoritative;
 read `X-Forwarded-User` by default and treat `X-Forwarded-Email` as its alias
 if you see it in a request dump.
+
+Both headers carry the caller's email address, and an address is not a
+person: it can change for one person and pass to another. From platform
+v0.16.12 (contract version 30, which asks nothing of your code) the
+platform admits a member by the identity provider account their grant is
+pinned to, wherever the sign-in carries that account's subject (an MCP
+sign-in always, a browser sign-in once the instance's Access login method
+passes it). There a member whose address changed arrives with the new
+address in both headers, and an address that passed to another person is
+refused until the app's owner shares the app with it again; a sign-in
+that carries no subject is matched by its address, as before, until a
+platform admin turns on `access.require_subject`. Anything your app keys
+on the address, its own data or its own role store, still goes to whoever
+holds the address, and a member whose address changed no longer finds
+what was kept under the old one. Key on `X-Forwarded-User` all the same:
+no header carries the account itself yet. The contract's R3
+(`get_app_contract`) says what is planned, and how long a browser app's
+gateway can hold an answer for an address after it passes to someone
+else.
 
 `X-Forwarded-Groups` carries at most two groups, both this app's own, in this
 order: the members group when the caller is a member, and the open group when

@@ -618,7 +618,18 @@ tool call:
   `app` to narrow to one app); `app` alone gives that app's sessions **to its
   owner** (or an admin), who can add a `user` to narrow it further. Note it is
   distinct from `list_connections`, which lists the backend **definitions** an
-  app has configured.
+  app has configured. From platform v0.16.12 a stored credential is served
+  only to the identity provider account it is pinned to. That is the
+  account that stored it, with two exceptions: migration 0057 pinned a
+  credential stored before v0.16.12 to whoever last signed in with its
+  address after it was stored, which can be the address's later holder,
+  and a credential still waiting for its pin goes to the address's next
+  account when the platform has no earlier sign-in on record for the
+  address. Otherwise, after an address passes to another person, the app's
+  fetch for the new holder returns `not_connected`, their own connect
+  replaces the earlier holder's credential, and yourself means the
+  sessions your account stored under the address you signed in with
+  (`get_app_contract`, Connections).
 - **`disconnect_user_connection`** (`user`, `app`, `connection`) — deletes one
   user's stored credential for one backend. It is **local only**: it never
   revokes the credential at the backend, in any context, including a user

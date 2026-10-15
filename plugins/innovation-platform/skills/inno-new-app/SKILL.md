@@ -282,9 +282,11 @@ The written design covers, at minimum:
   reached an open app), whose names are on the `App groups:` line of the
   status you read in the Version gate, with the app's name in place of
   `{app}`. Any finer role (an editor, an admin view) needs the app's own
-  role table keyed on `X-Forwarded-User`; do not design around reading other
-  groups from the header. The full header rule, including when an older live
-  app still sees more, is `inno-platform-conventions`' **Identity** section.
+  role table keyed on `X-Forwarded-User`, the caller's email address, which
+  can change for one person and pass to another; do not design around
+  reading other groups from the header. The full header rule, including
+  when an older live app still sees more, is `inno-platform-conventions`'
+  **Identity** section.
 - **Accessibility** (a browser-facing app): who will use it, the main flows
   a person has to complete, and how each one works from the keyboard alone
   and with a screen reader. For an MCP app, say it does not apply.
@@ -395,7 +397,13 @@ register_app({ app, repo, description, type, members, accept_guardrails: true, c
   older platform, or before v0.16.8 for a registration begun on one, an
   address Okta does not know is skipped instead, with no access and no
   notice, and call 2's answer names it under `Warnings:`: grant it later
-  with `grant_access`, once that person has an account.
+  with `grant_access`, once that person has an account. From platform
+  v0.16.12 each added address is pinned to an account as `grant_access`
+  pins it (`inno-manage-app`), and the owner's own row to the account that
+  registers the app. A member whose address resolves to an account the
+  list already holds under another address (such as the owner's own
+  alias) gets no second row and is not notified, and the answer names it
+  among the warnings.
 
   On a platform that lists allowed email domains, an address outside them
   refuses the whole call with `email_domain_not_allowed` before anything is
