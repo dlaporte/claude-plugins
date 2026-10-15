@@ -73,8 +73,9 @@ person's Okta account is suspended or deprovisioned. The platform has ended
 their session and nothing in this skill can undo it: the account itself has to
 be restored by a platform admin or the identity team. The same account check
 ends their MCP app access and their platform tool calls, within the window
-`auth.status_check_minutes` sets (`get_config` describes it), and an admin
-whose account is suspended loses admin standing.
+`auth.status_check_minutes` sets (a platform-scope setting, which only an
+admin's `get_config` catalog lists), plus the gateway's introspection cache
+for an MCP app; and an admin whose account is suspended loses admin standing.
 
 **Speak the user's language.** Plain terms with the user, no provider or
 product names unless they have shown technical fluency. The full rule is the
@@ -194,9 +195,9 @@ right away under a different name. An admin's immediate `purge_app` is
 
 These tools write the platform's **member list** for the app, its only store;
 nothing is written to Okta. So share and unshare with these tools, never by
-hand in Okta. Their descriptions say exactly what each writes, who is
-notified, and when a change reaches a person; contract R3 (`get_app_contract`
-with `sections: ["2"]`) says the same from the app's side. Quote the app's
+hand in Okta. Their descriptions say exactly what each writes and who is
+notified; `revoke_access`'s description and contract R3 (`get_app_contract`
+with `sections: ["2"]`) say when a change reaches a person. Quote the app's
 hostname from the `URL:` line of `app_status` or from `register_app`'s answer,
 rather than building it.
 
@@ -229,9 +230,11 @@ description says how a grant is pinned to the identity provider account that
 holds its address, and where a sign-in is matched by its address instead.
 Relay whether the result says the grant is pinned or waits for its first
 sign-in. When a result, or a `member_reassigned` notification, says an address
-now belongs to a different account, or names another address that a person's
-row is stored under or to revoke next, read `references/address-changes.md`
-before acting: the fix is a re-share the owner must confirm.
+now belongs to a different account, says the row is pinned and the platform
+cannot ask whether the address has passed to someone else, or names another
+address that a person's row is stored under or to revoke next, read
+`references/address-changes.md` before acting: the fix is a re-share the owner
+must confirm.
 
 - `email` must look like a real, unquoted email address: the platform
   answers `invalid_email` for anything containing quotes, backslashes, or
@@ -255,7 +258,9 @@ before acting: the fix is a re-share the owner must confirm.
   if the person's account is still being created, the grant applies once it
   exists.
 - **A grant to someone the member list already holds changes nothing**, and
-  says so. It is not an error: tell the user the person already had access.
+  says so. It is not an error: tell the user the person already had access,
+  and relay anything the result adds about the address passing to someone
+  else.
 - `link_containment`: this app reads another app's data through a link, and
   the person cannot see that source app; the message names every blocked
   source. Grant them access to the named source app first, or drop the link
@@ -283,11 +288,11 @@ before acting: the fix is a re-share the owner must confirm.
   it no longer gets them in. On a browser app still on an older gateway
   (above) the removal never reaches them, and nothing else on this surface
   does either, `revoke_sessions` included. If someone must lose such an app
-  NOW, stop it,
-  or redeploy it on the newer gateway (the owner's next release with
-  `inno-ship`, or a platform admin's `rebuild_app`), which then refuses them,
-  and do not restart it (`restart_app`) until a platform admin has swapped its
-  Access policies. Say this plainly when an admin is offboarding someone.
+  NOW, stop it, or redeploy it on the newer gateway (the owner's next release
+  with `inno-ship`, or a platform admin's `rebuild_app`), which then refuses
+  them, and do not restart it (`restart_app`) until a platform admin has
+  swapped its Access policies. Say this plainly when an admin is offboarding
+  someone.
 - **The revoke cascades** to every app that reads this app's data through a
   link, and on to the apps that read those; the response names the apps it
   removed the person from. A consumer the person **owns** is left as it is,
@@ -332,8 +337,9 @@ later deploy finalizes or the recovery sweep finds it stale).
 finishes or the lifecycle pass's recovery sweep reverts it, and until then
 every tool that refuses `app_deploying` (`stop_app`, `restart_app`,
 `set_app_variable`, `remove_app_variable`, and an admin's `purge_app`) keeps
-refusing. Each of those tools' descriptions says when the sweep comes, and
-`get_config` describes `lifecycle.run_interval_hours`, which sets it. When a
+refusing. Each of those tools' descriptions says when the sweep comes; the
+interval it counts is the platform-scope `lifecycle.run_interval_hours`, which
+an owner's `get_config app=` does not list. When a
 refusal persists, check the run with `get_ci_status`. If it has already
 failed, the way out now is the owner's next deploy: re-run that whole tag
 run, by the rule in `inno-ship`'s **Right after a deploy, health may read
@@ -350,7 +356,9 @@ go `warned` or `stopped`? If it's up and still broken, call **`get_app_logs`**
 **before theorizing or editing any code**. Narrow with `level` (for example
 `error`) or `q` (a substring match) instead of pulling everything. The same
 data is also on the app's panel page, as a **Logs tab**, for anyone who'd
-rather look visually.
+rather look visually. An app not deployed since the platform began collecting
+logs (2026-07-23) returns nothing here even while it is broken; its next
+release (`inno-ship`) or a platform admin's `rebuild_app` starts them.
 
 The description gives each line's format. Its `<who>` column separates the
 container's own output from a Worker's, but it does **not** separate a
@@ -547,7 +555,9 @@ Things to relay to the user in plain terms:
   admin can fix either, and retrying will not help.
 - **"I set it and the app still reports it missing."** Check
   `list_app_variables`: a set name that looks like a typo of a declared name
-  nobody has set carries a suggestion naming the declared one. A container
+  nobody has set carries a suggestion naming the declared one, and a hidden
+  variable reported `pending delivery` has not reached the deployed app yet
+  (the next deploy delivers it). A container
   app deployed before variables existed needs one redeploy before its values
   reach the container (contract §2.3, **Timing**).
 - `app_status` names a REQUIRED declared variable that has no value, on its
@@ -590,19 +600,23 @@ marks everyone's.
 
 ## Authorization summary
 
-Every per-app tool in this skill is for the app's owner or a platform admin.
-The exceptions are named where they come up: starts are limited for owners
-and not for admins, `set_config` writes are admin-only except a user's own
-Notifications settings, and notifications are scoped to the caller (an admin
-sees and marks everyone's). "Platform admins" are the platform's own admin
-list, which `list_admins` (admin-only) shows; the admin-only tools are in
-`inno-fleet-admin`. **Every tool's own description states its scope rule,
-its notifications and the refusals it can answer**: when a user asks who may
-call a tool or who gets told about an action, read the description rather
-than this skill, since it is generated from the platform's own source. The
-refusals every tool shares are in the server's note instead, and
-`inno-platform-conventions`' **Refusals every tool shares** section explains
-them.
+Most per-app tools in this skill are for the app's owner or a platform admin.
+The exceptions: starts are limited for owners and not for admins, and an
+owner out of starts asks with `request_start` (the owner or an admin may call
+it); `set_config` writes are admin-only except a user's own Notifications
+settings; notifications are scoped to the caller (an admin sees and marks
+everyone's); `disconnect_user_connection` is for the user themselves or a
+platform admin, never an owner on someone else's behalf; and
+`list_user_connections` lets anyone read their own sessions, and an app's
+owner that app's. "Platform admins" are the platform's own admin list, which
+`list_admins` (admin-only) shows; the admin-only tools are in
+`inno-fleet-admin`. **Each tool's description states who is notified and
+the refusals it can answer, and most state their scope rule**: when a user
+asks who may call a tool or who gets told about an action, read the
+description rather than this skill, since it is generated from the platform's
+own source. The refusals every tool shares are in the server's note instead,
+and `inno-platform-conventions`' **Refusals every tool shares** section
+explains them.
 
 If you're unsure whether the signed-in user owns an app, call `app_status`
 first: its `forbidden` vs. success response is itself the authorization
@@ -617,8 +631,11 @@ live app:
 - **`disconnect_user_connection`** is the fix for "my connection to {backend}
   is stuck, make it ask me again": it deletes that one user's stored
   credential so the next call returns a fresh connect link, leaving the
-  connection configured for everyone else. Confirm with the user before
-  calling it; it is not reversible for them beyond reconnecting. Called over
+  connection configured for everyone else. Only that user or a platform admin
+  can call it: an owner whose user is stuck has the user disconnect (their own
+  call, or the Connections tab on their account page), or asks a platform
+  admin. Confirm with the user before calling it; it is not reversible for
+  them beyond reconnecting. Called over
   MCP it never revokes the credential at the backend (its description says
   why): if the user needs the backend to invalidate it, they disconnect from
   the Connections tab on their account page instead.
