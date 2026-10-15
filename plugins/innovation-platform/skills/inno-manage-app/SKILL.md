@@ -197,7 +197,10 @@ These tools write the platform's **member list** for the app, its only store;
 nothing is written to Okta. So share and unshare with these tools, never by
 hand in Okta. Their descriptions say exactly what each writes and who is
 notified; `revoke_access`'s description and contract R3 (`get_app_contract`
-with `sections: ["2"]`) say when a change reaches a person. Quote the app's
+with `sections: ["2"]`) say when a change reaches a person. If
+`get_app_contract` refuses the arguments, or the platform is older than
+v0.16.14, call it with no arguments and read the sections needed from the
+whole contract. Quote the app's
 hostname from the `URL:` line of `app_status` or from `register_app`'s answer,
 rather than building it.
 

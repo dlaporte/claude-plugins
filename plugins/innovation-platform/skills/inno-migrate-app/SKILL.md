@@ -59,8 +59,10 @@ connections: instant blockers to surface). Fetch `"2.2"` too when the repo
 authenticates to a backend as each user (item 2), `"2.3"` when it reads
 configuration from its environment or a `.env` file (item 5), and `"2.1"`
 when it shares a database with another app of the user's (item 3), which on
-the platform takes a data link. Judge the repo
-against the contract, not a remembered summary of it.
+the platform takes a data link. If `get_app_contract` refuses the
+arguments, or the platform is older than v0.16.14, call it with no
+arguments and read the sections needed from the whole contract. Judge the
+repo against the contract, not a remembered summary of it.
 
 If the app has pages people open in a browser, **fetch `get_app_accessibility`
 beside it.** It serves the platform's accessibility notes (WCAG 2.2 AA as the

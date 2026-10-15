@@ -158,8 +158,10 @@ the recommendations (§3), the stack policy (§4), and the deployment patterns
 with what the platform does NOT support (§5: background jobs,
 machine-to-machine APIs, guaranteed long-lived connections); the answer
 opens with the contract version and the current recommended base images.
-Evaluate the user's idea against it before designing; a not-supported
-requirement surfaces HERE, not after registration.
+If `get_app_contract` refuses the arguments, or the platform is older than
+v0.16.14, call it with no arguments and read the sections needed from the
+whole contract. Evaluate the user's idea against it before designing; a
+not-supported requirement surfaces HERE, not after registration.
 
 For an app people will open in a browser (a `container` or `function`
 design), **fetch `get_app_accessibility` beside it.** It serves the
@@ -633,7 +635,7 @@ you read in §1b (§1.1 to §1.3) are the authority for each type's deltas.
   `wrangler.jsonc`/`app-worker.jsonc`: those are platform-injected. Include
   the required **sign-out link** (R4), a static link whose URL is the
   `Sign-out URL (all apps):` line of the status you read in the Version gate
-  (see `inno-platform-conventions`'s "Sign out" section for the exact
+  (see `inno-platform-conventions`' **Sign out** section for the exact
   convention); nothing in this type's scaffold provides it for you.
 - **`mcp-function` app:** everything in the function bullet applies except
   the sign-out link (there is no browser session); the scaffold ships both

@@ -44,12 +44,15 @@ If this is the first call against it this session, expect a browser Okta
 login; that's expected, not an error.
 
 **Read the contract's Connections section before you start:** call
-`get_app_contract` with `sections: ["2.2"]`. It is the authoritative text for
-the seam the app calls, every answer the seam can give and whose each is to
-fix, the three strategies, and the five connection tools. This skill is the
-workflow around it, and points at its subsections (**The app-facing seam**,
-**What the app MUST NOT do**, **Availability**, **Configuring a connection**,
-**Visibility and oversight**) rather than restating them.
+`get_app_contract` with `sections: ["2.2"]`. If `get_app_contract` refuses
+the arguments, or the platform is older than v0.16.14, call it with no
+arguments and read the sections needed from the whole contract. §2.2 is the
+authoritative text for the seam the app calls, every answer the seam can
+give and whose each is to fix, the three strategies, and the five connection
+tools. This skill is the workflow around it, and points at its subsections
+(**The app-facing seam**, **What the app MUST NOT do**, **Availability**,
+**Configuring a connection**, **Visibility and oversight**) rather than
+restating them.
 
 Platform tool calls share one per-person budget, which the platform's server
 instructions state. This skill never needs anywhere near it, so an answer of
@@ -422,8 +425,8 @@ async def list_incidents(ctx: Context) -> dict:
                          "re-authenticate this server) and try again."}
     except NotConnected as e:
         # Do NOT swallow this: surface the link so the user can link once.
-        return {"error": f"You're not connected to your CRM yet. Open "
-                         f"{e.connect_url} to link your account, then try again."}
+        return {"error": f"Not connected to your CRM: open {e.connect_url} "
+                         "to link your account (one time), then try again."}
     except ConnectionsError as e:
         # Any other failed seam call: e.status is the HTTP status and e.code
         # the answer's error code (get_app_contract §2.2 says whose each is).
@@ -448,7 +451,7 @@ try {
     return "Re-authorize this connector (/mcp → re-authenticate) and try again.";
   }
   if (e instanceof NotConnected) {
-    return `Connect your account first: ${e.connect_url}`;
+    return `Not connected to your CRM: open ${e.connect_url} to link your account (one time), then try again.`;
   }
   throw e;
 }
@@ -467,11 +470,11 @@ Rules that hold regardless of language:
   **in memory only**, until `expires_at`, and never write it to disk, a
   database row, or a log line.
 - On `NotConnected`, don't treat it as an error to swallow: relay the connect
-  link it returns (`connect_url`) to the user with this shape of message:
-  *"You're not connected to {backend} yet. Open {connect_url} to link your
-  account, then try again."* That's the one time this flow surfaces a URL
-  instead of a plain-language sentence: it's a real link the user must
-  click.
+  link it returns (`connect_url`) to the user in the words of §2.2's
+  **Tool-copy convention**: *"Not connected to {Backend}: open {connect_url}
+  to link your account (one time), then try again."* That's the one time this
+  flow surfaces a URL instead of a plain-language sentence: it's a real link
+  the user must click.
 - **`ConnectionLocked` means connected, but locked for this MCP client**
   (`not_connected` with `locked: true`; §2.2's **The `locked: true` flag**
   says what produces it). **The fix is re-authorizing the MCP client**,

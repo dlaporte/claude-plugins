@@ -77,7 +77,9 @@ fi
 
 Every package the code imports must be declared under `dependencies` in
 `app/package.json`; the rule is the contract's §1.1 **Dependencies** bullet
-(`get_app_contract` with `sections: ["1.1"]`).
+(`get_app_contract` with `sections: ["1.1"]`). If `get_app_contract` refuses
+the arguments, or the platform is older than v0.16.14, call it with no
+arguments and read the sections needed from the whole contract.
 
 ### Declared variables, if the app has any
 

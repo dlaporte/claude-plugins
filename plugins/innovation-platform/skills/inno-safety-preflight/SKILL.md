@@ -117,7 +117,9 @@ shape section: `"1.1"` for a `function` app, `"1.1"` and `"1.2"` for an
 `mcp-function` app, `"1.3"` for an `mcp-container` app (a `container` app
 adds none: section 2 is its baseline). Add to it too `"2.1"`, `"2.2"` or
 `"2.3"` when the app links data, uses a connection or declares variables.
-Judge the app
+If `get_app_contract` refuses the arguments, or the platform is older than
+v0.16.14, call it with no arguments and read the sections needed from the
+whole contract. Judge the app
 against the MUSTs, focusing on the ones the enforcement map (§6) leaves to
 preflight review because CI cannot judge them: R3 (identity only from the
 gateway headers, no home-grown auth), R4 (the sign-out link; not applicable

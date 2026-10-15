@@ -55,11 +55,11 @@ the address is the only setting.
 The first tool call against the `inno-platform` MCP server (e.g. from the
 `inno-new-app` skill's `register_app`) opens a browser window for an **Okta
 login**.
-This is expected — the MCP server authenticates you as yourself so every
+This is expected: the MCP server authenticates you as yourself, so every
 action it takes (creating an app, granting access, stopping or starting one)
 is attributable to your real Okta identity, not a shared service credential.
 **If the connector was NOT already authorized when your Claude Code session
-started, authorizing it mid-session (e.g. via `/mcp`) is not enough** — the
+started, authorizing it mid-session (e.g. via `/mcp`) is not enough**: the
 MCP client enumerates tools at startup, so `inno-platform`'s tools stay
 uncallable even after `claude mcp list` shows it `✔ Connected`. Restart the
 session once authorization completes; only then are the tools callable.
@@ -110,31 +110,32 @@ produce is a Dockerfile and app code rather than sentences a user reads.
 - **`skills/inno-new-app`**: intake -> create a repo from the template repo ->
   `register_app` (first call) -> clone, commit the proof file, and install the
   GitHub App -> `register_app` (second call) -> pull -> scaffold.
-- **`skills/inno-migrate-app`** — assess an existing repo (read-only), then
+- **`skills/inno-migrate-app`**: assess an existing repo (read-only), then
   register and adapt it **in place**, keeping its stack where the gates allow.
-- **`skills/inno-platform-conventions`** — stack policy (Python/Starlette is
+- **`skills/inno-platform-conventions`**: stack policy (Python/Starlette is
   the tested stack; any stack meeting the contract is fine), escaping,
   the storage client/endpoints, identity via `X-Forwarded-User`, and the
   files CI will reject if you touch them. Requirements are served live by
-  the `get_app_contract` tool — skills cite it, not stale copies.
-- **`skills/inno-containerize`** — **container-type apps only:** the container
+  the `get_app_contract` tool, and the skills cite it rather than keeping
+  copies.
+- **`skills/inno-containerize`**: for **container-type apps only**, the container
   contract for ANY stack (non-root, `EXPOSE 8080`, patched base, CVE-clean)
   with Python/Node/Go recipes; base images digest-pinned from
   `get_app_contract`; applies to `mcp-container` too. Function-shaped apps (`function`, `mcp-function`) have no Dockerfile and skip this.
-- **`skills/inno-add-connection`** — for an app that needs to reach an
+- **`skills/inno-add-connection`**: for an app that needs to reach an
   external backend **as each individual user** (not one shared app key):
   discovers how the backend signs people in, provisions a Connection with
   `set_app_connection` (a pasted token, the backend's own login, or a
   per-user client ID/secret pair), and wires
   the app to consume it. **`mcp-container`** apps only in v1.
-- **`skills/inno-safety-preflight`** — run the CI security gates, plus a
+- **`skills/inno-safety-preflight`**: run the CI security gates, plus a
   guardrails, application-contract, `get_app_security` (app-code
   authorization/IDOR) and `get_app_accessibility` (advisory) review, by
   pushing to the default branch, which runs the real gates and deploys
   nothing.
 - **`skills/inno-ship`**: push, wait for the safety checks, cut the `v*` release
   tag that deploys, and report the live URL.
-- **`skills/inno-manage-app`** — grant/revoke access, check status and metrics,
+- **`skills/inno-manage-app`**: grant/revoke access, check status and metrics,
   stop, start, or restart an app, read its logs and notifications, set its
   environment variables / API keys, and build support bundles (up to 5 per app in
   any 24 hours). Idle apps are
@@ -181,6 +182,17 @@ CI accessibility, response-header and Dockerfile reports;
 name-check rules; `inno-fleet-admin` owns the admin-only actions; and this
 README owns House style.
 
+What the platform serves, the skills fetch rather than copy. The
+application contract comes from `get_app_contract`: with no arguments it
+serves the whole current contract, with `sections` only the numbered
+sections named (for example `["2"]` for the requirements R1 to R9, or
+`["2.2"]` for Connections), and with `history: true` the contract's version
+notes alone, newest first. A contract or section answer opens with the
+contract version and the current base images, so each skill asks only for
+the sections its step needs. If `get_app_contract` refuses the arguments, or
+the platform is older than v0.16.14, call it with no arguments and read the
+sections needed from the whole contract.
+
 ## How the platform enforces security
 
 The plugin's skills *guide* you toward compliant code, but nothing here is
@@ -200,6 +212,6 @@ platform's broker independently verifies the GitHub OIDC token's signed
 exact reusable workflow from `main` before minting a narrowly-scoped
 Cloudflare deploy token; a forked or gate-stripped workflow gets a
 `403 deploy_denied:workflow` and never reaches Cloudflare. In short: skills guide, CI
-validates, and the deploy broker enforces provenance — so only code that
+validates, and the deploy broker enforces provenance, so only code that
 went through the platform's own CI can ever end up live at
 the app's own address (the platform reports the real hostname).
