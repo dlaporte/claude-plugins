@@ -60,10 +60,10 @@ so turning the gate back on restores sweep coverage with no new deploy.
 After the smoke test the job also writes reports, which are not among those
 checks (R8 says which apps get which). The **Dockerfile misconfiguration
 report** is advisory in every mode: a finding there is a Dockerfile fix to
-offer, never a red job. A `container` app's accessibility and
-response-header report can fail the job only when an admin has set the
-app's `safety.a11y.mode` to `enforce`. `inno-safety-preflight` §1c is where
-both are read.
+offer, never a red job. A `container` app's accessibility report can fail
+the job only when an admin has set the app's `safety.a11y.mode` to
+`enforce`; its response-header report runs in the same scan and is advisory
+in every mode. `inno-safety-preflight` §1c is where both are read.
 
 The image the gates scanned is the image that ships (§4.1): nothing rebuilds
 your Dockerfile at deploy time. Each run still builds its own image, though,
@@ -186,7 +186,8 @@ When Docker is available locally and you want the Dockerfile checked before
 a push, run the block in `references/local-check.md`. It builds the image,
 decides the non-root rule exactly the way the CI gate does (item 2), checks
 `EXPOSE 8080`, and runs the `/healthz` smoke gate with CI's clocks (item 4),
-printing one `OK:` or `FAIL:` line for each.
+printing one `OK:` or `FAIL:` line for the user and for `/healthz`; the
+`EXPOSE` check prints the `8080/tcp` entry, or nothing when it is missing.
 
 That block scans nothing. The image CVE scan is the `container` job's alone:
 do not run an image scanner locally, because `inno-safety-preflight`'s house

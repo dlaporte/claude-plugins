@@ -152,13 +152,14 @@ Before registering, produce and present a real design. The approval gate at the
 end of this section is a hard one: `register_app` provisions real resources.
 
 **Fetch the contract first:** call the `get_app_contract` MCP tool with
-`sections: ["1", "1.1", "1.2", "1.3", "4", "5"]`. Those sections carry the
-four deployment **types** and their requirement deltas (§1.1 to §1.3), the
-stack policy (§4), and the deployment patterns with what the platform does
-NOT support (§5: background jobs, machine-to-machine APIs, guaranteed
-long-lived connections); the answer opens with the contract version and the
-current recommended base images. Evaluate the user's idea against it before
-designing; a not-supported requirement surfaces HERE, not after registration.
+`sections: ["1", "1.1", "1.2", "1.3", "3", "4", "5"]`. Those sections carry
+the four deployment **types** and their requirement deltas (§1.1 to §1.3),
+the recommendations (§3), the stack policy (§4), and the deployment patterns
+with what the platform does NOT support (§5: background jobs,
+machine-to-machine APIs, guaranteed long-lived connections); the answer
+opens with the contract version and the current recommended base images.
+Evaluate the user's idea against it before designing; a not-supported
+requirement surfaces HERE, not after registration.
 
 For an app people will open in a browser (a `container` or `function`
 design), **fetch `get_app_accessibility` beside it.** It serves the
@@ -358,8 +359,8 @@ register_app({ app, repo, description, type, members, accept_guardrails: true, c
   added to the app's member list and notified that the app was shared with
   them, in-platform plus email per their own notification settings, so name
   only people who should hear about it now. An address Okta does not know
-  is handled as `register_app`'s description says, and call 2's answer
-  names it under `Warnings:`. Check its spelling with the user, and if it is
+  is still added but not notified, and call 2's answer names it under
+  `Warnings:`. Check its spelling with the user, and if it is
   mistyped, remove it with `revoke_access` (`inno-manage-app`). An address
   the platform could not check in Okta is added too, with its own warning.
   From platform v0.16.12 each added address is pinned to an account as
@@ -589,14 +590,16 @@ An **mcp-container** repo ships **its own overlay** (`scaffold/mcp-container/`):
 a stateless FastMCP starter for `app/main.py`, plus its own `README.md`,
 `CLAUDE.md`, and `app/requirements.txt`, applied over the container root
 (see the bullet below); `Dockerfile`, `lib/`, and `app/storage.py` stay as
-the container reference's. Everything else is platform-owned and must NOT be
-in the repo: don't create any of it. The `config-integrity` gate's list is
-contract R7 and `get_platform_docs`' **Environment & config integrity**
-section; the plugin's copy, with what to do when a migrated repo already
-carries one, is `inno-platform-conventions`' **Files you must not touch**
-section. Load that skill before writing any application code (stack
-policy, storage, identity, the do-not-touch file list), and, for a container
-or mcp-container app, the `inno-containerize` skill before editing the
+the container reference's. The platform owns a fixed set of other paths (a
+repo-root `src/`, the root build files, any wrangler config, and the rest
+contract R7 lists: `get_app_contract` with `sections: ["2"]`), and none of
+them may be in the repo: don't create any. `get_platform_docs`'
+**Environment & config integrity** section lists them too; the plugin's
+copy, with what to do when a migrated repo already carries one, is
+`inno-platform-conventions`' **Files you must not touch** section. Load
+that skill before writing any application code (stack policy, storage,
+identity, the do-not-touch file list), and, for a container or
+mcp-container app, the `inno-containerize` skill before editing the
 Dockerfile.
 
 **The empty-repo path: if the repo wasn't template-derived, there's nothing

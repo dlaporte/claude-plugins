@@ -50,14 +50,16 @@ call triggers an Okta browser login: expected, not an error.
 
 **Fetch the contract first: it IS the assessment checklist.** Call the
 `get_app_contract` MCP tool with
-`sections: ["1", "1.1", "1.2", "1.3", "2", "4", "4.1", "5"]`: the types and
-their deltas, the requirements R1 to R9, the stack policy, the base images,
+`sections: ["1", "1.1", "1.2", "1.3", "2", "3", "4", "4.1", "5"]`: the types
+and their deltas, the requirements R1 to R9, the recommendations, the stack
+policy, the base images,
 and the deployment patterns with what the platform does NOT support
 (background jobs, machine-to-machine APIs, guaranteed long-lived
 connections: instant blockers to surface). Fetch `"2.2"` too when the repo
 authenticates to a backend as each user (item 2), `"2.3"` when it reads
 configuration from its environment or a `.env` file (item 5), and `"2.1"`
-when its code reads another app's data through a data link. Judge the repo
+when it shares a database with another app of the user's (item 3), which on
+the platform takes a data link. Judge the repo
 against the contract, not a remembered summary of it.
 
 If the app has pages people open in a browser, **fetch `get_app_accessibility`
@@ -326,7 +328,8 @@ restore point is.
      trusts proxy headers (a proxy-fix middleware, a trust-proxy setting, or a
      server's proxy-headers flag), trust only the three that R3's table says
      the gateway sets itself (`X-Forwarded-For`, `X-Forwarded-Host` and
-     `X-Forwarded-Proto`); every other forwarded header stays
+     `X-Forwarded-Proto`); every other proxy header (`X-Real-IP`,
+     `True-Client-IP` and `X-Forwarded-Port` among them) stays
      caller-controlled and must never feed identity, origin or access
      decisions.
    - **Persistence rewired** to the storage endpoints (container) or the app's
