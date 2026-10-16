@@ -12,3 +12,6 @@ description: A fixture for scripts/test-check-contract-sections.sh, not a skill.
 - A list with no sections key is not checked: `["9"]`.
 - A section sign in prose is not checked: §8 and §9.
 - An empty literal names no section: `sections: []`.
+- A word that ends in sections is not the key: `subsections: ["9"]`, `x_sections: ["9"]`.
+- The key right after a bracket: `[sections: ["2"]]`.
+- An id the fixture's own record has, which the real pinned contract need not: `sections: ["8"]`.

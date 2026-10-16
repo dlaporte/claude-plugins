@@ -19,6 +19,11 @@
 set -euo pipefail
 export LC_ALL=C
 
+if ! command -v jq >/dev/null; then
+  echo "check-plugin-floor: jq is required" >&2
+  exit 2
+fi
+
 here="$(cd "$(dirname "$0")" && pwd)"
 record="${1:-$here/platform-compat.json}"
 manifest="${2:-$here/../plugins/innovation-platform/.claude-plugin/plugin.json}"

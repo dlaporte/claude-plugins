@@ -7,13 +7,15 @@
 # a renumbered contract would leave a skill asking for a section that is gone,
 # and nothing would say so.
 #
-# Usage: bash scripts/check-contract-sections.sh [path]   (default plugins/innovation-platform)
+# Usage: bash scripts/check-contract-sections.sh [path] [record]
+#   (default plugins/innovation-platform and scripts/platform-compat.json)
 #
 # A literal is `sections: [` (or the JSON key "sections": [) up to the first
-# `]` on the same line, in any Markdown file under path; a line may hold more
-# than one. Each element of it must be a double-quoted id the pinned contract
-# has. Prints file:line: and what is wrong, once per bad element, and exits 1
-# if there is any:
+# `]` on the same line, in any text file under path; a line may hold more
+# than one. The key must start a word, so `subsections: [` is not one. Each
+# element of it must be a double-quoted id the record's contract has. Prints
+# file:line: and what is wrong, once per bad element, and exits 1 if there is
+# any:
 #   - an id the pinned contract does not have;
 #   - an element that is not a quoted string;
 #   - a literal with no `]` on its line, which this cannot read, so it fails
@@ -23,28 +25,34 @@
 # scripts/test-check-contract-sections.sh holds a fixture for each of these.
 set -euo pipefail
 
+if ! command -v jq >/dev/null; then
+  echo "check-contract-sections: jq is required" >&2
+  exit 2
+fi
+
 target="${1:-plugins/innovation-platform}"
 here="$(cd "$(dirname "$0")" && pwd)"
-record="$here/platform-compat.json"
+record="${2:-$here/platform-compat.json}"
 
 if [ ! -d "$target" ]; then
   echo "check-contract-sections: no such directory: $target" >&2
   exit 2
 fi
+# Space-joined with a space at each end, so " $id " matches one whole id.
 if ! known="$(jq -er '.contract.sections
-    | if type == "array" and length > 0 and all(.[]; type == "string") then .[] else error("") end' \
+    | if type == "array" and length > 0 and all(.[]; type == "string") then " " + join(" ") + " " else error("") end' \
     "$record" 2>/dev/null)"; then
   echo "check-contract-sections: cannot read contract.sections from $record" >&2
   exit 2
 fi
 pinned="$(jq -r '"contract \(.contract.version) at \(.pinned.ref)"' "$record")"
-# Space-joined with a space at each end, so " $id " matches one whole id.
-known=" $(printf '%s ' $known)"
 
-# grep exits 1 for "no match", which is not an error here; 2 is.
+# grep exits 1 for "no match", which is not an error here; 2 is. -I skips
+# binary files. The match takes in the character before the key, the word
+# boundary, which the loop drops.
 rc=0
-literals="$(LC_ALL=C grep -rnoE --include='*.md' \
-  'sections"?[[:space:]]*:[[:space:]]*\[[^]]*(\]|$)' -- "$target")" || rc=$?
+literals="$(LC_ALL=C grep -rnoIE \
+  '(^|[^A-Za-z0-9_])sections"?[[:space:]]*:[[:space:]]*\[[^]]*(\]|$)' -- "$target")" || rc=$?
 if [ "$rc" -gt 1 ]; then
   echo "check-contract-sections: grep failed ($rc)" >&2
   exit 2
@@ -58,6 +66,8 @@ while IFS= read -r hit; do
   # <file>:<line>:<literal>
   file="${hit%%:*}"; rest="${hit#*:}"
   line="${rest%%:*}"; literal="${rest#*:}"
+  # From the key on: the boundary before it may itself be a [.
+  literal="sections${literal#*sections}"
   nliterals=$((nliterals + 1))
   case "$literal" in
     *"]") ;;
@@ -92,7 +102,7 @@ done <<<"$literals"
 if [ -n "$report" ]; then
   # By file, then by line number, so the report reads the same on any grep.
   printf '%s' "$report" | LC_ALL=C sort -t: -k1,1 -k2,2n
-  echo "check-contract-sections: FAIL, $(printf '%s' "$report" | grep -c .) element(s) above are not sections of $pinned (scripts/platform-compat.json). Fix the id, or if the platform renumbered its contract, resync with scripts/platform-compat.sh and read the contract's history." >&2
+  echo "check-contract-sections: FAIL, $(printf '%s' "$report" | grep -c .) element(s) above are not sections of $pinned (${record#"$PWD"/}). Fix the id, or if the platform renumbered its contract, resync with scripts/platform-compat.sh and read the contract's history." >&2
   exit 1
 fi
 echo "check-contract-sections: OK ($target, $nliterals literal(s) asking for $nids section(s), all in $pinned)"
