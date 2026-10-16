@@ -29,7 +29,7 @@
   },
   "tools": {
     "count": 55,
-    "revision": "6f78137ccabff8ad98857496ddad0ec4ebce8a913de660e16845ce775d8d08fc",
+    "revision": "275f927b16b8e9367afda7c3a6df9aea512ae2ff176fe6f2c399982fc77d5a05",
     "list": [
       {
         "name": "accept_naming_change",
@@ -47,7 +47,8 @@
         "required": [
           "app"
         ],
-        "inputRevision": "c6c59b7052bd6e5e515379f0ee5cdd5c0830d050632184170c4df16a65d1edff"
+        "inputRevision": "c6c59b7052bd6e5e515379f0ee5cdd5c0830d050632184170c4df16a65d1edff",
+        "outputRevision": "d5f536657e504db786700a47e4e9cd5dc647b07e5fb2277da89e1db2244c21ba"
       },
       {
         "name": "check_name",
@@ -235,7 +236,8 @@
           "plugin_version"
         ],
         "required": [],
-        "inputRevision": "8f76013ebddc2b879c8fe537190d09af7df0c2fda4187fd4c065edab7b152cff"
+        "inputRevision": "8f76013ebddc2b879c8fe537190d09af7df0c2fda4187fd4c065edab7b152cff",
+        "outputRevision": "ad62848c10c5da99dd9a2617ff6cf8fafdcf691f6df0b26f810701f3fd7a15f8"
       },
       {
         "name": "grant_access",
@@ -269,7 +271,8 @@
           "apply"
         ],
         "required": [],
-        "inputRevision": "6e2c3ad2f172192c52e15471de7a5d93f6459c48bb3d53d1d30097fa6dd795d9"
+        "inputRevision": "6e2c3ad2f172192c52e15471de7a5d93f6459c48bb3d53d1d30097fa6dd795d9",
+        "outputRevision": "9c2a1cc3bc05db489cedbb4da84191cfe933de295f41b9e1eaee2749708a616c"
       },
       {
         "name": "link_app_data",
@@ -675,7 +678,7 @@
     }
   },
   "pinned": {
-    "ref": "v0.16.16",
-    "commit": "75a2c457736fcd2363e010bf20d5b55fd0f9f133"
+    "ref": "v0.16.17",
+    "commit": "2440f5018999019c6dfabe648f38d8d8ade35241"
   }
 }
