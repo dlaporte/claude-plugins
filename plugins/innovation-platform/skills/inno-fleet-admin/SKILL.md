@@ -505,8 +505,7 @@ Each app picks up the promoted gateway at its next deploy (its owner's tag,
 app-scope `gateway.ref` override pins it to another gateway. A browser app on
 a gateway of capability 1 or more asks the platform on every request whether
 a person may use it, so a grant, a revoke, an open or a close reaches them
-within about 10 seconds; the browser apps an earlier release left on Okta
-groups (above) lag behind.
+within about 10 seconds.
 
 The deploy broker refuses `gateway_too_old` for a browser app's deploy whose
 gateway is older than capability 1, since that gateway cannot ask the

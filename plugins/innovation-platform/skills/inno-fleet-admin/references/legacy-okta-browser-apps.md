@@ -2,10 +2,9 @@
 
 Used from `inno-fleet-admin` when an admin finds or fixes a browser app
 (`container`, `function`) registered before platform v0.16.5 whose
-Cloudflare Access application still admits by its Okta groups: a grant or an
-open that does not reach someone, a new owner Access refuses, someone who must
-lose such an app now, a `member_drift_detected` or `cutover_undo_failed` entry
-in the feed, or an Okta group a purge left in place.
+Cloudflare Access application still admits by its Okta groups, must take
+someone off one, meets a `member_drift_detected` or `cutover_undo_failed`
+entry in the feed, or meets an Okta group a purge left in place.
 
 ## What such an app is
 
@@ -28,9 +27,11 @@ Applications) such an app's Access application still has a `members` policy.
 
 ## Taking someone off one now
 
-Stop it (`stop_app`), or redeploy it on the newer gateway (`rebuild_app`),
-which then refuses them, and do not restart it until its Access policies are
-swapped (the fix below).
+First take them off the platform's side: `revoke_access` for them, and
+`set_app_access` with `open: false` if the app is open. Then stop it
+(`stop_app`), or redeploy it on the newer gateway (`rebuild_app`), which then
+refuses them because the platform no longer admits them, and do not restart
+it until its Access policies are swapped (the fix below).
 
 ## The fix, in this order
 

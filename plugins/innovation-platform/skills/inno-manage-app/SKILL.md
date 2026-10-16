@@ -309,8 +309,7 @@ Read-only; each description says what it returns. For an **mcp-function** or
   never the app's errors: a run of 403s is people without access trying the
   app, and 503s are the platform or its sign-in keys being unreachable, not
   the app's code. `none recorded` is no data, not proof that nobody was
-  refused. The app's
-  panel page shows the same counts under its daily chart.
+  refused. The app's panel page shows the same counts under its daily chart.
 
 Deployment statuses: `pending`, `deploying`, `deployed`, `failed` (the
 deploy token was refused), and `abandoned` (a run that died, closed out when a
