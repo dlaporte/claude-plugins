@@ -14,9 +14,11 @@
 # a record in a format it does not read. When a previous pin exists, it first
 # prints what moved since then: each served document whose hash changed, each
 # tool whose inputRevision (its input schema) changed, or that came or went,
-# and each value under contract, gateway, plugins and behavior that changed
-# (the contract's version and sections, the gateway capabilities, the plugin
-# floors, the platform behaviors). That list is the resync's to-do list.
+# each tool whose outputRevision (its output schema, which only some tools
+# declare) came, changed or went, and each value under contract, gateway,
+# plugins and behavior that changed (the contract's version and sections, the
+# gateway capabilities, the plugin floors, the platform behaviors). That list
+# is the resync's to-do list.
 set -euo pipefail
 
 if ! command -v jq >/dev/null; then
@@ -97,9 +99,18 @@ elif ! moved="$(jq -r -n --slurpfile old "$out" --slurpfile new "$tmp/pinned.jso
     (all_keys($ot; $nt) as $k
      | if ($ot | has($k) | not) then "  tool \($k): new (args: \($nt[$k] | args))"
        elif ($nt | has($k) | not) then "  tool \($k): gone"
-       elif $ot[$k].inputRevision == $nt[$k].inputRevision then empty
-       elif ($ot[$k] | args) == ($nt[$k] | args) then "  tool \($k): inputRevision moved (same args: \($nt[$k] | args))"
-       else "  tool \($k): inputRevision moved (args were: \($ot[$k] | args); now: \($nt[$k] | args))" end),
+       else $ot[$k] as $a | $nt[$k] as $b
+         | (if $a.inputRevision == $b.inputRevision then empty
+            elif ($a | args) == ($b | args) then "  tool \($k): inputRevision moved (same args: \($b | args))"
+            else "  tool \($k): inputRevision moved (args were: \($a | args); now: \($b | args))" end),
+           # Only a tool that declares an output schema has an outputRevision;
+           # a null one reads as none.
+           (($a.outputRevision // null) as $ao | ($b.outputRevision // null) as $bo
+            | if $ao == $bo then empty
+              elif $ao == null then "  tool \($k): outputRevision new (it now declares an output schema)"
+              elif $bo == null then "  tool \($k): outputRevision gone (it no longer declares an output schema)"
+              else "  tool \($k): outputRevision moved (its output schema changed)" end)
+       end),
     (all_keys($of; $nf) as $k
      | if ($of | has($k) | not) then "  \($k): new (\($nf[$k]))"
        elif ($nf | has($k) | not) then "  \($k): gone (was \($of[$k]))"
