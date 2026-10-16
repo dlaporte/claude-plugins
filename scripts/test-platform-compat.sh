@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Runs scripts/platform-compat.sh, from a copy of its own, on a platform
-# repository this script plants with a record at each of four tags, and fails
+# repository this script plants with a record at each of five tags, and fails
 # unless what it prints as moved since the previous pin is exactly what each
 # pair of records calls for:
 #   - records with no outputRevision anywhere (the v0.16.16 shape) print what
@@ -10,7 +10,9 @@
 #     changed as moved, and one the new entry lacks as gone, and an unchanged
 #     one prints nothing;
 #   - a tool whose inputRevision and outputRevision both moved prints both,
-#     the input first, and a new tool prints only that it is new.
+#     the input first, and a new tool prints only that it is new;
+#   - an outputRevision of null reads as none: a value that becomes null
+#     prints as gone, and a missing key that becomes null prints nothing.
 # Usage (from the repo root): bash scripts/test-platform-compat.sh
 set -euo pipefail
 # A hook exports GIT_DIR and GIT_INDEX_FILE (as absolute paths in a linked
@@ -50,6 +52,7 @@ tag plain '.'
 tag plain-input 'set("purge_app"; .inputRevision = "a2") | set("list_apps"; .args = ["owner"] | .inputRevision = "d2")'
 tag typed 'set("app_status"; .outputRevision = "o1") | set("get_app_logs"; .outputRevision = "g1") | set("get_platform_status"; .outputRevision = "p1") | set("list_apps"; .outputRevision = "l1") | set("purge_app"; .inputRevision = "a3")'
 tag retyped 'set("app_status"; .outputRevision = "o2") | set("get_app_logs"; .inputRevision = "e2" | .outputRevision = "g2") | set("list_apps"; del(.outputRevision)) | .tools.list += [{"name":"check_name","args":["app"],"inputRevision":"f","outputRevision":"n1"}] | .tools.count += 1'
+tag nulled 'set("get_platform_status"; .outputRevision = null) | set("purge_app"; .outputRevision = null)'
 
 fail=0
 n=0
@@ -99,6 +102,8 @@ expect "a record whose outputRevisions move, stay and go" typed retyped \
   "  tool get_app_logs: outputRevision moved (its output schema changed)" \
   "  tool list_apps: outputRevision gone (it no longer declares an output schema)"
 expect "the same record twice, with outputRevisions" retyped retyped
+expect "a record whose outputRevisions become null" retyped nulled \
+  "  tool get_platform_status: outputRevision gone (it no longer declares an output schema)"
 
 [ "$fail" -eq 0 ] || exit 1
-echo "test-platform-compat: OK ($n cases: a record with no outputRevision reads as before; an outputRevision that comes, moves or goes is listed, an unchanged one is not)"
+echo "test-platform-compat: OK ($n cases: a record with no outputRevision reads as before; an outputRevision that comes, moves or goes is listed, an unchanged one is not, and a null one reads as none)"

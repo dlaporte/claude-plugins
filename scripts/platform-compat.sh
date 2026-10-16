@@ -103,12 +103,13 @@ elif ! moved="$(jq -r -n --slurpfile old "$out" --slurpfile new "$tmp/pinned.jso
          | (if $a.inputRevision == $b.inputRevision then empty
             elif ($a | args) == ($b | args) then "  tool \($k): inputRevision moved (same args: \($b | args))"
             else "  tool \($k): inputRevision moved (args were: \($a | args); now: \($b | args))" end),
-           # Only a tool that declares an output schema has an outputRevision.
-           (if ($a | has("outputRevision") | not) and ($b | has("outputRevision") | not) then empty
-            elif ($a | has("outputRevision") | not) then "  tool \($k): outputRevision new (it now declares an output schema)"
-            elif ($b | has("outputRevision") | not) then "  tool \($k): outputRevision gone (it no longer declares an output schema)"
-            elif $a.outputRevision == $b.outputRevision then empty
-            else "  tool \($k): outputRevision moved (its output schema changed)" end)
+           # Only a tool that declares an output schema has an outputRevision;
+           # a null one reads as none.
+           (($a.outputRevision // null) as $ao | ($b.outputRevision // null) as $bo
+            | if $ao == $bo then empty
+              elif $ao == null then "  tool \($k): outputRevision new (it now declares an output schema)"
+              elif $bo == null then "  tool \($k): outputRevision gone (it no longer declares an output schema)"
+              else "  tool \($k): outputRevision moved (its output schema changed)" end)
        end),
     (all_keys($of; $nf) as $k
      | if ($of | has($k) | not) then "  \($k): new (\($nf[$k]))"
