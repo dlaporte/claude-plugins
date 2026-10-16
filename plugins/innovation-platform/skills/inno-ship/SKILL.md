@@ -89,8 +89,8 @@ this is the only check that helps before the first deploy. Check it against
 the contract's §2.3 **Secrecy.** and **Declaring what an app wants**
 paragraphs (`get_app_contract` with `sections: ["2.3"]`): the name rule and
 the reserved names from the first, the three allowed fields with their
-defaults and the 32-entry cap from the second. A file that breaks
-them never fails the deploy, and the platform keeps its previous
+defaults and their types, and the 32-entry cap, from the second. A file
+that breaks them never fails the deploy, and the platform keeps its previous
 declarations; the reason shows in one of two places:
 
 - a file the platform refuses: on the `deploy-complete:` line in this
@@ -275,9 +275,7 @@ and note that the app is **Okta-gated**: the first visit prompts an Okta
 login (Cloudflare Access), and only the owner plus anyone granted access via
 `inno-manage-app`'s `grant_access` can reach it, unless the app has been
 opened to every SSO user with `set_app_access` (`inno-manage-app`). On a
-browser app, anyone else who signs in sees a plain "No access" page (on
-one registered before platform v0.16.5 whose sign-in a platform admin has
-not yet updated, the sign-in step may refuse them first).
+browser app, anyone else who signs in sees a plain "No access" page.
 
 For a `container` app, add one plain line with the tag run's accessibility
 report counts: critical, serious, moderate and minor findings, and how many

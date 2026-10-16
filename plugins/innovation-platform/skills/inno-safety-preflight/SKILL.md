@@ -161,8 +161,11 @@ its **Secrecy.** and **Declaring what an app wants** paragraphs
   nor a `required` name with no value fails a gate or stops the deploy.
 - **What you check:** the file against §2.3's rules (the name rule and the
   reserved names, from **Secrecy.**; the three allowed fields with their
-  defaults and the 32-entry cap, from **Declaring what an app wants**) and, for
-  every `required: true` name, whether it already has a value
+  defaults and their types, and the 32-entry cap, from **Declaring what an app
+  wants**: `required` and `secret` must each be a JSON boolean and
+  `description` a JSON string, so a value such as `"true"`, `1` or `null` is
+  refused, never coerced, and the platform keeps the previous declarations)
+  and, for every `required: true` name, whether it already has a value
   (`list_app_variables`, or `app_status`, which names an unset required one
   directly).
 - **What is the user's decision:** whether to fix the file or set the value
