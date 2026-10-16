@@ -1,0 +1,681 @@
+{
+  "format": 1,
+  "contract": {
+    "version": 30,
+    "sections": [
+      "1",
+      "1.1",
+      "1.2",
+      "1.3",
+      "2",
+      "2.1",
+      "2.2",
+      "2.3",
+      "3",
+      "4",
+      "4.1",
+      "5",
+      "6",
+      "7"
+    ]
+  },
+  "served": {
+    "docs/APP-ACCESSIBILITY.md": "73e59a6f2ad544f535f0644c94cc142ac4b784cfed60c9a84c455d3fb81dabc6",
+    "docs/APP-CONTRACT-HISTORY.md": "8d6fa6b187694fe81d356a0cd7ec8599e3978a71e72b57f385dbef017e11ba29",
+    "docs/APP-CONTRACT.md": "045c7ac9b778a3930bad652cea3cf9f58038e714be3a3475e3dd406985c76320",
+    "docs/APP-SECURITY.md": "ce5a33177b98efc090a126a676ba5dfa528f7a3e3fc1c9f97bbde5bc3bb9284e",
+    "docs/GUARDRAILS.md": "27f6bd88674169b0bfbd5965bf28f4ba4f9bffc508a3e2061ce7fe20d09eac78",
+    "docs/PLATFORM-DOCS.md": "8f21da1f1d23fedfa065443e1770536f831213cfdebb6e5aad85a6e001d30820"
+  },
+  "tools": {
+    "count": 55,
+    "revision": "b7419a206a3be2723de170acef6b4c1c95aa3a68131fd8244ef074cc00b56f2f",
+    "list": [
+      {
+        "name": "accept_naming_change",
+        "readOnly": false,
+        "args": [],
+        "required": [],
+        "inputRevision": "efddc7bd8bbcef73a14eb1ace1ffdaec81e518ef1e13c1e9271d0b8acb694a49"
+      },
+      {
+        "name": "app_status",
+        "readOnly": true,
+        "args": [
+          "app"
+        ],
+        "required": [
+          "app"
+        ],
+        "inputRevision": "c6c59b7052bd6e5e515379f0ee5cdd5c0830d050632184170c4df16a65d1edff"
+      },
+      {
+        "name": "check_name",
+        "readOnly": true,
+        "args": [
+          "app"
+        ],
+        "required": [
+          "app"
+        ],
+        "inputRevision": "c6c59b7052bd6e5e515379f0ee5cdd5c0830d050632184170c4df16a65d1edff"
+      },
+      {
+        "name": "claim_instance_objects",
+        "readOnly": false,
+        "args": [
+          "apply",
+          "include_admin_group"
+        ],
+        "required": [],
+        "inputRevision": "f53409bb5511d5878f95192e52d4b6813d23c1b63083043c24151b1a6f730c00"
+      },
+      {
+        "name": "create_support_bundle",
+        "readOnly": false,
+        "args": [
+          "app",
+          "description"
+        ],
+        "required": [
+          "app"
+        ],
+        "inputRevision": "f13b0b641d0e9da32aa077968fa0e918f11def3868cef6a54644986470181583"
+      },
+      {
+        "name": "disconnect_user_connection",
+        "readOnly": false,
+        "args": [
+          "app",
+          "connection",
+          "user"
+        ],
+        "required": [
+          "app",
+          "connection",
+          "user"
+        ],
+        "inputRevision": "2421a3e79c386244172a60ffea076546b4d726121be8b290b5ad8ed4b6fb04fe"
+      },
+      {
+        "name": "export_app_data",
+        "readOnly": false,
+        "args": [
+          "app"
+        ],
+        "required": [
+          "app"
+        ],
+        "inputRevision": "c6c59b7052bd6e5e515379f0ee5cdd5c0830d050632184170c4df16a65d1edff"
+      },
+      {
+        "name": "export_platform_backup",
+        "readOnly": true,
+        "args": [],
+        "required": [],
+        "inputRevision": "efddc7bd8bbcef73a14eb1ace1ffdaec81e518ef1e13c1e9271d0b8acb694a49"
+      },
+      {
+        "name": "get_app_accessibility",
+        "readOnly": true,
+        "args": [],
+        "required": [],
+        "inputRevision": "efddc7bd8bbcef73a14eb1ace1ffdaec81e518ef1e13c1e9271d0b8acb694a49"
+      },
+      {
+        "name": "get_app_contract",
+        "readOnly": true,
+        "args": [
+          "history",
+          "sections"
+        ],
+        "required": [],
+        "inputRevision": "b8334f7a6fad8423d68745e0d87a4be8f939d607f244b8185227f208a5b697aa"
+      },
+      {
+        "name": "get_app_logs",
+        "readOnly": true,
+        "args": [
+          "app",
+          "level",
+          "limit",
+          "q",
+          "since_minutes"
+        ],
+        "required": [
+          "app"
+        ],
+        "inputRevision": "4e645b9552301c567e8f7a4252a87f79083bf84fa5d5e9dee04d3b934e0d40e4"
+      },
+      {
+        "name": "get_app_metrics",
+        "readOnly": true,
+        "args": [
+          "app",
+          "days",
+          "hours"
+        ],
+        "required": [
+          "app"
+        ],
+        "inputRevision": "8d26e9f516717c593a522e98f93336a09665bdbce879fe1247a641e8266040f8"
+      },
+      {
+        "name": "get_app_security",
+        "readOnly": true,
+        "args": [],
+        "required": [],
+        "inputRevision": "efddc7bd8bbcef73a14eb1ace1ffdaec81e518ef1e13c1e9271d0b8acb694a49"
+      },
+      {
+        "name": "get_app_usage",
+        "readOnly": true,
+        "args": [
+          "app",
+          "days"
+        ],
+        "required": [
+          "app"
+        ],
+        "inputRevision": "891f5ac1c689ace16c9d1e639cf1dd134c5d68aa5117f2d48b7e8e48d0e5f560"
+      },
+      {
+        "name": "get_ci_status",
+        "readOnly": true,
+        "args": [
+          "app",
+          "run_id"
+        ],
+        "required": [
+          "app"
+        ],
+        "inputRevision": "de5d130a1353986571c30ab8e8005c2f404844994f202dcdd6c92a22d3bdc6e6"
+      },
+      {
+        "name": "get_config",
+        "readOnly": true,
+        "args": [
+          "app",
+          "user"
+        ],
+        "required": [],
+        "inputRevision": "c416929d35ad129c80afbbf250ed95c312811665f08a105d86ae46807af9d247"
+      },
+      {
+        "name": "get_guardrails",
+        "readOnly": true,
+        "args": [],
+        "required": [],
+        "inputRevision": "efddc7bd8bbcef73a14eb1ace1ffdaec81e518ef1e13c1e9271d0b8acb694a49"
+      },
+      {
+        "name": "get_platform_docs",
+        "readOnly": true,
+        "args": [],
+        "required": [],
+        "inputRevision": "efddc7bd8bbcef73a14eb1ace1ffdaec81e518ef1e13c1e9271d0b8acb694a49"
+      },
+      {
+        "name": "get_platform_logs",
+        "readOnly": true,
+        "args": [
+          "app",
+          "level",
+          "limit",
+          "q",
+          "since_minutes"
+        ],
+        "required": [],
+        "inputRevision": "5ce7a7b97bfde0619c100b68eec9edfd6e4bd4dd10098cea6ff0877e61f5a347"
+      },
+      {
+        "name": "get_platform_status",
+        "readOnly": true,
+        "args": [
+          "plugin_version"
+        ],
+        "required": [],
+        "inputRevision": "8f76013ebddc2b879c8fe537190d09af7df0c2fda4187fd4c065edab7b152cff"
+      },
+      {
+        "name": "grant_access",
+        "readOnly": false,
+        "args": [
+          "app",
+          "email"
+        ],
+        "required": [
+          "app",
+          "email"
+        ],
+        "inputRevision": "16a292c7f6589b75336e09065fc2c509be98c1f1484b2aaea32cf5190a4a5234"
+      },
+      {
+        "name": "grant_admin",
+        "readOnly": false,
+        "args": [
+          "email"
+        ],
+        "required": [
+          "email"
+        ],
+        "inputRevision": "09a114eaed54059d449a719a175af973a3ff98afae77165cf27a752534d44c30"
+      },
+      {
+        "name": "import_okta_memberships",
+        "readOnly": false,
+        "args": [
+          "app",
+          "apply"
+        ],
+        "required": [],
+        "inputRevision": "6e2c3ad2f172192c52e15471de7a5d93f6459c48bb3d53d1d30097fa6dd795d9"
+      },
+      {
+        "name": "link_app_data",
+        "readOnly": false,
+        "args": [
+          "consumer",
+          "source"
+        ],
+        "required": [
+          "consumer",
+          "source"
+        ],
+        "inputRevision": "5d8f0c5b4d1d3e6a4a3d01bdf8af3e693f525204e3d133d66b7b5451abb20742"
+      },
+      {
+        "name": "list_admins",
+        "readOnly": true,
+        "args": [],
+        "required": [],
+        "inputRevision": "efddc7bd8bbcef73a14eb1ace1ffdaec81e518ef1e13c1e9271d0b8acb694a49"
+      },
+      {
+        "name": "list_app_links",
+        "readOnly": true,
+        "args": [
+          "app"
+        ],
+        "required": [
+          "app"
+        ],
+        "inputRevision": "c6c59b7052bd6e5e515379f0ee5cdd5c0830d050632184170c4df16a65d1edff"
+      },
+      {
+        "name": "list_app_variables",
+        "readOnly": true,
+        "args": [
+          "app"
+        ],
+        "required": [
+          "app"
+        ],
+        "inputRevision": "c6c59b7052bd6e5e515379f0ee5cdd5c0830d050632184170c4df16a65d1edff"
+      },
+      {
+        "name": "list_apps",
+        "readOnly": true,
+        "args": [],
+        "required": [],
+        "inputRevision": "efddc7bd8bbcef73a14eb1ace1ffdaec81e518ef1e13c1e9271d0b8acb694a49"
+      },
+      {
+        "name": "list_connections",
+        "readOnly": true,
+        "args": [
+          "app"
+        ],
+        "required": [],
+        "inputRevision": "956dab21f6703f0c0ce547a851fd1c6ef8f0e900efc83a55716dad26c51808fe"
+      },
+      {
+        "name": "list_notifications",
+        "readOnly": true,
+        "args": [
+          "app",
+          "stage",
+          "unread_only"
+        ],
+        "required": [],
+        "inputRevision": "b427eadde156c4b764ac9e466758baa9313f7786501ba349741de5795deb0190"
+      },
+      {
+        "name": "list_user_connections",
+        "readOnly": true,
+        "args": [
+          "app",
+          "connection",
+          "user"
+        ],
+        "required": [],
+        "inputRevision": "a16dda445539a723e05c31a0616f03732c67bf8db89b4ddb3df72d896afe6d6b"
+      },
+      {
+        "name": "list_users",
+        "readOnly": true,
+        "args": [],
+        "required": [],
+        "inputRevision": "efddc7bd8bbcef73a14eb1ace1ffdaec81e518ef1e13c1e9271d0b8acb694a49"
+      },
+      {
+        "name": "mark_all_notifications_read",
+        "readOnly": false,
+        "args": [],
+        "required": [],
+        "inputRevision": "efddc7bd8bbcef73a14eb1ace1ffdaec81e518ef1e13c1e9271d0b8acb694a49"
+      },
+      {
+        "name": "mark_notification_read",
+        "readOnly": false,
+        "args": [
+          "id"
+        ],
+        "required": [
+          "id"
+        ],
+        "inputRevision": "b4669bc6233e3031d8cbd6ea63fa32711521bbee8cb59621ee083ca71406fe99"
+      },
+      {
+        "name": "purge_app",
+        "readOnly": false,
+        "args": [
+          "app"
+        ],
+        "required": [
+          "app"
+        ],
+        "inputRevision": "c6c59b7052bd6e5e515379f0ee5cdd5c0830d050632184170c4df16a65d1edff"
+      },
+      {
+        "name": "query_audit",
+        "readOnly": true,
+        "args": [
+          "action",
+          "actor",
+          "app",
+          "limit",
+          "surface"
+        ],
+        "required": [],
+        "inputRevision": "9ad01b18ca9667c2276db4e29fd30d8e0564c89762f6026c6002f13a9cd03a49"
+      },
+      {
+        "name": "rebuild_app",
+        "readOnly": false,
+        "args": [
+          "app"
+        ],
+        "required": [
+          "app"
+        ],
+        "inputRevision": "c6c59b7052bd6e5e515379f0ee5cdd5c0830d050632184170c4df16a65d1edff"
+      },
+      {
+        "name": "register_app",
+        "readOnly": false,
+        "args": [
+          "accept_guardrails",
+          "app",
+          "connections",
+          "description",
+          "members",
+          "repo",
+          "type"
+        ],
+        "required": [
+          "app",
+          "repo"
+        ],
+        "inputRevision": "a0649d104434e05cc6678cfc0b0e3fc982355e2735b312f1c3835a5565566340"
+      },
+      {
+        "name": "remove_app_connection",
+        "readOnly": false,
+        "args": [
+          "app",
+          "connection"
+        ],
+        "required": [
+          "app",
+          "connection"
+        ],
+        "inputRevision": "172c5d11af0417106662d293b1cec5f1f356e0d57bc029c81d1ecf0fd713978d"
+      },
+      {
+        "name": "remove_app_variable",
+        "readOnly": false,
+        "args": [
+          "app",
+          "name"
+        ],
+        "required": [
+          "app",
+          "name"
+        ],
+        "inputRevision": "9209d1f8b61768bf5cac639f6c6bc7e993d05bd674bf6f98a633eeb2828ddd70"
+      },
+      {
+        "name": "remove_config",
+        "readOnly": false,
+        "args": [
+          "key",
+          "scope",
+          "scope_id"
+        ],
+        "required": [
+          "key",
+          "scope"
+        ],
+        "inputRevision": "7eeaee7c4e14b610d480b4d350af51d253e5c282e41c36cd8a167b32352b59d6"
+      },
+      {
+        "name": "request_start",
+        "readOnly": false,
+        "args": [
+          "app",
+          "reason"
+        ],
+        "required": [
+          "app"
+        ],
+        "inputRevision": "fe60a2fa859e057fb5f7fec060d55d59b27e3fccb5c3dc999764fc13fdf528cc"
+      },
+      {
+        "name": "restart_app",
+        "readOnly": false,
+        "args": [
+          "app"
+        ],
+        "required": [
+          "app"
+        ],
+        "inputRevision": "c6c59b7052bd6e5e515379f0ee5cdd5c0830d050632184170c4df16a65d1edff"
+      },
+      {
+        "name": "revoke_access",
+        "readOnly": false,
+        "args": [
+          "app",
+          "email"
+        ],
+        "required": [
+          "app",
+          "email"
+        ],
+        "inputRevision": "16a292c7f6589b75336e09065fc2c509be98c1f1484b2aaea32cf5190a4a5234"
+      },
+      {
+        "name": "revoke_admin",
+        "readOnly": false,
+        "args": [
+          "email"
+        ],
+        "required": [
+          "email"
+        ],
+        "inputRevision": "09a114eaed54059d449a719a175af973a3ff98afae77165cf27a752534d44c30"
+      },
+      {
+        "name": "revoke_sessions",
+        "readOnly": false,
+        "args": [
+          "email"
+        ],
+        "required": [
+          "email"
+        ],
+        "inputRevision": "09a114eaed54059d449a719a175af973a3ff98afae77165cf27a752534d44c30"
+      },
+      {
+        "name": "set_app_access",
+        "readOnly": false,
+        "args": [
+          "app",
+          "open"
+        ],
+        "required": [
+          "app",
+          "open"
+        ],
+        "inputRevision": "53d57e42c86bf44e6e2ffda41e8690e29377fdcf83a8c6254f4eacd1c504636d"
+      },
+      {
+        "name": "set_app_connection",
+        "readOnly": false,
+        "args": [
+          "app",
+          "client_id",
+          "client_secret",
+          "config",
+          "connection",
+          "disabled",
+          "label",
+          "scopes",
+          "strategy"
+        ],
+        "required": [
+          "app",
+          "config",
+          "connection",
+          "label",
+          "strategy"
+        ],
+        "inputRevision": "a8076b6663a3ba9f9ef720e958610693b77d579d3124017954b6f976e7abf1f6"
+      },
+      {
+        "name": "set_app_variable",
+        "readOnly": false,
+        "args": [
+          "app",
+          "name",
+          "secret",
+          "value"
+        ],
+        "required": [
+          "app",
+          "name",
+          "value"
+        ],
+        "inputRevision": "1b3b90ce84805b3828a6f27cb0a01020c31a0e4566172b9fd9eb6b810753d692"
+      },
+      {
+        "name": "set_config",
+        "readOnly": false,
+        "args": [
+          "key",
+          "note",
+          "scope",
+          "scope_id",
+          "value"
+        ],
+        "required": [
+          "key",
+          "scope",
+          "value"
+        ],
+        "inputRevision": "cec00a2ce688fe511756d98704f2aa228b0934fc54f64f06844dd66b512d5538"
+      },
+      {
+        "name": "start_app",
+        "readOnly": false,
+        "args": [
+          "app"
+        ],
+        "required": [
+          "app"
+        ],
+        "inputRevision": "c6c59b7052bd6e5e515379f0ee5cdd5c0830d050632184170c4df16a65d1edff"
+      },
+      {
+        "name": "stop_app",
+        "readOnly": false,
+        "args": [
+          "app"
+        ],
+        "required": [
+          "app"
+        ],
+        "inputRevision": "c6c59b7052bd6e5e515379f0ee5cdd5c0830d050632184170c4df16a65d1edff"
+      },
+      {
+        "name": "sync_gateway_ref",
+        "readOnly": false,
+        "args": [],
+        "required": [],
+        "inputRevision": "efddc7bd8bbcef73a14eb1ace1ffdaec81e518ef1e13c1e9271d0b8acb694a49"
+      },
+      {
+        "name": "transfer_app",
+        "readOnly": false,
+        "args": [
+          "app",
+          "force",
+          "new_owner_email"
+        ],
+        "required": [
+          "app",
+          "new_owner_email"
+        ],
+        "inputRevision": "72a2dbc9107ca3d6d70f4c1aaa0842ba943f8cfed4dd11840c8455ae594d8bfe"
+      },
+      {
+        "name": "unlink_app_data",
+        "readOnly": false,
+        "args": [
+          "consumer",
+          "source"
+        ],
+        "required": [
+          "consumer",
+          "source"
+        ],
+        "inputRevision": "b723d5a9d4e7b067927bf1971dd2fdff7122c0235883ccacb99121a84b3e190a"
+      }
+    ]
+  },
+  "gateway": {
+    "capability": 1,
+    "browserAppMinCapability": 1
+  },
+  "plugins": {
+    "app": {
+      "minVersion": "2.0.0"
+    },
+    "admin": {
+      "minVersion": "1.0.3"
+    }
+  },
+  "behavior": {
+    "membershipAuthority": "platform",
+    "deployHealth": {
+      "probeTimeoutMs": 45000,
+      "retryPauseMs": 5000,
+      "recentDeployMs": 600000
+    }
+  },
+  "pinned": {
+    "ref": "1d824793",
+    "commit": "1d824793afa9833dc1f094548f48a34c3ec72b4e"
+  }
+}

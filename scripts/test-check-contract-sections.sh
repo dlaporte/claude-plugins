@@ -1,0 +1,54 @@
+#!/usr/bin/env bash
+# Runs scripts/check-contract-sections.sh on its fixture and fails unless its
+# output and exit status are exactly what the fixture plants. The fixture,
+# scripts/fixtures/check-contract-sections/skills/, holds two files:
+# fails/SKILL.md, one line per rule that must fail (an id the contract does
+# not have, alone, among good ones, in a second literal on a line and under
+# the JSON key; an element that is not a quoted string; a literal that does
+# not close on its line), and passes/SKILL.md, the look-alikes that must pass
+# (valid ids, an id after the literal, a list with no sections key, a section
+# sign in prose, an empty literal). The whole fixture must report exactly the
+# planted lines and exit 1; passes/ alone must exit 0.
+# Both runs read the real pinned record, scripts/platform-compat.json, as the
+# tool-name test reads the real pinned list, so every planted id is one no
+# contract section has.
+# Usage (from the repo root): bash scripts/test-check-contract-sections.sh
+set -euo pipefail
+
+here="$(cd "$(dirname "$0")" && pwd)"
+fixture="scripts/fixtures/check-contract-sections"
+file="$fixture/skills/fails/SKILL.md"
+
+expected="$(cat <<EOF
+$file:8: "9" is not a section of the pinned contract
+$file:9: "2.9" is not a section of the pinned contract
+$file:10: "0" is not a section of the pinned contract
+$file:11: 2 is not a quoted section id
+$file:12: "1.9" is not a section of the pinned contract
+$file:13: a sections literal does not close on its line, so it cannot be read; keep it on one line
+EOF
+)"
+
+fail=0
+rc=0
+out="$(cd "$here/.." && bash scripts/check-contract-sections.sh "$fixture" 2>/dev/null)" || rc=$?
+if [ "$rc" -ne 1 ]; then
+  echo "test-check-contract-sections: the check exited $rc on the fixture, expected 1" >&2
+  fail=1
+fi
+if [ "$out" != "$expected" ]; then
+  echo "test-check-contract-sections: the check reported something other than what the fixture plants:" >&2
+  diff <(printf '%s\n' "$expected") <(printf '%s\n' "$out") >&2 || true
+  fail=1
+fi
+
+# The passing file alone.
+rc=0
+out="$(cd "$here/.." && bash scripts/check-contract-sections.sh "$fixture/skills/passes" 2>&1)" || rc=$?
+if [ "$rc" -ne 0 ]; then
+  echo "test-check-contract-sections: the check exited $rc on passes/, expected 0:" >&2
+  printf '%s\n' "$out" >&2
+  fail=1
+fi
+[ "$fail" -eq 0 ] || exit 1
+echo "test-check-contract-sections: OK ($(printf '%s\n' "$expected" | grep -c .) planted lines reported, nothing else; the look-alikes pass alone)"

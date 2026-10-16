@@ -1,19 +1,27 @@
 name: CI
 
-# Six jobs, all cheap and dependency-free (jq is preinstalled on the
+# Seven jobs, all cheap and dependency-free (jq is preinstalled on the
 # runner): the manifests and the marketplace catalog must be well-formed, any
 # change to a plugin must come with a version bump for that plugin
 # (scripts/version-bump.sh, which scripts/test-version-bump.sh first runs on a
 # planted repository; both jobs read a version through
 # scripts/plugin-version.sh), every
 # innovation-platform skill's Version gate block must stay byte-identical to
-# the rest, the plugin must name no one platform instance
-# (scripts/instance-neutral.sh), every MCP tool it names must be one the
-# platform serves, and it must name every one the platform serves
-# (scripts/check-tool-names.sh, against the pinned scripts/platform-tools.txt,
-# which needs no platform checkout), and no file in it may hold an em or en
-# dash (scripts/check-dashes.sh, which scripts/test-check-dashes.sh first runs
-# on trees it plants).
+# the rest, the plugin (and the platform record vendored beside it) must name
+# no one platform instance (scripts/instance-neutral.sh), every MCP tool it
+# names must be one the platform serves, and it must name every one the
+# platform serves (scripts/check-tool-names.sh, against the pinned
+# scripts/platform-tools.txt, which needs no platform checkout), no file in it
+# may hold an em or en dash (scripts/check-dashes.sh, which
+# scripts/test-check-dashes.sh first runs on trees it plants), and it must
+# agree with the pinned platform release: the tool list is the pinned
+# record's, every contract section a skill asks for is one the record's
+# contract has (scripts/check-contract-sections.sh), and the plugin's version
+# is at least the record's app plugin floor (scripts/check-plugin-floor.sh),
+# each check first proved on its fixture. The record,
+# scripts/platform-compat.json, is the platform's docs/compat.json at a
+# release, vendored by scripts/platform-compat.sh because the platform
+# repository is private; CI reads only the vendored copy.
 #
 # Why the bump is a HARD gate rather than a convention: delivery is keyed on
 # the declared version. Claude Code caches an installed plugin at
@@ -156,6 +164,17 @@ jobs:
           set -euo pipefail
           bash scripts/instance-neutral.sh plugins/innovation-platform
 
+      # The vendored platform record and the tool list made from it are
+      # public too. They are scanned in a directory of their own, because
+      # scripts/ also holds instance-neutral.sh, whose patterns match
+      # themselves.
+      - name: The vendored platform record names no instance
+        run: |
+          set -euo pipefail
+          dir="$(mktemp -d)"
+          cp scripts/platform-compat.json scripts/platform-tools.txt "$dir/"
+          bash scripts/instance-neutral.sh "$dir"
+
   tool-names:
     runs-on: ubuntu-26.04
     timeout-minutes: 5
@@ -170,8 +189,8 @@ jobs:
           bash scripts/test-check-tool-names.sh
 
       # Against scripts/platform-tools.txt, the pinned copy of the platform's
-      # tool names. Refresh that file at each resync with
-      # scripts/platform-tools.sh; the script's header says what it checks.
+      # tool names, which scripts/platform-compat.sh writes from the pinned
+      # record at each resync; the check's header says what it checks.
       - name: The innovation-platform plugin names only tools the platform serves, and all of them
         run: |
           set -euo pipefail
@@ -195,3 +214,57 @@ jobs:
         run: |
           set -euo pipefail
           bash scripts/check-dashes.sh plugins/innovation-platform
+
+  platform-compat:
+    runs-on: ubuntu-26.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+
+      # scripts/platform-compat.json is the platform's compatibility record at
+      # the pinned release, and scripts/platform-tools.txt is written from it
+      # by the same run of scripts/platform-compat.sh, so the two must agree:
+      # the list names the pinned commit and holds exactly the record's tools.
+      - name: The pinned tool list is the pinned record's
+        run: |
+          set -euo pipefail
+          record=scripts/platform-compat.json
+          list=scripts/platform-tools.txt
+          if ! jq -e '.format == 1 and (.pinned.commit | type == "string" and test("^[0-9a-f]{40}$"))' "$record" >/dev/null; then
+            echo "::error file=$record::not a format 1 record with a pinned commit; regenerate it with scripts/platform-compat.sh"
+            exit 1
+          fi
+          commit="$(jq -r '.pinned.commit' "$record")"
+          if ! grep -qF "(commit $commit)" "$list"; then
+            echo "::error file=$list::its header does not name the pinned commit $commit; regenerate both files with scripts/platform-compat.sh"
+            exit 1
+          fi
+          if ! diff <(grep -v '^#' "$list") <(jq -r '.tools.list[].name' "$record" | LC_ALL=C sort); then
+            echo "::error file=$list::its names differ from tools.list in $record (diff above); regenerate both files with scripts/platform-compat.sh"
+            exit 1
+          fi
+          echo "The $(grep -vc '^#' "$list") pinned tool names are the pinned record's, at $(jq -r '.pinned.ref' "$record")."
+
+      # The check first proves itself on its fixture: it must report exactly
+      # the lines the fixture plants, and pass the look-alikes.
+      - name: The contract-sections check catches what its fixture plants
+        run: |
+          set -euo pipefail
+          bash scripts/test-check-contract-sections.sh
+
+      - name: The innovation-platform plugin asks only for sections the pinned contract has
+        run: |
+          set -euo pipefail
+          bash scripts/check-contract-sections.sh plugins/innovation-platform
+
+      # The floor check first proves it compares versions as numbers (2.10.0
+      # is above 2.9.0) on records and manifests it plants.
+      - name: The floor check catches what its fixture plants
+        run: |
+          set -euo pipefail
+          bash scripts/test-check-plugin-floor.sh
+
+      - name: The innovation-platform plugin is at least the pinned release's app plugin floor
+        run: |
+          set -euo pipefail
+          bash scripts/check-plugin-floor.sh

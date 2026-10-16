@@ -65,10 +65,22 @@ prefer having the skill call `get_app_contract` / `get_platform_docs` /
 `get_guardrails` at runtime over restating platform behavior here, since
 fetched content cannot go stale.
 
-The platform's tool names are pinned in `scripts/platform-tools.txt`, which
-the `tool-names` CI job reads. Refresh it at every resync with the platform:
-`bash scripts/platform-tools.sh <platform checkout> <release tag>`, then commit the
-new list with the skill changes that use any new tool.
+The platform release this plugin is checked against is pinned in
+`scripts/platform-compat.json`: the platform's compatibility record
+(`docs/compat.json` at a release tag) with the ref and commit it was read at.
+`scripts/platform-tools.txt`, the record's tool names, is written by the same
+run. CI reads only these copies, never the platform repository: the
+`tool-names` job checks every tool name the plugin uses, and the
+`platform-compat` job checks that the list is the record's, that every
+`sections: [...]` literal under `plugins/innovation-platform/` names a section
+the record's contract has, and that the plugin's `version` is at least the
+record's app plugin floor (`plugins.app.minVersion`). Refresh both at every
+resync with the platform:
+`bash scripts/platform-compat.sh <platform checkout> <release tag>` (v0.16.16
+or later; an earlier release has no record). It first prints which served
+documents and which tools' input schemas moved since the previous pin: that
+is the resync's to-do list. Commit both files with the skill changes that
+answer it.
 
 No file under `plugins/innovation-platform/` may hold an em dash (U+2014) or
 an en dash (U+2013): write a colon, a semicolon, a comma or a pair of
