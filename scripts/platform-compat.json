@@ -29,7 +29,7 @@
   },
   "tools": {
     "count": 55,
-    "revision": "b7419a206a3be2723de170acef6b4c1c95aa3a68131fd8244ef074cc00b56f2f",
+    "revision": "6f78137ccabff8ad98857496ddad0ec4ebce8a913de660e16845ce775d8d08fc",
     "list": [
       {
         "name": "accept_naming_change",
@@ -95,7 +95,7 @@
           "connection",
           "user"
         ],
-        "inputRevision": "2421a3e79c386244172a60ffea076546b4d726121be8b290b5ad8ed4b6fb04fe"
+        "inputRevision": "1ac315b9c2ae74ca92a055dcae7ec99d495f41b30633e4463da959eec859aef4"
       },
       {
         "name": "export_app_data",
@@ -561,7 +561,7 @@
           "label",
           "strategy"
         ],
-        "inputRevision": "a8076b6663a3ba9f9ef720e958610693b77d579d3124017954b6f976e7abf1f6"
+        "inputRevision": "fd6b5b41e138c4976b94d3dfc821dd24257e724c2e0ef706c7b2f2f643517401"
       },
       {
         "name": "set_app_variable",
@@ -675,7 +675,7 @@
     }
   },
   "pinned": {
-    "ref": "1d824793",
-    "commit": "1d824793afa9833dc1f094548f48a34c3ec72b4e"
+    "ref": "v0.16.16",
+    "commit": "75a2c457736fcd2363e010bf20d5b55fd0f9f133"
   }
 }
