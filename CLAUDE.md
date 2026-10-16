@@ -83,19 +83,25 @@ Refresh both files at every resync with the platform:
 
 1. Fetch the release tag into the platform checkout first:
    `git -C <platform checkout> fetch origin tag <release tag>`.
-2. Run the script at that tag, not at a branch or a commit:
+2. Run the script at that tag:
    `bash scripts/platform-compat.sh <platform checkout> <release tag>`
    (v0.16.16 or later; an earlier release has no record). Before it
    overwrites the previous pin it prints what moved since then: served
    documents, tools' input schemas, the contract's version and sections, the
    gateway, the plugin floors and the platform behaviors. That list is the
    resync's to-do list, and it is printed once: save it. Until you commit,
-   `git diff scripts/platform-compat.json` shows the same changes.
+   `git diff scripts/platform-compat.json` shows the same changes. Before
+   the platform tags a release, its release order runs this script once at
+   the release commit instead, as a check, and that run is never committed
+   or merged. Its printed list is the one to keep: the run at the tag
+   compares against the files the check left, so it prints only what
+   moved after the release commit, which is usually nothing.
 3. Answer the list in the skills. A renumbered contract needs every skill's
    `sections: [...]` literals updated to the new ids (the contract's history
    says what moved), a new tool needs a skill that names it, and a raised app
    plugin floor needs the plugin bumped to at least that version.
-4. Run the `platform-compat` and `tool-names` jobs' steps locally, then
+4. Run the `platform-compat` and `tool-names` jobs' steps, and the
+   `instance-neutral` job's step for the vendored record, locally, then
    commit both files with the skill changes that answer the list.
 
 Never merge a pin that is not at a release tag. A branch commit can still

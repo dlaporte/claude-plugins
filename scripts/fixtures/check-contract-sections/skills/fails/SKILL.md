@@ -12,3 +12,5 @@ description: A fixture for scripts/test-check-contract-sections.sh, not a skill.
 - The JSON key form: `{ "app": "demo", "sections": ["1.9"] }`.
 - A literal that does not close on its line: `sections: ["2",
   "3"]`.
+- A literal glued to the one before it, the second bad: `sections: ["2"]sections: ["9"]`.
+- An id that is not numbers joined by dots, though each part is a section: `sections: ["1.3 2"]`.

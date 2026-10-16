@@ -13,6 +13,13 @@
 #     (exit 2).
 # Usage (from the repo root): bash scripts/test-check-platform-tools.sh
 set -euo pipefail
+# A hook exports GIT_DIR and GIT_INDEX_FILE (as absolute paths in a linked
+# worktree), and git honors them over -C, so this script's commit and its
+# v0.16.16 tag would land in the caller's repository. Before the first git
+# call, unset every GIT_ variable and read no global or system config; the
+# scripts this one runs inherit both.
+for v in "${!GIT_@}"; do unset "$v"; done
+export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1
 
 here="$(cd "$(dirname "$0")" && pwd)"
 check="$here/check-platform-tools.sh"

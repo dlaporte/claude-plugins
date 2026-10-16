@@ -3,9 +3,10 @@
 # output and exit status are exactly what the fixture plants. The fixture,
 # scripts/fixtures/check-contract-sections/skills/, holds fails/SKILL.md, one
 # line per rule that must fail (an id the contract does not have, alone,
-# among good ones, in a second literal on a line and under the JSON key; an
-# element that is not a quoted string; a literal that does not close on its
-# line), fails/example.json, a bad id in a file that is not Markdown, and
+# among good ones, in a second literal on a line, under the JSON key and in a
+# literal glued to the one before it; an element that is not a quoted string;
+# a literal that does not close on its line; an id that is not numbers joined
+# by dots), fails/example.json, a bad id in a file that is not Markdown, and
 # passes/SKILL.md, the look-alikes that must pass (valid ids, an id after the
 # literal, a list with no sections key, a section sign in prose, an empty
 # literal, a word that ends in sections, the key right after a bracket). The
@@ -32,6 +33,8 @@ $file:10: "0" is not a section of the pinned contract
 $file:11: 2 is not a quoted section id
 $file:12: "1.9" is not a section of the pinned contract
 $file:13: a sections literal does not close on its line, so it cannot be read; keep it on one line
+$file:15: "9" is not a section of the pinned contract
+$file:16: "1.3 2" is not a section id: an id is numbers joined by dots
 $json:1: "9" is not a section of the pinned contract
 EOF
 )"

@@ -12,10 +12,12 @@
 #
 # A literal is `sections: [` (or the JSON key "sections": [) up to the first
 # `]` on the same line, in any text file under path; a line may hold more
-# than one. The key must start a word, so `subsections: [` is not one. Each
-# element of it must be a double-quoted id the record's contract has. Prints
-# file:line: and what is wrong, once per bad element, and exits 1 if there is
-# any:
+# than one, even glued to the one before it. The key must start a word, so
+# `subsections: [` is not one. Each element of it must be a double-quoted id
+# the record's contract has. Prints file:line: and what is wrong, once per bad
+# element, and exits 1 if there is any:
+#   - an id that is not numbers joined by dots, such as "1.3 2", which would
+#     otherwise match two ids side by side in the record's list;
 #   - an id the pinned contract does not have;
 #   - an element that is not a quoted string;
 #   - a literal with no `]` on its line, which this cannot read, so it fails
@@ -48,16 +50,19 @@ fi
 pinned="$(jq -r '"contract \(.contract.version) at \(.pinned.ref)"' "$record")"
 
 # grep exits 1 for "no match", which is not an error here; 2 is. -I skips
-# binary files. The match takes in the character before the key, the word
-# boundary, which the loop drops.
+# binary files. The match takes in the whole word that ends in sections, and
+# the loop skips a longer word (subsections). Matching a boundary character
+# before the key instead would miss a literal glued to the one before it,
+# whose ] that match has already taken.
 rc=0
 literals="$(LC_ALL=C grep -rnoIE \
-  '(^|[^A-Za-z0-9_])sections"?[[:space:]]*:[[:space:]]*\[[^]]*(\]|$)' -- "$target")" || rc=$?
+  '[A-Za-z0-9_]*sections"?[[:space:]]*:[[:space:]]*\[[^]]*(\]|$)' -- "$target")" || rc=$?
 if [ "$rc" -gt 1 ]; then
   echo "check-contract-sections: grep failed ($rc)" >&2
   exit 2
 fi
 
+idshape='^[0-9]+(\.[0-9]+)*$'
 nliterals=0
 nids=0
 report=""
@@ -66,8 +71,10 @@ while IFS= read -r hit; do
   # <file>:<line>:<literal>
   file="${hit%%:*}"; rest="${hit#*:}"
   line="${rest%%:*}"; literal="${rest#*:}"
-  # From the key on: the boundary before it may itself be a [.
-  literal="sections${literal#*sections}"
+  case "$literal" in
+    sections*) ;;
+    *) continue ;;
+  esac
   nliterals=$((nliterals + 1))
   case "$literal" in
     *"]") ;;
@@ -88,6 +95,10 @@ while IFS= read -r hit; do
       \"*\")
         id="${element#\"}"; id="${id%\"}"
         nids=$((nids + 1))
+        if [[ ! $id =~ $idshape ]]; then
+          report+="$file:$line: \"$id\" is not a section id: an id is numbers joined by dots"$'\n'
+          continue
+        fi
         case "$known" in
           *" $id "*) ;;
           *) report+="$file:$line: \"$id\" is not a section of the pinned contract"$'\n' ;;
