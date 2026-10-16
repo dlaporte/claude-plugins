@@ -22,7 +22,9 @@ name: CI
 # first proved on its fixture. The record,
 # scripts/platform-compat.json, is the platform's docs/compat.json at a
 # release, vendored by scripts/platform-compat.sh because the platform
-# repository is private; CI reads only the vendored copy.
+# repository is private; CI reads only the vendored copy. The list of what
+# moved that the script prints at a resync is proved on records its test
+# plants (scripts/test-platform-compat.sh).
 #
 # Why the bump is a HARD gate rather than a convention: delivery is keyed on
 # the declared version. Claude Code caches an installed plugin at
@@ -265,3 +267,13 @@ jobs:
         run: |
           set -euo pipefail
           bash scripts/check-plugin-floor.sh
+
+      # At a resync, scripts/platform-compat.sh prints what moved since the
+      # previous pin, the resync's to-do list, and nothing in CI reads it. Its
+      # test pins records from a repository it plants: one with no
+      # outputRevision reads as before, and an output schema that came, moved
+      # or went is listed.
+      - name: The resync's moved list reports what its fixture plants
+        run: |
+          set -euo pipefail
+          bash scripts/test-platform-compat.sh
