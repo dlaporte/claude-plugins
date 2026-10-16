@@ -83,6 +83,14 @@ without those commands nothing in Claude Code itself tells a user they are
 on an old build; that `Plugin:` line is the only signal, and only a skill that
 ran the gate has seen it.
 
+If `get_platform_status` fails with an error about its output schema right
+after a platform upgrade, the session listed the platform's tools before the
+upgrade, and a client that checks answers against the schema it listed (the
+MCP SDK client does) refuses the new answer. Platform v0.16.18's trim of the
+status's `instance` block was the first such change. Reconnect (in Claude
+Code, `/mcp`, then Reconnect) or start a new session, then run the skill
+again.
+
 ### House style
 
 Every skill in this plugin speaks to a broad, largely non-technical userbase,

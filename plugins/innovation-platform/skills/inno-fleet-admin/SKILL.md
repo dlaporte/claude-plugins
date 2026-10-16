@@ -391,8 +391,11 @@ Owners never need it: they redeploy by tagging their own repo (`inno-ship`).
 From platform v0.16.12 the platform also rebuilds, on its own, a
 function-shaped consumer whose data link to another account's app was
 revoked (`inno-manage-app`'s **Data links across owners**); its notices name
-`rebuild_app` only to do that sooner. It starts CI in a repository the
-platform does not own, which cannot be recalled, so confirm first.
+`rebuild_app` to do that sooner, and from platform v0.16.18 the
+`cross_owner_link_revoked` notice also names `stop_app`, `transfer_app` and
+`purge_app` for a consumer whose rebuilds never land (**Fleet-wide reads**,
+below). It starts CI in a repository the platform does not own, which cannot
+be recalled, so confirm first.
 
 - `app_not_deployed`: decided by the app's status alone, and the message
   says what to do: a stopped app is started first (`start_app`); a deploying
@@ -596,7 +599,13 @@ when it asks for the tag again.
   from a function-shaped app another account owns was revoked, and whether
   that app's rebuild was dispatched (`inno-manage-app`'s **Data links
   across owners**). The platform rebuilds it on its own, tries again a day
-  later, and names `rebuild_app` only to do it sooner.
+  later, and names `rebuild_app` to do it sooner. From platform v0.16.18,
+  when the notice reports a rebuild dispatched or one that could not be, it
+  also names what ends that app's reach into the source's data if its
+  rebuilds never land (its owner can cancel each run): `stop_app` for it,
+  `transfer_app` for it, or `purge_app` for it. Before a stop, tell the admin
+  that it holds only once the app's owner has spent their self-service
+  starts: until then the owner can start it again.
 
   `mark_all_notifications_read` called by an admin marks every unread
   notification read, everyone's, not only the admin's own.

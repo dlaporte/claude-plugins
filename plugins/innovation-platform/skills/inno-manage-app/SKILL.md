@@ -565,7 +565,13 @@ Stages worth acting on when one appears: `respin_failed`, `auto_restarted`,
 - `cross_owner_link_revoked`: a function-shaped app another account owns read
   this app's data through a link that was revoked, and the entry says what
   the platform did to remove its binding (**Data links across owners**,
-  above). A platform admin can run `rebuild_app` on that app sooner.
+  above). A platform admin can run `rebuild_app` on that app sooner. From
+  platform v0.16.18, when the entry reports a rebuild dispatched or one that
+  could not be, it also names what a platform admin can do if that app's
+  rebuilds never land (its owner can cancel each run): stop it (`stop_app`,
+  which holds only once its owner has spent their self-service starts),
+  transfer it (`transfer_app`) or purge it (`purge_app`). Those are an
+  admin's calls: offer to draft the request, naming both apps.
 
 The admin-only stages are `inno-fleet-admin`'s.
 `mark_notification_read` answers `notification_not_found` for an id that
