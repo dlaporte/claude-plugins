@@ -15,10 +15,12 @@
 # prints what moved since then: each served document whose hash changed, each
 # tool whose inputRevision (its input schema) changed, or that came or went,
 # each tool whose outputRevision (its output schema, which only some tools
-# declare) came, changed or went, and each value under contract, gateway,
-# plugins and behavior that changed (the contract's version and sections, the
-# gateway capabilities, the plugin floors, the platform behaviors). That list
-# is the resync's to-do list.
+# declare) came, changed or went, each tool whose readOnly flag changed
+# (tools.revision hashes it, so a flip alone moves the platform's
+# Compatibility: revision), and each value under contract, gateway, plugins
+# and behavior that changed (the contract's version and sections, the gateway
+# capabilities, the plugin floors, the platform behaviors). That list is the
+# resync's to-do list.
 set -euo pipefail
 
 if ! command -v jq >/dev/null; then
@@ -79,6 +81,7 @@ if [ ! -e "$out" ]; then
 elif ! moved="$(jq -r -n --slurpfile old "$out" --slurpfile new "$tmp/pinned.json" '
   def by_name: [(.tools.list // [])[] | {key: .name, value: .}] | from_entries;
   def args: (.args // []) | if length == 0 then "none" else join(", ") end;
+  def flag: if . == null then "none" else tojson end;
   # Every key either side holds, once, sorted.
   def all_keys($a; $b): [$a, $b] | map(keys) | add | unique | .[];
   # Each leaf under an object as {key: "a.b.c", value: its JSON}; a list is
@@ -109,7 +112,12 @@ elif ! moved="$(jq -r -n --slurpfile old "$out" --slurpfile new "$tmp/pinned.jso
             | if $ao == $bo then empty
               elif $ao == null then "  tool \($k): outputRevision new (it now declares an output schema)"
               elif $bo == null then "  tool \($k): outputRevision gone (it no longer declares an output schema)"
-              else "  tool \($k): outputRevision moved (its output schema changed)" end)
+              else "  tool \($k): outputRevision moved (its output schema changed)" end),
+           # Read without //, which would take false for missing; a missing
+           # key reads as none.
+           ($a.readOnly as $ar | $b.readOnly as $br
+            | if $ar == $br then empty
+              else "  tool \($k): readOnly was \($ar | flag); now \($br | flag)" end)
        end),
     (all_keys($of; $nf) as $k
      | if ($of | has($k) | not) then "  \($k): new (\($nf[$k]))"

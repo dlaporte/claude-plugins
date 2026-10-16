@@ -1,8 +1,8 @@
 #!/usr/bin/env bash
 # Runs scripts/platform-compat.sh, from a copy of its own, on a platform
-# repository this script plants with a record at each of six tags, and fails
-# unless what it prints as moved since the previous pin is exactly what each
-# pair of records calls for:
+# repository this script plants with a record at each of eight tags, and
+# fails unless what it prints as moved since the previous pin is exactly what
+# each pair of records calls for:
 #   - records with no outputRevision anywhere (the v0.16.16 shape) print what
 #     they printed before outputRevision existed: an inputRevision that moved,
 #     with the args it names, and nothing moved for the same record twice;
@@ -14,7 +14,10 @@
 #   - an outputRevision of null reads as none: a value that becomes null
 #     prints as gone, and a missing key that becomes null prints nothing;
 #   - a retired tool prints only that it is gone, one that held an
-#     outputRevision too.
+#     outputRevision too;
+#   - a readOnly that flips prints its old and new value, after the tool's
+#     inputRevision line, an unchanged one (false included) prints nothing,
+#     and one the new entry lacks reads as none.
 # Usage (from the repo root): bash scripts/test-platform-compat.sh
 set -euo pipefail
 # A hook exports GIT_DIR and GIT_INDEX_FILE (as absolute paths in a linked
@@ -48,14 +51,16 @@ tag() {
 }
 
 g init -q
-printf '%s\n' '{"format":1,"contract":{"version":1,"sections":["1"]},"tools":{"count":5,"list":[{"name":"app_status","args":["app"],"inputRevision":"b"},{"name":"get_app_logs","args":["app"],"inputRevision":"e"},{"name":"get_platform_status","args":["version"],"inputRevision":"c"},{"name":"list_apps","args":[],"inputRevision":"d"},{"name":"purge_app","args":["app"],"inputRevision":"a"}]},"plugins":{"app":{"minVersion":"1.0.0"}}}' \
+printf '%s\n' '{"format":1,"contract":{"version":1,"sections":["1"]},"tools":{"count":5,"list":[{"name":"app_status","readOnly":true,"args":["app"],"inputRevision":"b"},{"name":"get_app_logs","readOnly":true,"args":["app"],"inputRevision":"e"},{"name":"get_platform_status","readOnly":true,"args":["version"],"inputRevision":"c"},{"name":"list_apps","readOnly":true,"args":[],"inputRevision":"d"},{"name":"purge_app","readOnly":false,"args":["app"],"inputRevision":"a"}]},"plugins":{"app":{"minVersion":"1.0.0"}}}' \
   >"$record"
 tag plain '.'
 tag plain-input 'set("purge_app"; .inputRevision = "a2") | set("list_apps"; .args = ["owner"] | .inputRevision = "d2")'
 tag typed 'set("app_status"; .outputRevision = "o1") | set("get_app_logs"; .outputRevision = "g1") | set("get_platform_status"; .outputRevision = "p1") | set("list_apps"; .outputRevision = "l1") | set("purge_app"; .inputRevision = "a3")'
-tag retyped 'set("app_status"; .outputRevision = "o2") | set("get_app_logs"; .inputRevision = "e2" | .outputRevision = "g2") | set("list_apps"; del(.outputRevision)) | .tools.list += [{"name":"check_name","args":["app"],"inputRevision":"f","outputRevision":"n1"}] | .tools.count += 1'
+tag retyped 'set("app_status"; .outputRevision = "o2") | set("get_app_logs"; .inputRevision = "e2" | .outputRevision = "g2") | set("list_apps"; del(.outputRevision)) | .tools.list += [{"name":"check_name","readOnly":true,"args":["app"],"inputRevision":"f","outputRevision":"n1"}] | .tools.count += 1'
 tag nulled 'set("get_platform_status"; .outputRevision = null) | set("purge_app"; .outputRevision = null)'
 tag retired '.tools.list |= map(select(.name != "app_status" and .name != "list_apps")) | .tools.count -= 2'
+tag flipped 'set("purge_app"; .readOnly = true) | set("get_app_logs"; .readOnly = false | .inputRevision = "e3")'
+tag unflagged 'set("get_app_logs"; del(.readOnly))'
 
 fail=0
 n=0
@@ -110,6 +115,13 @@ expect "a record whose outputRevisions become null" retyped nulled \
 expect "a record that retires two tools, one with an outputRevision" nulled retired \
   "  tool app_status: gone" \
   "  tool list_apps: gone"
+expect "a record whose tools flip readOnly, one with its inputRevision" retired flipped \
+  "  tool get_app_logs: inputRevision moved (same args: app)" \
+  "  tool get_app_logs: readOnly was true; now false" \
+  "  tool purge_app: readOnly was false; now true"
+expect "the same record twice, with a readOnly that is false" flipped flipped
+expect "a record whose false readOnly goes" flipped unflagged \
+  "  tool get_app_logs: readOnly was false; now none"
 
 [ "$fail" -eq 0 ] || exit 1
-echo "test-platform-compat: OK ($n cases: a record with no outputRevision reads as before; an outputRevision that comes, moves or goes is listed, an unchanged one is not, and a null one reads as none; a retired tool prints only that it is gone)"
+echo "test-platform-compat: OK ($n cases: a record with no outputRevision reads as before; an outputRevision that comes, moves or goes is listed, an unchanged one is not, and a null one reads as none; a retired tool prints only that it is gone; a readOnly that flips or goes is listed, an unchanged one is not)"
