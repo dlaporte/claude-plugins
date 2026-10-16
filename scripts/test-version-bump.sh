@@ -18,6 +18,13 @@
 # byte order of "plugins/<name>/", which puts kept-bad before kept.
 # Usage (from the repo root): bash scripts/test-version-bump.sh
 set -euo pipefail
+# A hook exports GIT_DIR and GIT_INDEX_FILE (as absolute paths in a linked
+# worktree), and git honors them over -C, so this script's commits would land
+# in the caller's repository, and the gate would read that one. Before the
+# first git call, unset every GIT_ variable and read no global or system
+# config; the gate inherits both.
+for v in "${!GIT_@}"; do unset "$v"; done
+export GIT_CONFIG_GLOBAL=/dev/null GIT_CONFIG_NOSYSTEM=1
 
 here="$(cd "$(dirname "$0")" && pwd)"
 gate="$here/version-bump.sh"

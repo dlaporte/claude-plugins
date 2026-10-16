@@ -4,7 +4,7 @@
 # never names a tool the platform does serve (a new tool no skill covers yet,
 # the reverse direction of the 2026-10-12 review's D06). The platform's tool
 # names are pinned in scripts/platform-tools.txt (refreshed at each resync by
-# scripts/platform-tools.sh), so this needs no platform checkout.
+# scripts/platform-compat.sh), so this needs no platform checkout.
 #
 # Usage: bash scripts/check-tool-names.sh [--list] [--partial] [path]   (default plugins/innovation-platform)
 #   --list     also prints every tool name the plugin uses, the allowlisted
@@ -183,7 +183,7 @@ awk -v list="$list" -v partial="$partial" -v target="$target" '
       printf "check-tool-names: FAIL, %d name(s) above are not in scripts/platform-tools.txt. Fix the name, or if it is not a tool (a refusal code, a field), add it to scripts/tool-name-allowlist.txt.\n", hits > "/dev/stderr"
     }
     if (unnamed) {
-      printf "check-tool-names: FAIL, %d pinned tool(s) above are never named in %s. Name each where a skill uses it, or, if the platform no longer serves it, refresh scripts/platform-tools.txt with scripts/platform-tools.sh.\n", unnamed, target > "/dev/stderr"
+      printf "check-tool-names: FAIL, %d pinned tool(s) above are never named in %s. Name each where a skill uses it, or, if the platform no longer serves it, refresh scripts/platform-tools.txt with scripts/platform-compat.sh.\n", unnamed, target > "/dev/stderr"
     }
     if (hits || unnamed) exit 1
     printf "check-tool-names: OK (%s, %d pinned tools, all named)\n", target, npinned

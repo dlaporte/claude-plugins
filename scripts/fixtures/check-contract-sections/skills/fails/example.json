@@ -1,0 +1,1 @@
+{ "fixture": "a literal in a file that is not Markdown is read too", "sections": ["2", "9"] }

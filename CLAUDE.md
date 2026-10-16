@@ -65,10 +65,46 @@ prefer having the skill call `get_app_contract` / `get_platform_docs` /
 `get_guardrails` at runtime over restating platform behavior here, since
 fetched content cannot go stale.
 
-The platform's tool names are pinned in `scripts/platform-tools.txt`, which
-the `tool-names` CI job reads. Refresh it at every resync with the platform:
-`bash scripts/platform-tools.sh <platform checkout> <release tag>`, then commit the
-new list with the skill changes that use any new tool.
+The platform release this plugin is checked against is pinned in
+`scripts/platform-compat.json`: the platform's compatibility record
+(`docs/compat.json` at a release tag) with the ref and commit it was read at.
+`scripts/platform-tools.txt`, the record's tool names, is written by the same
+run. CI reads only these copies, never the platform repository: the
+`tool-names` job checks every tool name the plugin uses, and the
+`platform-compat` job checks that the list is the record's, that every
+`sections: [...]` literal under `plugins/innovation-platform/` names a section
+the record's contract has, and that the plugin's `version` is at least the
+record's app plugin floor (`plugins.app.minVersion`). That job's fixture
+tests plant their own records, so a resync leaves them alone. The tool-name
+fixture test still reads the real pinned list, so a resync that retires a
+tool its fixture uses fails that test until the fixture is edited.
+
+Refresh both files at every resync with the platform:
+
+1. Fetch the release tag into the platform checkout first:
+   `git -C <platform checkout> fetch origin tag <release tag>`.
+2. Run the script at that tag:
+   `bash scripts/platform-compat.sh <platform checkout> <release tag>`
+   (v0.16.16 or later; an earlier release has no record). Before it
+   overwrites the previous pin it prints what moved since then: served
+   documents, tools' input schemas, the contract's version and sections, the
+   gateway, the plugin floors and the platform behaviors. That list is the
+   resync's to-do list, and it is printed once: save it. Until you commit,
+   `git diff scripts/platform-compat.json` shows the same changes. Before
+   the platform tags a release, its release order runs this script once at
+   the release commit instead, as a check, and that pin is never merged. Its printed list is the one to keep: the run at the tag
+   compares against the files the check left, so it prints only what
+   moved after the release commit, which is usually nothing.
+3. Answer the list in the skills. A renumbered contract needs every skill's
+   `sections: [...]` literals updated to the new ids (the contract's history
+   says what moved), a new tool needs a skill that names it, and a raised app
+   plugin floor needs the plugin bumped to at least that version.
+4. Run the `platform-compat` and `tool-names` jobs' steps, and the
+   `instance-neutral` job's step for the vendored record, locally, then
+   commit both files with the skill changes that answer the list.
+
+Never merge a pin that is not at a release tag. A branch commit can still
+move before the release, and CI does not check that the pinned ref is a tag.
 
 No file under `plugins/innovation-platform/` may hold an em dash (U+2014) or
 an en dash (U+2013): write a colon, a semicolon, a comma or a pair of
