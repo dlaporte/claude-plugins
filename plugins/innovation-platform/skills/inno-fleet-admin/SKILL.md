@@ -186,15 +186,11 @@ close touches an app's Okta groups, its Okta rule or its Access policies. A
 browser app (`container`, `function`) registered before platform v0.16.5
 whose deploy never moved it off its Okta groups can still have a Cloudflare
 Access application that admits only the people those groups hold, which
-nothing updates now. Until it is fixed, a grant or an open there reaches no
-one those groups do not hold (a transfer's new owner included), and on a
-gateway below capability 1 a revoke or a close reaches no one and an open
-app fails open. When an admin
-finds or fixes such an app, must take someone off one, meets a
-`member_drift_detected` or `cutover_undo_failed` entry, or meets an Okta
-group a purge left, load `references/legacy-okta-browser-apps.md`: it says
-how to find these apps, what each does until fixed, and the fix, whose order
-matters.
+nothing updates now. When an admin finds or fixes such an app, must take
+someone off one, meets a `member_drift_detected` or `cutover_undo_failed`
+entry, or meets an Okta group a purge left, load
+`references/legacy-okta-browser-apps.md`: it says how to find these apps, how
+to take someone off one now, and the fix, whose order matters.
 
 ## `transfer_app({ app, new_owner_email, force? })`: reassign ownership
 
