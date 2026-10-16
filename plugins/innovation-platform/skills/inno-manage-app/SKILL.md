@@ -204,7 +204,7 @@ whole contract. Quote the app's hostname from the `URL:` line of
 `app_status` or from `register_app`'s answer, rather than building it.
 
 **What admits a person.** An MCP app (`mcp-function`, `mcp-container`), and a
-browser app (`container`, `function`) on the platform's gateway, admit a
+browser app (`container`, `function`), admit a
 person when the member list holds them or the app is open to every SSO user,
 and ask at every request. A browser app's gateway answers someone it refuses
 with a plain 403 "No access" page that names no one, and shows a 503 "Try
@@ -214,18 +214,6 @@ reached), not a revoke, so do not re-grant for it. A gateway built before
 platform v0.16.10 answers a failure to obtain those keys with a 401 instead,
 which a browser reads as "sign in again" (`inno-platform-conventions` has the
 detail).
-
-**Browser apps registered before v0.16.5** can differ until a platform admin
-fixes them (`inno-fleet-admin`, **Browser apps an earlier release left on Okta
-groups**). On one whose Cloudflare Access application still admits only the
-people its old Okta groups hold, a revoke or a close still reaches a person,
-but a grant or an open reaches no one those groups do not already hold. On one
-not redeployed since its instance adopted v0.16.5's gateway, no grant, revoke,
-open or close reaches it at all. No tool prints which gateway or which Access
-policies an app has. When a change does not seem to reach a browser app
-registered before v0.16.5, say so plainly and have the owner ask a platform
-admin to check it, rather than retrying the grant, and do not restart it with
-`restart_app` while that fix is under way.
 
 **A grant is pinned to one person** (from platform v0.16.12): `grant_access`'s
 description says how a grant is pinned to the identity provider account that
@@ -285,16 +273,9 @@ must confirm.
   is closed (`set_app_access`).
 - **When the removal bites depends on the app type** (the description gives
   each window). An MCP app refuses them once the gateway's introspection cache
-  lets go of their token. A browser app on the platform's gateway refuses them
-  once its held answer runs out; their Cloudflare Access session runs on, but
-  it no longer gets them in. On a browser app still on an older gateway
-  (above) the removal never reaches them, and nothing else on this surface
-  does either, `revoke_sessions` included. If someone must lose such an app
-  NOW, stop it, or redeploy it on the newer gateway (the owner's next release
-  with `inno-ship`, or a platform admin's `rebuild_app`), which then refuses
-  them, and do not restart it (`restart_app`) until a platform admin has
-  swapped its Access policies. Say this plainly when an admin is offboarding
-  someone.
+  lets go of their token. A browser app refuses them once its gateway's held
+  answer runs out; their Cloudflare Access session runs on, but it no longer
+  gets them in.
 - **The revoke cascades** to every app that reads this app's data through a
   link, and on to the apps that read those; the response names the apps it
   removed the person from. A consumer the person **owns** is left as it is,
@@ -327,9 +308,8 @@ Read-only; each description says what it returns. For an **mcp-function** or
 - A browser app's `Access checks` line counts the gateway's own answers,
   never the app's errors: a run of 403s is people without access trying the
   app, and 503s are the platform or its sign-in keys being unreachable, not
-  the app's code. `none recorded` is no data (which is also all a gateway
-  older than v0.16.5 records), not proof that nobody was refused. The app's
-  panel page shows the same counts under its daily chart.
+  the app's code. `none recorded` is no data, not proof that nobody was
+  refused. The app's panel page shows the same counts under its daily chart.
 
 Deployment statuses: `pending`, `deploying`, `deployed`, `failed` (the
 deploy token was refused), and `abandoned` (a run that died, closed out when a
@@ -397,10 +377,6 @@ the change reaches people and what a close does to data links.
   access, not just current members.
 - **The named member list is never modified**: closing always restores
   exactly the configured access. Say so when confirming.
-- A browser app registered before v0.16.5 may not follow (**Browser apps
-  registered before v0.16.5**, above). Set expectations when the user asks
-  "why can they still get in?", and for such an app have the owner ask a
-  platform admin.
 - `open_access_disallowed`: an admin has restricted open access for this app
   or owner (`access.allow_open`). A platform admin can change it with
   `set_config`; do not try to work around it by mass `grant_access`.
@@ -589,7 +565,13 @@ Stages worth acting on when one appears: `respin_failed`, `auto_restarted`,
 - `cross_owner_link_revoked`: a function-shaped app another account owns read
   this app's data through a link that was revoked, and the entry says what
   the platform did to remove its binding (**Data links across owners**,
-  above). A platform admin can run `rebuild_app` on that app sooner.
+  above). A platform admin can run `rebuild_app` on that app sooner. From
+  platform v0.16.18, when the entry reports a rebuild dispatched or one that
+  could not be, it also names what a platform admin can do if that app's
+  rebuilds never land (its owner can cancel each run): stop it (`stop_app`,
+  which holds only once its owner has spent their self-service starts),
+  transfer it (`transfer_app`) or purge it (`purge_app`). Those are an
+  admin's calls: offer to draft the request, naming both apps.
 
 The admin-only stages are `inno-fleet-admin`'s.
 `mark_notification_read` answers `notification_not_found` for an id that

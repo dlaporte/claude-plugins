@@ -1,7 +1,7 @@
 {
   "format": 1,
   "contract": {
-    "version": 30,
+    "version": 31,
     "sections": [
       "1",
       "1.1",
@@ -21,15 +21,15 @@
   },
   "served": {
     "docs/APP-ACCESSIBILITY.md": "73e59a6f2ad544f535f0644c94cc142ac4b784cfed60c9a84c455d3fb81dabc6",
-    "docs/APP-CONTRACT-HISTORY.md": "8d6fa6b187694fe81d356a0cd7ec8599e3978a71e72b57f385dbef017e11ba29",
-    "docs/APP-CONTRACT.md": "045c7ac9b778a3930bad652cea3cf9f58038e714be3a3475e3dd406985c76320",
+    "docs/APP-CONTRACT-HISTORY.md": "8bc014c563d42e1c504660afe76f9087cb26ee4d0f8e6b3e5b4d7ee3e1164f6f",
+    "docs/APP-CONTRACT.md": "be58fe3019d6f59ba64bf39c02981dd537be561d26e02d102842cc0fffdc2cb7",
     "docs/APP-SECURITY.md": "ce5a33177b98efc090a126a676ba5dfa528f7a3e3fc1c9f97bbde5bc3bb9284e",
     "docs/GUARDRAILS.md": "27f6bd88674169b0bfbd5965bf28f4ba4f9bffc508a3e2061ce7fe20d09eac78",
-    "docs/PLATFORM-DOCS.md": "8f21da1f1d23fedfa065443e1770536f831213cfdebb6e5aad85a6e001d30820"
+    "docs/PLATFORM-DOCS.md": "ef59f8233cbb92c75f1d111b18e78b79a7f21efcfee87f889ef9d40b42d802c4"
   },
   "tools": {
     "count": 55,
-    "revision": "275f927b16b8e9367afda7c3a6df9aea512ae2ff176fe6f2c399982fc77d5a05",
+    "revision": "1f61e328a385f7db5e96e1657d31497e205367bde0c250a33d99f98a297f34b3",
     "list": [
       {
         "name": "accept_naming_change",
@@ -237,7 +237,7 @@
         ],
         "required": [],
         "inputRevision": "8f76013ebddc2b879c8fe537190d09af7df0c2fda4187fd4c065edab7b152cff",
-        "outputRevision": "ad62848c10c5da99dd9a2617ff6cf8fafdcf691f6df0b26f810701f3fd7a15f8"
+        "outputRevision": "9ee9b002ea4bc932b48fdb631a3851802152b4c43c46a57de89262113e3e893c"
       },
       {
         "name": "grant_access",
@@ -678,7 +678,7 @@
     }
   },
   "pinned": {
-    "ref": "v0.16.17",
-    "commit": "2440f5018999019c6dfabe648f38d8d8ade35241"
+    "ref": "v0.16.18",
+    "commit": "4d6eddd3bf5410b6ca3ced8733feb226d31b155b"
   }
 }

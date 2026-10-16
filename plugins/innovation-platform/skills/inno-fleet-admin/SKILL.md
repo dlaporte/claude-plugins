@@ -186,15 +186,11 @@ close touches an app's Okta groups, its Okta rule or its Access policies. A
 browser app (`container`, `function`) registered before platform v0.16.5
 whose deploy never moved it off its Okta groups can still have a Cloudflare
 Access application that admits only the people those groups hold, which
-nothing updates now. Until it is fixed, a grant or an open there reaches no
-one those groups do not hold (a transfer's new owner included), and on a
-gateway below capability 1 a revoke or a close reaches no one and an open
-app fails open. When an admin
-finds or fixes such an app, must take someone off one, meets a
-`member_drift_detected` or `cutover_undo_failed` entry, or meets an Okta
-group a purge left, load `references/legacy-okta-browser-apps.md`: it says
-how to find these apps, what each does until fixed, and the fix, whose order
-matters.
+nothing updates now. When an admin finds or fixes such an app, must take
+someone off one, meets a `member_drift_detected` or `cutover_undo_failed`
+entry, or meets an Okta group a purge left, load
+`references/legacy-okta-browser-apps.md`: it says how to find these apps, how
+to take someone off one now, and the fix, whose order matters.
 
 ## `transfer_app({ app, new_owner_email, force? })`: reassign ownership
 
@@ -209,9 +205,7 @@ recipient, what becomes of the previous owner (kept as a member unless the
 instance lists allowed email domains and they are outside them, which is
 never a reason to refuse), who is notified, and, on this instance, which
 account becomes the owner. Confirm before calling: state plainly who gains
-and who keeps what, and which data links (if any) it will break. On a browser
-app an earlier release left on Okta groups (above), Cloudflare Access still
-refuses the new owner unless those groups hold them, until it is fixed.
+and who keeps what, and which data links (if any) it will break.
 
 **A previous owner who is not kept** loses their member row in that write;
 after it their stored connections for the app are deleted and, for an MCP
@@ -325,8 +319,8 @@ domains (above), keeps their panel sessions until this ends them.
    platform's own tools are then refused `account_inactive` within
    `auth.status_check_minutes`, while Okta can be reached. The same check
    ends their MCP access to every app, their access to every browser app
-   running a capability-1 gateway (whose check asks it too), and their admin
-   standing, if they had one.
+   (whose gateway's check asks it too), and their admin standing, if they had
+   one.
 2. **`revoke_sessions`** ends their panel sessions now.
 3. **`revoke_access` on each app they can reach** removes them from its member
    list and deletes their stored connections there (`inno-manage-app` has its
@@ -336,18 +330,9 @@ domains (above), keeps their panel sessions until this ends them.
    the sign-in carries its subject, but one still waiting for its first
    sign-in would: one more reason to revoke.
 4. **A browser app's sign-in session** cannot be ended from here: it runs
-   out its own 24-hour duration. On a browser app running a gateway of
-   capability 1 or more that no longer matters, since its gateway asks the
-   platform on every request: lever 3 reaches it within about 10 seconds.
-   Only a browser app registered before platform v0.16.5 and not redeployed
-   since the platform adopted v0.16.5's gateway can still run an older
-   gateway, where Cloudflare Access alone decides, by Okta groups no tool
-   changes, so lever 3 never reaches it, and no tool on this surface does
-   either. If they must lose such an app now, stop it, or redeploy it on the
-   newer gateway (`rebuild_app`), which then refuses them, and do not
-   restart it until its Access policies are swapped;
-   `references/legacy-okta-browser-apps.md` has the rest of its fix. Which
-   gateway an app runs is `inno-manage-app`'s `grant_access` section.
+   out its own 24-hour duration. That no longer matters, since a browser
+   app's gateway asks the platform on every request: lever 3 reaches it
+   within about 10 seconds.
 
 ## `purge_app({ app })`: delete an app now
 
@@ -406,8 +391,11 @@ Owners never need it: they redeploy by tagging their own repo (`inno-ship`).
 From platform v0.16.12 the platform also rebuilds, on its own, a
 function-shaped consumer whose data link to another account's app was
 revoked (`inno-manage-app`'s **Data links across owners**); its notices name
-`rebuild_app` only to do that sooner. It starts CI in a repository the
-platform does not own, which cannot be recalled, so confirm first.
+`rebuild_app` to do that sooner, and from platform v0.16.18 the
+`cross_owner_link_revoked` notice also names `stop_app`, `transfer_app` and
+`purge_app` for a consumer whose rebuilds never land (**Fleet-wide reads**,
+below). It starts CI in a repository the platform does not own, which cannot
+be recalled, so confirm first.
 
 - `app_not_deployed`: decided by the app's status alone, and the message
   says what to do: a stopped app is started first (`start_app`); a deploying
@@ -520,8 +508,7 @@ Each app picks up the promoted gateway at its next deploy (its owner's tag,
 app-scope `gateway.ref` override pins it to another gateway. A browser app on
 a gateway of capability 1 or more asks the platform on every request whether
 a person may use it, so a grant, a revoke, an open or a close reaches them
-within about 10 seconds; the browser apps an earlier release left on Okta
-groups (above) lag behind.
+within about 10 seconds.
 
 The deploy broker refuses `gateway_too_old` for a browser app's deploy whose
 gateway is older than capability 1, since that gateway cannot ask the
@@ -612,7 +599,13 @@ when it asks for the tag again.
   from a function-shaped app another account owns was revoked, and whether
   that app's rebuild was dispatched (`inno-manage-app`'s **Data links
   across owners**). The platform rebuilds it on its own, tries again a day
-  later, and names `rebuild_app` only to do it sooner.
+  later, and names `rebuild_app` to do it sooner. From platform v0.16.18,
+  when the notice reports a rebuild dispatched or one that could not be, it
+  also names what ends that app's reach into the source's data if its
+  rebuilds never land (its owner can cancel each run): `stop_app` for it,
+  `transfer_app` for it, or `purge_app` for it. Before a stop, tell the admin
+  that it holds only once the app's owner has spent their self-service
+  starts: until then the owner can start it again.
 
   `mark_all_notifications_read` called by an admin marks every unread
   notification read, everyone's, not only the admin's own.

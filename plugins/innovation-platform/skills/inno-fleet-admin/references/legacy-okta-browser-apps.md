@@ -2,10 +2,9 @@
 
 Used from `inno-fleet-admin` when an admin finds or fixes a browser app
 (`container`, `function`) registered before platform v0.16.5 whose
-Cloudflare Access application still admits by its Okta groups: a grant or an
-open that does not reach someone, a new owner Access refuses, someone who must
-lose such an app now, a `member_drift_detected` or `cutover_undo_failed` entry
-in the feed, or an Okta group a purge left in place.
+Cloudflare Access application still admits by its Okta groups, must take
+someone off one, meets a `member_drift_detected` or `cutover_undo_failed`
+entry in the feed, or meets an Okta group a purge left in place.
 
 ## What such an app is
 
@@ -26,25 +25,13 @@ migration it lists nothing. Without a kept list, that section gives a
 fallback query, and in the Cloudflare dashboard (Zero Trust, Access,
 Applications) such an app's Access application still has a `members` policy.
 
-## What it does until it is fixed
+## Taking someone off one now
 
-- A person granted on the platform is refused at sign-in, and an open reaches
-  only the people those groups hold: for an app that was open at the upgrade,
-  whose `open` policy and still-active Okta rule stay, that is everyone who
-  signs in, so a close and a later open let every Okta user back in.
-- `transfer_app` makes the recipient the owner, but Access still refuses
-  them, like anyone those groups do not hold.
-- On a gateway below capability 1 (an app not redeployed since the platform
-  adopted v0.16.5's gateway), which asks the platform nothing, a revoke or a
-  close reaches no one, and an OPEN app fails open: its `open` policy and its
-  still-active Okta rule keep admitting everyone who signs in. Cloudflare
-  Access alone decides there, by Okta groups no tool changes, so no tool on
-  this surface takes anyone out, `revoke_access` and `revoke_sessions`
-  included, and their sign-in session runs out its own 24-hour duration.
-
-If someone must lose such an app now, stop it (`stop_app`), or redeploy it on
-the newer gateway (`rebuild_app`), which then refuses them, and do not
-restart it until its Access policies are swapped (the fix below).
+First take them off the platform's side: `revoke_access` for them, and
+`set_app_access` with `open: false` if the app is open. Then stop it
+(`stop_app`), or redeploy it on the newer gateway (`rebuild_app`), which then
+refuses them because the platform no longer admits them, and do not restart
+it until its Access policies are swapped (the fix below).
 
 ## The fix, in this order
 

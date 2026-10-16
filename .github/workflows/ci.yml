@@ -271,8 +271,8 @@ jobs:
       # At a resync, scripts/platform-compat.sh prints what moved since the
       # previous pin, the resync's to-do list, and nothing in CI reads it. Its
       # test pins records from a repository it plants: one with no
-      # outputRevision reads as before, and an output schema that came, moved
-      # or went is listed.
+      # outputRevision reads as before, an output schema that came, moved or
+      # went is listed, and so is a tool's readOnly flag that flipped or went.
       - name: The resync's moved list reports what its fixture plants
         run: |
           set -euo pipefail
