@@ -92,8 +92,7 @@ Refresh both files at every resync with the platform:
    resync's to-do list, and it is printed once: save it. Until you commit,
    `git diff scripts/platform-compat.json` shows the same changes. Before
    the platform tags a release, its release order runs this script once at
-   the release commit instead, as a check, and that run is never committed
-   or merged. Its printed list is the one to keep: the run at the tag
+   the release commit instead, as a check, and that pin is never merged. Its printed list is the one to keep: the run at the tag
    compares against the files the check left, so it prints only what
    moved after the release commit, which is usually nothing.
 3. Answer the list in the skills. A renumbered contract needs every skill's
