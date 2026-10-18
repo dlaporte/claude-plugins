@@ -528,10 +528,9 @@ serves. The panel's Platform screen is the same act on a visual surface.
     platform's member list alone, at the front door. For the first two, the
     app's owner shares it (`grant_access`) with anyone who reached it only
     through its Okta group. An `access_app_left` entry names a Cloudflare
-    Access application a purge left in place: until it is deleted in the
-    Cloudflare dashboard (Zero Trust, Access, Applications), it still
-    covers that hostname, so have it deleted before the name is registered
-    again.
+    Access application a purge left in place: have it deleted in the
+    Cloudflare dashboard (Zero Trust, Access, Applications) before the name
+    is registered again.
 
   Admins also see a copy of each `cross_owner_link_revoked` notice (from
   platform v0.16.12), an owner stage that tells a source's owner a data link

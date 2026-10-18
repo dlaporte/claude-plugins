@@ -45,7 +45,8 @@ every tool can answer, named once in the platform's MCP server note;
 each means.
 
 A platform admin's work across the fleet (the admin list and the Okta import,
-ownership transfers, purges, rebuilds, ending someone's panel sessions,
+ownership transfers, purges, rebuilds, ending someone's panel and browser
+app sessions,
 naming, settings, the audit log and the platform's logs) is
 `inno-fleet-admin`.
 
