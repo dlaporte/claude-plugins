@@ -30,11 +30,12 @@ Before anything else in this skill, do these five steps in order.
 
 Carry on.
 
-The Innovation Platform deploys a Cloudflare Workers gateway (Durable
-Object + Container) in front of your app. The gateway is a platform-pinned
-build input (the deploy job builds it from the promoted platform source,
-outside your checkout; it is never vendored into your repo) and policed by
-CI; your job is everything under `app/`. These rules are not style
+Every app runs behind the platform's front door, one platform-owned Worker
+that signs people in and decides who reaches each app (contract §1). A
+container app runs in a host Worker the platform uploads for it, and a
+function app is its own Worker in the platform's app namespace. Nothing of
+the front door or the host lives in your repo, and CI polices the rest;
+your job is everything under `app/`. These rules are not style
 preferences: each one maps to a CI gate that will fail the deploy.
 
 **Fetch the contract before writing app code:** call `get_app_contract` with
@@ -78,11 +79,12 @@ when a tool answers one:
 ## Deployment types: `container` (below), `function`, `mcp-function`, `mcp-container`
 
 Most of this skill describes the **`container`** type (a Docker container the
-gateway fronts). The other three differ from it in ways one contract section
-each states; read the one for the app's type:
+platform's host runs behind the front door). The other three differ from it
+in ways one contract section each states; read the one for the app's type:
 
-- **`function`** (§1.1): the app is its own Cloudflare Worker behind the
-  *same* gateway. Its entry is `app/index.ts` exporting
+- **`function`** (§1.1): the app is its own Cloudflare Worker, in the
+  platform's app namespace behind the *same* front door. Its entry is
+  `app/index.ts` exporting
   `export default { fetch(request, env, ctx) }`, with no port, no `EXPOSE`
   and no Dockerfile (`inno-containerize` does not apply). Its storage is the
   app's **own bindings**, `env.DATA` (D1) and `env.FILES` (R2), instead of
@@ -92,17 +94,18 @@ each states; read the one for the app's type:
 - **`mcp-function`** (§1.1 and §1.2): a function app whose consumer is an MCP
   client instead of a browser. It serves the MCP **Streamable HTTP**
   transport at `POST /mcp`, stateless (no `sessionIdGenerator`), and has no
-  Cloudflare Access and no sign-out link: the platform is the OAuth
-  Authorization Server and the gateway the Resource Server, so never read
+  browser sign-in and no sign-out link: the platform is the OAuth
+  Authorization Server and the front door the Resource Server, so never read
   the `Authorization` header or route `/.well-known/oauth-protected-resource`
-  yourself. Identity is still the gateway's headers (**Identity** below).
+  yourself. Identity is still the front door's headers (**Identity** below).
 - **`mcp-container`** (§1.3): that same MCP contract from the container
   shape, for a non-TS/JS stack or work a Cloudflare Worker can't host. The
   Dockerfile rules are `inno-containerize`.
 
 Identity (read the header, never build auth), ephemerality, the protected
 and injected files, and the safety-gate discipline below are **identical**
-across the types (sign-out applies to the browser-facing types only). The
+across the types (the sign-out link applies to the browser-facing types
+only, wherever the app shows who is signed in). The
 rest of this skill's code examples are the container reference; translate
 them into the `fetch` handler for a function or mcp-function app.
 
@@ -163,7 +166,7 @@ that the lockfile resolves a clean Starlette before committing to it.
 
 Whatever the framework, **never build HTML with string interpolation or
 concatenation**. The current user's identity (`X-Forwarded-User`) is
-attacker-influenced input (anyone who can reach the gateway with a valid
+attacker-influenced input (anyone who can reach the front door with a valid
 sign-in controls their own email string, and it flows straight into your
 pages), so unescaped interpolation is a stored or reflected XSS that the
 `sast` job's semgrep OWASP scan and human review both reject. That scan
@@ -228,22 +231,24 @@ db = Storage()
 # a POST route, since it writes: Route("/visits", visits, methods=["POST"])
 async def visits(request):
     user = current_user(request)
-    if user is None:  # a route that needs a person
+    if user is None or user["subject"] is None:  # a route that needs a person
         return PlainTextResponse("no signed-in user", status_code=403)
-    await db.execute("CREATE TABLE IF NOT EXISTS visits (email TEXT PRIMARY KEY, n INTEGER)")
-    await db.execute("INSERT INTO visits (email, n) VALUES (?, 1) ON CONFLICT(email) DO UPDATE SET n = n + 1", [user["email"]])
-    rows = await db.query("SELECT n FROM visits WHERE email = ?", [user["email"]])
+    owner = user["subject"]
+    await db.execute("CREATE TABLE IF NOT EXISTS visits (owner TEXT PRIMARY KEY, n INTEGER)")
+    await db.execute("INSERT INTO visits (owner, n) VALUES (?, 1) ON CONFLICT(owner) DO UPDATE SET n = n + 1", [owner])
+    rows = await db.query("SELECT n FROM visits WHERE owner = ?", [owner])
     return JSONResponse({"visits": rows[0]["n"]})
 ```
 
-The caller is read and "no user" handled before any per-person query, as
-the **Identity** section below says. A route that changes state is never a
+The caller is read and "no user" handled before any per-person query, and
+the rows are keyed on the caller's `subject`, as the **Identity** section
+below says. A route that changes state is never a
 GET, and on a browser app it also takes the origin check `get_app_security`
 §12 sets (from platform v0.16.19).
 
 `Storage()` defaults its base URL to `http://storage.internal`, which the
-gateway's outbound handler intercepts and routes to the app's own D1
-database and R2 bucket. **Leave `INNO_STORAGE_BASE` unset**: locally and in
+platform's host intercepts (the container's outbound handler) and routes to
+the app's own D1 database and R2 bucket. **Leave `INNO_STORAGE_BASE` unset**: locally and in
 production the default is correct; only override it if you're running the
 app process entirely outside the container (unusual). File storage is
 `put_file`/`get_file`/`list_files`/`delete_file` against the same client,
@@ -251,8 +256,8 @@ backed by R2. Non-Python stacks call the plain-HTTP endpoints R5 lists
 directly.
 
 A listing can be partial. `list_files` returns the keys as an ordinary list
-that also carries `truncated`, which is true when the gateway stopped
-listing at its cap (R5 gives the cap), so the keys are only part of the
+that also carries `truncated`, which is true when the platform's host
+stopped listing at its cap (R5 gives the cap), so the keys are only part of the
 bucket: track keys in D1 rather than walk a bucket that size. The JS
 client's `listFiles` returns an array with the same flag, not enumerable,
 so deep equality and JSON see only the keys. A repo created from an older
@@ -264,10 +269,10 @@ current one from the template repo (the `Template repo:` line of the status
 you read in the Version gate). The current client keeps the old shapes but
 one: its identity helper (`current_user`, or `currentUser` in JS) answers no
 user for a caller with no identity where an older one answered an empty
-email, and its answer adds `member` (**Identity** below). So after the
-copy, make every place that reads the helper handle no user first.
+email, and its answer adds `member` and `subject` (**Identity** below). So
+after the copy, make every place that reads the helper handle no user first.
 
-**Two body caps on that gateway, and the SQL one is the easy one to hit**
+**Two body caps on that storage API, and the SQL one is the easy one to hit**
 (R5 is authoritative for both). A `{sql, params}` body over **4 MiB** (on
 the SQL endpoints, and on the `/_storage/linked/{app}/sql/*` twins a data
 link exposes) is refused `400 bad_request`, exactly the answer malformed
@@ -277,15 +282,15 @@ size problem: send it in batches. A file `PUT` whose declared
 with no `Content-Length` at all (a chunked body, for example) is refused
 `411 length_required`, so an upload route checks the size itself, with its
 own message, and sends the body with its length. Neither applies to a function-shaped app, which reaches
-`env.DATA`/`env.FILES` with no gateway in between.
+`env.DATA`/`env.FILES` with no host in between.
 
 ## Identity: read the header, never build auth
 
-The gateway decides who reaches the app and tells you who the caller is, in
-the identity headers. R3 (`get_app_contract` §2) is the authoritative text
-for every header the gateway owns and for the three kinds of caller an app
-serves; this is how to apply it. Decide per request what each kind of
-caller may see and do, and never assume a caller is a member.
+The front door decides who reaches the app and tells you who the caller is,
+in the identity headers. R3 (`get_app_contract` §2) is the authoritative
+text for every header the front door owns and for the three kinds of caller
+an app serves; this is how to apply it. Decide per request what each kind
+of caller may see and do, and never assume a caller is a member.
 
 Read the caller through the template's identity helper:
 `current_user(request)` in `app/storage.py` (Python),
@@ -293,16 +298,19 @@ Read the caller through the template's identity helper:
 and `currentUser(request.headers)` from `app/identity.ts` in a `function` or
 `mcp-function` app. Each answers no user (`None` in Python, `null` in
 JavaScript and TypeScript) when `X-Forwarded-User` is empty or missing, and
-otherwise `{ email, groups, member }`, where `member` is true exactly when
-a group ends `-users` (the caller holds the app's members group). A stack
-with no helper reads the headers by the same contract. Check the repo's
-helper before relying on that answer: an older one answers an empty email,
-not no user (below). In a route that needs a person, handle no user first,
-before any per-person read or write:
+otherwise `{ email, groups, member, subject }`, where `member` is true
+exactly when a group ends `-users` (the caller holds the app's members
+group) and `subject` is `X-Forwarded-Subject`, the person's identity
+provider ID (`None` or `null` when that header is empty or missing; a
+subject alone never makes a user). A stack with no helper reads the headers
+by the same contract. Check the repo's helper before relying on that
+answer: an older one has no `subject`, or answers an empty email rather
+than no user (below). In a route that needs a person, handle no user first,
+and a missing `subject` with it, before any per-person read or write:
 
 ```python
 user = current_user(request)
-if user is None:  # a route that needs a person
+if user is None or user["subject"] is None:  # a route that needs a person
     return PlainTextResponse("no signed-in user", status_code=403)
 ```
 
@@ -315,36 +323,37 @@ the check fails rather than share a key; keep it that way. Contract §3
 
 Refuse a caller with no user only in a route that needs a person, never in
 a middleware or ahead of routing: the platform's health probe,
-`GET /healthz`, arrives with empty identity headers (R3 states it from
-contract 32, and the gateway sent it that way before) and must get its 200
-(R2). In a route that needs a person, the branch is the one-line refusal
+`GET /healthz`, arrives with empty identity headers (R3) and must get its
+200 (R2). In a route that needs a person, the branch is the one-line refusal
 above. **An MCP app refuses inside MCP**, with a tool result marked as an
 error or a JSON-RPC error, never with an HTTP status: §1.2 and §1.3 make it
 a MUST from contract 32 and say why.
 
-A repo made from a template older than platform v0.16.19 has an older
-helper: it answers an empty email rather than no user and has no `member`,
-and a function-shaped repo has no `app/identity.ts`. Copy the current
-helper from the template repo (the `Template repo:` line of the status you
-read in the Version gate), as **Persistence** above says for the storage
-client. Where that template has no such helper either, read an empty or
-missing `X-Forwarded-User` as no user in the app's own code, by the same
-rule.
+A repo made from a template older than platform v0.17.0 has an older
+helper with no `subject`; one older than v0.16.19 also answers an empty
+email rather than no user and has no `member`, and a function-shaped repo
+from then has no `app/identity.ts`. Copy the current helper from the
+template repo (the `Template repo:` line of the status you read in the
+Version gate), as **Persistence** above says for the storage client. Where
+that template has no such helper either, read an empty or missing
+`X-Forwarded-User` as no user in the app's own code, and the subject from
+`X-Forwarded-Subject`, by the same rule.
 
 - `X-Forwarded-Email` carries the same email as `X-Forwarded-User`: the
-  gateway injects both, so either one works and neither is more
+  front door injects both, so either one works and neither is more
   authoritative. Read `X-Forwarded-User` by default and treat
   `X-Forwarded-Email` as its alias if you see it in a request dump.
-- **An address is not a person.** Both headers carry the caller's email
-  address, which can change for one person and pass to another. From
-  platform v0.16.12 the platform admits a member by the identity provider
-  account their grant is pinned to, wherever the sign-in carries that
-  account's subject (R3 says when it does), but both headers stay the
-  address. So anything your app keys on the address, its own data or its
-  own role store, still goes to whoever holds the address, and a member
-  whose address changed no longer finds what was kept under the old one.
-  Key on `X-Forwarded-User` all the same: no header carries the account
-  itself yet.
+- **Key per-person data and roles on `X-Forwarded-Subject`, never on the
+  address.** Both address headers carry the caller's email address, which
+  can change for one person and pass to another: the platform admits a
+  member by the identity provider account their grant is pinned to, but
+  anything your app keys on the address, its own data or its own role
+  store, still goes to whoever holds the address. `X-Forwarded-Subject`
+  stays with the person and comes with every identified request, on every
+  app type, from contract 33 (R3). §3 recommends keying on it, so a new app
+  does from the start. An existing app keyed on the address may re-key its
+  rows once, since every identified request carries both headers: a
+  migration in the app's own code, recommended and not required (§3).
 - **`X-Forwarded-Groups`** carries at most two groups, both this app's own,
   in this order: the members group when the caller is a member, and the open
   group while the app is open. Their names are in the `App groups:` line of
@@ -353,41 +362,58 @@ rule.
   or any other group, so use it only to tell a member from an open-access
   visitor (the helper's `member` is that test); any finer role (an editor,
   a staff view, an in-app admin) needs your own role store keyed on
-  `X-Forwarded-User`, and only for a caller who has one. Every person an
+  `X-Forwarded-Subject`, and only for a caller who has one. Every person an
   app admits carries at least one of the two, so a visitor admitted only
   because the app is open carries the open group alone.
 - **An empty identity is no user: an expected caller, not a fault, and
   never a member or a key.** The platform's health probe, `GET /healthz`,
-  arrives with empty identity headers (on contract 32 the only request that
-  does, R3), and a request that never passed the gateway (the app run
+  arrives with empty identity headers (on contract 33 the only request that
+  does, R3), and a request that never passed the front door (the app run
   locally, a test) can carry none; the helper reads both as no user. A
-  person the platform refuses never reaches your code: the gateway answers
-  them itself, with a plain 403 "No access" page, or a 503 "Try again
-  shortly" page when it cannot ask the platform. A gateway built from
-  platform v0.16.10 on shows that 503 page too while it cannot obtain the
-  sign-in keys it checks people against, where an older one answers 401;
-  `GET /healthz` keeps its 401 on both.
+  person the platform refuses never reaches your code: the front door
+  answers them itself, with a plain 403 "No access" page, or a 503 "Try
+  again shortly" page when it cannot ask the platform.
 - **How fast a change reaches the header** is R3's to state: within the
-  gateway's cache, at most 60 seconds on an MCP app and 10 seconds on a
+  front door's cache, at most 60 seconds on an MCP app and 10 seconds on a
   browser app.
-- **An older live browser app can differ.** A browser app (`container`,
-  `function`) not redeployed since v0.14.3's gateway still receives every
-  group the caller holds, so an older live app you are debugging may show
-  extra groups, and there the three proxy headers below may be
-  caller-written. R3 names the case; the app's next deploy ends it.
+- **The platform signs people in, outside your code.** On a browser app the
+  front door sends a person with no session through the platform's own
+  sign-in and back to the page they asked for (R3 says how, and how long a
+  session lasts). Two things that reach an app's own page script: a
+  background request (a `fetch`) once the session has ended gets a `401`
+  rather than the sign-in redirect, so on a `401` reload the page to sign in
+  again; and a sign-in never starts inside a frame, so an app shown in
+  another page's frame is opened in its own tab to sign in. What people see
+  is the platform docs' **Signing in and out: what people see**
+  (`get_platform_docs`).
 
-The gateway also sets three proxy headers you may trust: `X-Forwarded-Host`
-(the hostname the request arrived on; build links from it),
-`X-Forwarded-Proto` (always `https`) and `X-Forwarded-For` (the client
+The front door also sets three proxy headers you may trust:
+`X-Forwarded-Host` (the hostname the request arrived on; build links from
+it), `X-Forwarded-Proto` (always `https`) and `X-Forwarded-For` (the client
 address from Cloudflare's edge, removed when unknown). It deletes
-`Forwarded` and drops the Cloudflare Access session cookies. Every other
-header, including `X-Real-IP`, `True-Client-IP` and `X-Forwarded-Port`,
-reaches you exactly as the client sent it: never use one for identity,
-origin or an access decision.
+`Forwarded`. Every other header, including `X-Real-IP`, `True-Client-IP`
+and `X-Forwarded-Port`, reaches you exactly as the client sent it: never
+use one for identity, origin or an access decision.
+
+**The platform's cookies and paths never reach your app** (R3). The front
+door keeps its own cookies out of the `Cookie` header your app receives,
+answers every `/_auth/` path on the app's host itself, and drops a
+`Set-Cookie` from your app that names one of its cookies. Because every
+app host shares one parent domain, it also drops any `Set-Cookie` that
+carries a `Domain` attribute, even one naming the app's own host, and
+strips a `Clear-Site-Data` header. So keep your cookies host-only (no
+`Domain`), route nothing under `/_auth/`, and never rely on
+`Clear-Site-Data`.
+
+**WebSockets and event streams** (R3). The front door refuses a WebSocket
+upgrade from another site's page, a sibling app's included, so your app
+need not check `Origin` itself, and no endpoint may rely on another site's
+pages opening it. On a browser app an open WebSocket or event stream ends
+when the person's session does: design for reconnect-and-catch-up (§5).
 
 **Never implement login pages, sessions, password storage, or an "auth
-disabled" dev path**: the gateway strips inbound copies of the headers it
-owns before injecting its own values, so there is no spoofing surface as
+disabled" dev path**: the front door strips inbound copies of the headers
+it owns before injecting its own values, so there is no spoofing surface as
 long as you don't add one. A missing user is no user in local dev too:
 send the headers yourself (**Keep `ENVIRONMENT=production`** below) rather
 than default the absence into a value.
@@ -403,9 +429,10 @@ environment variables. Read them the normal way for your shape:
 Never commit them (`gitleaks` fails the build on the full history) and
 never build a settings page to collect them. Names, secrecy and timing are
 §2.3's and `set_app_variable`'s description to state; the one that touches
-code is that a change briefly restarts a container app. A route that
-spends an app-level key needs the limits `get_app_security` §5 sets, per
-client and globally.
+code is that on a container app a change starts a new container instance
+on the next request, as every platform release does too (§2.3, R6), so the
+app must come up clean on any request. A route that spends an app-level key
+needs the limits `get_app_security` §5 sets, per client and globally.
 
 An app may describe the variables it reads in `app/inno-variables.json`;
 §2.3's **Declaring what an app wants** is the format and its rules. Write
@@ -452,63 +479,60 @@ than wiring this ad hoc. The rules the code must hold are §2.2 and
 
 ## Sign out: one link, no session code
 
-Every browser-facing app includes a "Sign out" link (footer is fine)
-pointing at the platform-wide Cloudflare Access logout (R4):
+Whenever a browser-facing app shows who is signed in, it links to
+`/_auth/signout` on its own host (R4, from contract 33; a footer is fine):
 
 ```html
-<a href="https://{TEAM_DOMAIN}/cdn-cgi/access/logout">Sign out</a>
+<a href="/_auth/signout">Sign out</a>
 ```
 
-`{TEAM_DOMAIN}` is environment-specific: **never guess it** or copy it from
-another instance. Take the ready-made URL, when scaffolding, from the
-`Sign-out URL (all apps):` line of the status you read in the Version gate;
-it is the only source available to you, since the gateway config that
-carries the team domain is injected at build time rather than living in
-your repo.
-
-It must be the *team* domain, not `/cdn-cgi/access/logout` on the app's own
-hostname: the per-app logout clears only that app's cookie, which the
-still-live global Access session silently re-issues. Known caveat, not a
-bug: if the user's Okta session is still alive, revisiting an app signs them
-back in without a prompt, so a full sign-out on a shared machine also
-requires signing out of Okta.
+Show it only when the helper returns a user, as the template's pages do; an
+app that never shows who is signed in needs no link. Make it a plain link
+the person clicks, never a `fetch`, a frame or a prefetch: R4 says why, and
+what signing out ends. The path is the same on every app and
+every instance, so there is nothing to look up, and `/_auth/` is the
+platform's on every app host (R3): route nothing under it yourself. An app
+made before platform v0.17.0 links to the old sign-out address and changes
+that link once (the contract's version 33 note, `get_app_contract` with
+`history: true`). What people see when they sign in and out is the platform
+docs' **Signing in and out: what people see** (`get_platform_docs`).
 
 ## Logging: stdout, one event per line
 
 Log like it's a contract: one event per line to stdout, plain text or JSON
 (§3). That stream is what surfaces in the app's panel **Logs tab** and the
 `get_app_logs` MCP tool, whose description says what each line carries and
-how its source column tells your container's lines from the gateway's. That
-column does not separate a function app's gateway from the app's own
-Worker. Log well now and runtime debugging (`inno-manage-app`'s Runtime
+how its source column tells your container's lines (`container`), the
+platform's front door lines (`front door`) and a Worker's lines apart. Log
+well now and runtime debugging (`inno-manage-app`'s Runtime
 issues guidance) is actually useful later instead of a wall of noise.
 
 ## Keep `ENVIRONMENT=production`
 
-There is nothing for you to configure here. The platform's injected gateway
-config pins `ENVIRONMENT` to `production` on every deploy, and the deploy
-refuses a gateway config that says anything else (R7, and
-`get_platform_docs`' **Environment & config integrity**). No wrangler config
-may live in your repo (below), and `ENVIRONMENT` is a reserved Variable name
-that `set_app_variable` refuses. For local dev, pass mock identity headers
+There is nothing for you to configure here. The Worker config the platform
+supplies a function app pins `ENVIRONMENT` to `production`, and a container
+app's host is the platform's own (R7, and `get_platform_docs`'
+**Environment & config integrity**). No wrangler config may live in your
+repo (below), and `ENVIRONMENT` is a reserved Variable name that
+`set_app_variable` refuses. For local dev, pass mock identity headers
 straight to the locally run container, and try each of the three kinds of
 caller R3 names; never add an "auth disabled in dev" code path:
 
 ```bash
 # A member: the members group from the App groups: line of the status.
-curl -H 'X-Forwarded-User: user@example.com' -H 'X-Forwarded-Groups: <members group>' http://localhost:8080/
+curl -H 'X-Forwarded-User: user@example.com' -H 'X-Forwarded-Subject: user-id' -H 'X-Forwarded-Groups: <members group>' http://localhost:8080/
 # Signed in but not a member: the open group alone, as an open app sends it.
-curl -H 'X-Forwarded-User: user@example.com' -H 'X-Forwarded-Groups: <open group>' http://localhost:8080/
-# No identity, as the gateway sends it: the headers present and empty.
-curl -H 'X-Forwarded-User;' -H 'X-Forwarded-Groups;' http://localhost:8080/
+curl -H 'X-Forwarded-User: other@example.com' -H 'X-Forwarded-Subject: other-id' -H 'X-Forwarded-Groups: <open group>' http://localhost:8080/
+# No identity, as the front door sends it: the headers present and empty.
+curl -H 'X-Forwarded-User;' -H 'X-Forwarded-Subject;' -H 'X-Forwarded-Groups;' http://localhost:8080/
 ```
 
 ## Files you must not touch
 
-The platform injects the gateway's build inputs at build time (its
-`package.json`, `package-lock.json`, `tsconfig.json` and `wrangler.jsonc`)
-into a build directory of its own outside your checkout, and **none of the
-following may exist in your repo at all**. R7 is the authoritative list,
+The platform installs its own build tools at deploy time, from its CI
+mirror, into a directory of its own outside your checkout, and supplies a
+function app's Worker config, so **none of the following may exist in your
+repo at all**. R7 is the authoritative list,
 with the reason for each; the `config-integrity` gate fails outright,
 naming each path it finds ("delete `<file>`: the platform injects ...").
 Never create or restore one locally, even to "match the template": there is
@@ -516,20 +540,20 @@ no version of these files that belongs in your repo.
 
 - `src/`, all of it, at the repo root. The platform owns that directory, and
   anything of yours under it (a source file, `src/node_modules/`,
-  `src/package.json`, `src/tsconfig.json`) could shadow the gateway's
+  `src/package.json`, `src/tsconfig.json`) could shadow the platform's build
   dependencies, so the gate fails the repo with a "delete src/" message.
   Put your code under `app/`; an `app/src/` directory is yours and fine.
 - `package.json` and its lockfile (`package-lock.json`) **at the repo
   root**: nothing is installed there. Your app's own build files under
   `app/` (a Node app's `app/package.json`, etc.) are yours and fine.
 - `tsconfig.json`, repo root only, same rule. For a function-shaped app the
-  deploy itself places the gateway's `tsconfig.json` at the repo root during
-  the build, because the app Worker builds from your checkout; that copy is
-  the platform's, and a committed one still fails the gate.
+  deploy itself places the platform's `tsconfig.json` at the repo root
+  during the build, because the app Worker builds from your checkout; that
+  copy is the platform's, and a committed one still fails the gate.
 - `wrangler.jsonc`, any competing `wrangler.json` or `wrangler.toml`, and a
   `.wrangler/` directory. Wrangler's config discovery order means an
-  unvetted `wrangler.json` would silently take priority over the platform's
-  injected `wrangler.jsonc` anywhere discovery decides which config to read.
+  unvetted `wrangler.json` would silently take priority over the config the
+  platform supplies anywhere discovery decides which config to read.
   The deploy pins every wrangler call to an explicit config, and the gate
   rejection is the independent belt to that pin.
 - Root-level `.env` / `.env.*` files: wrangler loads them at deploy time and

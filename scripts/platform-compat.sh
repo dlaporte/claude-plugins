@@ -17,10 +17,10 @@
 # each tool whose outputRevision (its output schema, which only some tools
 # declare) came, changed or went, each tool whose readOnly flag changed
 # (tools.revision hashes it, so a flip alone moves the platform's
-# Compatibility: revision), and each value under contract, gateway, plugins
-# and behavior that changed (the contract's version and sections, the gateway
-# capabilities, the plugin floors, the platform behaviors). That list is the
-# resync's to-do list.
+# Compatibility: revision), and each value under contract, plugins and
+# behavior that changed (the contract's version and sections, the plugin
+# floors, the platform behaviors). A record from v0.17.0 on has no gateway
+# block, and none is compared. That list is the resync's to-do list.
 set -euo pipefail
 
 if ! command -v jq >/dev/null; then
@@ -89,7 +89,7 @@ elif ! moved="$(jq -r -n --slurpfile old "$out" --slurpfile new "$tmp/pinned.jso
   def leaves($path): if type == "object" and length > 0
     then to_entries[] as $e | $e.value | leaves($path + [$e.key])
     else {key: ($path | join(".")), value: tojson} end;
-  def facts: [{contract, gateway, plugins, behavior} | leaves([])] | from_entries;
+  def facts: [{contract, plugins, behavior} | leaves([])] | from_entries;
   $old[0] as $o | $new[0] as $n
   | ($o.served // {}) as $os | ($n.served // {}) as $ns
   | ($o | by_name) as $ot | ($n | by_name) as $nt

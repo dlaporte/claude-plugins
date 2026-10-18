@@ -63,3 +63,14 @@ the import changes the admin list (an import row carries `detail.source`
 - `identity_conflict`, once per address and account, when an address signed
   in as an account other than the one its grants are pinned to, which those
   grants refuse (`apps`, `owner_of` and `admin` name them).
+
+## Sign-ins and container hosts (from platform v0.17.0)
+
+- `app_signin`: one row for each new browser app session, with the address
+  as actor, the app as target and `detail.host` the app host, on the
+  surface `sign-in`, which `query_audit`'s `surface` filter takes. It is
+  where an app's login history lives.
+- `host_uploaded`: the platform uploaded a container app's host, which
+  starts a new container generation; `detail.generation` names it and
+  `detail.reason` says why (`deploy`, `release`, `variable`, `restart` or
+  `remediation`).

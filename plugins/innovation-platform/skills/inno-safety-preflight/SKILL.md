@@ -122,12 +122,17 @@ v0.16.14, call it with no arguments and read the sections needed from the
 whole contract. Judge the app
 against the MUSTs, focusing on the ones the enforcement map (§6) leaves to
 preflight review because CI cannot judge them: R3 (identity only from the
-gateway headers, no home-grown auth), R4 (the sign-out link; not applicable
-to `mcp-function` and `mcp-container` apps), R5 and R6 (durable state in the
+front door's headers, no home-grown auth, the app's own cookies host-only
+with no `Domain` attribute, no `Clear-Site-Data`, and nothing routed under
+`/_auth/`), R4 (if the app shows a user, a plain link to `/_auth/signout`
+wherever it does; not applicable to `mcp-function` and `mcp-container`
+apps), R5 and R6 (durable state in the
 platform stores, never local disk or memory), and the parts of R2 CI cannot
 see (its smoke test only proves `/healthz` answers inside the image, so
 still read it for cheap, no side effects, and independent of storage). Check
-too that the app relies on nothing §5 lists as not supported today. A
+too that the app relies on nothing §5 lists as not supported today, and
+report as advice, not a stop, per-person data or roles keyed on the address
+rather than on `X-Forwarded-Subject`, which §3 recommends. A
 contract violation is the same hard stop as a guardrails one: name the
 requirement, fix or guide the fix, re-check.
 
@@ -143,10 +148,10 @@ against the code, and for a browser-facing app (`container`, `function`)
 with a state-changing request, its §12 (forged requests, from platform
 v0.16.19; on an older platform, the CSRF paragraph under its **What the
 platform already handles** heading, which names the same two obligations)
-too. That `X-Forwarded-User` is an email address, which can
-pass to another person (the contract's R3, or on a platform before v0.16.12
-`inno-platform-conventions`' **Identity** section), is not a finding on its
-own: no header carries the account itself yet. Per-person data or a role
+too. Data or a role keyed on `X-Forwarded-User`, an email address that can
+pass to another person (the contract's R3), is the advice above, not a stop
+on its own: from contract 33 `X-Forwarded-Subject` carries the person, and
+§3 recommends keying on it. Per-person data or a role
 taken from a caller with no user is a finding, and so is an MCP app that
 refuses by HTTP status (a MUST of the contract's §1.2 and §1.3 from
 contract 32; on an older platform it is a finding to fix, not a contract

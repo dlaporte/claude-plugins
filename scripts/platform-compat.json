@@ -1,7 +1,7 @@
 {
   "format": 1,
   "contract": {
-    "version": 32,
+    "version": 33,
     "sections": [
       "1",
       "1.1",
@@ -20,16 +20,16 @@
     ]
   },
   "served": {
-    "docs/APP-ACCESSIBILITY.md": "73e59a6f2ad544f535f0644c94cc142ac4b784cfed60c9a84c455d3fb81dabc6",
-    "docs/APP-CONTRACT-HISTORY.md": "ae8955f1084c38cbd48d170d7f5ed9b36f995e3556dfd59667a32fa76e86e8b1",
-    "docs/APP-CONTRACT.md": "e92dcfb55ae19413edad0281765497381b9b96361722996fd27c352619db8efb",
-    "docs/APP-SECURITY.md": "bf7542861983d82beac3dae74ffcb113055a6817e393703286272df30662fdfc",
-    "docs/GUARDRAILS.md": "e940c8dcbebdcdbea5e965ac545a4f1a58d91a95b4bfe94489123b6c1f81ff90",
-    "docs/PLATFORM-DOCS.md": "b27186769df1b68e3030bfae5d26d50e15f13ccd9279f9992ac73b8306effc53"
+    "docs/APP-ACCESSIBILITY.md": "9b60b75cc7d8403a84c820dc4f5ad61ecdb66eefb2d260361e343667b669d6d3",
+    "docs/APP-CONTRACT-HISTORY.md": "bc4e6eb4ea6c310aed9b86099d76ed25f1f33a616d3ecb6495565ce0ea0fe6c2",
+    "docs/APP-CONTRACT.md": "a3fa8128baa1fc412340963acfc6ecd4b72b203f6af1c501f6365945a71a22b8",
+    "docs/APP-SECURITY.md": "8265814afec7bb51fa5b98dd47e5e1f6aac5786dea05ee2be331a7b5dc44064c",
+    "docs/GUARDRAILS.md": "13189ad99d4a61ac16fc45c3aab39b1c17d70d15b89989ec197105160c215a3f",
+    "docs/PLATFORM-DOCS.md": "df8ad129b3c582cb982e1a8f2834e695b8183ef48f816343b870c8044782e7b1"
   },
   "tools": {
-    "count": 55,
-    "revision": "1f61e328a385f7db5e96e1657d31497e205367bde0c250a33d99f98a297f34b3",
+    "count": 54,
+    "revision": "9aefcd516a3434e697156b0e253b7dc556731e8660a6b32e51baae37c9d9fcb9",
     "list": [
       {
         "name": "accept_naming_change",
@@ -237,7 +237,7 @@
         ],
         "required": [],
         "inputRevision": "8f76013ebddc2b879c8fe537190d09af7df0c2fda4187fd4c065edab7b152cff",
-        "outputRevision": "9ee9b002ea4bc932b48fdb631a3851802152b4c43c46a57de89262113e3e893c"
+        "outputRevision": "17e93fb0bd4f5b513d1ee5b73d1c59379c49a89acb99d5c67178512f7e9eef6e"
       },
       {
         "name": "grant_access",
@@ -401,7 +401,7 @@
           "surface"
         ],
         "required": [],
-        "inputRevision": "9ad01b18ca9667c2276db4e29fd30d8e0564c89762f6026c6002f13a9cd03a49"
+        "inputRevision": "b3c156081eec9296bfabceddde0394f7d1b44ab810ae49c97722aba0fbf5d576"
       },
       {
         "name": "rebuild_app",
@@ -622,13 +622,6 @@
         "inputRevision": "c6c59b7052bd6e5e515379f0ee5cdd5c0830d050632184170c4df16a65d1edff"
       },
       {
-        "name": "sync_gateway_ref",
-        "readOnly": false,
-        "args": [],
-        "required": [],
-        "inputRevision": "efddc7bd8bbcef73a14eb1ace1ffdaec81e518ef1e13c1e9271d0b8acb694a49"
-      },
-      {
         "name": "transfer_app",
         "readOnly": false,
         "args": [
@@ -657,10 +650,6 @@
       }
     ]
   },
-  "gateway": {
-    "capability": 1,
-    "browserAppMinCapability": 1
-  },
   "plugins": {
     "app": {
       "minVersion": "2.0.0"
@@ -678,7 +667,7 @@
     }
   },
   "pinned": {
-    "ref": "v0.16.19",
-    "commit": "b7e26ec8b492f68e680e5fd3a15416395b8cfb8a"
+    "ref": "3290f478",
+    "commit": "3290f47898aae218a9bd1a25992947500132e02c"
   }
 }

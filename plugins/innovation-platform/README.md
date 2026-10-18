@@ -8,13 +8,14 @@ platform's `get_platform_status` tool, never written into a skill. Bundles the
 whole app lifecycle (create or migrate existing code, write, containerize,
 connect to a per-user backend, gate-check, ship, and manage), and one serves
 the platform's admins. Apps deploy as
-one of four **types** behind the
-same identity gateway: a **container** (any stack, a Dockerfile, and the type
-`register_app` defaults to when none is given), a **function** (its own
-Cloudflare Worker, JS/TS), an **mcp-function** app (an MCP server in its own
-Cloudflare Worker behind the OAuth gateway), or an **mcp-container** app (an
-MCP server in a Docker container, any language, behind the same OAuth
-gateway). The type is chosen at `register_app`.
+one of four **types**, all behind the platform's front door, which signs
+people in and decides who reaches each app: a **container** (any stack, a
+Dockerfile, and the type `register_app` defaults to when none is given), a
+**function** (its own Cloudflare Worker, JS/TS), an **mcp-function** app (an
+MCP server in its own Cloudflare Worker, reached with an OAuth token the
+platform issues), or an **mcp-container** app (an MCP server in a Docker
+container, any language, reached the same way). The type is chosen at
+`register_app`.
 
 **Repos are user-owned.** An app is created by **registering a GitHub repo you
 own**. You create a repo from the instance's public template repo ("Use this template" →
@@ -91,6 +92,13 @@ status's `instance` block was the first such change. Reconnect (in Claude
 Code, `/mcp`, then Reconnect) or start a new session, then run the skill
 again.
 
+Platform v0.17.0 made another: its status no longer carries a sign-out
+address or gateway capabilities, and the admin tool that promoted the
+gateway went with it, so reconnect after that upgrade too. Plugin 2.4.0 follows v0.17.0 and contract
+33, where the platform signs people in to browser apps itself and every
+app's sign-out link is `/_auth/signout`; from v0.17.0 the platform asks for
+at least 2.4.0.
+
 ### House style
 
 Every skill in this plugin speaks to a broad, largely non-technical userbase,
@@ -124,7 +132,8 @@ produce is a Dockerfile and app code rather than sentences a user reads.
   the tested stack; any stack meeting the contract is fine), escaping,
   the storage client/endpoints, identity (the three kinds of caller the
   contract's R3 names, and the template's helper, which answers no user for
-  a caller with no identity and says whether a caller is a member), and the
+  a caller with no identity, says whether a caller is a member, and gives
+  the `subject` to key per-person data on), the sign-out link, and the
   files CI will reject if you touch them. Requirements are served live by
   the `get_app_contract` tool, and the skills cite it rather than keeping
   copies.
@@ -158,12 +167,11 @@ produce is a Dockerfile and app code rather than sentences a user reads.
   `revoke_admin`), filling an empty admin list from the Okta admin group
   (`import_okta_memberships`, its only job from platform v0.16.8),
   reassigning an app's owner, purging an app, rebuilding an app's released
-  code at its live tag (`rebuild_app`), ending one person's panel sessions
-  everywhere, marking the instance's Okta admin group, accepting a naming
-  change, platform configuration, promoting the gateway (`sync_gateway_ref`),
-  and the fleet-wide reads (every app, every user, the audit log, the
-  platform's logs and its backup). An owner manages their own apps with
-  `inno-manage-app`.
+  code at its live tag (`rebuild_app`), ending one person's panel and browser
+  app sessions everywhere, marking the instance's Okta admin group,
+  accepting a naming change, platform configuration, and the fleet-wide
+  reads (every app, every user, the audit log, the platform's logs and its
+  backup). An owner manages their own apps with `inno-manage-app`.
 
 ### How the skills are laid out
 

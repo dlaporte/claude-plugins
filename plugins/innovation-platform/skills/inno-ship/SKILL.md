@@ -194,7 +194,7 @@ and ask first, whether or not the row below says so.
 
 | Failing job | Likely cause | Fix via |
 |---|---|---|
-| `config-integrity` | the repo carries a platform-owned or forbidden path, or `CLAUDE.md` lacks a required header. The failure message names each path; the full list, with the reason for each, is `inno-platform-conventions`' **Files you must not touch** section | **stop and ask; this is not a quiet fix.** Files under `src/` and a root `package.json` can be the user's own code: show the user every flagged path first. Only with their okay, move author code and manifests under `app/` (for example `app/src/`), update the Dockerfile `COPY` paths and the code's imports to match, and delete only what they confirm is not theirs (such as `src/gateway/` or `src/node_modules/`). Never move or delete author code unprompted before a tagged deploy. See `inno-platform-conventions` |
+| `config-integrity` | the repo carries a platform-owned or forbidden path, or `CLAUDE.md` lacks a required header. The failure message names each path; the full list, with the reason for each, is `inno-platform-conventions`' **Files you must not touch** section | **stop and ask; this is not a quiet fix.** Files under `src/` and a root `package.json` can be the user's own code: show the user every flagged path first. Only with their okay, move author code and manifests under `app/` (for example `app/src/`), update the Dockerfile `COPY` paths and the code's imports to match, and delete only what they confirm is not theirs (such as `src/node_modules/`, or a `src/gateway/` an older platform's build left). Never move or delete author code unprompted before a tagged deploy. See `inno-platform-conventions` |
 | `secrets` | gitleaks found a committed credential | rotate + scrub history, then set the new value as an app Variable (`set_app_variable`) |
 | `sast` | a semgrep OWASP finding anywhere the gate scans, which is the whole repository and not just `app/` (the scope is `inno-platform-conventions`' **Rendering** section; the log names the file). A `secrets: inherit` line in `.github/workflows/deploy.yml` (older template copies carry one) is a blocking finding too | `inno-platform-conventions` (escaping, SQL); for `secrets: inherit`, tell the user and, with their okay, delete the line (the platform workflow needs no caller secrets) |
 | `deps` | a CVE in `app/requirements.txt` or a production npm dependency (what the audit covers is the contract's R8) | bump the pinned dep |
@@ -206,19 +206,18 @@ and ask first, whether or not the row below says so.
 | `app-deps` fails with `Missing app/package-lock.json` (function-shaped apps) | `app/package.json` exists but no lockfile is committed (the contract's §1.1 **Dependencies** bullet). This job runs on pushes too, so the failure blocks before any tag exists | run `npm install` inside `app/`, commit `app/package-lock.json`, push, confirm `app-deps` is green, then tag |
 | `app-deps` fails in `npm ci` (on pushes as well as tags), or the `deploy` bundle step reports `Could not resolve "<package>"` with the titled error `Undeclared import` (function-shaped apps), or reports it with the titled error `devDependency imported at runtime` | the lockfile no longer matches `app/package.json`, or the code imports a package not declared anywhere (nothing is installed at the repo root), or the code imports at runtime a package declared only under `devDependencies` (`app-deps` installs `--omit=dev`, so that tree was never installed) | for an undeclared package: declare it in `app/package.json`, run `npm install` inside `app/`, commit both files, push, confirm `app-deps` is green, then cut the next patch tag. For a devDependency: move it as **Moving a devDependency into dependencies**, below this table, says; then commit `app/package.json` and `app/package-lock.json`, push, confirm `app-deps` is green, then cut the next patch tag |
 | `deploy` fails with `app_not_deployable` | the app was stopped, or its repo lost the platform GitHub App, while this deploy was starting | if the repo was unlinked, have the user reinstall the GitHub App on it first (re-linking leaves the app stopped); then `start_app` (`inno-manage-app`) and cut the next patch tag |
-| `deploy` fails at the token request (`deploy-token request failed (HTTP 409)`) with a message about this deploy's gateway and its capability, naming a platform admin's fix (`gateway_too_old`; the log shows the message, not the code, and its wording may change between releases) | every browser app (`container`, `function`) deploys only on a gateway of capability 1 or more, which asks the platform who may use the app, and the gateway this deploy would ship is older (`register_app`'s and `sync_gateway_ref`'s descriptions state the rule). So any browser app's deploy meets this until a platform admin has promoted the platform's gateway. It is never a code bug, and nothing was deployed | not the owner's to fix. Tell the user plainly: "The platform needs an update from its operator before your app can go live; nothing on your side needs to change." A platform admin moves `gateway.ref` to a gateway of capability 1 or more (`sync_gateway_ref`) or removes the app's own `gateway.ref` override (`remove_config`), as `inno-fleet-admin` describes; then cut the next patch tag, which is what the refusal means when it asks for the tag again |
 | `deploy` fails at finalize with `app_not_deploying` | the app was stopped or purged while the deploy ran; nothing went live | `app_status` to see which; if stopped, `start_app`, then cut the next patch tag |
 
 The rarer `deploy` and broker failures and warnings, each with its fix, are
 in `references/deploy-failures.md`. Read it when the run shows any of
 these: `No scanned image recorded`; `Image mismatch` or `image_mismatch`;
 a `deploy-sbom failed (403)` line naming `app_mismatch` or saying the app is
-no longer linked to its repository, `Gate policy unavailable`, or
-`Gateway not promoted` (the broker refusing `app_mismatch` or
-`repo_unlinked`); `policy` failing with `Invalid app name`; or a
-`Gateway dependency advisory` or `Cloudflare not ready` warning (either can
-appear on a run that succeeded; neither is about the app's code, so change
-nothing in the app before reading the row). On a push, a
+no longer linked to its repository, `Gate policy unavailable`, or a tag
+run's `deploy-token request failed (HTTP 403)` (the broker refusing
+`app_mismatch` or `repo_unlinked`); `policy` failing with `Invalid app
+name`; or a `Cloudflare not ready` warning (it can appear on a run that
+succeeded and is not about the app's code, so change nothing in the app
+before reading the row). On a push, a
 `deploy-sbom failed (403)` line reading `deploy_denied:ref` is normal.
 
 A gate failure is real signal; there is no override or admin bypass. A
@@ -271,11 +270,13 @@ On success, report:
 Shipped v<X.Y.Z>: <the app URL, as reported by app_status / register_app>
 ```
 
-and note that the app is **Okta-gated**: the first visit prompts an Okta
-login (Cloudflare Access), and only the owner plus anyone granted access via
-`inno-manage-app`'s `grant_access` can reach it, unless the app has been
-opened to every SSO user with `set_app_access` (`inno-manage-app`). On a
-browser app, anyone else who signs in sees a plain "No access" page.
+and note that the app is behind the organization's sign-in: on a browser
+app the platform signs each person in on their first visit (what they see
+is `get_platform_docs`' **Signing in and out: what people see**), and only
+the owner plus anyone granted access via `inno-manage-app`'s `grant_access`
+can reach it, unless the app has been opened to every SSO user with
+`set_app_access` (`inno-manage-app`). On a browser app, anyone else who
+signs in sees a plain "No access" page.
 
 For a `container` app, add one plain line with the tag run's accessibility
 report counts: critical, serious, moderate and minor findings, and how many
@@ -303,11 +304,10 @@ get the negative (NXDOMAIN) result cached on the user's own machine for
 minutes, even after the app is actually live. This caveat doesn't apply to
 redeploys of an already-live app: the hostname already resolves.
 
-Container-shape redeploys (`container`, `mcp-container`): a deploy replaces the
-image, but an instance that is actively serving keeps running the OLD image
-until it recycles (idle sleep or `restart_app`). If the user redeployed a fix
-to a busy app and it still shows old behavior, run `restart_app`: the next
-request cold-starts on the new image.
+Container-shape redeploys (`container`, `mcp-container`): a deploy starts a
+new container instance on the next request, so a fix takes effect with no
+`restart_app`; the instance from before keeps serving only until the new
+host stops it, which it does from its first request on (contract §2.3).
 
 ### Do not curl, dig, or otherwise resolve the hostname to "verify" success
 
