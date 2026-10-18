@@ -553,6 +553,10 @@ Things to relay to the user in plain terms:
 - `link_invalid` or `link_source_missing` from `remove_app_variable`: one of
   the app's data links is no longer valid, and nothing was removed. Unlink it
   (`unlink_app_data`), or have the source's owner fix it, then remove again.
+- **A removal whose host upload failed** (on a container app, and the answer
+  says so): the removal stands, but the running instance keeps the old value
+  until it next restarts. Relay that and offer `restart_app`; the tool's
+  description has the detail.
 - **"I set it and the app still reports it missing."** Check
   `list_app_variables`: a set name that looks like a typo of a declared name
   nobody has set carries a suggestion naming the declared one, and a hidden

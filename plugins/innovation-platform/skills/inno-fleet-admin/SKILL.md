@@ -523,14 +523,14 @@ serves. The panel's Platform screen is the same act on a visual surface.
     confirm with the admin who should have it first.
   - `member_drift_detected`, `cutover_undo_failed` and `access_app_left`
     were raised only before platform v0.17.0 (the first two only by v0.16.5
-    to v0.16.7), so one in the feed predates the upgrade and its own advice
-    no longer applies: from v0.17.0 every browser app admits from the
-    platform's member list alone, at the front door. For the first two, the
-    app's owner shares it (`grant_access`) with anyone who reached it only
-    through its Okta group. An `access_app_left` entry names a Cloudflare
-    Access application a purge left in place: have it deleted in the
-    Cloudflare dashboard (Zero Trust, Access, Applications) before the name
-    is registered again.
+    to v0.16.7), so one in the feed predates the upgrade. The first two's
+    own advice no longer applies: from v0.17.0 every browser app admits from
+    the platform's member list alone, at the front door, so the app's owner
+    shares it (`grant_access`) with anyone who reached it only through its
+    Okta group. An `access_app_left` entry's remedy still applies: it names
+    a Cloudflare Access application a purge left in place, so have it
+    deleted in the Cloudflare dashboard (Zero Trust, Access, Applications)
+    before the name is registered again.
 
   Admins also see a copy of each `cross_owner_link_revoked` notice (from
   platform v0.16.12), an owner stage that tells a source's owner a data link

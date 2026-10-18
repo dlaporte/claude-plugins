@@ -211,6 +211,11 @@ and ask first, whether or not the row below says so.
 The rarer `deploy` and broker failures and warnings, each with its fix, are
 in `references/deploy-failures.md`. Read it when the run shows any of
 these: `No scanned image recorded`; `Image mismatch` or `image_mismatch`;
+a container app's `deploy-complete failed` line naming
+`image_not_this_apps`, `container_rollout_failed`,
+`container_policy_unexpected`, `container_namespace_missing` or
+`platform_key_missing` (none is about the app's code, so change nothing in
+the app before reading its row);
 a `deploy-sbom failed (403)` line naming `app_mismatch` or saying the app is
 no longer linked to its repository, `Gate policy unavailable`, or a tag
 run's `deploy-token request failed (HTTP 403)` (the broker refusing
