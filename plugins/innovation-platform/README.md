@@ -96,8 +96,9 @@ Platform v0.17.0 made another: its status no longer carries a sign-out
 address or gateway capabilities, and the admin tool that promoted the
 gateway went with it, so reconnect after that upgrade too. Plugin 3.0.0
 follows v0.17.0 and contract 33, where the platform signs people in to
-browser apps itself and every app's sign-out link is `/_auth/signout`; from
-v0.17.0 the platform asks for at least 3.0.0.
+browser apps itself and every app's sign-out link is `/_auth/signout`; the
+platform asks for at least 3.0.0 when the instance's admins raise
+`plugin.min_version`, as the v0.17.0 release asks.
 
 ### House style
 

@@ -351,6 +351,11 @@ What to do with its refusals and answers:
   sweep reverts it, which `inno-manage-app`'s **A deploy whose CI run died**
   explains, and `rebuild_app` cannot release it.
 - `app_busy`: retry once after a moment, never in a loop.
+- `image_budget_exhausted`: a container app holds more images in the
+  registry than one call deletes. The purge is unfinished, not failed: call
+  `purge_app` again, as often as it answers this, until it finishes. Until
+  then the app's data and record are kept; its container and Worker may
+  already be gone.
 - **Okta groups left in place.** Only the Okta groups and rule an earlier
   release recorded for the app are deleted, by id (an app registered from
   platform v0.16.5, or an MCP app from v0.16.4, records none), and the

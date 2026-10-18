@@ -379,10 +379,12 @@ that template has no such helper either, read an empty or missing
 - **The platform signs people in, outside your code.** On a browser app the
   front door sends a person with no session through the platform's own
   sign-in and back to the page they asked for (R3 says how, and how long a
-  session lasts). Two things that reach an app's own page script: a
-  background request (a `fetch`) once the session has ended gets a `401`
-  rather than the sign-in redirect, so on a `401` reload the page to sign in
-  again; and a sign-in never starts inside a frame, so an app shown in
+  session lasts). Two things that reach an app's own pages: once the
+  session has ended, anything but a top-level GET page load, a form POST
+  included, gets a `401` rather than the sign-in redirect, so a background
+  request (a `fetch`) that meets a `401` reloads the page to sign in again,
+  and a form posted then loses what it carried; and a sign-in never starts
+  inside a frame, so an app shown in
   another page's frame is opened in its own tab to sign in. What people see
   is the platform docs' **Signing in and out: what people see**
   (`get_platform_docs`).
@@ -406,9 +408,9 @@ strips a `Clear-Site-Data` header. So keep your cookies host-only (no
 `Clear-Site-Data`.
 
 **WebSockets and event streams** (R3). The front door refuses a WebSocket
-upgrade from another site's page, a sibling app's included, so your app
-need not check `Origin` itself, and no endpoint may rely on another site's
-pages opening it. On a browser app an open WebSocket or event stream ends
+upgrade from another origin's page, a sibling app's included, so your app
+need not check `Origin` itself, and no endpoint may rely on another
+origin's pages opening it. On a browser app an open WebSocket or event stream ends
 when the person's session does: design for reconnect-and-catch-up (§5).
 
 **Never implement login pages, sessions, password storage, or an "auth
