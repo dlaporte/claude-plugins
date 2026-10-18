@@ -334,10 +334,12 @@ restore point is.
      `app/identity.ts` from `scaffold/function/app/` or
      `scaffold/mcp-function/app/` (function-shaped, in a template from
      platform v0.16.19). Any other stack reads `X-Forwarded-User` by the
-     same contract. Handle no user first and never default it into a value
-     (`inno-platform-conventions`' **Identity** section); an MCP app refuses
-     inside MCP, never with an HTTP status (§1.2 and §1.3). Any in-app roles
-     are kept in the app's own store keyed on that email (Phase 1 step 2).
+     same contract. Handle no user first in each route that needs a person,
+     never in a middleware, and never default it into a value
+     (`inno-platform-conventions`' **Identity** section says why); an MCP
+     app refuses inside MCP, never with an HTTP status (a MUST of §1.2 and
+     §1.3 from contract 32). Any in-app roles are kept in the app's own
+     store keyed on the caller's email, `X-Forwarded-User` (Phase 1 step 2).
      If the app trusts proxy headers (a proxy-fix middleware, a trust-proxy
      setting, or a server's proxy-headers flag), trust only the three that
      R3's table says the gateway sets itself (`X-Forwarded-For`,

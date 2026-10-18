@@ -225,9 +225,10 @@ from storage import Storage, current_user
 
 db = Storage()
 
+# a POST route, since it writes: Route("/visits", visits, methods=["POST"])
 async def visits(request):
     user = current_user(request)
-    if user is None:
+    if user is None:  # a route that needs a person
         return PlainTextResponse("no signed-in user", status_code=403)
     await db.execute("CREATE TABLE IF NOT EXISTS visits (email TEXT PRIMARY KEY, n INTEGER)")
     await db.execute("INSERT INTO visits (email, n) VALUES (?, 1) ON CONFLICT(email) DO UPDATE SET n = n + 1", [user["email"]])
@@ -236,7 +237,9 @@ async def visits(request):
 ```
 
 The caller is read and "no user" handled before any per-person query, as
-the **Identity** section below says.
+the **Identity** section below says. A route that changes state is never a
+GET, and on a browser app it also takes the origin check `get_app_security`
+§12 sets (from platform v0.16.19).
 
 `Storage()` defaults its base URL to `http://storage.internal`, which the
 gateway's outbound handler intercepts and routes to the app's own D1
@@ -292,12 +295,14 @@ and `currentUser(request.headers)` from `app/identity.ts` in a `function` or
 JavaScript and TypeScript) when `X-Forwarded-User` is empty or missing, and
 otherwise `{ email, groups, member }`, where `member` is true exactly when
 a group ends `-users` (the caller holds the app's members group). A stack
-with no helper reads the headers by the same contract. Handle no user
-first, before any per-person read or write:
+with no helper reads the headers by the same contract. Check the repo's
+helper before relying on that answer: an older one answers an empty email,
+not no user (below). In a route that needs a person, handle no user first,
+before any per-person read or write:
 
 ```python
 user = current_user(request)
-if user is None:
+if user is None:  # a route that needs a person
     return PlainTextResponse("no signed-in user", status_code=403)
 ```
 
@@ -305,13 +310,17 @@ if user is None:
 `?? ""`, `"unknown"`): a placeholder bound into `WHERE owner = ?` is one key
 that every caller with no identity shares, and a SQL `NULL` is no better.
 The helper answers no object at all, so code that reads the email without
-the check fails rather than share a key; keep it that way. §3 is the
-authoritative text for this rule.
+the check fails rather than share a key; keep it that way. Contract §3
+(from contract 32) is the authoritative text for this rule.
 
-On an app that serves signed-in people, that branch is the one-line
-refusal above. **An MCP app refuses inside MCP**, with a tool result marked
-as an error or a JSON-RPC error, never with an HTTP status: §1.2 and §1.3
-make it a MUST and say why.
+Refuse a caller with no user only in a route that needs a person, never in
+a middleware or ahead of routing: the platform's health probe,
+`GET /healthz`, arrives with empty identity headers (R3 states it from
+contract 32, and the gateway sent it that way before) and must get its 200
+(R2). In a route that needs a person, the branch is the one-line refusal
+above. **An MCP app refuses inside MCP**, with a tool result marked as an
+error or a JSON-RPC error, never with an HTTP status: §1.2 and §1.3 make it
+a MUST from contract 32 and say why.
 
 A repo made from a template older than platform v0.16.19 has an older
 helper: it answers an empty email rather than no user and has no `member`,
@@ -347,9 +356,10 @@ rule.
   `X-Forwarded-User`, and only for a caller who has one. Every person an
   app admits carries at least one of the two, so a visitor admitted only
   because the app is open carries the open group alone.
-- **An empty identity is no user: never a member, never an error, never a
-  key.** R3 names the one request that arrives with empty identity headers
-  on contract 32, and a request that never passed the gateway (the app run
+- **An empty identity is no user: an expected caller, not a fault, and
+  never a member or a key.** The platform's health probe, `GET /healthz`,
+  arrives with empty identity headers (on contract 32 the only request that
+  does, R3), and a request that never passed the gateway (the app run
   locally, a test) can carry none; the helper reads both as no user. A
   person the platform refuses never reaches your code: the gateway answers
   them itself, with a plain 403 "No access" page, or a 503 "Try again

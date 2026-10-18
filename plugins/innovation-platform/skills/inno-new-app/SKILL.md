@@ -623,9 +623,9 @@ you read in §1b (§1.1 to §1.3) are the authority for each type's deltas.
 - **`function` app (greenfield default):** the entry is **`app/index.ts`**
   exporting `export default { fetch(request, env, ctx) }`; extend it rather
   than re-scaffolding. Read the caller with `currentUser(request.headers)`
-  from the scaffold's `app/identity.ts`, handling no user (`null`) first and
-  never defaulting it into a value (`inno-platform-conventions`'
-  **Identity** section), serve **`GET /healthz` as a
+  from the scaffold's `app/identity.ts`, handling no user (`null`) first in
+  each route that needs a person and never defaulting it into a value
+  (`inno-platform-conventions`' **Identity** section), serve **`GET /healthz` as a
   route** returning **exactly 200** (a 204 or a redirect to `/healthz/` fails
   both the CI smoke gate and the runtime probe), and reach storage through
   the app's **own bindings** `env.DATA` (D1) and `env.FILES` (R2), not
@@ -650,11 +650,12 @@ you read in §1b (§1.1 to §1.3) are the authority for each type's deltas.
   **without a `sessionIdGenerator`** (stateless), and implement **no auth of
   any kind**: never route `/.well-known/oauth-protected-resource` yourself
   (§1.2 says why). The app refuses inside MCP (a tool result marked as an
-  error, or a JSON-RPC error), never with an HTTP status: a MUST of §1.2.
+  error, or a JSON-RPC error), never with an HTTP status: a MUST of §1.2
+  from contract 32.
 - **`container` app, tested stack (Python):** start from the reference app
   (`app/main.py` + `Dockerfile`) and extend it; don't regenerate from scratch.
   Read the caller with `current_user(request)` from `app/storage.py`,
-  handling no user (`None`) first.
+  handling no user (`None`) first in each route that needs a person.
 - **`container` app, another stack:** replace `app/` and the `Dockerfile`
   wholesale for that stack, honoring the contract (port 8080, `/healthz`,
   identity headers, the `storage.internal` endpoints, sign-out link). A JS
@@ -673,11 +674,12 @@ you read in §1b (§1.1 to §1.3) are the authority for each type's deltas.
   carries the storage **and `Connections` helpers** your tools consume (see
   `inno-add-connection`).
   Identity is §1.2's: implement no auth of your own, read the caller with
-  `current_user(request)` from `app/storage.py` (as `whoami` does), handling
-  no user first, never route
+  `current_user(ctx.request_context.request)` from `app/storage.py` (as
+  `whoami` does), handling no user first, never route
   `/.well-known/oauth-protected-resource` yourself, and add no sign-out link.
   The app refuses inside MCP (a tool result marked as an error, or a
-  JSON-RPC error), never with an HTTP status: a MUST of §1.3.
+  JSON-RPC error), never with an HTTP status: a MUST of §1.3 from contract
+  32.
   **Keep the starter's `transport_security` setting**, which
   `get_app_contract` §1.3 states and explains; changing it breaks every
   gateway-forwarded `/mcp` request. The starter pins FastMCP below `mcp` 2 in
@@ -699,7 +701,8 @@ Leaving it in place means `inno-ship` will refuse to deploy, by design.
 Typical scaffolding steps for a new feature (Python **container** reference
 shown; a **function** app does the equivalent inside `app/index.ts`'s `fetch`
 handler: route on the URL, read the caller with the identity helper and
-handle no user first, read/write `env.DATA`/`env.FILES`):
+handle no user first in each route that needs a person, read/write
+`env.DATA`/`env.FILES`):
 - Add routes to `app/main.py` (container) or `app/index.ts` (function); split into
   modules under `app/` as it grows.
 - (Container, Python) add templates under `app/templates/`; never delete the
