@@ -9,7 +9,8 @@ depends on the type, because three of the four have an overlay directory:
 
 - **`function` / `mcp-function`:** copy `scaffold/function/` or
   `scaffold/mcp-function/`. Each carries `CLAUDE.md`, `README.md`, and an
-  `app/` (`index.ts`, plus `package.json` and its lockfile for
+  `app/` (`index.ts`, the identity helper `identity.ts` in a template from
+  platform v0.16.19, plus `package.json` and its lockfile for
   `mcp-function`). Take `.gitignore` from the template root.
 - **`mcp-container`:** copy `scaffold/mcp-container/`:
   `CLAUDE.md`, `README.md`, `app/main.py`, and `app/requirements.txt`. Fill

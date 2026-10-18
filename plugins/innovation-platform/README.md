@@ -122,7 +122,9 @@ produce is a Dockerfile and app code rather than sentences a user reads.
   register and adapt it **in place**, keeping its stack where the gates allow.
 - **`skills/inno-platform-conventions`**: stack policy (Python/Starlette is
   the tested stack; any stack meeting the contract is fine), escaping,
-  the storage client/endpoints, identity via `X-Forwarded-User`, and the
+  the storage client/endpoints, identity (the three kinds of caller the
+  contract's R3 names, and the template's helper, which answers no user for
+  a caller with no identity and says whether a caller is a member), and the
   files CI will reject if you touch them. Requirements are served live by
   the `get_app_contract` tool, and the skills cite it rather than keeping
   copies.

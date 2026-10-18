@@ -264,8 +264,12 @@ The written design covers, at minimum:
 - **Deployment type** and why (and the Connection constraint if §1 flagged it)
 - **Data model**: the tables and files it will store
 - **Routes / pages**: what the user can actually open and do
-- **Access model**: who can see what, and who can edit. The platform manages
-  only membership: `X-Forwarded-Groups` carries at most this app's own two
+- **Access model**: who can see what, and who can edit, decided per request
+  for each of the three kinds of caller contract R3 names (`get_app_contract`
+  with `sections: ["2"]`). A member is only one of them: never design as if
+  every caller is one, and give per-person data and roles only to a caller
+  with an identity. The platform manages only membership:
+  `X-Forwarded-Groups` carries at most this app's own two
   groups (the `App groups:` line of the status you read in the Version gate,
   with the app's name in place of `{app}`). Any finer role (an editor, an
   admin view) needs the app's own role table keyed on `X-Forwarded-User`,
@@ -618,8 +622,10 @@ you read in §1b (§1.1 to §1.3) are the authority for each type's deltas.
 
 - **`function` app (greenfield default):** the entry is **`app/index.ts`**
   exporting `export default { fetch(request, env, ctx) }`; extend it rather
-  than re-scaffolding. Read identity from `request.headers`
-  (`X-Forwarded-User` / `X-Forwarded-Groups`), serve **`GET /healthz` as a
+  than re-scaffolding. Read the caller with `currentUser(request.headers)`
+  from the scaffold's `app/identity.ts`, handling no user (`null`) first in
+  each route that needs a person and never defaulting it into a value
+  (`inno-platform-conventions`' **Identity** section), serve **`GET /healthz` as a
   route** returning **exactly 200** (a 204 or a redirect to `/healthz/` fails
   both the CI smoke gate and the runtime probe), and reach storage through
   the app's **own bindings** `env.DATA` (D1) and `env.FILES` (R2), not
@@ -643,12 +649,19 @@ you read in §1b (§1.1 to §1.3) are the authority for each type's deltas.
   TypeScript SDK's `WebStandardStreamableHTTPServerTransport`, constructed
   **without a `sessionIdGenerator`** (stateless), and implement **no auth of
   any kind**: never route `/.well-known/oauth-protected-resource` yourself
-  (§1.2 says why).
+  (§1.2 says why). The app refuses inside MCP (a tool result marked as an
+  error, or a JSON-RPC error), never with an HTTP status: a MUST of §1.2
+  from contract 32.
 - **`container` app, tested stack (Python):** start from the reference app
   (`app/main.py` + `Dockerfile`) and extend it; don't regenerate from scratch.
+  Read the caller with `current_user(request)` from `app/storage.py`,
+  handling no user (`None`) first in each route that needs a person.
 - **`container` app, another stack:** replace `app/` and the `Dockerfile`
   wholesale for that stack, honoring the contract (port 8080, `/healthz`,
-  identity headers, the `storage.internal` endpoints, sign-out link).
+  identity headers, the `storage.internal` endpoints, sign-out link). A JS
+  or TS container reads the caller with `currentUser` from `lib/storage.js`;
+  any other stack reads the headers by the same contract, an empty or
+  missing `X-Forwarded-User` being no user.
 - **`mcp-container` app:** pruning applied the template's
   `scaffold/mcp-container/` overlay: its `.scaffold-remove` deleted
   `app/templates/` (this type has no use for it), and its `app/main.py`,
@@ -660,9 +673,13 @@ you read in §1b (§1.1 to §1.3) are the authority for each type's deltas.
   into an MCP server, and keep it stateless (§1.3). `app/storage.py`
   carries the storage **and `Connections` helpers** your tools consume (see
   `inno-add-connection`).
-  Identity is §1.2's: implement no auth of your own, read
-  `X-Forwarded-User`/`X-Forwarded-Groups` only, never route
+  Identity is §1.2's: implement no auth of your own, read the caller with
+  `current_user(ctx.request_context.request)` from `app/storage.py` (as
+  `whoami` does), handling no user first, never route
   `/.well-known/oauth-protected-resource` yourself, and add no sign-out link.
+  The app refuses inside MCP (a tool result marked as an error, or a
+  JSON-RPC error), never with an HTTP status: a MUST of §1.3 from contract
+  32.
   **Keep the starter's `transport_security` setting**, which
   `get_app_contract` §1.3 states and explains; changing it breaks every
   gateway-forwarded `/mcp` request. The starter pins FastMCP below `mcp` 2 in
@@ -683,7 +700,8 @@ Leaving it in place means `inno-ship` will refuse to deploy, by design.
 
 Typical scaffolding steps for a new feature (Python **container** reference
 shown; a **function** app does the equivalent inside `app/index.ts`'s `fetch`
-handler: route on the URL, read identity from the request headers, read/write
+handler: route on the URL, read the caller with the identity helper and
+handle no user first in each route that needs a person, read/write
 `env.DATA`/`env.FILES`):
 - Add routes to `app/main.py` (container) or `app/index.ts` (function); split into
   modules under `app/` as it grows.
@@ -744,7 +762,9 @@ it, do that setup now, before writing the rest of the app: run the
 If the app needs an app-level key or config value instead (one API key the
 whole app shares, a base URL), set it after registration with
 `set_app_variable`: it reaches the app as a plain environment variable.
-Never put it in the repo; gitleaks fails the build on the full history.
+Never put it in the repo; gitleaks fails the build on the full history. A
+route that spends an app-level key needs the limits `get_app_security` §5
+sets, per client and globally.
 
 If the app will read platform Variables, consider declaring them in
 `app/inno-variables.json` (contract §2.3 gives the format) so an owner
