@@ -139,10 +139,14 @@ CI's scanners catch injection patterns and known-vulnerable deps, but the
 highest-impact app bug, **authorization and IDOR** (its §1), is invisible to
 them; for any app with **per-user data, an admin surface, a state-changing
 write, or a call to a paid or external upstream**, verify its §1 to §5
-against the code. That `X-Forwarded-User` is an email address, which can
+against the code, and for a browser-facing app (`container`, `function`)
+with a state-changing request, its §12 (forged requests, from platform
+v0.16.19) too. That `X-Forwarded-User` is an email address, which can
 pass to another person (the contract's R3, or on a platform before v0.16.12
-`inno-platform-conventions`' **Identity** section), is not a finding: no header
-carries the account itself yet, so keying on the address is right. A real
+`inno-platform-conventions`' **Identity** section), is not a finding on its
+own: no header carries the account itself yet. Per-person data or a role
+taken from a caller with no user is a finding, and so is an MCP app that
+refuses by HTTP status (the contract's §1.2 and §1.3). A real
 authorization hole is a hard stop: fix or guide the fix before `inno-ship`.
 A missing response header (its §9) is a recommendation, not a stop: offer
 the fix, and for a `container` app item 6's header report shows what the

@@ -86,8 +86,9 @@ Check all three before doing anything else:
   backend (one shared service account), that's **not** a Connection. It's a
   plain app secret, which belongs in the app's **Variables**
   (`inno-manage-app`'s `set_app_variable`, or the Variables tab on the app's
-  page; the app reads it as an ordinary environment variable). Point the
-  user there and stop here.
+  page; the app reads it as an ordinary environment variable), and a route
+  that spends it needs the limits `get_app_security` §5 sets, per client
+  and globally. Point the user there and stop here.
 - **The app is `mcp-container`.** Only container-shaped MCP apps can reach the
   platform's Connections seam in v1 (§2.2's **Availability** says why). If the
   app is `function`, `mcp-function`, or plain `container`, say plainly that

@@ -106,10 +106,13 @@ order:
    Note the entrypoint, framework, and listen port so you can adapt them to
    8080 + `/healthz`.
 2. **Auth to strip**: login routes, session middleware, password storage, OAuth
-   flows. All of it goes: the gateway verifies the user against Okta and injects
-   `X-Forwarded-User` / `X-Forwarded-Groups` (see `inno-platform-conventions`).
-   List each file/route to remove. Keep the app's own **authorization** (who may
-   edit what), rewired to key on `X-Forwarded-User` (the caller's email
+   flows. All of it goes: the gateway decides who reaches the app and tells it
+   who the caller is, in `X-Forwarded-User` / `X-Forwarded-Groups` (see
+   `inno-platform-conventions`). List each file/route to remove. Keep the
+   app's own **authorization** (who may edit what), decided per request for
+   each of the three kinds of caller contract R3 names (a member is only
+   one of them, and a caller with no identity gets no per-person data or
+   role), rewired to key on `X-Forwarded-User` (the caller's email
    address, which can change for one person and pass to another):
    `X-Forwarded-Groups` carries only this app's two groups (the names in the
    `App groups:` line of the status you read in the Version gate, with the
@@ -324,15 +327,23 @@ restore point is.
    - App code under **`app/`**; entrypoint listens on **8080** and serves
      **`/healthz`** (container) or is `app/index.ts` exporting a `fetch` handler
      (function).
-   - **Auth deleted**; identity read from `X-Forwarded-User` (Python container:
-     the reference `current_user(request)` helper), and any in-app roles kept
-     in the app's own store keyed on that email (Phase 1 step 2). If the app
-     trusts proxy headers (a proxy-fix middleware, a trust-proxy setting, or a
-     server's proxy-headers flag), trust only the three that R3's table says
-     the gateway sets itself (`X-Forwarded-For`, `X-Forwarded-Host` and
-     `X-Forwarded-Proto`); every other proxy header (`X-Real-IP`,
-     `True-Client-IP` and `X-Forwarded-Port` among them) stays
-     caller-controlled and must never feed identity, origin or access
+   - **Auth deleted**; the caller read through the template's identity
+     helper, copied from the template repo (the `Template repo:` line) when
+     the repo lacks it: `current_user(request)` in `app/storage.py` (Python
+     container), `currentUser` in `lib/storage.js` (JS or TS container), or
+     `app/identity.ts` from `scaffold/function/app/` or
+     `scaffold/mcp-function/app/` (function-shaped, in a template from
+     platform v0.16.19). Any other stack reads `X-Forwarded-User` by the
+     same contract. Handle no user first and never default it into a value
+     (`inno-platform-conventions`' **Identity** section); an MCP app refuses
+     inside MCP, never with an HTTP status (§1.2 and §1.3). Any in-app roles
+     are kept in the app's own store keyed on that email (Phase 1 step 2).
+     If the app trusts proxy headers (a proxy-fix middleware, a trust-proxy
+     setting, or a server's proxy-headers flag), trust only the three that
+     R3's table says the gateway sets itself (`X-Forwarded-For`,
+     `X-Forwarded-Host` and `X-Forwarded-Proto`); every other proxy header
+     (`X-Real-IP`, `True-Client-IP` and `X-Forwarded-Port` among them)
+     stays caller-controlled and must never feed identity, origin or access
      decisions.
    - **Persistence rewired** to the storage endpoints (container) or the app's
      `env.DATA`/`env.FILES` bindings (function).

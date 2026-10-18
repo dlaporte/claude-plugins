@@ -503,9 +503,11 @@ account, and naming anyone else's is refused `forbidden`.
 
 Per-app **environment variables**: the sanctioned home for an APP-level
 secret (one API key every user of the app shares) or plain config (a base
-URL, a flag). Owner-or-admin, fully self-service; the panel twin is the
-**Variables** tab on the app's page. The app's code reads them from its
-environment, with no helper and no platform SDK. Don't confuse this with
+URL, a flag). A route in the app that spends such a key needs the limits
+`get_app_security` §5 sets, per client and globally. Owner-or-admin, fully
+self-service; the panel twin is the **Variables** tab on the app's page.
+The app's code reads them from its environment, with no helper and no
+platform SDK. Don't confuse this with
 `set_config` (a fixed registry of platform-behavior settings that never
 reaches app code) or with Connections (per-USER credentials: if the backend
 tells the app's users apart, it's a Connection, see `inno-add-connection`).

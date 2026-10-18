@@ -20,7 +20,7 @@ The fix: copy the current `app/storage.py` (or, in a JS container,
 `lib/storage.js`) from the template repo (the `Template repo:` line of the
 status you read in the Version gate) before writing the branches in step 5.
 The current client brings `ConnectionLocked`, `ConnectionsError` and the
-`truncated` flag on the file listing, and keeps the old shapes:
+`truncated` flag on the file listing, and keeps the old shapes but one:
 
 - the file listing is still a list;
 - `NotConnected` is unchanged, and the JS one keeps its older field name
@@ -29,7 +29,14 @@ The current client brings `ConnectionLocked`, `ConnectionsError` and the
   existing `except httpx.HTTPStatusError` still catches it;
 - the JS message is still `connections_error:<status>`.
 
-What did change is the text of a failed seam call's error as a whole, in
+The one changed shape is the identity helper (`current_user` in Python,
+`currentUser` in JS). From platform v0.16.19's template it answers no user
+(`None`, `null`) for a caller with no identity, where an older one answered
+an empty email, and its answer adds `member`. After the copy, make every
+place that reads the helper handle no user first and never default it into
+a value (`inno-platform-conventions`' **Identity** section).
+
+The text of a failed seam call's error, as a whole, changed as well in
 both clients: in Python `str(e)` is now `connections_error:<status>` rather
 than httpx's own text, and in JS `String(e)` names `ConnectionsError` where
 it used to name `Error`. That matters only to code that logs or matches that

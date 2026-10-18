@@ -220,13 +220,23 @@ data to disk. Use the storage client shipped in the template
 (`app/storage.py`):
 
 ```python
-from storage import Storage
+from starlette.responses import JSONResponse, PlainTextResponse
+from storage import Storage, current_user
 
 db = Storage()
-await db.execute("CREATE TABLE IF NOT EXISTS visits (email TEXT PRIMARY KEY, n INTEGER)")
-await db.execute("INSERT INTO visits (email, n) VALUES (?, 1) ON CONFLICT(email) DO UPDATE SET n = n + 1", [user])
-rows = await db.query("SELECT n FROM visits WHERE email = ?", [user])
+
+async def visits(request):
+    user = current_user(request)
+    if user is None:
+        return PlainTextResponse("no signed-in user", status_code=403)
+    await db.execute("CREATE TABLE IF NOT EXISTS visits (email TEXT PRIMARY KEY, n INTEGER)")
+    await db.execute("INSERT INTO visits (email, n) VALUES (?, 1) ON CONFLICT(email) DO UPDATE SET n = n + 1", [user["email"]])
+    rows = await db.query("SELECT n FROM visits WHERE email = ?", [user["email"]])
+    return JSONResponse({"visits": rows[0]["n"]})
 ```
+
+The caller is read and "no user" handled before any per-person query, as
+the **Identity** section below says.
 
 `Storage()` defaults its base URL to `http://storage.internal`, which the
 gateway's outbound handler intercepts and routes to the app's own D1
@@ -248,8 +258,11 @@ copy of the template has a listing with no `truncated`: reading it raises
 listing reads as complete. Check the repo's `app/storage.py` or
 `lib/storage.js` before relying on the flag, and if it lacks it, copy the
 current one from the template repo (the `Template repo:` line of the status
-you read in the Version gate). The current client keeps the old shapes, so
-code written against the old one keeps working.
+you read in the Version gate). The current client keeps the old shapes but
+one: its identity helper (`current_user`, or `currentUser` in JS) answers no
+user for a caller with no identity where an older one answered an empty
+email, and its answer adds `member` (**Identity** below). So after the
+copy, make every place that reads the helper handle no user first.
 
 **Two body caps on that gateway, and the SQL one is the easy one to hit**
 (R5 is authoritative for both). A `{sql, params}` body over **4 MiB** (on
@@ -265,16 +278,49 @@ own message, and sends the body with its length. Neither applies to a function-s
 
 ## Identity: read the header, never build auth
 
-The gateway has already verified the user before the request reaches your
-container. Read identity via the `current_user(request)` helper in
-`storage.py`, or directly:
+The gateway decides who reaches the app and tells you who the caller is, in
+the identity headers. R3 (`get_app_contract` §2) is the authoritative text
+for every header the gateway owns and for the three kinds of caller an app
+serves; this is how to apply it. Decide per request what each kind of
+caller may see and do, and never assume a caller is a member.
+
+Read the caller through the template's identity helper:
+`current_user(request)` in `app/storage.py` (Python),
+`currentUser(request.headers)` in `lib/storage.js` (a JS or TS container),
+and `currentUser(request.headers)` from `app/identity.ts` in a `function` or
+`mcp-function` app. Each answers no user (`None` in Python, `null` in
+JavaScript and TypeScript) when `X-Forwarded-User` is empty or missing, and
+otherwise `{ email, groups, member }`, where `member` is true exactly when
+a group ends `-users` (the caller holds the app's members group). A stack
+with no helper reads the headers by the same contract. Handle no user
+first, before any per-person read or write:
 
 ```python
-user = request.headers.get("x-forwarded-user", "unknown")
+user = current_user(request)
+if user is None:
+    return PlainTextResponse("no signed-in user", status_code=403)
 ```
 
-R3 (`get_app_contract` §2) is the authoritative text for every header the
-gateway owns; this is how to apply it.
+**Never default the absence back into a value** (`or ""`, `?.email`,
+`?? ""`, `"unknown"`): a placeholder bound into `WHERE owner = ?` is one key
+that every caller with no identity shares, and a SQL `NULL` is no better.
+The helper answers no object at all, so code that reads the email without
+the check fails rather than share a key; keep it that way. §3 is the
+authoritative text for this rule.
+
+On an app that serves signed-in people, that branch is the one-line
+refusal above. **An MCP app refuses inside MCP**, with a tool result marked
+as an error or a JSON-RPC error, never with an HTTP status: §1.2 and §1.3
+make it a MUST and say why.
+
+A repo made from a template older than platform v0.16.19 has an older
+helper: it answers an empty email rather than no user and has no `member`,
+and a function-shaped repo has no `app/identity.ts`. Copy the current
+helper from the template repo (the `Template repo:` line of the status you
+read in the Version gate), as **Persistence** above says for the storage
+client. Where that template has no such helper either, read an empty or
+missing `X-Forwarded-User` as no user in the app's own code, by the same
+rule.
 
 - `X-Forwarded-Email` carries the same email as `X-Forwarded-User`: the
   gateway injects both, so either one works and neither is more
@@ -296,18 +342,21 @@ gateway owns; this is how to apply it.
   the status you read in the Version gate, with the app's name in place of
   `{app}`. It never carries the platform admin group, another app's groups,
   or any other group, so use it only to tell a member from an open-access
-  visitor; any finer role (an editor, a staff view, an in-app admin) needs
-  your own role store keyed on `X-Forwarded-User`. Every person an app
-  admits carries at least one of the two, so a visitor admitted only because
-  the app is open carries the open group alone.
-- **Treat an empty header as "not a member", never as an error.** No
-  admitted caller arrives with one, but a request that never passed the
-  gateway (the app run locally, a test) can. A person the platform refuses
-  never reaches your code: the gateway answers them itself, with a plain 403
-  "No access" page, or a 503 "Try again shortly" page when it cannot ask the
-  platform. A gateway built from platform v0.16.10 on shows that 503 page
-  too while it cannot obtain the sign-in keys it checks people against,
-  where an older one answers 401; `GET /healthz` keeps its 401 on both.
+  visitor (the helper's `member` is that test); any finer role (an editor,
+  a staff view, an in-app admin) needs your own role store keyed on
+  `X-Forwarded-User`, and only for a caller who has one. Every person an
+  app admits carries at least one of the two, so a visitor admitted only
+  because the app is open carries the open group alone.
+- **An empty identity is no user: never a member, never an error, never a
+  key.** R3 names the one request that arrives with empty identity headers
+  on contract 32, and a request that never passed the gateway (the app run
+  locally, a test) can carry none; the helper reads both as no user. A
+  person the platform refuses never reaches your code: the gateway answers
+  them itself, with a plain 403 "No access" page, or a 503 "Try again
+  shortly" page when it cannot ask the platform. A gateway built from
+  platform v0.16.10 on shows that 503 page too while it cannot obtain the
+  sign-in keys it checks people against, where an older one answers 401;
+  `GET /healthz` keeps its 401 on both.
 - **How fast a change reaches the header** is R3's to state: within the
   gateway's cache, at most 60 seconds on an MCP app and 10 seconds on a
   browser app.
@@ -328,9 +377,10 @@ origin or an access decision.
 
 **Never implement login pages, sessions, password storage, or an "auth
 disabled" dev path**: the gateway strips inbound copies of the headers it
-owns before injecting its own verified values, so there is no spoofing
-surface as long as you don't add one. `"unknown"` is a reasonable default
-only for local dev, never a real auth decision in production code.
+owns before injecting its own values, so there is no spoofing surface as
+long as you don't add one. A missing user is no user in local dev too:
+send the headers yourself (**Keep `ENVIRONMENT=production`** below) rather
+than default the absence into a value.
 
 ## Configuration & secrets (Variables)
 
@@ -343,7 +393,9 @@ environment variables. Read them the normal way for your shape:
 Never commit them (`gitleaks` fails the build on the full history) and
 never build a settings page to collect them. Names, secrecy and timing are
 §2.3's and `set_app_variable`'s description to state; the one that touches
-code is that a change briefly restarts a container app.
+code is that a change briefly restarts a container app. A route that
+spends an app-level key needs the limits `get_app_security` §5 sets, per
+client and globally.
 
 An app may describe the variables it reads in `app/inno-variables.json`;
 §2.3's **Declaring what an app wants** is the format and its rules. Write
@@ -428,9 +480,18 @@ config pins `ENVIRONMENT` to `production` on every deploy, and the deploy
 refuses a gateway config that says anything else (R7, and
 `get_platform_docs`' **Environment & config integrity**). No wrangler config
 may live in your repo (below), and `ENVIRONMENT` is a reserved Variable name
-that `set_app_variable` refuses. For local dev, pass mock `X-Forwarded-*`
-headers straight to the locally run container; never add an "auth disabled
-in dev" code path.
+that `set_app_variable` refuses. For local dev, pass mock identity headers
+straight to the locally run container, and try each of the three kinds of
+caller R3 names; never add an "auth disabled in dev" code path:
+
+```bash
+# A member: the members group from the App groups: line of the status.
+curl -H 'X-Forwarded-User: user@example.com' -H 'X-Forwarded-Groups: <members group>' http://localhost:8080/
+# Signed in but not a member: the open group alone, as an open app sends it.
+curl -H 'X-Forwarded-User: user@example.com' -H 'X-Forwarded-Groups: <open group>' http://localhost:8080/
+# No identity, as the gateway sends it: the headers present and empty.
+curl -H 'X-Forwarded-User;' -H 'X-Forwarded-Groups;' http://localhost:8080/
+```
 
 ## Files you must not touch
 
