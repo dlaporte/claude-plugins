@@ -383,7 +383,11 @@ below). It starts CI in a repository the platform does not own, which cannot
 be recalled, so confirm first.
 
 - `app_not_deployed`: decided by the app's status alone, and the message
-  says what to do: a stopped app is started first (`start_app`); a deploying
+  says what to do: a stopped app is started first (`start_app`). For a
+  released app with no script in the platform's app namespace (one stopped
+  since platform v0.17.0 moved its apps there), the start dispatches the
+  rebuild itself and its answer says so: do not call `rebuild_app` after it,
+  unless that answer says the dispatch failed. A deploying
   one waits for its deploy, or, when its CI run died, for a later deploy or
   the recovery sweep (`inno-manage-app`'s **A deploy whose CI run died**); a
   created one has never deployed, and its first release tag deploys it.

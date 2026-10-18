@@ -140,8 +140,15 @@ anything. If an app should genuinely never expire, that's the admin-set
 
 ## `start_app({ app })`: bring back a stopped app
 
-Its description says what a start does (no redeploy needed) and who is
-notified. Owners have a limited number of self-service starts per app, over
+Its description says what a start does and who is notified. A start needs
+no redeploy, with one exception: an app that was stopped when the platform
+moved its apps into its app namespace (platform v0.17.0) has no script
+there, so starting it, when it has a released deployment, also dispatches a
+rebuild of its live release tag, and it serves once that rebuild deploys
+(`get_ci_status` watches it). The answer says when that happened; relay it.
+When it says the rebuild could not be dispatched, the app is started but
+does not serve yet: a platform admin's `rebuild_app`, or the owner's next
+release tag, deploys it. Owners have a limited number of self-service starts per app, over
 the app's whole lifetime; each platform sets that number as `start.self_max`,
 so never quote one from memory: `get_config app=<name>` shows the app's own
 value, and while the app is stopped `app_status` shows how many of them are
