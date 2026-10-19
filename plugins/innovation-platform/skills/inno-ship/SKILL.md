@@ -225,7 +225,8 @@ a container app's `deploy-complete failed` line naming
 the app before reading its row);
 a function app's `App Worker bundle` error from the `Hand the bundle to the
 platform` step, or its `deploy-complete failed` line naming
-`bundle_missing` or `bundle_mismatch`;
+`bundle_missing`, `bundle_mismatch`, `bundle_invalid`,
+`bundle_compat_mismatch` or `bundle_store_unavailable`;
 a `deploy-sbom failed (403)` line naming `app_mismatch` or saying the app is
 no longer linked to its repository, `Gate policy unavailable`, or a tag
 run's `deploy-token request failed (HTTP 403)` (the broker refusing

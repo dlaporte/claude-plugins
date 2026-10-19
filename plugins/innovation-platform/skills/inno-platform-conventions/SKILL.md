@@ -149,12 +149,14 @@ that the lockfile resolves a clean Starlette before committing to it.
   which keeps its specifier and its locked version. A container app's
   Dockerfile builds its own runtime tree, but list its runtime imports
   under `dependencies` too: the `deps` gate audits only those (R8).
-- A function-shaped app's Worker is one bundle. Besides JS and TS, which are
-  bundled, it may import text files (`.txt`, `.html`, `.sql`), data files
-  (`.bin`) and WebAssembly (`.wasm`) as modules, and nothing else. The whole
-  bundle is at most 16 MiB before compression, and Cloudflare's own script
-  limit applies after compression as well (§1.1). Keep large data in the
-  app's file storage, not in imported files.
+- A function-shaped app's Worker is one bundle. JS, TS and JSON are bundled
+  into its one script; text files (`.txt`, `.html`, `.sql`), data files
+  (`.bin`) and WebAssembly (`.wasm`) ride beside it as modules, the only
+  module types the platform takes; and an import of any other kind of file
+  (an image, say) fails the build. The whole bundle is at most 16 MiB
+  before compression, and Cloudflare's own script limit applies after
+  compression as well (§1.1). Keep large data in the app's file storage,
+  not in imported files.
 - Regenerate the lockfile with `npm install` inside `app/` whenever you
   change dependencies, and commit both files together. A function-shaped app
   (`function`, `mcp-function`) that ships `app/package.json` must commit
