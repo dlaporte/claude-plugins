@@ -95,7 +95,7 @@ again.
 Platform v0.17.0 made another: its status no longer carries a sign-out
 address or gateway capabilities, and the admin tool that promoted the
 gateway went with it, so reconnect after that upgrade too. Plugin 3.0.0
-follows v0.17.0 and contract 33, where the platform signs people in to
+follows v0.17.0 and contract 34, where the platform signs people in to
 browser apps itself and every app's sign-out link is `/_auth/signout`; the
 platform asks for at least 3.0.0 when the instance's admins raise
 `plugin.min_version`, as the v0.17.0 release asks.
@@ -195,7 +195,7 @@ several skills now has one home and pointers from the rest:
 the identity header rule, the Node dependency rule, the storage caps and the
 `CLAUDE.md` header rule; `inno-manage-app` owns the call budget, support
 bundles and the active-app-limit rule; `inno-safety-preflight` owns the pre-push branch and
-directory-symlink checks, how to read `get_ci_status`, and how to read the
+symlink checks, how to read `get_ci_status`, and how to read the
 CI accessibility, response-header and Dockerfile reports;
 `inno-containerize` owns the health-probe clock; `inno-new-app` owns the
 name-check rules; `inno-fleet-admin` owns the admin-only actions; and this
@@ -225,13 +225,18 @@ default branch runs the gates and deploys nothing. Only pushing a `v*` release t
 the deploy job, and it runs the same gates first. That workflow gates the
 deploy behind config-integrity, secret scanning, SAST, dependency auditing,
 the dependency release-age cooldown, and container/image scanning, all of which
-must pass before a deploy token is even requested, and a container deploy ships
-the exact image those gates scanned, pinned by digest, never a second build. At deploy time, the
-platform's broker independently verifies the GitHub OIDC token's signed
-`job_workflow_ref` claim to confirm the run actually executed the platform's
-exact reusable workflow from `main` before minting a narrowly-scoped
-Cloudflare deploy token; a forked or gate-stripped workflow gets a
-`403 deploy_denied:workflow` and never reaches Cloudflare. In short: skills guide, CI
+must pass before the deploy even starts. A container deploy ships the exact
+image those gates scanned, pinned by digest, never a second build; a function
+deploy ships the exact bundle CI built, in a job that holds no credential of
+any kind, checked by its digest. At deploy time, the platform's broker
+independently verifies the GitHub OIDC token's signed `job_workflow_ref`
+claim to confirm the run actually executed the platform's exact reusable
+workflow from `main` before it accepts anything from the run. A function
+app's run then holds no Cloudflare credential at all: the platform uploads
+the app's Worker itself and sets every binding. A container app's run gets
+only a narrowly scoped token to push its image, and the platform uploads its
+host. A forked or gate-stripped workflow gets a `403 deploy_denied:workflow`
+and never reaches Cloudflare. In short: skills guide, CI
 validates, and the deploy broker enforces provenance, so only code that
 went through the platform's own CI can ever end up live at
 the app's own address (the platform reports the real hostname).

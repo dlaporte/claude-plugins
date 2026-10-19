@@ -224,12 +224,19 @@ reached), not a revoke, so do not re-grant for it.
 **When someone cannot sign in.** The platform signs people in to a browser
 app itself, on the platform's host, and what they see (the address bar
 during sign-in, about one sign-in a day, and sign-out reaching every app and
-the panel) is `get_platform_docs`' **Signing in and out: what people see**:
-quote it rather than describing it from memory. Two cases come up: a "Sign-in
-not confirmed" page, whose way out is the identity provider's sign-out that
-the page links, after which the next sign-in authenticates afresh; and an
-app opened inside another page's frame, which cannot start a sign-in there,
-so the person opens the app in its own tab.
+the panel, in every browser) is `get_platform_docs`' **Signing in and out:
+what people see**: quote it rather than describing it from memory. Two cases
+come up: a "Sign-in not confirmed" page, whose way out is the identity
+provider's sign-out that the page links, after which the next sign-in
+authenticates afresh; and an app opened inside another page's frame, which
+cannot start a sign-in there, so the person opens the app in its own tab.
+
+**When someone was signed out without asking** (from platform v0.17.0).
+Signing out anywhere, on the panel or on any app, ends every session that
+person holds on the platform, in every browser; and when someone else signs
+in at a browser where the person signed in before and never signed out,
+that signs the person out everywhere too. Neither is a fault or a revoke:
+they sign in again, and nothing about their access changed.
 
 **A grant is pinned to one person** (from platform v0.16.12): `grant_access`'s
 description says how a grant is pinned to the identity provider account that
@@ -328,8 +335,9 @@ Read-only; each description says what it returns. For an **mcp-function** or
   counts under its daily chart.
 
 Deployment statuses: `pending`, `deploying`, `deployed`, `failed` (the
-deploy token was refused), and `abandoned` (a run that died, closed out when a
-later deploy finalizes or the recovery sweep finds it stale).
+deploy could not start, because the app was stopped or unlinked as it
+began), and `abandoned` (a run that died, closed out when a later deploy
+finalizes or the recovery sweep finds it stale).
 
 **A deploy whose CI run died** holds the app `deploying` until a later deploy
 finishes or the lifecycle pass's recovery sweep reverts it, and until then
@@ -371,7 +379,8 @@ user-influenced content.
 
 On a `container` or `mcp-container` app it starts a new generation of the
 app's container: the app's next request starts a new container instance on
-its current image and variables, and the host then stops the previous one;
+its current image and variables, and the previous one stops from the new
+host's first request on, or within about six minutes whatever the traffic;
 its description says the rest. A `function` or `mcp-function` app runs no
 container, so it answers `not_a_container`: a wedged function app is fixed
 by shipping it again (`inno-ship`). A deploy needs no restart after it,
@@ -382,8 +391,10 @@ it, since in-flight requests drop. If the app was never deployed (or was
 purged), it returns `no_deployments`: there is nothing to restart. It is
 refused with `link_invalid` or `link_source_missing` while one of the app's
 data links is no longer valid: unlink it (`unlink_app_data`), or have the
-source's owner fix it. The same lever is the ↻ icon next to the container
-name on the app's panel page.
+source's owner fix it. The same two steps, `unlink_app_data` and then
+`restart_app`, clear an app a platform release left on its earlier host
+(the `host_upload_blocked` notice, under **Notifications**). The same lever
+is the ↻ icon next to the container name on the app's panel page.
 
 Its admin-only neighbor, `rebuild_app`, rebuilds an app's released code at
 its live tag (`inno-fleet-admin`). Owners never need it: they redeploy by
@@ -545,8 +556,10 @@ Things to relay to the user in plain terms:
   user wants readable later.
 - **A change lands right away.** On a container app the platform uploads the
   app's host again with it, so the app's next request starts a new container
-  instance that has the change, and the instance from before keeps the old
-  value until the new host stops it (contract §2.3, **Timing**). That's the
+  instance that has the change, and the instance from before keeps its old
+  values until it stops: from the new host's first request on, or within
+  about six minutes of the change whatever the traffic (contract §2.3,
+  **Timing**). That's the
   delivery mechanism, not a malfunction: say so before setting one on a live
   container app, since requests in flight on the old instance drop.
 - `variables_invalid`: the message names the rule the name or value broke.
@@ -568,7 +581,8 @@ Things to relay to the user in plain terms:
   `list_app_variables`: a set name that looks like a typo of a declared name
   nobody has set carries a suggestion naming the declared one, and a hidden
   variable reported `pending delivery` has not reached the deployed app yet
-  (the next deploy delivers it).
+  (the next deploy delivers it with the app, so it is there from that
+  deploy's first request).
 - **A hidden variable that reads `needs a value`** was delivered to a script
   a platform release has since replaced (from platform v0.17.0, each secret
   set before it reads this way once), so nothing holds it now and it counts
@@ -591,7 +605,8 @@ Stages worth acting on when one appears: `respin_failed`, `auto_restarted`,
 `auto_restart_failed`, `link_severed`, `link_rebuild_pending`, `degraded`,
 `usage_anomaly`, `quota_horizon`, `connection_expired`, `unlinked` /
 `relinked`, `transferred`, `access_changed`, `shared`, `exported`,
-`member_reassigned`, `cross_owner_link_revoked`. What to do on three of them:
+`member_reassigned`, `cross_owner_link_revoked`, `host_upload_blocked`.
+What to do on four of them:
 
 - `member_reassigned`: an address with access now signs in as a different
   account than the one its access is pinned to. The entry names the address
@@ -610,6 +625,15 @@ Stages worth acting on when one appears: `respin_failed`, `auto_restarted`,
   which holds only once its owner has spent their self-service starts),
   transfer it (`transfer_app`) or purge it (`purge_app`). Those are an
   admin's calls: offer to draft the request, naming both apps.
+- `host_upload_blocked` (from platform v0.17.0, container apps): a platform
+  release could not upload a new host for the app, because one of its data
+  links no longer holds, so the app keeps running on the host an earlier
+  release uploaded, and every release leaves it out until this is cleared.
+  The entry names the link's problem. Remove that link with
+  `unlink_app_data` (the owner or a platform admin can), then run
+  `restart_app`, which uploads the app's host from the current release.
+  Stopping the app does not clear it. Confirm with the user before
+  unlinking, since the app loses its read of that source's data.
 
 The admin-only stages are `inno-fleet-admin`'s.
 `mark_notification_read` answers `notification_not_found` for an id that

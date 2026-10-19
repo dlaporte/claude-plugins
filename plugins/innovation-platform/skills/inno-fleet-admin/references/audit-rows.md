@@ -64,7 +64,7 @@ the import changes the admin list (an import row carries `detail.source`
   in as an account other than the one its grants are pinned to, which those
   grants refuse (`apps`, `owner_of` and `admin` name them).
 
-## Sign-ins and container hosts (from platform v0.17.0)
+## Sign-ins, container hosts and function deploys (from platform v0.17.0)
 
 - `app_signin`: one row for each new browser app session, with the address
   as actor, the app as target and `detail.host` the app host, on the
@@ -74,3 +74,15 @@ the import changes the admin list (an import row carries `detail.source`
   starts a new container generation; `detail.generation` names it and
   `detail.reason` says why (`deploy`, `release`, `variable`, `restart` or
   `remediation`).
+- `host_upload_blocked`: a platform release did not upload a new host for a
+  container app because one of its data links no longer holds. The actor is
+  the release run, the surface `ci`, and `detail.error` and
+  `detail.message` give the link's refusal; the app's owner gets the notice
+  of the same name.
+- `script_uploaded`: the platform uploaded a function app's Worker, at its
+  deploy's finalize, from the bundle the app's CI handed over
+  (`detail.sha256`, `detail.reason` `deploy`). A function app's deploy
+  starts with `deploy_started` and mints no token, so `deploy_token_minted`
+  is a container app's alone; `deploy_bundle_staged` records the hand-over,
+  and `worker_bundle_orphan_deleted` the hourly sweep deleting a staged
+  bundle no deploy used within a day.

@@ -296,7 +296,10 @@ every browser app: the panel's at once and every browser app's within about
 touches nothing else (not MCP tokens, not group memberships), and a
 WebSocket or event stream already open on a browser app runs on until its
 sign-in session ends; its description has the rest. Use it when offboarding
-someone or when a session may be compromised. It is deliberately not part
+someone or when a session may be compromised. A person who wants their own
+sessions ended needs no admin: from platform v0.17.0 their own sign-out, on
+the panel or any app, ends every session they hold, in every browser. It is
+deliberately not part
 of `transfer_app`: a previous owner usually stays a member and a legitimate
 user, and even one a transfer does not keep, being outside the allowed email
 domains (above), keeps their sessions until this ends them.
@@ -553,6 +556,15 @@ serves. The panel's Platform screen is the same act on a visual surface.
   `transfer_app` for it, or `purge_app` for it. Before a stop, tell the admin
   that it holds only once the app's owner has spent their self-service
   starts: until then the owner can start it again.
+
+  Admins also see each `host_upload_blocked` notice (from platform
+  v0.17.0): a platform release could not upload a new host for a container
+  app because one of its data links no longer holds, so the app stays on
+  the host an earlier release uploaded, and the release run failed on it.
+  An admin can clear it as the owner can, with `unlink_app_data` and then
+  `restart_app` on the app (`inno-manage-app`'s **Notifications**); confirm
+  with the app's owner first, since the app loses its read of that
+  source's data.
 
   `mark_all_notifications_read` called by an admin marks every unread
   notification read, everyone's, not only the admin's own.

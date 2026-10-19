@@ -133,8 +133,9 @@ base to the digest `get_app_contract` serves.
    two that bite a Dockerfile author specifically: never commit a `.npmrc`
    anywhere, `app/.npmrc` included, even for a container build that would use
    it, and never commit a symlink that points at a **directory**, anywhere in
-   the repo, dangling ones included (a link to a *file* is fine). Copy the
-   real directory in, or produce it during the image build. The full
+   the repo, dangling ones included, or at a file outside the repository (a
+   link to a *file* inside the repository is fine). Copy the real directory
+   or file in, or produce it during the image build. The full
    forbidden-path list is R7; the plugin's copy, with the reason for each, is
    `inno-platform-conventions`' **Files you must not touch** section.
 

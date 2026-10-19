@@ -171,12 +171,15 @@ order:
    - the repo-root `package.json`, `package-lock.json` and `tsconfig.json`,
      which in a Node repo are often the app's real manifests rather than
      leftovers, so show them to the user before touching them;
-   - **any committed symlink that resolves to a directory**, at any depth,
-     dangling ones included. A migrated repo is exactly where one turns up: a
-     vendored path, a shared assets directory, a link left by an old build
-     layout. It shows nothing useful in `ls` or a file tree, so scan the index
-     with the check in `inno-safety-preflight` §2, which is the plugin's copy
-     of it, and replace each hit with the real directory or drop it.
+   - **any committed symlink that resolves to a directory, or to a file
+     outside the repository** (the file rule from contract 33), at any
+     depth, dangling ones included. A migrated repo is exactly where one
+     turns up: a vendored path, a shared assets directory, a link to a
+     config file elsewhere on the author's machine, a link left by an old
+     build layout. It shows nothing useful in `ls` or a file tree, so scan
+     the index with the check in `inno-safety-preflight` §2, which is the
+     plugin's copy of it, and replace each hit with the real directory or
+     file inside the repository, or drop it.
 
    List every existing file under `.github/workflows/`. The platform's caller
    workflow must live at exactly `.github/workflows/deploy.yml` (the platform

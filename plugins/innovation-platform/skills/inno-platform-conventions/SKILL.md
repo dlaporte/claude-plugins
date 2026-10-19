@@ -86,7 +86,10 @@ in ways one contract section each states; read the one for the app's type:
   platform's app namespace behind the *same* front door. Its entry is
   `app/index.ts` exporting
   `export default { fetch(request, env, ctx) }`, with no port, no `EXPOSE`
-  and no Dockerfile (`inno-containerize` does not apply). Its storage is the
+  and no Dockerfile (`inno-containerize` does not apply). CI bundles it in a
+  job that holds no credential, and the platform uploads the bundle itself,
+  setting every binding, the compatibility settings and logging; what the
+  bundle may hold is the **Node apps** paragraph below. Its storage is the
   app's **own bindings**, `env.DATA` (D1) and `env.FILES` (R2), instead of
   `http://storage.internal`. `GET /healthz` is a **route** in the `fetch`
   handler, answering **exactly 200**. Every npm package it imports is
@@ -146,14 +149,22 @@ that the lockfile resolves a clean Starlette before committing to it.
   which keeps its specifier and its locked version. A container app's
   Dockerfile builds its own runtime tree, but list its runtime imports
   under `dependencies` too: the `deps` gate audits only those (R8).
+- A function-shaped app's Worker is one bundle. Besides JS and TS, which are
+  bundled, it may import text files (`.txt`, `.html`, `.sql`), data files
+  (`.bin`) and WebAssembly (`.wasm`) as modules, and nothing else. The whole
+  bundle is at most 16 MiB before compression, and Cloudflare's own script
+  limit applies after compression as well (§1.1). Keep large data in the
+  app's file storage, not in imported files.
 - Regenerate the lockfile with `npm install` inside `app/` whenever you
   change dependencies, and commit both files together. A function-shaped app
   (`function`, `mcp-function`) that ships `app/package.json` must commit
-  `app/package-lock.json`: the `app-deps` job fails, naming the file, when it
-  is missing or out of step, and that job runs on **every push to the
-  default branch**, so the preflight catches it before you tag. The `deps`
-  gate builds a throwaway lockfile to audit when none is committed, so its
-  own green proves nothing about this.
+  `app/package-lock.json`: the `app-build` job fails, naming the file, when
+  it is missing or out of step. That job installs and bundles the app on
+  **every push to the default branch**, so the preflight catches a missing
+  lockfile, an import that does not resolve, a devDependency used at
+  runtime, a symlink out of the repository and a bundle over 16 MiB before
+  you tag. The `deps` gate builds a throwaway lockfile to audit when none is
+  committed, so its own green proves nothing about this.
 - A container app should commit it too: while an admin has the release-age
   cooldown on (`safety.min_release_age_days` above 0), an app shipping
   `app/package.json` with no committed, parseable `app/package-lock.json`
@@ -350,7 +361,7 @@ that template has no such helper either, read an empty or missing
   anything your app keys on the address, its own data or its own role
   store, still goes to whoever holds the address. `X-Forwarded-Subject`
   stays with the person and comes with every identified request, on every
-  app type, from contract 33 (R3). §3 recommends keying on it, so a new app
+  app type, from contract 34 (R3). §3 recommends keying on it, so a new app
   does from the start. An existing app keyed on the address may re-key its
   rows once, since every identified request carries both headers: a
   migration in the app's own code, recommended and not required (§3).
@@ -367,7 +378,7 @@ that template has no such helper either, read an empty or missing
   because the app is open carries the open group alone.
 - **An empty identity is no user: an expected caller, not a fault, and
   never a member or a key.** The platform's health probe, `GET /healthz`,
-  arrives with empty identity headers (on contract 33 the only request that
+  arrives with empty identity headers (on contract 34 the only request that
   does, R3), and a request that never passed the front door (the app run
   locally, a test) can carry none; the helper reads both as no user. A
   person the platform refuses never reaches your code: the front door
@@ -482,7 +493,7 @@ than wiring this ad hoc. The rules the code must hold are §2.2 and
 ## Sign out: one link, no session code
 
 Whenever a browser-facing app shows who is signed in, it links to
-`/_auth/signout` on its own host (R4, from contract 33; a footer is fine):
+`/_auth/signout` on its own host (R4, from contract 34; a footer is fine):
 
 ```html
 <a href="/_auth/signout">Sign out</a>
@@ -491,11 +502,13 @@ Whenever a browser-facing app shows who is signed in, it links to
 Show it only when the helper returns a user, as the template's pages do; an
 app that never shows who is signed in needs no link. Make it a plain link
 the person clicks, never a `fetch`, a frame or a prefetch: R4 says why, and
-what signing out ends. The path is the same on every app and
-every instance, so there is nothing to look up, and `/_auth/` is the
-platform's on every app host (R3): route nothing under it yourself. An app
-made before platform v0.17.0 links to the old sign-out address and changes
-that link once (the contract's version 33 note, `get_app_contract` with
+what signing out ends, which is the person's panel and every app session
+they hold on the platform, in every browser. So label it plainly ("Sign
+out"), never as signing out of this app alone. The path is the same on
+every app and every instance, so there is nothing to look up, and `/_auth/`
+is the platform's on every app host (R3): route nothing under it yourself.
+An app made before platform v0.17.0 links to the old sign-out address and
+changes that link once (the contract's version 34 note, `get_app_contract` with
 `history: true`). What people see when they sign in and out is the platform
 docs' **Signing in and out: what people see** (`get_platform_docs`).
 
@@ -511,9 +524,10 @@ issues guidance) is actually useful later instead of a wall of noise.
 
 ## Keep `ENVIRONMENT=production`
 
-There is nothing for you to configure here. The Worker config the platform
-supplies a function app pins `ENVIRONMENT` to `production`, and a container
-app's host is the platform's own (R7, and `get_platform_docs`'
+There is nothing for you to configure here. The platform sets `ENVIRONMENT`
+to `production` itself, with every other binding, when it uploads a function
+app's Worker, and a container app's host is the platform's own (R7, and
+`get_platform_docs`'
 **Environment & config integrity**). No wrangler config may live in your
 repo (below), and `ENVIRONMENT` is a reserved Variable name that
 `set_app_variable` refuses. For local dev, pass mock identity headers
@@ -531,9 +545,9 @@ curl -H 'X-Forwarded-User;' -H 'X-Forwarded-Subject;' -H 'X-Forwarded-Groups;' h
 
 ## Files you must not touch
 
-The platform installs its own build tools at deploy time, from its CI
-mirror, into a directory of its own outside your checkout, and supplies a
-function app's Worker config, so **none of the following may exist in your
+The platform installs its own build tools when CI builds your app, from its
+CI mirror, into a directory of its own outside your checkout, and supplies a
+function app's bundling config, so **none of the following may exist in your
 repo at all**. R7 is the authoritative list,
 with the reason for each; the `config-integrity` gate fails outright,
 naming each path it finds ("delete `<file>`: the platform injects ...").
@@ -548,19 +562,19 @@ no version of these files that belongs in your repo.
 - `package.json` and its lockfile (`package-lock.json`) **at the repo
   root**: nothing is installed there. Your app's own build files under
   `app/` (a Node app's `app/package.json`, etc.) are yours and fine.
-- `tsconfig.json`, repo root only, same rule. For a function-shaped app the
-  deploy itself places the platform's `tsconfig.json` at the repo root
-  during the build, because the app Worker builds from your checkout; that
-  copy is the platform's, and a committed one still fails the gate.
+- `tsconfig.json`, repo root only, same rule. For a function-shaped app CI's
+  build places the platform's `tsconfig.json` at the repo root before it
+  bundles, because the app Worker builds from your checkout; that copy is
+  the platform's, and a committed one still fails the gate.
 - `wrangler.jsonc`, any competing `wrangler.json` or `wrangler.toml`, and a
   `.wrangler/` directory. Wrangler's config discovery order means an
   unvetted `wrangler.json` would silently take priority over the config the
   platform supplies anywhere discovery decides which config to read.
-  The deploy pins every wrangler call to an explicit config, and the gate
+  The build pins its wrangler call to an explicit config, and the gate
   rejection is the independent belt to that pin.
-- Root-level `.env` / `.env.*` files: wrangler loads them at deploy time and
-  adopts unset keys, so a committed one could redirect the deploy's API
-  calls.
+- Root-level `.env` / `.env.*` files: wrangler loads them when it bundles a
+  function app and adopts unset keys, so a committed one could steer the
+  build's own calls.
 - Every package manager's project config at the repo root: `.npmrc`,
   `.yarnrc`, `.yarnrc.yml`, `.pnpmfile.cjs`, `pnpm-workspace.yaml` and
   `bunfig.toml`. A `.npmrc` is rejected at **any** depth, `app/.npmrc`
@@ -578,11 +592,16 @@ no version of these files that belongs in your repo.
   `register_app` warns that the repository has no `scaffold/<preset>/`, or a
   prune answers `scaffold not applied`, follow what it says.
 - **A directory symlink anywhere in the repo**, at any depth and dangling
-  ones too; a symlink that resolves to a *file* stays legal. The gate walks
-  your tree without following links, so anything behind a directory link
-  (an `app/.npmrc`, say) would never be inspected. `config-integrity` has no
-  policy toggle, so a repo carrying one cannot deploy until the link is
-  removed.
+  ones too, and **a file symlink whose target resolves outside the
+  repository** (from contract 33). A file symlink that resolves inside the
+  repository (an alias such as `alias.ts -> real.ts`) stays legal. The gate
+  walks your tree without following links, so anything behind a directory
+  link (an `app/.npmrc`, say) would never be inspected, and the build reads
+  a linked file's bytes, so a link out of the repository could bake files no
+  gate saw into your app. `config-integrity` has no policy toggle, so a repo
+  carrying one cannot deploy until the link is removed. A function app's
+  build refuses the same out-of-repository link under `app/node_modules`,
+  where an installed package or a `file:` dependency can put one.
 
 Keep secrets and local env out of the repo entirely: an app-level key or
 config value belongs in a **Variable** (`set_app_variable`, or the app

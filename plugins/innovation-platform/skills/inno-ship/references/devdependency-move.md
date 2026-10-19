@@ -1,7 +1,7 @@
 # Moving a devDependency into dependencies
 
-`inno-ship` loads this when a deploy reports `devDependency imported at
-runtime` for a package. The fix moves that package's entry from
+`inno-ship` loads this when the `app-build` job reports `devDependency
+imported at runtime` for a package. The fix moves that package's entry from
 `devDependencies` to `dependencies` as it stands.
 
 From the repo root, with the package's name in place of `<package>` (the
@@ -22,7 +22,7 @@ root entry (`packages[""]`) lists the package under `dependencies` instead
 of `devDependencies`, and the package's own entry drops `"dev": true`, as
 does the entry of anything only it pulls in. Check that with
 `git diff app/package.json app/package-lock.json`, then run `inno-ship`
-§0's install block (`npm ci --ignore-scripts --omit=dev`, what `app-deps`
+§0's install block (`npm ci --ignore-scripts --omit=dev`, what `app-build`
 runs).
 
 One command looks like this move and is not:
