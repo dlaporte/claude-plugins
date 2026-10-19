@@ -229,7 +229,7 @@ platform` step, or its `deploy-complete failed` line naming
 `bundle_missing`, `bundle_mismatch`, `bundle_invalid`,
 `bundle_compat_mismatch` or `bundle_store_unavailable`;
 a `deploy-complete failed (500)` line, or `deploy-complete failed: no answer
-within 180 s`;
+within 600 s`;
 a `deploy-sbom failed (403)` line naming `app_mismatch` or saying the app is
 no longer linked to its repository, `Gate policy unavailable`, or a tag
 run's `deploy-token request failed (HTTP 403)` (the broker refusing
