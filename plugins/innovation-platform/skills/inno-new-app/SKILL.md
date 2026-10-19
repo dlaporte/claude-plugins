@@ -188,7 +188,8 @@ make, with your recommendation**:
   is an MCP server). Pass only these four names. The four types:
 
   - **`function` (recommend for greenfield):** the app is its own Cloudflare
-    Worker (JS/TS) behind the gateway: ms cold starts and no Dockerfile. This
+    Worker (JS/TS) behind the platform's front door: ms cold starts and no
+    Dockerfile. This
     is the right fit for the common citizen-dev shape (a small web UI + JSON
     API in TS/JS).
   - **`container`:** choose this when the description gives a **clear signal**
@@ -229,9 +230,9 @@ make, with your recommendation**:
     the official MCP Python SDK** (FastMCP).
     CRITICAL (Python SDK): keep the starter's `transport_security` setting,
     which `get_app_contract` §1.3 states and explains; changing it breaks every
-    gateway-forwarded `/mcp` request. Also: after deploying a fix to a RUNNING
-    mcp-container app, `restart_app`, because a live instance keeps serving
-    the old image until it recycles.
+    `/mcp` request the front door forwards. A deploy starts a new container
+    instance on the next request, so a fix reaches a running app with no
+    restart (§1.3).
     Note the idle **cold start**: a sleeping container wakes on request, so
     expect a seconds-scale delay on the first `POST /mcp` after idle (how
     long it stays up with no requests is the `container.sleep_after`
@@ -272,9 +273,10 @@ The written design covers, at minimum:
   `X-Forwarded-Groups` carries at most this app's own two
   groups (the `App groups:` line of the status you read in the Version gate,
   with the app's name in place of `{app}`). Any finer role (an editor, an
-  admin view) needs the app's own role table keyed on `X-Forwarded-User`,
-  the caller's email address, which can change for one person and pass to
-  another; do not design around reading other groups from the header. The
+  admin view) needs the app's own role table keyed on `X-Forwarded-Subject`,
+  the person's identity provider ID, never on the email address, which can
+  change for one person and pass to another; key per-person data on it too,
+  and do not design around reading other groups from the header. The
   header rule is `inno-platform-conventions`' **Identity** section.
 - **Accessibility** (a browser-facing app): who will use it, the main flows
   a person has to complete, and how each one works from the keyboard alone
@@ -462,11 +464,6 @@ app, and binds the repo. It returns text beginning
   the instance's). For an **mcp-function** or **mcp-container** app the
   response surfaces the **MCP endpoint** (`…/mcp`) instead; same rule: quote
   it from the response. The URL 404s until the first successful `inno-ship`.
-  A browser app's first deploy needs the platform's newer gateway: until a
-  platform admin has promoted it, the deploy is refused `gateway_too_old`,
-  which is not the user's to fix (`inno-ship`'s failure table). Tell them
-  plainly: "The platform needs an update from its operator before your app
-  can go live; nothing on your side needs to change."
 - A `.github/workflows/deploy.yml`: the thin caller workflow that wires the
   repo to the platform's reusable CI. **Overwrite the repo's copy with the
   snippet the response returned** (an older template may still carry one). The template ships no `deploy.yml`: this file
@@ -638,11 +635,13 @@ you read in §1b (§1.1 to §1.3) are the authority for each type's deltas.
   `--omit=dev`. Never interpolate user data into hand-built HTML: even
   escaped, the SAST gate blocks it; return dynamic data as JSON (like the
   scaffold's `/me`) or use an auto-escaping template library. Do NOT create
-  `wrangler.jsonc`/`app-worker.jsonc`: those are platform-injected. Include
-  the required **sign-out link** (R4), a static link whose URL is the
-  `Sign-out URL (all apps):` line of the status you read in the Version gate
-  (see `inno-platform-conventions`' **Sign out** section for the exact
-  convention); nothing in this type's scaffold provides it for you.
+  `wrangler.jsonc`/`app-worker.jsonc`: those are platform-injected. The
+  scaffold's page already carries the **sign-out link** (R4), a plain link
+  to `/_auth/signout` shown only when `currentUser` returns a user: keep that
+  rule wherever the app shows who is signed in (`inno-platform-conventions`'
+  **Sign out** section). Read the caller with `currentUser` from
+  `app/identity.ts`, handling no user first, and key per-person data on its
+  `subject` (`inno-platform-conventions`' **Identity** section).
 - **`mcp-function` app:** everything in the function bullet applies except
   the sign-out link (there is no browser session); the scaffold ships both
   `app/package.json` and its lockfile. Serve MCP at `POST /mcp` with the MCP
@@ -655,13 +654,16 @@ you read in §1b (§1.1 to §1.3) are the authority for each type's deltas.
 - **`container` app, tested stack (Python):** start from the reference app
   (`app/main.py` + `Dockerfile`) and extend it; don't regenerate from scratch.
   Read the caller with `current_user(request)` from `app/storage.py`,
-  handling no user (`None`) first in each route that needs a person.
+  handling no user (`None`) first in each route that needs a person, and
+  key per-person data on its `subject`. The reference page already shows the
+  sign-out link only when the helper returns a user (R4).
 - **`container` app, another stack:** replace `app/` and the `Dockerfile`
   wholesale for that stack, honoring the contract (port 8080, `/healthz`,
-  identity headers, the `storage.internal` endpoints, sign-out link). A JS
-  or TS container reads the caller with `currentUser` from `lib/storage.js`;
-  any other stack reads the headers by the same contract, an empty or
-  missing `X-Forwarded-User` being no user.
+  identity headers, the `storage.internal` endpoints, and a sign-out link
+  wherever the app shows who is signed in). A JS or TS container reads the
+  caller with `currentUser` from `lib/storage.js`; any other stack reads the
+  headers by the same contract, an empty or missing `X-Forwarded-User` being
+  no user and `X-Forwarded-Subject` the key for per-person data.
 - **`mcp-container` app:** pruning applied the template's
   `scaffold/mcp-container/` overlay: its `.scaffold-remove` deleted
   `app/templates/` (this type has no use for it), and its `app/main.py`,
@@ -675,14 +677,15 @@ you read in §1b (§1.1 to §1.3) are the authority for each type's deltas.
   `inno-add-connection`).
   Identity is §1.2's: implement no auth of your own, read the caller with
   `current_user(ctx.request_context.request)` from `app/storage.py` (as
-  `whoami` does), handling no user first, never route
-  `/.well-known/oauth-protected-resource` yourself, and add no sign-out link.
+  `whoami` does), handling no user first and keying per-person data on its
+  `subject`, never route `/.well-known/oauth-protected-resource` or a path
+  under `/_auth/` yourself, and add no sign-out link.
   The app refuses inside MCP (a tool result marked as an error, or a
   JSON-RPC error), never with an HTTP status: a MUST of §1.3 from contract
   32.
   **Keep the starter's `transport_security` setting**, which
   `get_app_contract` §1.3 states and explains; changing it breaks every
-  gateway-forwarded `/mcp` request. The starter pins FastMCP below `mcp` 2 in
+  `/mcp` request the front door forwards. The starter pins FastMCP below `mcp` 2 in
   `app/requirements.txt` (2 renamed the `FastMCP` API the starter uses);
   build the container image per `inno-containerize`. Expect a seconds-scale
   cold start on the first request after the container has been idle for the

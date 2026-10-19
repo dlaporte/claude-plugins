@@ -8,13 +8,14 @@ platform's `get_platform_status` tool, never written into a skill. Bundles the
 whole app lifecycle (create or migrate existing code, write, containerize,
 connect to a per-user backend, gate-check, ship, and manage), and one serves
 the platform's admins. Apps deploy as
-one of four **types** behind the
-same identity gateway: a **container** (any stack, a Dockerfile, and the type
-`register_app` defaults to when none is given), a **function** (its own
-Cloudflare Worker, JS/TS), an **mcp-function** app (an MCP server in its own
-Cloudflare Worker behind the OAuth gateway), or an **mcp-container** app (an
-MCP server in a Docker container, any language, behind the same OAuth
-gateway). The type is chosen at `register_app`.
+one of four **types**, all behind the platform's front door, which signs
+people in and decides who reaches each app: a **container** (any stack, a
+Dockerfile, and the type `register_app` defaults to when none is given), a
+**function** (its own Cloudflare Worker, JS/TS), an **mcp-function** app (an
+MCP server in its own Cloudflare Worker, reached with an OAuth token the
+platform issues), or an **mcp-container** app (an MCP server in a Docker
+container, any language, reached the same way). The type is chosen at
+`register_app`.
 
 **Repos are user-owned.** An app is created by **registering a GitHub repo you
 own**. You create a repo from the instance's public template repo ("Use this template" →
@@ -91,6 +92,14 @@ status's `instance` block was the first such change. Reconnect (in Claude
 Code, `/mcp`, then Reconnect) or start a new session, then run the skill
 again.
 
+Platform v0.17.0 made another: its status no longer carries a sign-out
+address or gateway capabilities, and the admin tool that promoted the
+gateway went with it, so reconnect after that upgrade too. Plugin 3.0.0
+follows v0.17.0 and contract 34, where the platform signs people in to
+browser apps itself and every app's sign-out link is `/_auth/signout`; the
+platform asks for at least 3.0.0 when the instance's admins raise
+`plugin.min_version`, as the v0.17.0 release asks.
+
 ### House style
 
 Every skill in this plugin speaks to a broad, largely non-technical userbase,
@@ -124,7 +133,8 @@ produce is a Dockerfile and app code rather than sentences a user reads.
   the tested stack; any stack meeting the contract is fine), escaping,
   the storage client/endpoints, identity (the three kinds of caller the
   contract's R3 names, and the template's helper, which answers no user for
-  a caller with no identity and says whether a caller is a member), and the
+  a caller with no identity, says whether a caller is a member, and gives
+  the `subject` to key per-person data on), the sign-out link, and the
   files CI will reject if you touch them. Requirements are served live by
   the `get_app_contract` tool, and the skills cite it rather than keeping
   copies.
@@ -158,12 +168,11 @@ produce is a Dockerfile and app code rather than sentences a user reads.
   `revoke_admin`), filling an empty admin list from the Okta admin group
   (`import_okta_memberships`, its only job from platform v0.16.8),
   reassigning an app's owner, purging an app, rebuilding an app's released
-  code at its live tag (`rebuild_app`), ending one person's panel sessions
-  everywhere, marking the instance's Okta admin group, accepting a naming
-  change, platform configuration, promoting the gateway (`sync_gateway_ref`),
-  and the fleet-wide reads (every app, every user, the audit log, the
-  platform's logs and its backup). An owner manages their own apps with
-  `inno-manage-app`.
+  code at its live tag (`rebuild_app`), ending one person's panel and browser
+  app sessions everywhere, marking the instance's Okta admin group,
+  accepting a naming change, platform configuration, and the fleet-wide
+  reads (every app, every user, the audit log, the platform's logs and its
+  backup). An owner manages their own apps with `inno-manage-app`.
 
 ### How the skills are laid out
 
@@ -186,7 +195,7 @@ several skills now has one home and pointers from the rest:
 the identity header rule, the Node dependency rule, the storage caps and the
 `CLAUDE.md` header rule; `inno-manage-app` owns the call budget, support
 bundles and the active-app-limit rule; `inno-safety-preflight` owns the pre-push branch and
-directory-symlink checks, how to read `get_ci_status`, and how to read the
+symlink checks, how to read `get_ci_status`, and how to read the
 CI accessibility, response-header and Dockerfile reports;
 `inno-containerize` owns the health-probe clock; `inno-new-app` owns the
 name-check rules; `inno-fleet-admin` owns the admin-only actions; and this
@@ -216,13 +225,19 @@ default branch runs the gates and deploys nothing. Only pushing a `v*` release t
 the deploy job, and it runs the same gates first. That workflow gates the
 deploy behind config-integrity, secret scanning, SAST, dependency auditing,
 the dependency release-age cooldown, and container/image scanning, all of which
-must pass before a deploy token is even requested, and a container deploy ships
-the exact image those gates scanned, pinned by digest, never a second build. At deploy time, the
-platform's broker independently verifies the GitHub OIDC token's signed
-`job_workflow_ref` claim to confirm the run actually executed the platform's
-exact reusable workflow from `main` before minting a narrowly-scoped
-Cloudflare deploy token; a forked or gate-stripped workflow gets a
-`403 deploy_denied:workflow` and never reaches Cloudflare. In short: skills guide, CI
+must pass before the deploy even starts. A container deploy ships the exact
+image those gates scanned, pinned by digest, never a second build; a function
+deploy ships the exact bundle CI built in a job that holds no credential of
+any kind, and the deploy job checks it against that build's digest before it
+requests any token. At deploy time, the platform's broker
+independently verifies the GitHub OIDC token's signed `job_workflow_ref`
+claim to confirm the run actually executed the platform's exact reusable
+workflow from `main` before it accepts anything from the run. A function
+app's run then holds no Cloudflare credential at all: the platform uploads
+the app's Worker itself and sets every binding. A container app's run gets
+only a narrowly scoped token to push its image, and the platform uploads its
+host. A forked or gate-stripped workflow gets a `403 deploy_denied:workflow`
+and never reaches Cloudflare. In short: skills guide, CI
 validates, and the deploy broker enforces provenance, so only code that
 went through the platform's own CI can ever end up live at
 the app's own address (the platform reports the real hostname).

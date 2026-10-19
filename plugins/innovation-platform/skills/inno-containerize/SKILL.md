@@ -33,8 +33,8 @@ Carry on.
 **Container-type apps only.** This skill is for the `container` deployment
 type, and applies equally to `mcp-container`: an mcp-container image follows
 this exact same Dockerfile contract, plus it serves `POST /mcp`. A
-**`function`-type** app (its own Cloudflare Worker behind the gateway)
-has **no Dockerfile**: the container CI gates below are skipped for it, and
+**`function`-type** app (its own Cloudflare Worker behind the platform's
+front door) has **no Dockerfile**: the container CI gates below are skipped for it, and
 its entry is `app/index.ts`, not a container image (see `get_app_contract`
 §1.1 and `inno-platform-conventions`). If the app is function-shaped (`function` or `mcp-function`), skip this
 skill entirely.
@@ -77,7 +77,7 @@ base to the digest `get_app_contract` serves.
 
 1. **Listen on `0.0.0.0:8080`** and declare `EXPOSE 8080`: the gate
    inspects `Config.ExposedPorts` for literally `"8080/tcp"`, and the
-   gateway forwards traffic there regardless. Binding `127.0.0.1` is the
+   platform's host forwards traffic there regardless. Binding `127.0.0.1` is the
    classic "works locally, unreachable in the container" bug.
 2. **Non-root `USER` before `CMD`**: the gate is an allowlist on the part of
    `Config.User` before any `:` (the group is not checked), and R1 states it
@@ -133,8 +133,9 @@ base to the digest `get_app_contract` serves.
    two that bite a Dockerfile author specifically: never commit a `.npmrc`
    anywhere, `app/.npmrc` included, even for a container build that would use
    it, and never commit a symlink that points at a **directory**, anywhere in
-   the repo, dangling ones included (a link to a *file* is fine). Copy the
-   real directory in, or produce it during the image build. The full
+   the repo, dangling ones included, or at a file outside the repository (a
+   link to a *file* inside the repository is fine). Copy the real directory
+   or file in, or produce it during the image build. The full
    forbidden-path list is R7; the plugin's copy, with the reason for each, is
    `inno-platform-conventions`' **Files you must not touch** section.
 

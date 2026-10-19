@@ -12,16 +12,12 @@ platform v0.16.12, where a grant is pinned to the identity provider account
 that holds its address; `grant_access`'s description says how, and where a
 sign-in is matched by its address instead.
 
-The grant stays with the account it is pinned to, so wherever the new
-holder's sign-in carries its identity provider subject (every panel and MCP
-sign-in, and a browser app's once the instance's Access login method passes
-the subject claim) they are refused like anyone the app does not admit. Until
-a platform admin turns on `access.require_subject` (`inno-fleet-admin`), a
-sign-in that carries no subject is still matched by its address: on a
-browser app whose login method does not pass the claim yet, the address's
-new holder still gets in. And on a browser app the gateway's held answer for
-the address can still admit the new holder while the earlier holder keeps
-using the app (contract R3, `get_app_contract` with `sections: ["2"]`).
+The grant stays with the account it is pinned to, and every sign-in
+carries the person's identity provider subject (the panel's, an MCP
+client's, and from platform v0.17.0 a browser app's, which is the
+platform's own), so the address's new holder is refused like anyone the
+app does not admit (contract R3, `get_app_contract` with
+`sections: ["2"]`).
 
 **Sharing with the new holder.** Confirm with the owner first: the revoke
 also ends the access of the account the row was pinned to, which may be the

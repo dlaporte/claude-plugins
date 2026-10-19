@@ -1,6 +1,6 @@
 ---
 name: inno-fleet-admin
-description: "Use when a platform admin manages the Innovation Platform fleet through the inno-platform MCP tools: the admin list (list_admins, grant_admin, revoke_admin), the Okta import (import_okta_memberships, which only fills an empty admin list), ownership transfers (transfer_app), immediate purges (purge_app), rebuilds (rebuild_app), ending someone's panel sessions (revoke_sessions), the instance's Okta admin group and naming (claim_instance_objects, accept_naming_change), platform settings (get_config, set_config, remove_config), the gateway promote (sync_gateway_ref), and the fleet-wide reads (list_apps, list_users, query_audit, get_platform_logs, export_platform_backup). Use when an admin wants to add or remove an admin, fill or check the admin list, fix a browser app an earlier release left on Okta groups, reassign an app, delete an app now, offboard someone, change a setting or a safety waiver, read the audit log or every app's logs, or take a registry snapshot. An owner's work on their own app is inno-manage-app."
+description: "Use when a platform admin manages the Innovation Platform fleet through the inno-platform MCP tools: the admin list (list_admins, grant_admin, revoke_admin), the Okta import (import_okta_memberships, which only fills an empty admin list), ownership transfers (transfer_app), immediate purges (purge_app), rebuilds (rebuild_app), ending someone's panel and browser app sessions (revoke_sessions), the instance's Okta admin group and naming (claim_instance_objects, accept_naming_change), platform settings (get_config, set_config, remove_config), and the fleet-wide reads (list_apps, list_users, query_audit, get_platform_logs, export_platform_backup). Use when an admin wants to add or remove an admin, fill or check the admin list, reassign an app, delete an app now, offboard someone, change a setting or a safety waiver, read the audit log or every app's logs, or take a registry snapshot. An owner's work on their own app is inno-manage-app."
 ---
 
 # inno-fleet-admin
@@ -33,7 +33,7 @@ Carry on.
 This skill covers two kinds of tool. Most are admin-only, and anyone else
 gets `forbidden` and nothing more: the admin list and the import,
 `transfer_app`, `purge_app`, `rebuild_app`, `revoke_sessions`,
-`claim_instance_objects`, `accept_naming_change`, `sync_gateway_ref`,
+`claim_instance_objects`, `accept_naming_change`,
 `list_users`, `query_audit`, `get_platform_logs` and
 `export_platform_backup`. The rest are shared tools that answer anyone in
 their own scope and give an admin the whole fleet: `list_apps`, the config
@@ -179,19 +179,6 @@ written. Its description says what it compares and how it reports.
 4. **A fresh dry run.** `parity: clean` is the proof; keep that answer. A
    second apply writes nothing.
 
-## Browser apps an earlier release left on Okta groups
-
-Every app's member list is the platform's own, and no grant, revoke, open or
-close touches an app's Okta groups, its Okta rule or its Access policies. A
-browser app (`container`, `function`) registered before platform v0.16.5
-whose deploy never moved it off its Okta groups can still have a Cloudflare
-Access application that admits only the people those groups hold, which
-nothing updates now. When an admin finds or fixes such an app, must take
-someone off one, meets a `member_drift_detected` or `cutover_undo_failed`
-entry, or meets an Okta group a purge left, load
-`references/legacy-okta-browser-apps.md`: it says how to find these apps, how
-to take someone off one now, and the fix, whose order matters.
-
 ## `transfer_app({ app, new_owner_email, force? })`: reassign ownership
 
 Admins only: there is no accept step, so in an owner's hands a transfer could
@@ -216,10 +203,11 @@ undoing the transfer, and the answer then says so:
   address and the app shows what is left, and `disconnect_user_connection`
   removes each;
 - if the grant revocation cannot be verified, their tokens still stop at the
-  gateway's next introspection, since their row is gone, unless the app is
-  open to every SSO user.
+  front door's next introspection, since their row is gone, unless the app
+  is open to every SSO user.
 
-They keep their panel sessions until `revoke_sessions` ends them (below).
+They keep their panel and browser app sessions until `revoke_sessions` ends
+them (below).
 
 **A transfer to the owner's own address** (from platform v0.16.12) re-points
 an app whose owner's address has passed to another person (the admins'
@@ -300,39 +288,40 @@ What to do with its refusals and answers:
 - A data export the previous owner started and that has not finished fails
   once ownership moves; the new owner starts a fresh one if they want it.
 
-## `revoke_sessions({ email })`: sign someone out of the panel
+## `revoke_sessions({ email })`: sign someone out of the panel and every browser app
 
-Ends every live platform panel session for one person, immediately, and
-nothing else (not MCP tokens, not a browser app's Access session; its
-description has the rest). Use it when offboarding someone or
-when a session may be compromised. It is deliberately not part of
-`transfer_app`: a previous owner usually stays a member and a legitimate
+Ends every live session one person holds, on the platform panel and on
+every browser app: the panel's at once and every browser app's within about
+10 seconds, for each identity provider account the address is tied to. It
+touches nothing else (not MCP tokens, not group memberships), and a
+WebSocket or event stream already open on a browser app runs on until its
+sign-in session ends; its description has the rest. Use it when offboarding
+someone or when a session may be compromised. A person who wants their own
+sessions ended needs no admin: from platform v0.17.0 their own sign-out, on
+the panel or any app, ends every session they hold, in every browser. It is
+deliberately not part
+of `transfer_app`: a previous owner usually stays a member and a legitimate
 user, and even one a transfer does not keep, being outside the allowed email
-domains (above), keeps their panel sessions until this ends them.
+domains (above), keeps their sessions until this ends them.
 
 - Confirm with the admin by name before calling. The response says how many
   sessions were ended.
 
-**A full offboarding** uses four levers, each with its own reach:
+**A full offboarding** uses three levers, each with its own reach:
 
 1. **Suspend or deactivate the account in Okta.** Their calls to the
    platform's own tools are then refused `account_inactive` within
    `auth.status_check_minutes`, while Okta can be reached. The same check
    ends their MCP access to every app, their access to every browser app
-   (whose gateway's check asks it too), and their admin standing, if they had
-   one.
-2. **`revoke_sessions`** ends their panel sessions now.
+   (whose front door asks the platform at every request), and their admin
+   standing, if they had one.
+2. **`revoke_sessions`** ends their panel and browser app sessions now.
 3. **`revoke_access` on each app they can reach** removes them from its member
    list and deletes their stored connections there (`inno-manage-app` has its
    rules). It refuses `owner_not_revocable` on an app they own: transfer it
    first, or stop it. From platform v0.16.12 a grant pinned to their
-   account does not pass with their address to its next holder, wherever
-   the sign-in carries its subject, but one still waiting for its first
-   sign-in would: one more reason to revoke.
-4. **A browser app's sign-in session** cannot be ended from here: it runs
-   out its own 24-hour duration. That no longer matters, since a browser
-   app's gateway asks the platform on every request: lever 3 reaches it
-   within about 10 seconds.
+   account does not pass with their address to its next holder, but one
+   still waiting for its first sign-in would: one more reason to revoke.
 
 ## `purge_app({ app })`: delete an app now
 
@@ -365,29 +354,28 @@ What to do with its refusals and answers:
   sweep reverts it, which `inno-manage-app`'s **A deploy whose CI run died**
   explains, and `rebuild_app` cannot release it.
 - `app_busy`: retry once after a moment, never in a loop.
-- **An Access application left in place** (Cloudflare refused the delete
-  with code 10405): the purge still finishes, its answer names the
-  application, and the admins get an `access_app_left` notice. Tell the admin
-  to delete that application in the Cloudflare dashboard (Zero Trust, Access,
-  Applications) before the name is registered again: a new app of that name
-  adopts it with the policies it still has. Any other Access error stops the
-  purge: call it again once the error clears.
+- `image_budget_exhausted`: a container app holds more images in the
+  registry than one call deletes. The purge is unfinished, not failed: call
+  `purge_app` again, as often as it answers this, until it finishes. Until
+  then the app's data and record are kept; its container and Worker may
+  already be gone.
 - **Okta groups left in place.** Only the Okta groups and rule an earlier
-  release recorded for the app are deleted, by id, and the `app_purged` audit
-  row's `idp_skipped` detail lists any it left;
-  `references/legacy-okta-browser-apps.md` says what to do with them.
+  release recorded for the app are deleted, by id (an app registered from
+  platform v0.16.5, or an MCP app from v0.16.4, records none), and the
+  `app_purged` audit row's `idp_skipped` detail lists any it left: a group
+  another instance marked, or a recorded open group whose open rule the
+  record never named. No app admits by them. The operator guide's "Leftover
+  app groups and rules" (`docs/OPERATIONS.md` in the platform's repository,
+  its Teardown section; no tool serves it) says how to tell whether one is
+  this instance's before removing it.
 
 ## `rebuild_app({ app })`: rebuild the released code
 
 Dispatches a rebuild of the app's already-released code at its live release
 tag: the full CI gates run and the app deploys only if they pass, with no
 new commit and no code change. It exists for what an owner cannot
-self-serve, such as picking up a newly promoted platform gateway on a
-third-party-owned repo an admin cannot push a tag to. It builds on the app's
-own `gateway.ref`: its app-scope override when it has one, else the promoted
-one, so an app an override pins does not pick up a promotion this way (an
-answer from a platform before v0.16.11 names the promoted gateway even then).
-Owners never need it: they redeploy by tagging their own repo (`inno-ship`).
+self-serve, such as redeploying a third-party-owned repo an admin cannot
+push a tag to. Owners never need it: they redeploy by tagging their own repo (`inno-ship`).
 From platform v0.16.12 the platform also rebuilds, on its own, a
 function-shaped consumer whose data link to another account's app was
 revoked (`inno-manage-app`'s **Data links across owners**); its notices name
@@ -398,7 +386,11 @@ below). It starts CI in a repository the platform does not own, which cannot
 be recalled, so confirm first.
 
 - `app_not_deployed`: decided by the app's status alone, and the message
-  says what to do: a stopped app is started first (`start_app`); a deploying
+  says what to do: a stopped app is started first (`start_app`). For a
+  released app with no script in the platform's app namespace (one stopped
+  since platform v0.17.0 moved its apps there), the start dispatches the
+  rebuild itself and its answer says so: do not call `rebuild_app` after it,
+  unless that answer says the dispatch failed. A deploying
   one waits for its deploy, or, when its CI run died, for a later deploy or
   the recovery sweep (`inno-manage-app`'s **A deploy whose CI run died**); a
   created one has never deployed, and its first release tag deploys it.
@@ -470,17 +462,12 @@ owner uses (`get_config app=` and `get_config user=`) are in
 - Keys admins reach for most: `apps.max_active` (user scope, an owner's
   active-app cap), `lifecycle.pinned`, the `lifecycle.*_days` idle windows,
   `start.self_max`, `access.allow_open` and `container.sleep_after`.
-- **The identity provider subject's switch**, `access.require_subject` (from
-  platform v0.16.12, platform scope only). Turned on before the instance's
-  Access login method passes the subject claim and the sessions started
-  before that have ended, it refuses browser sign-ins wherever a grant is
-  pinned; its description says when it is safe. The login-method step and
-  its read-only check are the operator's, in the v0.16.12 section of the
-  operator's upgrade guide (`docs/instances/UPGRADING.md` in the platform's
-  repository). It is not marked dangerous, so `set_config` gives no warning
-  for it: get the admin's explicit yes before turning it on. Set
-  `access.subject_claim` only when the login method passes the subject under
-  another name.
+- **Sign-in lifetimes**, `auth.app_session_hours` and
+  `auth.session_idle_hours` (from platform v0.17.0, platform scope): how
+  long a browser sign-in lasts and how long it may sit unused, each
+  shortened only, never lengthened past its default. Their descriptions in
+  the catalog are the authority, and the contract's R3 states what people
+  see.
 
 **Safety waivers.** A finding is waived with `set_config` / `remove_config`
 on the key `safety.ignore.<semgrep|trivy|deps|a11y>.<finding-id>` at
@@ -491,41 +478,6 @@ that waiver applies at the deploy check only. The VALUE is the expiry date
 policy the a11y waivers sit under is `safety.a11y.mode`, whose `off` is its
 danger value; what each mode does is the table `get_app_accessibility`
 serves. The panel's Platform screen is the same act on a visual surface.
-
-## The gateway promote: `sync_gateway_ref`
-
-The safe path for a gateway promotion, in place of typing a commit into
-`set_config`: it sets `gateway.ref` to the public mirror's current HEAD
-after checking that it is a CI publish commit. On `mirror_not_published`,
-wait for the platform's CI to publish, then retry. A promotion is one step
-of a platform upgrade, with a canary and app rebuilds around it in the order
-the release names. Run it as part of that procedure, never on its own: the
-operator's admin plugin (`innovation-platform-admin`, its `platform-upgrade`
-skill) runs it there.
-
-Each app picks up the promoted gateway at its next deploy (its owner's tag,
-`inno-ship`, or `rebuild_app` for an app whose owner will not), unless an
-app-scope `gateway.ref` override pins it to another gateway. A browser app on
-a gateway of capability 1 or more asks the platform on every request whether
-a person may use it, so a grant, a revoke, an open or a close reaches them
-within about 10 seconds.
-
-The deploy broker refuses `gateway_too_old` for a browser app's deploy whose
-gateway is older than capability 1, since that gateway cannot ask the
-platform who may use the app. So on a platform whose `gateway.ref` has not
-been promoted to a gateway of capability 1 or more, every browser app's
-deploy is refused this way, as is any browser app whose app-scope
-`gateway.ref` override points at an older gateway. The run's log shows the
-refusal's message, not its code, after `deploy-token request failed (HTTP
-409)`; the wording may change between releases, so go by this description,
-not by its text. The fix is an admin's, in one of three ways: move
-`gateway.ref` to a gateway of capability 1 or more (`sync_gateway_ref`,
-within the upgrade procedure above); remove the app's own `gateway.ref`
-override with `remove_config`, when that override is the older gateway; or
-set an app-scope `gateway.ref` override at a capability-1 commit with
-`set_config`, which lets that one app deploy before the promotion. Then the
-owner cuts the next patch tag (`inno-ship`), which is what the refusal means
-when it asks for the tag again.
 
 ## Fleet-wide reads
 
@@ -558,13 +510,10 @@ when it asks for the tag again.
   admin-only stages:
   - `start_requested`: an owner asked for a start. An admin's `start_app` is
     unlimited and does not use the owner's allowance.
-  - `drift_detected`, about the platform rather than one app: a promoted
-    platform pointer no longer matches what was published, and the entry
-    names which one and its fix. Either the published gateway differs from
-    the promoted `gateway.ref`, so every app deploy injects the older build
-    (promote it with `sync_gateway_ref`, as one step of a platform upgrade:
-    **The gateway promote** above), or `plugin.min_version` is above the
-    newest published plugin, so no user can satisfy it.
+  - `drift_detected`, about the platform rather than one app:
+    `plugin.min_version` is above the newest published plugin, so no user
+    can satisfy it, and the entry names the fix (lower it, or publish a
+    plugin release that meets it).
   - `connection_sink_new_host`: a connection was pointed at a credential
     destination no connection on the platform was using. Check that the host
     belongs to the backend the connection claims to be.
@@ -572,14 +521,10 @@ when it asks for the tag again.
     instance whose apps were registered under the old names. The entry names
     the keys and both ways out, which **`accept_naming_change()`** above
     explains: revert the manifest, or move every app by hand and then accept.
-  - `access_app_left`: a purge could not delete the app's Cloudflare Access
-    application and left it in place. The entry names the application.
-    Delete it in the Cloudflare dashboard (Zero Trust, Access, Applications)
-    before the name is registered again (**`purge_app({ app })`** above).
   - `identity_reassigned` (from platform v0.16.12): an address that owns an
     app, or is a platform admin, now signs in as a different account than
-    the one it was pinned to, and that account is refused where its sign-in
-    carries its identity provider subject. There is one entry for each app
+    the one it was pinned to, and that account is refused. There is one
+    entry for each app
     the address owns, and one for its admin row. To give an app to the
     address's new holder, `transfer_app` it to that same address (**A
     transfer to the owner's own address** above; with no Okta token the
@@ -588,11 +533,16 @@ when it asks for the tag again.
     Neither happens by itself, and until then the account it was pinned to
     keeps the app or the standing under any address it signs in with, so
     confirm with the admin who should have it first.
-  - `member_drift_detected` and `cutover_undo_failed` were raised only by
-    platform v0.16.5 to v0.16.7, so one in the feed predates the upgrade and
-    its own advice no longer applies: the app it names may still admit by
-    its Okta groups, which `references/legacy-okta-browser-apps.md` checks
-    and fixes.
+  - `member_drift_detected`, `cutover_undo_failed` and `access_app_left`
+    were raised only before platform v0.17.0 (the first two only by v0.16.5
+    to v0.16.7), so one in the feed predates the upgrade. The first two's
+    own advice no longer applies: from v0.17.0 every browser app admits from
+    the platform's member list alone, at the front door, so the app's owner
+    shares it (`grant_access`) with anyone who reached it only through its
+    Okta group. An `access_app_left` entry's remedy still applies: it names
+    a Cloudflare Access application a purge left in place, so have it
+    deleted in the Cloudflare dashboard (Zero Trust, Access, Applications)
+    before the name is registered again.
 
   Admins also see a copy of each `cross_owner_link_revoked` notice (from
   platform v0.16.12), an owner stage that tells a source's owner a data link
@@ -606,6 +556,15 @@ when it asks for the tag again.
   `transfer_app` for it, or `purge_app` for it. Before a stop, tell the admin
   that it holds only once the app's owner has spent their self-service
   starts: until then the owner can start it again.
+
+  Admins also see each `host_upload_blocked` notice (from platform
+  v0.17.0): a platform release could not upload a new host for a container
+  app because one of its data links no longer holds, so the app stays on
+  the host an earlier release uploaded, and the release run failed on it.
+  An admin can clear it as the owner can, with `unlink_app_data` and then
+  `restart_app` on the app (`inno-manage-app`'s **Notifications**); confirm
+  with the app's owner first, since the app loses its read of that
+  source's data.
 
   `mark_all_notifications_read` called by an admin marks every unread
   notification read, everyone's, not only the admin's own.
@@ -621,7 +580,6 @@ when it asks for the tag again.
 | `rebuild_app` | platform admins only (owners redeploy by tagging their own repo) |
 | `revoke_sessions` | platform admins only |
 | `claim_instance_objects` / `accept_naming_change` | platform admins only |
-| `sync_gateway_ref` | platform admins only |
 | `list_users` / `query_audit` / `get_platform_logs` / `export_platform_backup` | platform admins only |
 | `get_config` with no arguments / `set_config` / `remove_config` | platform admins; any user may set their own Notifications settings at their own user scope |
 | `list_apps` | any signed-in user; an admin sees every app |

@@ -39,7 +39,7 @@ This differs from `inno-new-app` only in the starting point: new-app has the
 user create a fresh repo from the platform's template; here the user already has a repo.
 If their repo is **already built to the platform contract** (app code under
 `app/`, a `CLAUDE.md` with the required headers, `/healthz`, identity from the
-gateway headers), migration is just: `register_app`, commit the proof file it
+front door's headers), migration is just: `register_app`, commit the proof file it
 names, install the platform GitHub App on the repo, and `register_app` again. If it's an **arbitrary app** not written for the platform, you
 assess it, then adapt it in place before shipping.
 
@@ -97,7 +97,7 @@ order:
      is TS/JS: `mcp-function` cannot consume a Connection in v1. CRITICAL for
      a Python source using FastMCP (the `mcp` SDK): it needs the
      `transport_security` setting `get_app_contract` §1.3 states, or every
-     gateway-forwarded `/mcp` request fails. The contract is where that
+     `/mcp` request the front door forwards fails. The contract is where that
      setting is written down; take it from there.
    - **Any deal-breakers?** A hard blocker that makes the platform unable to run
      the app at all: call it out plainly. Check the lockfile for the known
@@ -106,20 +106,24 @@ order:
    Note the entrypoint, framework, and listen port so you can adapt them to
    8080 + `/healthz`.
 2. **Auth to strip**: login routes, session middleware, password storage, OAuth
-   flows. All of it goes: the gateway decides who reaches the app and tells it
-   who the caller is, in `X-Forwarded-User` / `X-Forwarded-Groups` (see
-   `inno-platform-conventions`). List each file/route to remove. Keep the
-   app's own **authorization** (who may edit what), decided per request for
-   each of the three kinds of caller contract R3 names (a member is only
+   flows. All of it goes: the front door decides who reaches the app and
+   tells it who the caller is, in `X-Forwarded-User` / `X-Forwarded-Groups` /
+   `X-Forwarded-Subject` (see `inno-platform-conventions`). List each
+   file/route to remove; an existing sign-out link becomes a plain link to
+   `/_auth/signout` (R4), shown wherever the app shows who is signed in. Keep
+   the app's own **authorization** (who may edit what), decided per request
+   for each of the three kinds of caller contract R3 names (a member is only
    one of them, and a caller with no identity gets no per-person data or
-   role), rewired to key on `X-Forwarded-User` (the caller's email
-   address, which can change for one person and pass to another):
+   role), rewired to key on `X-Forwarded-Subject` (the person's identity
+   provider ID, never the email address, which can change for one person
+   and pass to another; rows the app already keys on an address may be
+   re-keyed once, as contract §3 says):
    `X-Forwarded-Groups` carries only this app's two groups (the names in the
    `App groups:` line of the status you read in the Version gate, with the
    app's name in place of `{app}`), never the repo's existing role groups,
    so existing role checks cannot move onto that header. The full header rule is
    `inno-platform-conventions`' **Identity** section. This is about the
-   app's *own* front-door login. A separate thing to look for is auth to a
+   app's *own* sign-in for its users. A separate thing to look for is auth to a
    *backend the app calls out to*: if the repo runs its own OAuth flow
    against some other service, holds a long-lived per-user token for that
    service, or ships a sidecar
@@ -167,12 +171,15 @@ order:
    - the repo-root `package.json`, `package-lock.json` and `tsconfig.json`,
      which in a Node repo are often the app's real manifests rather than
      leftovers, so show them to the user before touching them;
-   - **any committed symlink that resolves to a directory**, at any depth,
-     dangling ones included. A migrated repo is exactly where one turns up: a
-     vendored path, a shared assets directory, a link left by an old build
-     layout. It shows nothing useful in `ls` or a file tree, so scan the index
-     with the check in `inno-safety-preflight` §2, which is the plugin's copy
-     of it, and replace each hit with the real directory or drop it.
+   - **any committed symlink that resolves to a directory, or to a file
+     outside the repository** (the file rule from contract 33), at any
+     depth, dangling ones included. A migrated repo is exactly where one
+     turns up: a vendored path, a shared assets directory, a link to a
+     config file elsewhere on the author's machine, a link left by an old
+     build layout. It shows nothing useful in `ls` or a file tree, so scan
+     the index with the check in `inno-safety-preflight` §2, which is the
+     plugin's copy of it, and replace each hit with the real directory or
+     file inside the repository, or drop it.
 
    List every existing file under `.github/workflows/`. The platform's caller
    workflow must live at exactly `.github/workflows/deploy.yml` (the platform
@@ -231,7 +238,8 @@ The written plan covers, at minimum, each assessment product above:
 
 - **Deployment type** and why (and the Connection constraint if it applied)
 - **Auth being stripped**: the specific files/routes removed, and what
-  replaces them (gateway headers; a Connection, if flagged in step 2)
+  replaces them (the front door's identity headers; a Connection, if
+  flagged in step 2)
 - **Persistence changes**: what moves to D1/R2, and every blocker by name
 - **Contract adaptations**: port/healthz/non-root/`app/` layout/CLAUDE.md
 - **Gate risks found**: secrets (including git history), CVEs, semgrep hits,
@@ -303,9 +311,7 @@ restore point is.
    `name_quarantined`, `repo_already_registered`, `repo_owner_claimed`,
    `repo_identity_changed`, `app_limit_reached`, `repo_mismatch`,
    `guardrails_not_accepted`, `email_domain_not_allowed`, `host_in_use`,
-   …), including what happens to each address in `members`. A browser app's
-   first deploy also needs the platform's newer gateway (`gateway_too_old`,
-   in `inno-ship`'s failure table).
+   …), including what happens to each address in `members`.
 2. **Add the caller workflow.** Write `.github/workflows/deploy.yml` exactly as
    `register_app` returned it. If the repo already has a `deploy.yml`, never
    overwrite it silently: rename or retire it only as the approved plan says,
@@ -333,16 +339,20 @@ restore point is.
      container), `currentUser` in `lib/storage.js` (JS or TS container), or
      `app/identity.ts` from `scaffold/function/app/` or
      `scaffold/mcp-function/app/` (function-shaped, in a template from
-     platform v0.16.19). Any other stack reads `X-Forwarded-User` by the
-     same contract. Handle no user first in each route that needs a person,
-     never in a middleware, and never default it into a value
+     platform v0.16.19, with `subject` from v0.17.0). Any other stack reads
+     `X-Forwarded-User` and `X-Forwarded-Subject` by the same contract.
+     Handle no user first in each route that needs a person, never in a
+     middleware, and never default it into a value
      (`inno-platform-conventions`' **Identity** section says why); an MCP
      app refuses inside MCP, never with an HTTP status (a MUST of §1.2 and
-     §1.3 from contract 32). Any in-app roles are kept in the app's own
-     store keyed on the caller's email, `X-Forwarded-User` (Phase 1 step 2).
+     §1.3 from contract 32). Per-person data and any in-app roles are kept
+     in the app's own store keyed on the caller's subject,
+     `X-Forwarded-Subject` (Phase 1 step 2). A browser app's own cookies stay
+     host-only, with no `Domain` attribute, and it routes nothing under
+     `/_auth/` (R3).
      If the app trusts proxy headers (a proxy-fix middleware, a trust-proxy
      setting, or a server's proxy-headers flag), trust only the three that
-     R3's table says the gateway sets itself (`X-Forwarded-For`,
+     R3's table says the front door sets itself (`X-Forwarded-For`,
      `X-Forwarded-Host` and `X-Forwarded-Proto`); every other proxy header
      (`X-Real-IP`, `True-Client-IP` and `X-Forwarded-Port` among them)
      stays caller-controlled and must never feed identity, origin or access

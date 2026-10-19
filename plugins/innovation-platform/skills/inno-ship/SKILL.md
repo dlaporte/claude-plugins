@@ -53,7 +53,7 @@ test -f app/.needs-build && echo "BLOCKED: app/.needs-build present, build the a
 ```
 
 For a function-shaped app (`function`, `mcp-function`), also confirm the
-lockfile. The push checks do catch its absence, in the `app-deps` job; the
+lockfile. The push checks do catch its absence, in the `app-build` job; the
 rule they enforce is `inno-platform-conventions`' **Node apps** paragraph.
 Check it here anyway, as belt, to save a round trip through CI:
 
@@ -62,7 +62,7 @@ if [ -f app/package.json ] && [ ! -f app/package-lock.json ]; then echo "BLOCKED
 ```
 
 Then, only when `app/package.json` exists, install from the lockfile exactly as
-the `app-deps` job does. A function app with no `app/package.json` has no
+the `app-build` job does. A function app with no `app/package.json` has no
 dependencies and nothing to install; do not create one to satisfy npm. The
 install creates `app/node_modules/`, which must be gitignored before §1's
 `git add -A` (template repos already ignore it; a migrated repo may not):
@@ -120,17 +120,21 @@ git commit -m "<short, why-focused message>"
 git push origin HEAD
 ```
 
-Between the `git add -A` and the commit, run the **directory-symlink check**
-from `inno-safety-preflight` §2. It has one copy in this plugin and lives
-there; a committed directory link fails `config-integrity` with no policy
-toggle, and it has to run after `git add -A` so the index covers both
-already-tracked links and the ones you are about to commit.
+Between the `git add -A` and the commit, run the **symlink check** from
+`inno-safety-preflight` §2. It has one copy in this plugin and lives there;
+a committed directory link, dangling link or link out of the repository
+fails `config-integrity` with no policy toggle, and the check has to run
+after `git add -A` so the index covers both already-tracked links and the
+ones you are about to commit.
 
 This runs the eight gate jobs (`config-integrity`, `secrets`, `sast`, `deps`,
-`dep-age`, `container`, `scaffold-check`, `app-deps`) plus the `policy` fetch
+`dep-age`, `container`, `scaffold-check`, `app-build`) plus the `policy` fetch
 that resolves the admin gate configuration, and then **stops**: the deploy
 job runs only on release tags. The `container` job is skipped for
-`function` and `mcp-function` apps, which have no image to build. Watch with
+`function` and `mcp-function` apps, which have no image to build; for them
+`app-build` installs and bundles the app on every push, holding no
+credential, so a build failure shows on the push rather than at the tag.
+Watch with
 `gh run watch` or the `get_ci_status` MCP tool, and read `get_ci_status`
 (which run it is, its annotations, its refusals) as `inno-safety-preflight`
 §2 says. If a gate fails, follow the failure guidance below and re-push;
@@ -194,7 +198,7 @@ and ask first, whether or not the row below says so.
 
 | Failing job | Likely cause | Fix via |
 |---|---|---|
-| `config-integrity` | the repo carries a platform-owned or forbidden path, or `CLAUDE.md` lacks a required header. The failure message names each path; the full list, with the reason for each, is `inno-platform-conventions`' **Files you must not touch** section | **stop and ask; this is not a quiet fix.** Files under `src/` and a root `package.json` can be the user's own code: show the user every flagged path first. Only with their okay, move author code and manifests under `app/` (for example `app/src/`), update the Dockerfile `COPY` paths and the code's imports to match, and delete only what they confirm is not theirs (such as `src/gateway/` or `src/node_modules/`). Never move or delete author code unprompted before a tagged deploy. See `inno-platform-conventions` |
+| `config-integrity` | the repo carries a platform-owned or forbidden path, or `CLAUDE.md` lacks a required header. The failure message names each path; the full list, with the reason for each, is `inno-platform-conventions`' **Files you must not touch** section | **stop and ask; this is not a quiet fix.** Files under `src/` and a root `package.json` can be the user's own code: show the user every flagged path first. Only with their okay, move author code and manifests under `app/` (for example `app/src/`), update the Dockerfile `COPY` paths and the code's imports to match, and delete only what they confirm is not theirs (such as `src/node_modules/`, or a `src/gateway/` an older platform's build left). Never move or delete author code unprompted before a tagged deploy. See `inno-platform-conventions` |
 | `secrets` | gitleaks found a committed credential | rotate + scrub history, then set the new value as an app Variable (`set_app_variable`) |
 | `sast` | a semgrep OWASP finding anywhere the gate scans, which is the whole repository and not just `app/` (the scope is `inno-platform-conventions`' **Rendering** section; the log names the file). A `secrets: inherit` line in `.github/workflows/deploy.yml` (older template copies carry one) is a blocking finding too | `inno-platform-conventions` (escaping, SQL); for `secrets: inherit`, tell the user and, with their okay, delete the line (the platform workflow needs no caller secrets) |
 | `deps` | a CVE in `app/requirements.txt` or a production npm dependency (what the audit covers is the contract's R8) | bump the pinned dep |
@@ -203,22 +207,34 @@ and ask first, whether or not the row below says so.
 | `container` fails with `Accessibility check failed` (only when the app's `safety.a11y.mode` is `enforce`) | the accessibility report found something that blocks in `enforce` mode: an unwaived critical or serious violation, or a landing page `/` (or every page) the app left unscannable. Exactly what blocks, and what only warns, is the `enforce` row of the mode table `get_app_accessibility` serves | read what the report marks as blocking (`inno-safety-preflight` §1c) and fix it, push, confirm the gates are green, then cut the next patch tag. A failing `/` has to render in CI, where there is no stored data, as a real page (an empty state, not an error or a redirect off the app): `app/inno-a11y.json` adds pages that render without stored data, but it never stands in for `/`. A rule that is wrong for this app: name its rule id and have the user ask a platform admin for a time-limited waiver, `safety.ignore.a11y.<rule-id>` with an expiry date as its value |
 | `scaffold-check` | not a failure: it suppresses `deploy` while `app/.needs-build` exists (see §0) | build the app, remove the marker |
 | `deploy` fails with `app_stopped` | the app was stopped by the lifecycle (or deliberately), and **stopped apps cannot be deployed**. Only the release tag's `deploy` job fails this way; a push to the default branch still runs every gate green on a stopped app, so a clean preflight is not evidence that the app can deploy | `inno-manage-app`: `start_app` first, then cut the next patch tag |
-| `app-deps` fails with `Missing app/package-lock.json` (function-shaped apps) | `app/package.json` exists but no lockfile is committed (the contract's §1.1 **Dependencies** bullet). This job runs on pushes too, so the failure blocks before any tag exists | run `npm install` inside `app/`, commit `app/package-lock.json`, push, confirm `app-deps` is green, then tag |
-| `app-deps` fails in `npm ci` (on pushes as well as tags), or the `deploy` bundle step reports `Could not resolve "<package>"` with the titled error `Undeclared import` (function-shaped apps), or reports it with the titled error `devDependency imported at runtime` | the lockfile no longer matches `app/package.json`, or the code imports a package not declared anywhere (nothing is installed at the repo root), or the code imports at runtime a package declared only under `devDependencies` (`app-deps` installs `--omit=dev`, so that tree was never installed) | for an undeclared package: declare it in `app/package.json`, run `npm install` inside `app/`, commit both files, push, confirm `app-deps` is green, then cut the next patch tag. For a devDependency: move it as **Moving a devDependency into dependencies**, below this table, says; then commit `app/package.json` and `app/package-lock.json`, push, confirm `app-deps` is green, then cut the next patch tag |
+| `app-build` fails with `Missing app/package-lock.json` (function-shaped apps) | `app/package.json` exists but no lockfile is committed (the contract's §1.1 **Dependencies** bullet). This job runs on pushes too, so the failure blocks before any tag exists | run `npm install` inside `app/`, commit `app/package-lock.json`, push, confirm `app-build` is green, then tag |
+| `app-build` fails in `npm ci`, or its `Bundle the app Worker` step reports `Could not resolve "<package>"` with the titled error `Undeclared import`, or reports it with the titled error `devDependency imported at runtime` (function-shaped apps; on pushes as well as tags) | the lockfile no longer matches `app/package.json`, or the code imports a package not declared anywhere (nothing is installed at the repo root), or the code imports at runtime a package declared only under `devDependencies` (`app-build` installs `--omit=dev`, so that tree was never installed) | for an undeclared package: declare it in `app/package.json`, run `npm install` inside `app/`, commit both files, push, confirm `app-build` is green, then cut the next patch tag. For a devDependency: move it as **Moving a devDependency into dependencies**, below this table, says; then commit `app/package.json` and `app/package-lock.json`, push, confirm `app-build` is green, then cut the next patch tag |
+| `app-build` fails with `Symlink escapes the repository` or `Dangling symlink` (function-shaped apps; the step ends `A symlink in your repository points outside it; a link may name only a file inside your repository. Remove it, or point it inside.`) | a link in the checkout points outside the repository or nowhere. The check walks the whole checkout but `.git` and the platform's own CI checkout, `node_modules` directories included, which `config-integrity` does not walk: a link an installed package ships, a `file:` dependency that points outside the repository, a link among a `file:` dependency's own dependencies (installed in a `node_modules` beside it), or one in a `node_modules` committed anywhere but the repository root and `app/` (those two are removed before the install). A committed link anywhere else fails `config-integrity` first. A link may name only a file inside the repository | for a `file:` dependency, bring what it points at inside the repository; for a package that ships such a link, pin a version that ships none, or replace the package; for a committed `node_modules`, remove it from the repository; each with the user's okay. Push, confirm `app-build` is green, then cut the next patch tag |
+| `app-build` fails with `the app Worker's bundle is <N> bytes; the platform takes at most 16777216 (16 MiB) before compression` (function-shaped apps) | the built Worker is over the platform's size cap (the contract's §1.1) | drop large imported files, or dependencies the Worker does not use, and keep large data in the app's file storage; push, confirm `app-build` is green, then cut the next patch tag |
+| `deploy` fails at finalize with `script_rejected` (function-shaped apps; the `Finalize deployment` step logs `deploy-complete failed (409): script_rejected: Cloudflare refused the Worker upload (HTTP <status>): <reason>`, the reason Cloudflare's own codes and messages, read whole from up to 2000 characters of its answer) | Cloudflare refused the Worker upload, most often for an error the app's code throws as it starts (at module top level, outside `fetch`), or for a Worker over Cloudflare's own size limit after compression. A 400 can also be the platform's side: a binding whose database or file storage was deleted outside the platform, which the reason names. Nothing went live, and the app keeps serving its previous version | read the reason on that line. If it is about the app's code, fix the code, push, confirm the gates are green, then cut the next patch tag. If it names a database or file storage binding, change nothing in the app: tell the user in one plain sentence that the platform could not finish this deploy and that their platform admin needs to look at it, then offer a support bundle. If it is about neither, re-run the whole tag run once (`gh run rerun <run-id>`); if it repeats, stop and offer a support bundle |
 | `deploy` fails with `app_not_deployable` | the app was stopped, or its repo lost the platform GitHub App, while this deploy was starting | if the repo was unlinked, have the user reinstall the GitHub App on it first (re-linking leaves the app stopped); then `start_app` (`inno-manage-app`) and cut the next patch tag |
-| `deploy` fails at the token request (`deploy-token request failed (HTTP 409)`) with a message about this deploy's gateway and its capability, naming a platform admin's fix (`gateway_too_old`; the log shows the message, not the code, and its wording may change between releases) | every browser app (`container`, `function`) deploys only on a gateway of capability 1 or more, which asks the platform who may use the app, and the gateway this deploy would ship is older (`register_app`'s and `sync_gateway_ref`'s descriptions state the rule). So any browser app's deploy meets this until a platform admin has promoted the platform's gateway. It is never a code bug, and nothing was deployed | not the owner's to fix. Tell the user plainly: "The platform needs an update from its operator before your app can go live; nothing on your side needs to change." A platform admin moves `gateway.ref` to a gateway of capability 1 or more (`sync_gateway_ref`) or removes the app's own `gateway.ref` override (`remove_config`), as `inno-fleet-admin` describes; then cut the next patch tag, which is what the refusal means when it asks for the tag again |
 | `deploy` fails at finalize with `app_not_deploying` | the app was stopped or purged while the deploy ran; nothing went live | `app_status` to see which; if stopped, `start_app`, then cut the next patch tag |
 
 The rarer `deploy` and broker failures and warnings, each with its fix, are
 in `references/deploy-failures.md`. Read it when the run shows any of
 these: `No scanned image recorded`; `Image mismatch` or `image_mismatch`;
+a container app's `deploy-complete failed` line naming
+`image_not_this_apps`, `container_rollout_failed`,
+`container_policy_unexpected`, `container_namespace_missing` or
+`platform_key_missing` (none is about the app's code, so change nothing in
+the app before reading its row);
+a function app's `App Worker bundle` error from the `Check the downloaded
+bundle against app-build's digest` step or the `Hand the bundle to the
+platform` step, or its `deploy-complete failed` line naming
+`bundle_missing`, `bundle_mismatch`, `bundle_invalid`,
+`bundle_compat_mismatch` or `bundle_store_unavailable`;
+a `deploy-complete failed (500)` line, or `deploy-complete failed: no answer
+within 600 s`;
 a `deploy-sbom failed (403)` line naming `app_mismatch` or saying the app is
-no longer linked to its repository, `Gate policy unavailable`, or
-`Gateway not promoted` (the broker refusing `app_mismatch` or
-`repo_unlinked`); `policy` failing with `Invalid app name`; or a
-`Gateway dependency advisory` or `Cloudflare not ready` warning (either can
-appear on a run that succeeded; neither is about the app's code, so change
-nothing in the app before reading the row). On a push, a
+no longer linked to its repository, `Gate policy unavailable`, or a tag
+run's `deploy-token request failed (HTTP 403)` (the broker refusing
+`app_mismatch` or `repo_unlinked`); or `policy` failing with `Invalid app
+name`. On a push, a
 `deploy-sbom failed (403)` line reading `deploy_denied:ref` is normal.
 
 A gate failure is real signal; there is no override or admin bypass. A
@@ -229,7 +245,7 @@ finding is suppressed with a `.gitleaksignore` entry in the app's own repo.
 
 #### Moving a devDependency into dependencies
 
-When the deploy reports `devDependency imported at runtime` for a package,
+When `app-build` reports `devDependency imported at runtime` for a package,
 that package's entry moves from `devDependencies` to `dependencies` exactly
 as it stands, specifier and locked version unchanged. The error's own
 `Move it:` line carries the command, with the package already named. Read
@@ -252,18 +268,22 @@ the most recent existing bundle rather than retrying.
 
 ## 4. On success: provenance, then the live URL
 
-The `deploy` job (tag runs only) exchanges a GitHub OIDC token with the
-platform's deploy broker for a scoped deploy token. The broker issues one
-only to the pinned reusable workflow, the `CI workflow:` line of the status
-you read in the Version gate (keep `deploy.yml`'s `uses:` reference exactly
-as `register_app` returned it), running for a `refs/tags/v*` release tag. A
-push to any branch, a fork, or a `deploy.yml` edited to skip gates gets
-`403 deploy_denied`: there is no code path where removing the gates yields a
-working deploy. The release tag is recorded on the deployment, and the
-safety sweep's auto-respin rebuilds at exactly that tag; a container app's
-deploy ships exactly the image the `container` job scanned. The served
-account is `get_platform_docs`' **Releases** and **CI gates** sections and
-the contract's R7 and R9.
+The `deploy` job (tag runs only) presents a GitHub OIDC token to the
+platform's deploy broker, which answers only the pinned reusable workflow,
+the `CI workflow:` line of the status you read in the Version gate (keep
+`deploy.yml`'s `uses:` reference exactly as `register_app` returned it),
+running for a `refs/tags/v*` release tag. A push to any branch, a fork, or a
+`deploy.yml` edited to skip gates gets `403 deploy_denied`: there is no code
+path where removing the gates yields a working deploy. The release tag is
+recorded on the deployment, and the safety sweep's auto-respin rebuilds at
+exactly that tag. A container app's deploy ships exactly the image the
+`container` job scanned, pushed with a token scoped to that push. A
+function app's run holds no deploy credential at all: the deploy job checks
+the bundle `app-build` built against that job's digest before it requests
+any token, hands it to the platform, and the platform uploads the app's
+Worker itself, setting every binding. The served account
+is `get_platform_docs`' **Releases** and **CI gates** sections and the
+contract's R7 and R9.
 
 On success, report:
 
@@ -271,11 +291,13 @@ On success, report:
 Shipped v<X.Y.Z>: <the app URL, as reported by app_status / register_app>
 ```
 
-and note that the app is **Okta-gated**: the first visit prompts an Okta
-login (Cloudflare Access), and only the owner plus anyone granted access via
-`inno-manage-app`'s `grant_access` can reach it, unless the app has been
-opened to every SSO user with `set_app_access` (`inno-manage-app`). On a
-browser app, anyone else who signs in sees a plain "No access" page.
+and note that the app is behind the organization's sign-in: on a browser
+app the platform signs each person in on their first visit (what they see
+is `get_platform_docs`' **Signing in and out: what people see**), and only
+the owner plus anyone granted access via `inno-manage-app`'s `grant_access`
+can reach it, unless the app has been opened to every SSO user with
+`set_app_access` (`inno-manage-app`). On a browser app, anyone else who
+signs in sees a plain "No access" page.
 
 For a `container` app, add one plain line with the tag run's accessibility
 report counts: critical, serious, moderate and minor findings, and how many
@@ -303,11 +325,11 @@ get the negative (NXDOMAIN) result cached on the user's own machine for
 minutes, even after the app is actually live. This caveat doesn't apply to
 redeploys of an already-live app: the hostname already resolves.
 
-Container-shape redeploys (`container`, `mcp-container`): a deploy replaces the
-image, but an instance that is actively serving keeps running the OLD image
-until it recycles (idle sleep or `restart_app`). If the user redeployed a fix
-to a busy app and it still shows old behavior, run `restart_app`: the next
-request cold-starts on the new image.
+Container-shape redeploys (`container`, `mcp-container`): a deploy starts a
+new container instance on the next request, so a fix takes effect with no
+`restart_app`; the instance from before keeps its old version and values
+only until it stops: from the new host's first request on, or within about
+six minutes of the deploy whatever the traffic (contract §2.3).
 
 ### Do not curl, dig, or otherwise resolve the hostname to "verify" success
 

@@ -63,3 +63,33 @@ the import changes the admin list (an import row carries `detail.source`
 - `identity_conflict`, once per address and account, when an address signed
   in as an account other than the one its grants are pinned to, which those
   grants refuse (`apps`, `owner_of` and `admin` name them).
+
+## Sign-ins, container hosts and function deploys (from platform v0.17.0)
+
+- `app_signin`: one row for each new browser app session, with the address
+  as actor, the app as target and `detail.host` the app host, on the
+  surface `sign-in`, which `query_audit`'s `surface` filter takes. It is
+  where an app's login history lives.
+- `host_uploaded`: the platform uploaded a container app's host, which
+  starts a new container generation; `detail.generation` names it and
+  `detail.reason` says why (`deploy`, `release`, `variable`, `restart` or
+  `remediation`).
+- `host_upload_blocked`: a platform release did not upload a new host for a
+  container app because one of its data links no longer holds. The actor is
+  the release run, the surface `ci`, and `detail.error` and
+  `detail.message` give the link's refusal; the app's owner gets the notice
+  of the same name.
+- `script_uploaded`: the platform uploaded a function app's Worker, at its
+  deploy's finalize, from the bundle the app's CI handed over
+  (`detail.sha256`, `detail.reason` `deploy`). A function app's deploy
+  starts with `deploy_started` and mints no token, so `deploy_token_minted`
+  is a container app's alone; `deploy_bundle_staged` records the hand-over,
+  and `worker_bundle_orphan_deleted` the hourly sweep deleting a staged
+  bundle no deploy used within a day. An upload that fails is a
+  `deploy_denied` row, `detail.reason` saying which: `script_rejected` when
+  Cloudflare refused the upload (its text rides the answer CI prints, not
+  the row), or the failure's family when the platform's side failed and
+  the finalize answered 500: `cf_error:401` or `cf_error:403` (the
+  platform's runtime token), `cf_error:404` (the app namespace),
+  `cf_error:429` (a rate limit), a 5xx such as `cf_error:500`, or
+  `upstream_error` for a timeout.

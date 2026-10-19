@@ -411,9 +411,10 @@ connections = Connections()  # points at http://storage.internal by default
 
 @mcp.tool()
 async def list_incidents(ctx: Context) -> dict:
-    # The gateway forwards X-Caller-Assertion on every request, empty when the
-    # platform issues none (then the seam answers 503 connections_disabled,
-    # a platform admin's to fix). Echo it either way; lookup is case-insensitive.
+    # The front door sets X-Caller-Assertion when the platform issues one, and
+    # the header is absent when it issues none (then the seam answers 503
+    # connections_disabled, a platform admin's to fix). Echo whatever arrived,
+    # absent included; lookup is case-insensitive.
     request = ctx.request_context.request
     caller_assertion = request.headers.get("x-caller-assertion")
     try:

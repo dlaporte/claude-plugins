@@ -87,8 +87,8 @@ Refresh both files at every resync with the platform:
    `bash scripts/platform-compat.sh <platform checkout> <release tag>`
    (v0.16.16 or later; an earlier release has no record). Before it overwrites
    the previous pin it prints what moved since then: served documents, tools'
-   input and output schemas, the contract's version and sections, the gateway,
-   the plugin floors and the platform behaviors. That list is the resync's
+   input and output schemas, the contract's version and sections, the plugin
+   floors and the platform behaviors. That list is the resync's
    to-do list, and it is printed once: save it. Until you commit,
    `git diff scripts/platform-compat.json` shows the same changes. Before the
    platform tags a release, its release order runs this script once at the

@@ -13,6 +13,7 @@ accept_guardrails         # register_app argument
 export_dispatch_failed    # export_app_data refusal
 export_in_progress        # export_app_data refusal
 link_containment          # grant_access / set_app_access refusal
+link_invalid              # restart_app / remove_app_variable refusal
 link_rebuild_pending      # notification kind
 link_revoked              # a linked read's failure
 link_severed              # notification kind

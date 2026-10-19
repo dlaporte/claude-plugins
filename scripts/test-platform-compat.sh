@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Runs scripts/platform-compat.sh, from a copy of its own, on a platform
-# repository this script plants with a record at each of eight tags, and
+# repository this script plants with a record at each of twelve tags, and
 # fails unless what it prints as moved since the previous pin is exactly what
 # each pair of records calls for:
 #   - records with no outputRevision anywhere (the v0.16.16 shape) print what
@@ -17,7 +17,11 @@
 #     outputRevision too;
 #   - a readOnly that flips prints its old and new value, after the tool's
 #     inputRevision line, an unchanged one (false included) prints nothing,
-#     and one the new entry lacks reads as none.
+#     and one the new entry lacks reads as none;
+#   - a value that moved under contract, plugins or behavior prints its old
+#     and new value, and a gateway block (which a record from v0.17.0 on no
+#     longer carries) is not compared: one that comes, moves or goes prints
+#     nothing.
 # Usage (from the repo root): bash scripts/test-platform-compat.sh
 set -euo pipefail
 # A hook exports GIT_DIR and GIT_INDEX_FILE (as absolute paths in a linked
@@ -61,6 +65,10 @@ tag nulled 'set("get_platform_status"; .outputRevision = null) | set("purge_app"
 tag retired '.tools.list |= map(select(.name != "app_status" and .name != "list_apps")) | .tools.count -= 2'
 tag flipped 'set("purge_app"; .readOnly = true) | set("get_app_logs"; .readOnly = false | .inputRevision = "e3")'
 tag unflagged 'set("get_app_logs"; del(.readOnly))'
+tag behaved '.behavior = {"membershipAuthority":"okta"}'
+tag gated '.gateway = {"capability":0}'
+tag moved-facts '.contract.version = 2 | .plugins.app.minVersion = "1.1.0" | .behavior.membershipAuthority = "platform" | .gateway.capability = 1'
+tag ungated 'del(.gateway)'
 
 fail=0
 n=0
@@ -122,6 +130,12 @@ expect "a record whose tools flip readOnly, one with its inputRevision" retired 
 expect "the same record twice, with a readOnly that is false" flipped flipped
 expect "a record whose false readOnly goes" flipped unflagged \
   "  tool get_app_logs: readOnly was false; now none"
+expect "a record that gains a gateway block" behaved gated
+expect "a record whose contract, plugin floor and behavior move, beside a gateway block that moves" gated moved-facts \
+  '  behavior.membershipAuthority: was "okta"; now "platform"' \
+  "  contract.version: was 1; now 2" \
+  '  plugins.app.minVersion: was "1.0.0"; now "1.1.0"'
+expect "a record whose gateway block goes" moved-facts ungated
 
 [ "$fail" -eq 0 ] || exit 1
-echo "test-platform-compat: OK ($n cases: a record with no outputRevision reads as before; an outputRevision that comes, moves or goes is listed, an unchanged one is not, and a null one reads as none; a retired tool prints only that it is gone; a readOnly that flips or goes is listed, an unchanged one is not)"
+echo "test-platform-compat: OK ($n cases: a record with no outputRevision reads as before; an outputRevision that comes, moves or goes is listed, an unchanged one is not, and a null one reads as none; a retired tool prints only that it is gone; a readOnly that flips or goes is listed, an unchanged one is not; a contract, plugin floor or behavior value that moves is listed, and a gateway block is never compared)"
