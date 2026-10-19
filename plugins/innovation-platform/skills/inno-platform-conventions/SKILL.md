@@ -141,8 +141,10 @@ that the lockfile resolves a clean Starlette before committing to it.
 
 - In a function-shaped app (`function`, `mcp-function`), every package
   your Worker imports by bare name is listed in `app/package.json` itself,
-  under `dependencies`. Nothing is installed at the repo root, and CI
-  installs with `--omit=dev`, so an undeclared import fails the bundle, and
+  under `dependencies`. Nothing is installed at the repo root, a
+  `node_modules` committed there or in `app/` is removed before the
+  install, and CI installs with `--omit=dev`, so only what your lockfile
+  names reaches the bundle: an undeclared import fails the bundle, and
   so does one listed only under `devDependencies`, with an error titled
   `devDependency imported at runtime` naming the package. Move such a
   package with `inno-ship`'s **Moving a devDependency into dependencies**,
@@ -574,9 +576,11 @@ no version of these files that belongs in your repo.
   platform supplies anywhere discovery decides which config to read.
   The build pins its wrangler call to an explicit config, and the gate
   rejection is the independent belt to that pin.
-- Root-level `.env` / `.env.*` files: wrangler loads them when it bundles a
-  function app and adopts unset keys, so a committed one could steer the
-  build's own calls.
+- Root-level `.env` / `.env.*` files: wrangler loads them when it runs at
+  the repository root, as it does to bundle a function app and to push a
+  container app's image, and adopts every key the step did not set, so a
+  committed one (an app-set `CLOUDFLARE_API_BASE_URL`, say) would redirect
+  the build's own calls.
 - Every package manager's project config at the repo root: `.npmrc`,
   `.yarnrc`, `.yarnrc.yml`, `.pnpmfile.cjs`, `pnpm-workspace.yaml` and
   `bunfig.toml`. A `.npmrc` is rejected at **any** depth, `app/.npmrc`
@@ -602,8 +606,10 @@ no version of these files that belongs in your repo.
   a linked file's bytes, so a link out of the repository could bake files no
   gate saw into your app. `config-integrity` has no policy toggle, so a repo
   carrying one cannot deploy until the link is removed. A function app's
-  build refuses the same out-of-repository link under `app/node_modules`,
-  where an installed package or a `file:` dependency can put one.
+  build refuses a link that points outside the repository, or nowhere,
+  anywhere in the checkout, `node_modules` directories included (the gate
+  does not walk them), where an installed package or a `file:` dependency
+  can put one: a link may name only a file inside your repository.
 
 Keep secrets and local env out of the repo entirely: an app-level key or
 config value belongs in a **Variable** (`set_app_variable`, or the app

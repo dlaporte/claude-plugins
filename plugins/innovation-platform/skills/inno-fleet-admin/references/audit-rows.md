@@ -85,4 +85,11 @@ the import changes the admin list (an import row carries `detail.source`
   starts with `deploy_started` and mints no token, so `deploy_token_minted`
   is a container app's alone; `deploy_bundle_staged` records the hand-over,
   and `worker_bundle_orphan_deleted` the hourly sweep deleting a staged
-  bundle no deploy used within a day.
+  bundle no deploy used within a day. An upload that fails is a
+  `deploy_denied` row, `detail.reason` saying which: `script_rejected` when
+  Cloudflare refused the upload (its text rides the answer CI prints, not
+  the row), or the failure's family when the platform's side failed and
+  the finalize answered 500: `cf_error:401` or `cf_error:403` (the
+  platform's runtime token), `cf_error:404` (the app namespace),
+  `cf_error:429` (a rate limit), a 5xx such as `cf_error:500`, or
+  `upstream_error` for a timeout.

@@ -227,8 +227,9 @@ deploy behind config-integrity, secret scanning, SAST, dependency auditing,
 the dependency release-age cooldown, and container/image scanning, all of which
 must pass before the deploy even starts. A container deploy ships the exact
 image those gates scanned, pinned by digest, never a second build; a function
-deploy ships the exact bundle CI built, in a job that holds no credential of
-any kind, checked by its digest. At deploy time, the platform's broker
+deploy ships the exact bundle CI built in a job that holds no credential of
+any kind, and the deploy job checks it against that build's digest before it
+requests any token. At deploy time, the platform's broker
 independently verifies the GitHub OIDC token's signed `job_workflow_ref`
 claim to confirm the run actually executed the platform's exact reusable
 workflow from `main` before it accepts anything from the run. A function
