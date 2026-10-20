@@ -115,8 +115,9 @@ tools take new input (`set_app_access` takes `audience` and
 too. Every skill learned the two properties: the identity question and the
 two-app pattern for a public site at design time, the widening review and
 the narrowing note, the contract's new R10 for anonymous apps with its
-cookie rule, the uploaded-file rule, the front door's refusal of any request
-from another page that is not a top-level GET navigation (so apps never
+cookie rule, the uploaded-file rule, the front door's refusal, on a
+members-only or internal app, of any request from another page that is not
+a top-level GET navigation (so apps never
 frame, include or call each other from the browser, and a data link is the
 path between apps), the review of an app for every audience it can take,
 and, for admins, allowing public apps, narrowing one in an emergency and

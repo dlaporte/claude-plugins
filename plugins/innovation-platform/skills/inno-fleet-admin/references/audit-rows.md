@@ -70,12 +70,13 @@ inside the cut-down `detail`.
   link it revokes and `data_link_revoke_failed` for one it could not (tried
   again next hour), both with `reason: "containment_pass"`. From v0.16.12 its
   `why` is `owner_split` for a link whose two apps no longer have one owner.
-- From platform v0.17.2 a narrowing writes the same two rows with
-  `reason: "source_narrowed"`, and a forced transfer with
-  `owner_changed`. Their `why` says what broke: `audience` (the consumer
-  reaches further than the source's audience), `not_contained` (a
-  members-only consumer admits someone the source does not), `unverified`
-  (its members could not be read to check) or `owner_split`. Migration 0061
+- From platform v0.17.2 a narrowing's `data_link_revoked` rows carry
+  `reason: "source_narrowed"` and a `why`: `audience` (the consumer reaches
+  further than the source's audience), `not_contained` (a members-only
+  consumer admits someone the source does not) or `unverified` (its members
+  could not be read to check); the containment pass's add `owner_split`.
+  Its `data_link_revoke_failed` rows carry an `error`. A forced transfer's
+  carry `reason: "owner_changed"` and no `why`. Migration 0061
   rewrote earlier rows: a `why` of `open` reads `audience`, and a `reason`
   of `source_closed` reads `source_narrowed`.
 - `access_enforcement_stalled` (`pass`, `skips`) marks an app the hourly

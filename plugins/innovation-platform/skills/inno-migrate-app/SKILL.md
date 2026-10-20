@@ -410,9 +410,10 @@ restore point is.
      the `CLAUDE.md` of the template repo, the `Template repo:` line, and rewrite the body to describe this app's real
      stack; only the headers are gate-checked). **For an anonymous app**,
      copy `scaffold/anonymous/<type>/CLAUDE.md` from the template repo
-     instead and keep its Identity section's rules as they are (R10, the
-     cookie rule, the uploaded-file rule, where the anonymous promise ends),
-     rewriting only the rest of the body: the platform lays that guide over
+     instead and keep the guide's anonymous rules as they are: its Identity
+     section (R10, the cookie rule, where the anonymous promise ends) and its
+     Persistence section's **Files someone uploaded** paragraph, rewriting
+     only the rest of the body: the platform lays that guide over
      a template copy at registration, never over a migrated repo, which
      carries no `scaffold/`, as `inno-new-app`'s hand-laid case says.
    - **Remove or move every forbidden path** flagged in Phase 1, working from

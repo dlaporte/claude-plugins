@@ -195,8 +195,11 @@ deliberately), only the repo and history remain. The name is then held:
 `check_name` reports it unavailable with the date it frees up, and
 `register_app` refuses it with `name_quarantined` until then. Past that
 date the name stays held while a `function` or `mcp-function` app that read
-the purged app's data has not been rebuilt, and both say so. No admin can
-lift the hold, so do not suggest asking one. After the hold a fresh
+the purged app's data has not been rebuilt or redeployed since, and both say
+so. That part ends once the app is rebuilt or redeployed: its owner's next
+release tag, or an admin's `rebuild_app` of it (`list_app_links` before the
+purge names it). No admin can lift the dated hold, so do not suggest asking
+one for that. After the hold a fresh
 registration (`register_app`, see `inno-new-app`) can take the name again.
 Purge also releases the repo binding, so the same repo can be registered again
 right away under a different name. An admin's immediate `purge_app` is
@@ -543,7 +546,8 @@ no acceptance. Confirm it with the user by name, then call
   audience loses this app's data and files when this app's does. Its owner
   widens it again, with the whole review and acceptance, once the rebuild
   (or a redeploy) of it has landed; until then a widening of it past this
-  app's audience is refused `link_containment`. The result, and that
+  app's audience is refused `widening_requirements`, with `link_containment`
+  among its entries. The result, and that
   owner's notice, say which.
 - **Published content is not withdrawn.** Narrowing a public app does not
   take back what search indexes, archives and caches already hold.
@@ -733,9 +737,10 @@ What to do on five of them:
   changed it and why. Someone other than the owner widened or narrowed it,
   the hourly pass narrowed it (its setting no longer allows the audience,
   or, for a public app, its owner can no longer sign in), or a source it
-  reads was narrowed and narrowed it too: then the entry says the platform
-  rebuilds it, and the owner widens it again, with the review, once that
-  rebuild has landed (**Narrowing**, above).
+  reads was narrowed and narrowed it too: then the entry says why, its
+  `link_rebuild_pending` entry says whether the platform rebuilds it or the
+  owner redeploys, and the owner widens it again, with the review, once that
+  rebuild or redeploy has landed (**Narrowing**, above).
 - `member_reassigned`: an address with access now signs in as a different
   account than the one its access is pinned to. The entry names the address
   and the re-share: `references/address-changes.md`.

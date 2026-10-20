@@ -33,8 +33,10 @@ body describes the runtime this app actually has.
 type's files, copy `scaffold/anonymous/<type>/CLAUDE.md` from the template
 repo over the `CLAUDE.md` you just copied, as the platform's scaffold commit
 does for a template-derived repo. It carries the same five headers, and its
-Identity section is this app's rule: no identity header read, no sign-out
-link, the contract's R10, its cookie rule and the uploaded-file rule. A
+anonymous rules are this app's: its Identity section (no identity header
+read, no sign-out link, the contract's R10, its cookie rule, where the
+promise ends) and its Persistence section's **Files someone uploaded**
+paragraph (the uploaded-file rule). A
 template with no `scaffold/anonymous/` predates anonymous apps: tell the
 user, and write the app to R10 (`get_app_contract` with `sections: ["2"]`)
 and `inno-platform-conventions`' **An anonymous app: R10**.

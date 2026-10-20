@@ -403,9 +403,10 @@ Before calling it:
   the nightly database dumps and any `export_platform_backup` snapshot hold
   it.
 - **Name the consumers.** It revokes every data link touching the app, in
-  both directions, and an app that READS this one's database keeps a binding
-  that now fails (the description says how). Run `list_app_links` first and
-  tell the admin which apps that is.
+  both directions, and an app that READS this one's database and files keeps
+  bindings to them that now fail; the platform rebuilds a function-shaped
+  one, and the name stays held until it has (the description says how). Run
+  `list_app_links` first and tell the admin which apps that is.
 - Confirm with the admin by name, and say plainly that it is permanent.
 
 What to do with its refusals and answers:

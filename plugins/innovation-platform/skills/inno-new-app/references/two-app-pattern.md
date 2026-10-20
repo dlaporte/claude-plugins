@@ -54,8 +54,8 @@ the editor must be on the site's list.
 its private data, and a new anonymous app at a new address becomes the
 site.
 
-- If its members all fit on the site's list, follow the new pair's order
-  from step 2.
+- If it is members-only, follow the new pair's order from step 2 (grant its
+  members on the site).
 - If it is internal (everyone who signs in reaches it), it cannot read a
   members-only site, so the site goes public first, with its built-in
   content: register the site, ship it, review and widen it to public, and
