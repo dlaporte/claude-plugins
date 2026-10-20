@@ -7,12 +7,12 @@
 # name never belongs here.
 
 # Arguments that begin with a tool verb.
-accept_guardrails         # register_app argument
+accept_guardrails         # register_app, set_app_access and transfer_app argument
 
 # Refusal codes and status labels that begin with a tool verb.
 export_dispatch_failed    # export_app_data refusal
 export_in_progress        # export_app_data refusal
-link_containment          # grant_access / set_app_access refusal
+link_containment          # grant_access / transfer_app refusal; set_app_access names it inside widening_requirements
 link_invalid              # restart_app / remove_app_variable refusal
 link_rebuild_pending      # notification kind
 link_revoked              # a linked read's failure
@@ -31,3 +31,5 @@ get_http_request          # FastMCP's request accessor
 get_access_token          # FastMCP's token accessor
 get_file                  # the storage client
 list_files                # the storage client
+get_linked_file           # the storage client, a linked source's files
+list_linked_files         # the storage client, a linked source's files

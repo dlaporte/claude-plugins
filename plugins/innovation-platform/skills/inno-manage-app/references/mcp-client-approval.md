@@ -6,7 +6,12 @@ keeps asking them to approve it again, or never reaches the approval page.
 - **Refused at authorization.** A person the app does not admit is stopped
   when they authorize their MCP client, with "You don't have access to this
   app. Ask its owner to share it with you." The fix is the owner's
-  `grant_access`, or opening the app with `set_app_access`.
+  `grant_access`, or widening the app to internal with `set_app_access`
+  after the widening review (the skill's `set_app_access` section).
+- **A public MCP app takes no authorization.** An anonymous app widened to
+  public answers at its MCP address with no sign-in and no token, and the
+  platform issues no token for it, so an authorization started for it is
+  refused. The client connects without one.
 - **Asked to approve again.** The platform remembers each person's approval
   of an MCP client per app instance and per client redirect URI, so a new
   approval prompt is not a fault: a client whose redirect URI changed asks

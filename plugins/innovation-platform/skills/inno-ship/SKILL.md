@@ -291,13 +291,27 @@ On success, report:
 Shipped v<X.Y.Z>: <the app URL, as reported by app_status / register_app>
 ```
 
-and note that the app is behind the organization's sign-in: on a browser
-app the platform signs each person in on their first visit (what they see
-is `get_platform_docs`' **Signing in and out: what people see**), and only
-the owner plus anyone granted access via `inno-manage-app`'s `grant_access`
-can reach it, unless the app has been opened to every SSO user with
-`set_app_access` (`inno-manage-app`). On a browser app, anyone else who
-signs in sees a plain "No access" page.
+and say who can reach it and what it is told, from the `Audience:` and
+`Identity:` lines of `app_status`:
+
+- **members-only** (where every app starts): only the owner plus anyone
+  granted access via `inno-manage-app`'s `grant_access` can reach it. On a
+  browser app the platform signs each person in on their first visit (what
+  they see is `get_platform_docs`' **Signing in and out: what people see**),
+  and anyone else who signs in sees a plain "No access" page.
+- **internal**: everyone who signs in can reach it, members or not.
+- **public**: anyone on the internet can reach it, with no sign-in.
+
+Then the identity: an identity-aware app is told who each caller is, and an
+anonymous app never is, at any audience.
+
+**When the design meant the app for internal or public** (`inno-new-app`
+§1b, `inno-migrate-app`'s item 9) and it is still members-only, the release
+did not widen it, and you do not widen it here. Hand the owner to
+`inno-manage-app`'s widening review for `set_app_access`: the review of what
+the wider audience reaches, one precheck call, and the owner's guardrails
+acceptance. Public needs an anonymous app; for an identity-aware app the
+review names the two-app pattern instead.
 
 For a `container` app, add one plain line with the tag run's accessibility
 report counts: critical, serious, moderate and minor findings, and how many
@@ -309,10 +323,11 @@ quoting zeros.
 
 For an **mcp-function** or **mcp-container** app, report the **MCP endpoint** (`…/mcp`, as returned by
 `app_status` / `register_app`) instead of a browser URL, and tell the user to
-add it as an MCP server in their client (Claude Code, claude.ai): the first
-connection runs an OAuth authorization (consent + Okta) rather than a browser
-SSO redirect. Access is still the app's member list, or every SSO user
-once the app is opened with `set_app_access`.
+add it as an MCP server in their client (Claude Code, claude.ai): on a
+members-only or internal app the first connection runs an OAuth
+authorization (consent + Okta) rather than a browser SSO redirect, and a
+public MCP app asks for none. Who may connect follows the app's audience,
+as above.
 
 **On a brand-new app's first-ever deploy, warn about the propagation window
 when you hand over the URL or endpoint; don't just paste a bare link.** The

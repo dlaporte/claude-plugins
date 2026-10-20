@@ -81,7 +81,8 @@ Six things are checked here. **The first four are hard requirements before
    the `container` job also writes the reports item 6 reads; only the
    accessibility report can turn the job red, and only in `enforce` mode.
 2. The **guardrails policy** (you): a qualitative read of the app against
-   the platform's acceptable-use policy.
+   the platform's acceptable-use policy, for every audience the app can
+   take (§1 says which).
 3. The **application contract** (you): the app's conformance to the
    platform's runtime requirements that CI can't see.
 4. The **app-code security notes** (you): the app-level risk classes the
@@ -105,6 +106,22 @@ Call the `get_guardrails` MCP tool and re-read the app against it: name,
 stated purpose, what the code actually does, and how it handles data. You
 have the whole repo in front of you; this is judgment, not grep.
 
+**Review the app for every audience it can take, not only the one it has
+today**, since a widening changes no code (`app_status` names its audience
+and identity). An identity-aware app can be widened to internal, so review
+what anyone who signs in, member or not, would see and could do, against
+the guardrails' internal section. An anonymous app can be widened to
+public, so review it as public, whatever its audience now: what anyone on
+the internet would see and could do, against the guardrails' **Public
+apps** section (only content meant for anyone; nothing institutional,
+personal or confidential; nothing that proxies institutional systems or
+other apps to anonymous callers; and what is published cannot be
+withdrawn). A violation at the app's current audience is the hard stop
+below. One that holds only at a wider audience does not stop this release:
+report it, name the audience it needs, and say it bars that widening until
+it is fixed (`inno-manage-app`'s widening review runs the same reading
+again).
+
 - **Clean** → say so in one line and move on.
 - **Violation** → HARD STOP. Name the specific policy line, explain the
   conflict plainly, and do not proceed to `inno-ship` until the app is
@@ -113,7 +130,7 @@ have the whole repo in front of you; this is judgment, not grep.
   CI gate is green.
 
 Then call the `get_app_contract` MCP tool with `sections: ["2", "5", "6"]`
-(the requirements R1 to R9, the deployment patterns with what is not
+(the requirements R1 to R10, the deployment patterns with what is not
 supported today, and the enforcement map). Add to that call the app's own
 shape section: `"1.1"` for a `function` app, `"1.1"` and `"1.2"` for an
 `mcp-function` app, `"1.3"` for an `mcp-container` app (a `container` app
@@ -126,9 +143,15 @@ against the MUSTs, focusing on the ones the enforcement map (§6) leaves to
 preflight review because CI cannot judge them: R3 (identity only from the
 front door's headers, no home-grown auth, the app's own cookies host-only
 with no `Domain` attribute, no `Clear-Site-Data`, and nothing routed under
-`/_auth/`), R4 (if the app shows a user, a plain link to `/_auth/signout`
+`/_auth/`), the cookie rule for every app (each cookie the app sets
+carries the `__Host-` prefix and is `HttpOnly` unless the app's own script
+must read it; R10 states it, and `get_app_security` §9 and §12 hold every
+app to it), R10 itself for an anonymous app (it reads no identity
+header, has no accounts, per-person views or keys or limits taken from a
+person, and stores what a visitor submits without ever rendering it), R4
+(if the app shows a user, a plain link to `/_auth/signout`
 wherever it does; not applicable to `mcp-function` and `mcp-container`
-apps), R5 and R6 (durable state in the
+apps, nor to an anonymous app, which never shows one), R5 and R6 (durable state in the
 platform stores, never local disk or memory), and the parts of R2 CI cannot
 see (its smoke test only proves `/healthz` answers inside the image, so
 still read it for cheap, no side effects, and independent of storage). Check
@@ -158,7 +181,12 @@ taken from a caller with no user is a finding, and so is an MCP app that
 refuses by HTTP status (a MUST of the contract's §1.2 and §1.3 from
 contract 32; on an older platform it is a finding to fix, not a contract
 violation). A real authorization hole is a hard stop: fix or guide the fix
-before `inno-ship`.
+before `inno-ship`. Any app that serves back a file someone uploaded is
+held to its §3, from any host, a public one included: the file goes out
+only as a download with the three headers it names, never inline, and one
+served inline is a finding to fix (`inno-platform-conventions`' **Files
+someone uploaded**). Review an anonymous app's §12 obligations for its
+per-visitor state too, as R10 says.
 A missing response header (its §9) is a recommendation, not a stop: offer
 the fix, and for a `container` app item 6's header report shows what the
 app sends today.

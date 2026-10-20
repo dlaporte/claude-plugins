@@ -1,6 +1,6 @@
 ---
 name: inno-manage-app
-description: Use to share, check on, start, stop, export, open up, or configure a deployed Innovation Platform app via the inno-platform MCP tools (grant_access, revoke_access, set_app_access, app_status, start_app, stop_app, restart_app, request_start, export_app_data, get_app_metrics, get_app_usage, get_app_logs, get_config, set_config for one's own notification settings, set_app_variable/list_app_variables/remove_app_variable, create_support_bundle). Use when the user wants to give someone access, open an app to everyone with SSO, check deploy status, bring back a stopped app, restart a wedged app, read its logs, set an environment variable or API key for their app, download their app's data, shut one down, or ask to transfer it to someone else (only an admin can; this skill says how to ask). A platform admin's fleet work (the admin list, transfers, purges, sessions, naming, settings, audit) is inno-fleet-admin.
+description: Use to share, check on, start, stop, export, widen or narrow, or configure a deployed Innovation Platform app via the inno-platform MCP tools (grant_access, revoke_access, set_app_access, app_status, start_app, stop_app, restart_app, request_start, export_app_data, get_app_metrics, get_app_usage, get_app_logs, get_config, set_config for one's own notification settings, set_app_variable/list_app_variables/remove_app_variable, create_support_bundle). Use when the user wants to give someone access, widen an app to everyone who signs in or to the public (with its review), narrow it back, check deploy status, bring back a stopped app, restart a wedged app, read its logs, set an environment variable or API key for their app, download their app's data, shut one down, or ask to transfer it to someone else (only an admin can; this skill says how to ask). A platform admin's fleet work (the admin list, transfers, purges, sessions, naming, settings, audit) is inno-fleet-admin.
 ---
 
 # inno-manage-app
@@ -212,10 +212,12 @@ v0.16.14, call it with no arguments and read the sections needed from the
 whole contract. Quote the app's hostname from the `URL:` line of
 `app_status` or from `register_app`'s answer, rather than building it.
 
-**What admits a person.** An MCP app (`mcp-function`, `mcp-container`), and a
-browser app (`container`, `function`), admit a
-person when the member list holds them or the app is open to every SSO user,
-and ask at every request. A browser app's front door answers someone it
+**What admits a person** is the app's audience (`set_app_access`, below),
+on every type, MCP (`mcp-function`, `mcp-container`) and browser
+(`container`, `function`) alike, and the front door asks at every request:
+a members-only app admits a person the member list holds, an internal app
+everyone the identity provider signs in, and a public app anyone, with no
+sign-in. A browser app's front door answers someone it
 refuses with a plain 403 "No access" page that names no one, and shows a 503
 "Try again shortly" page when it cannot get an answer: that is an outage
 (the platform, or the sign-in keys it checks people against, could not be
@@ -291,9 +293,11 @@ must confirm.
   (it names the address to revoke next), and when MCP token revocation could
   not be verified (access still ends within the front door's introspection
   window, as the description says).
-- **An open app still admits them.** While the app is open to every SSO user,
-  its open flag admits a removed person, MCP and browser alike, until the app
-  is closed (`set_app_access`).
+- **A wider audience still admits them.** On an internal app they still
+  get in by signing in; on a public app anyone reaches it without signing
+  in. The member list decides only for a members-only app, so tell the
+  owner, and narrow the app (`set_app_access`) if the person must be kept
+  out.
 - **When the removal bites depends on the app type** (the description gives
   each window). An MCP app refuses them once the front door's introspection
   cache lets go of their token. A browser app refuses them once the front
@@ -316,7 +320,8 @@ must confirm.
 
 ## `app_status({ app })` / `get_app_metrics({ app, days?, hours? })`
 
-Read-only; each description says what it returns. For an **mcp-function** or
+Read-only; each description says what it returns. `app_status` names the
+app's audience and identity beside its type. For an **mcp-function** or
 **mcp-container** app, `app_status`'s URL is its **MCP endpoint**, the
 `.../mcp` address an MCP client uses. Reading `get_app_metrics`:
 
@@ -400,52 +405,147 @@ Its admin-only neighbor, `rebuild_app`, rebuilds an app's released code at
 its live tag (`inno-fleet-admin`). Owners never need it: they redeploy by
 tagging their own repo, which is `inno-ship`.
 
-## `set_app_access({ app, open })`: open to everyone, or members-only
+## `set_app_access({ app, audience, accept_guardrails? })`: who may reach the app
 
-Opens an app to **every SSO user, current and future** (`open: true`) or
-returns it to the named member list (`open: false`). Its description says when
-the change reaches people and what a close does to data links.
+An app's **audience** says who may reach it:
 
-- **Confirm before opening**: state plainly that EVERY SSO user will have
-  access, not just current members.
-- **The named member list is never modified**: closing always restores
-  exactly the configured access. Say so when confirming.
-- `open_access_disallowed`: an admin has restricted open access for this app
-  or owner (`access.allow_open`). A platform admin can change it with
-  `set_config`; do not try to work around it by mass `grant_access`.
-- `link_containment` (opening): this app **reads** another app's data through
-  a link and that source app is still closed; the message names each closed
-  source. Unlink with `unlink_app_data`, or open the named source app
-  deliberately first.
-- **Opening does not open the app's own code.** While an app is open, a person
-  who is not a member reaches it carrying only the app's open group (the
-  `(open)` name in the `App groups:` line, with the app's name in place of
-  `{app}`) in `X-Forwarded-Groups`. App code that admits only the members
-  group will refuse them, so check the app before promising that opening it
-  lets everyone in. What that header can and cannot carry has one home:
-  `inno-platform-conventions`' **Identity** section.
-- **Closing revokes data links the app no longer contains.** The result says
-  which links went and why, and what was done for each consumer (a
-  function-shaped one keeps its binding until it next deploys or the platform
-  rebuilds it); each consumer's owner is notified. Relay it. When it names a
-  consumer's member listed here for another account, the fix is the re-share
-  in `references/address-changes.md`. A link the close could not revoke stays
-  live and is named in the result with the `unlink_app_data` call that
-  removes it: relay that, and say that the hourly containment pass revokes it
-  within the hour if this app still does not contain that consumer, which
-  makes unlinking now optional.
-- **Data links across owners** (from platform v0.16.12). A data link joins
-  one owner's apps (`link_app_data` refuses any other pair), and the hourly
-  containment pass revokes a live link whose two apps no longer have one
-  owner (a sign-in pinned their owner rows to different accounts, or a
-  transfer step was lost). When the pass, a close,
-  `unlink_app_data` or a forced `transfer_app` revokes the link of a
-  function-shaped consumer another account owns, the platform rebuilds that
-  consumer to remove its binding, and the result or notice says what was done
-  (`set_app_access`'s description gives the whole rule, including a stopped
-  consumer and one never deployed). A platform admin can run `rebuild_app`
-  sooner. Relay it; the consumer's owner redeploys (`inno-ship`) only when the
-  answer says to.
+- **members-only**: the people on its member list (the owner and everyone
+  granted access). Every app starts here.
+- **internal**: everyone the identity provider signs in, members or not.
+- **public**: anyone on the internet, with no sign-in. Only an
+  **anonymous** app can be public: an app's identity is fixed at
+  registration, so a change of audience never changes what the app is told
+  about who calls.
+
+`app_status` and `list_apps` name each app's audience and identity. A change
+of audience never modifies the named member list, so narrowing back to
+members-only restores exactly the access configured: say so when confirming
+either way. The tool's description says when a change takes effect and what
+a narrowing does to data links.
+
+The panel narrows only. For a widening it names the audience the app would
+move to and tells the person to ask their assistant, so a user who tried to
+widen there lands here.
+
+### Widening: the review, one precheck, then the acceptance
+
+A widening is members-only to internal, or either to public. Every one needs
+the review below and a recorded guardrails acceptance: the platform records
+`accepted_guardrails` and `accepted_by` on the change's `access_changed`
+audit row, and an admin's acceptance stands in for the owner's.
+
+1. **Public needs an anonymous app.** Asked for an identity-aware app, the
+   tool answers `audience_needs_anonymous` alone, naming the two-app
+   pattern. Check the app's identity with `app_status` first. If the user
+   wants this app's content public, or a public site with an editing area,
+   read the `inno-new-app` skill's `references/two-app-pattern.md`: a new
+   anonymous app becomes the public site, and this app its editor.
+2. **Run the review**, and write it into your reply as a structured section,
+   never a one-line summary:
+   1. what the app stores: its schema and its files (for an app already in
+      use, offer `export_app_data` so the owner can read what is there);
+   2. what each new caller will see and can do: every page, query and tool
+      the wider audience reaches;
+   3. every Variable (`list_app_variables`) and the upstream it spends: a
+      key a wider audience can spend needs the limits `get_app_security` §5
+      sets;
+   4. its data links in both directions (`list_app_links`);
+   5. for internal: that what a signed-in non-member sees and can do is
+      meant for anyone in the institution, per the internal section of
+      `get_guardrails`;
+   6. for public: the **Public apps** section of `get_guardrails`, and that
+      what is published cannot be withdrawn from crawlers and caches, even
+      by a later narrowing;
+   7. what current users will notice.
+
+   A widening never changes the app's code. An internal app's non-members
+   arrive signed in and carry no group (the identity helper's `member` is
+   false), so app code that serves only members refuses them: check the
+   code before promising that widening lets everyone in. If the app changed
+   since `inno-safety-preflight` last ran, run it again for the target
+   audience.
+3. **One precheck call:** `set_app_access({ app, audience })`, with no
+   `accept_guardrails`. A widening call is also its complete precheck: every
+   requirement it does not meet comes back at once as one refusal,
+   `widening_requirements`, whose message lists each as `[code] sentence`,
+   in a fixed order. Read it entry by entry:
+   - `[audience_disallowed]`: the target's setting (`access.allow_internal`
+     or `access.allow_public`) does not allow it for this app or its owner.
+     Only a platform admin can change that, with `set_config`: offer to
+     draft the request. Never work around it with mass `grant_access`.
+   - `[link_containment]`: the app reads a source, through a live data link
+     or a revoked one whose binding is still deployed, that does not reach
+     as far as the target, so the wider audience would reach that source's
+     data and files. The sentence names each source and its remedy: widen
+     the source first (its own review), or unlink with `unlink_app_data` and
+     redeploy this app; for a revoked link, widen once a deploy of this app
+     made after the revocation has landed.
+   - `[owner_inactive]`: the owner's account can no longer sign in, so a
+     platform admin transfers the app to an active owner first.
+   - `[guardrails_not_accepted]`: no acceptance was passed. **When it is the
+     only entry**, every other requirement is met, and that is the cue for
+     the acceptance step. With any other entry beside it, fix what the other
+     entries name (or ask for it) and run the precheck again; never accept
+     past an unmet requirement.
+4. **The acceptance.** Show the user the review's conclusions and ask for an
+   explicit yes that the app follows the guardrails for its new audience.
+   Only then call `set_app_access({ app, audience, accept_guardrails: true })`.
+   Never pass `accept_guardrails: true` without the review and that yes.
+5. **Relay the answer.** It says the app was widened and when that takes
+   effect. A widening to **public** also tells the platform admins, and turns
+   unusual-usage detection (`anomaly.usage_enabled`) on for the app unless a
+   setting already decides it; the answer says which. Tell the owner both.
+
+`app_busy` on a widening can also mean a source the app reads is changing:
+retry once.
+
+### Narrowing
+
+A narrowing (to a smaller audience) is never gated: it needs no review and
+no acceptance. Confirm it with the user by name, then call
+`set_app_access({ app, audience })`. Say before the call what it does:
+
+- **What persists**: the named member list, the app's data and files, its
+  variables, and its own links to the sources it reads.
+- **Links it revokes**: this app's data link to every consumer it no longer
+  contains (one that reaches further than its new audience, or a
+  members-only one admitting someone this app's list does not hold). The
+  result says which links went and why, and each consumer's owner is told.
+  Relink afterwards only a consumer this app contains again
+  (`link_app_data`). When the result names a consumer's member listed here
+  for another account, the fix is the re-share in
+  `references/address-changes.md`. A link the narrowing could not revoke
+  stays live and is named in the result with the `unlink_app_data` call
+  that removes it: relay that, and say that the hourly containment pass
+  revokes it within the hour if this app still does not contain that
+  consumer, which makes unlinking now optional.
+- **A function consumer it cuts is narrowed and rebuilt with it.** A
+  function-shaped consumer (`function`, `mcp-function`) whose link a
+  narrowing revokes for reach is rebuilt by the platform, whoever owns it,
+  and, when it is wider than this app's new audience, narrowed to that
+  audience in the same step, so its wider audience loses this app's data
+  and files when this app's does. Its owner widens it again, with the whole
+  review and acceptance, once the rebuild (or a redeploy) of it has landed;
+  until then a widening of it past this app's audience is refused
+  `link_containment`. The result, and that owner's notice, say which.
+- **Published content is not withdrawn.** Narrowing a public app does not
+  take back what search indexes, archives and caches already hold.
+- **What people meet**: someone the app no longer admits is sent to sign in
+  or shown the "No access" page, and a page already open gets errors on its
+  background requests until it reloads.
+
+**Data links across owners** (from platform v0.16.12). A data link joins
+one owner's apps (`link_app_data` refuses any other pair), and the hourly
+containment pass revokes a live link whose two apps no longer have one
+owner (a sign-in pinned their owner rows to different accounts, or a
+transfer step was lost). When the pass, a narrowing,
+`unlink_app_data` or a forced `transfer_app` revokes the link of a
+function-shaped consumer another account owns, the platform rebuilds that
+consumer to remove its binding, and the result or notice says what was done
+(`set_app_access`'s description gives the whole rule, including a stopped
+consumer and one never deployed). A platform admin can run `rebuild_app`
+sooner. Relay it; the consumer's owner redeploys (`inno-ship`) only when the
+answer says to.
 
 ## Transferring an app: ask an admin
 
@@ -455,7 +555,11 @@ on people. When an app OWNER asks to transfer their app, do NOT call it for
 them. Tell them a platform admin must do it, and offer to draft the request,
 naming the app and the new owner. How an admin runs it is `inno-fleet-admin`.
 That includes an app whose owner's own address has passed to another person
-(`references/address-changes.md`).
+(`references/address-changes.md`). Two linked apps, such as the two-app
+pattern's site and editor, move together in one transfer (the admin names the
+second in `transfer_app`'s `also`, which keeps the link between them), so
+name both in the request. A public app's transfer needs the admin's
+guardrails acceptance after the review, and the app stays public.
 
 ## `get_app_usage({ app, days? })`: meters and estimated cost
 
@@ -606,8 +710,15 @@ Stages worth acting on when one appears: `respin_failed`, `auto_restarted`,
 `usage_anomaly`, `quota_horizon`, `connection_expired`, `unlinked` /
 `relinked`, `transferred`, `access_changed`, `shared`, `exported`,
 `member_reassigned`, `cross_owner_link_revoked`, `host_upload_blocked`.
-What to do on four of them:
+What to do on five of them:
 
+- `access_changed`: the app's audience changed, and the entry says who
+  changed it and why. Someone other than the owner widened or narrowed it,
+  the hourly pass narrowed it (its setting no longer allows the audience,
+  or, for a public app, its owner can no longer sign in), or a source it
+  reads was narrowed and narrowed it too: then the entry says the platform
+  rebuilds it, and the owner widens it again, with the review, once that
+  rebuild has landed (**Narrowing**, above).
 - `member_reassigned`: an address with access now signs in as a different
   account than the one its access is pinned to. The entry names the address
   and the re-share: `references/address-changes.md`.
@@ -710,6 +821,6 @@ the rules.
 If the user doesn't remember an app's exact name, call the read-only
 `list_apps` tool first. It lists the apps the caller owns, or every app on the
 platform when the caller is an admin. Each row carries the name, status, type
-label, owner, and address, plus the GitHub repo backing it and an `[UNLINKED]`
+label, audience and identity, owner, and address, plus the GitHub repo backing it and an `[UNLINKED]`
 flag when the platform's GitHub App is no longer installed on that repo (the
 remedy is `start_app`'s `app_unlinked` above).

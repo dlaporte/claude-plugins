@@ -100,6 +100,26 @@ browser apps itself and every app's sign-out link is `/_auth/signout`; the
 platform asks for at least 3.0.0 when the instance's admins raise
 `plugin.min_version`, as the v0.17.0 release asks.
 
+Plugin 4.0.0 follows platform v0.17.2 and contract 35, which give every app
+two properties: its **audience** (who may reach it: members-only, internal,
+which is everyone who signs in and was called open before, or public, anyone
+on the internet with no sign-in), changed at any time and widened only
+through the plugin's review and a recorded guardrails acceptance; and its
+**identity** (identity-aware or anonymous, whether the app is told who calls),
+chosen at registration and fixed. Only an anonymous app can be public. Three
+tools take new input (`set_app_access` takes `audience` and
+`accept_guardrails` in place of `open`, `register_app` takes `identity`,
+`transfer_app` takes `also` and `accept_guardrails`), and `app_status` and
+`get_platform_status` answer in a new shape, so reconnect after that upgrade
+too. Every skill learned the two properties: the identity question and the
+two-app pattern for a public site at design time, the widening review and
+the narrowing note, the contract's new R10 for anonymous apps with its
+cookie rule, the uploaded-file rule, the review of an app for every audience
+it can take, and, for admins, allowing public apps, narrowing one in an
+emergency and moving a linked pair together. The platform asks for at least
+4.0.0 once the instance's admins raise `plugin.min_version`, as the v0.17.2
+release asks.
+
 ### House style
 
 Every skill in this plugin speaks to a broad, largely non-technical userbase,
@@ -155,7 +175,8 @@ produce is a Dockerfile and app code rather than sentences a user reads.
   nothing.
 - **`skills/inno-ship`**: push, wait for the safety checks, cut the `v*` release
   tag that deploys, and report the live URL.
-- **`skills/inno-manage-app`**: grant/revoke access, check status and metrics,
+- **`skills/inno-manage-app`**: grant/revoke access, widen an app's audience
+  through its review or narrow it, check status and metrics,
   stop, start, or restart an app, read its logs and notifications, set its
   environment variables / API keys, and build support bundles
   (`create_support_bundle`'s description gives the cap). Idle apps are
@@ -204,7 +225,7 @@ README owns House style.
 What the platform serves, the skills fetch rather than copy. The
 application contract comes from `get_app_contract`: with no arguments it
 serves the whole current contract, with `sections` only the numbered
-sections named (for example `["2"]` for the requirements R1 to R9, or
+sections named (for example `["2"]` for the requirements R1 to R10, or
 `["2.2"]` for Connections), and with `history: true` the contract's version
 notes alone, newest first. A contract or section answer opens with the
 contract version and the current base images, so a narrow read never loses

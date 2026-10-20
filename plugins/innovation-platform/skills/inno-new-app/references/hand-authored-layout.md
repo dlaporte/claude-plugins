@@ -29,4 +29,14 @@ app carrying the function headers passes and the reverse passes as well.
 five and the two variant groups. Copy your own type's version anyway, so the
 body describes the runtime this app actually has.
 
+**An anonymous app** (registered with `identity: "anonymous"`): after the
+type's files, copy `scaffold/anonymous/<type>/CLAUDE.md` from the template
+repo over the `CLAUDE.md` you just copied, as the platform's scaffold commit
+does for a template-derived repo. It carries the same five headers, and its
+Identity section is this app's rule: no identity header read, no sign-out
+link, the contract's R10, its cookie rule and the uploaded-file rule. A
+template with no `scaffold/anonymous/` predates anonymous apps: tell the
+user, and write the app to R10 (`get_app_contract` with `sections: ["2"]`)
+and `inno-platform-conventions`' **An anonymous app: R10**.
+
 Then go back to `inno-new-app` §4 and scaffold by the deployment type.

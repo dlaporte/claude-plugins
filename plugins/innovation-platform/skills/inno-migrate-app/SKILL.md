@@ -51,7 +51,7 @@ call triggers an Okta browser login: expected, not an error.
 **Fetch the contract first: it IS the assessment checklist.** Call the
 `get_app_contract` MCP tool with
 `sections: ["1", "1.1", "1.2", "1.3", "2", "3", "4", "4.1", "5"]`: the types
-and their deltas, the requirements R1 to R9, the recommendations, the stack
+and their deltas, the requirements R1 to R10, the recommendations, the stack
 policy, the base images,
 and the deployment patterns with what the platform does NOT support
 (background jobs, machine-to-machine APIs, guaranteed long-lived
@@ -84,7 +84,7 @@ order:
    gate checks the language or framework. Keeping the existing stack
    (TypeScript/Express, Go, Ruby, Python, whatever) is usually the right call
    and the default bias. Present:
-   - **Can the current stack meet R1 to R9?** Most stacks can, as-is; where
+   - **Can the current stack meet R1 to R10?** Most stacks can, as-is; where
      one fails, it is at the container gate or the security gates (R8).
    - **Deployment type**: default **`container`** (keeps any stack). Only raise
      **`function`** when the source is already JS/TS and reimplementing it as a
@@ -118,9 +118,10 @@ order:
    provider ID, never the email address, which can change for one person
    and pass to another; rows the app already keys on an address may be
    re-keyed once, as contract §3 says):
-   `X-Forwarded-Groups` carries only this app's two groups (the names in the
-   `App groups:` line of the status you read in the Version gate, with the
-   app's name in place of `{app}`), never the repo's existing role groups,
+   `X-Forwarded-Groups` carries only this app's members group, and only for
+   a member (the name in the `App groups:` line of the status you read in
+   the Version gate, with the app's name in place of `{app}`), never the
+   repo's existing role groups,
    so existing role checks cannot move onto that header. The full header rule is
    `inno-platform-conventions`' **Identity** section. This is about the
    app's *own* sign-in for its users. A separate thing to look for is auth to a
@@ -220,6 +221,25 @@ order:
    labeled form controls, visible focus, controls built from `<div>`s, and
    any response headers `get_app_security` §9 lists that the app does not
    send.
+9. **Identity, and who the app is for.** Ask the user the identity question
+   in these words: **"does the app need to know who each caller is?"** Yes
+   is `identity-aware`, the default, and the answer for most migrated apps,
+   since they had a sign-in of their own. No is `anonymous`: the app is
+   never told who the caller is, at any audience, takes no Connections,
+   follows the contract's R10 (no accounts, no per-person views, and what a
+   visitor submits is stored and never rendered), and is the only kind of
+   app that can be made public. Identity is fixed at registration, like the
+   type. Then ask who should reach the app in the end. It starts
+   members-only; internal (everyone who signs in) or public (anyone on the
+   internet) comes later, through `inno-manage-app`'s widening review.
+   **A public site's new address is the main cost to name.** An app that is
+   public today (anyone reaches it without signing in) can be public here
+   only as an anonymous app, at the platform's address for its name, so its
+   address changes: every link, bookmark and search result that points at
+   the old address breaks unless the old host redirects to the new one.
+   And an app with a signed-in part as well (an editing area, an admin
+   view, submissions staff read) becomes two apps: read the `inno-new-app`
+   skill's `references/two-app-pattern.md` and plan both.
 
 Run a **guardrails** review too: call `get_guardrails` and judge the app's name,
 purpose, and behavior against it. A conflict is a HARD STOP: you must not pass
@@ -237,6 +257,9 @@ is a defect, not a shortcut: the user cannot approve what they have not seen.
 The written plan covers, at minimum, each assessment product above:
 
 - **Deployment type** and why (and the Connection constraint if it applied)
+- **Identity and audience** (item 9): identity-aware or anonymous, the
+  audience it is meant to be widened to later, and, for a public site, its
+  new address and any split into two apps
 - **Auth being stripped**: the specific files/routes removed, and what
   replaces them (the front door's identity headers; a Connection, if
   flagged in step 2)
@@ -260,8 +283,9 @@ The written plan covers, at minimum, each assessment product above:
 Only after that plan is in your reply: **stop and get explicit user approval**
 (of the plan *and* the name) before Phase 2. Ask the approval question in
 your own words referencing the plan the user can now read; put genuinely
-separate decisions (name choice, read-only default, members) in their own
-questions rather than folding them into the approval. If a blocker means the
+separate decisions (name choice, identity, read-only default, members) in
+their own questions rather than folding them into the approval. If a blocker
+means the
 app cannot function on the platform at all, say so plainly and stop here.
 
 ## Phase 2: Register and adapt in place (only after approval)
@@ -275,13 +299,19 @@ and merge to the default branch once it's ready. Tell the user where the
 restore point is.
 
 1. **Register the repo (two calls, with a proof file between them).** Call
-   `register_app({ app, repo, description, type, members, accept_guardrails: true, connections })`
+   `register_app({ app, repo, description, type, identity, members, accept_guardrails: true, connections })`
    with the app name from Phase 1 in `app` (the wire parameter is `app`, not
    `name`) and the user's existing `owner/repo` slug in `repo` (a **slug, not a
-   URL**). Those two are the only two the schema requires. Pass `connections`
+   URL**). Those two are the only two the schema requires. Pass
+   `identity: "anonymous"` when item 9 chose it, and omit it otherwise: the
+   call that creates the app (call 2) fixes its identity, a call that
+   resumes or repeats a registration keeps the identity the app has, and
+   call 2's answer names it on its `Identity:` line, so pass the same `type`
+   and `identity` both times and check that line. Pass `connections`
    only if step 2's assessment found per-user backend auth to replace: a list of
    the names you plan to set up. It creates nothing (only `set_app_connection`
-   can); the response echoes it back as a reminder to configure each one. The
+   can); the response echoes it back as a reminder to configure each one. An
+   anonymous app takes none (`app_anonymous`). The
    repo already exists, so ignore the response's "create it first from the
    platform template" note.
 
@@ -311,7 +341,8 @@ restore point is.
    `name_quarantined`, `repo_already_registered`, `repo_owner_claimed`,
    `repo_identity_changed`, `app_limit_reached`, `repo_mismatch`,
    `guardrails_not_accepted`, `email_domain_not_allowed`, `host_in_use`,
-   …), including what happens to each address in `members`.
+   `app_anonymous`, …), including what happens to each address in
+   `members`.
 2. **Add the caller workflow.** Write `.github/workflows/deploy.yml` exactly as
    `register_app` returned it. If the repo already has a `deploy.yml`, never
    overwrite it silently: rename or retire it only as the approved plan says,
@@ -357,6 +388,12 @@ restore point is.
      (`X-Real-IP`, `True-Client-IP` and `X-Forwarded-Port` among them)
      stays caller-controlled and must never feed identity, origin or access
      decisions.
+   - **An anonymous app** (item 9) reads no identity at all: it deletes the
+     auth and every account, per-person view and per-person key or limit
+     with it (R10), reads no `X-Forwarded-*` identity header (they arrive
+     present and empty on every request), and shows no sign-out link. Its
+     cookies follow R10's cookie rule (`inno-platform-conventions`'
+     **Identity** section).
    - **Persistence rewired** to the storage endpoints (container) or the app's
      `env.DATA`/`env.FILES` bindings (function).
    - **Dependencies** pinned in the stack's manifest under `app/`, CVE-clean.
@@ -371,7 +408,13 @@ restore point is.
      actual runtime.
    - A root **`CLAUDE.md`** carrying the required section headers (copy
      the `CLAUDE.md` of the template repo, the `Template repo:` line, and rewrite the body to describe this app's real
-     stack; only the headers are gate-checked).
+     stack; only the headers are gate-checked). **For an anonymous app**,
+     copy `scaffold/anonymous/<type>/CLAUDE.md` from the template repo
+     instead and keep its Identity section's rules as they are (R10, the
+     cookie rule, the uploaded-file rule, where the anonymous promise ends),
+     rewriting only the rest of the body: the platform lays that guide over
+     a template copy at registration, never over a migrated repo, which
+     carries no `scaffold/`, as `inno-new-app`'s hand-laid case says.
    - **Remove or move every forbidden path** flagged in Phase 1, working from
      the list in `inno-platform-conventions`' **Files you must not touch**
      section. Move code out of a repo-root `src/` (for example to `app/src/`,
