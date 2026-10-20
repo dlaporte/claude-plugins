@@ -29,10 +29,15 @@ the import changes the admin list (an import row carries `detail.source`
 ## Audiences (from platform v0.17.2)
 
 Migration 0061 renamed the access family in place, so the log reads in the
-audience words throughout, earlier rows included: `access_opened` and
+audience words, earlier rows included: `access_opened` and
 `access_closed` are now `access_changed`, `access_close_failed` is
 `access_change_failed`, and every other row below that named `open` names
-the audience.
+the audience. Two kinds of row keep older words: the rows the release
+before v0.17.2 wrote between migration 0061 and the deploy keep that
+release's names until migration 0062 (platform v0.17.3) rewrites them, and
+an access row whose detail had been cut down to a string reads
+`reason: "requested"` whatever its reason was, its earlier keys still
+inside the cut-down `detail`.
 
 - `access_changed`: an app's audience changed, with `from` and `to`
   (`members-only`, `internal` or `public`) and a `reason`: `requested` (the

@@ -13,8 +13,9 @@ people in and decides who reaches each app: a **container** (any stack, a
 Dockerfile, and the type `register_app` defaults to when none is given), a
 **function** (its own Cloudflare Worker, JS/TS), an **mcp-function** app (an
 MCP server in its own Cloudflare Worker, reached with an OAuth token the
-platform issues), or an **mcp-container** app (an MCP server in a Docker
-container, any language, reached the same way). The type is chosen at
+platform issues unless the app is public), or an **mcp-container** app (an
+MCP server in a Docker container, any language, reached the same way). The
+type is chosen at
 `register_app`.
 
 **Repos are user-owned.** An app is created by **registering a GitHub repo you
@@ -114,9 +115,12 @@ tools take new input (`set_app_access` takes `audience` and
 too. Every skill learned the two properties: the identity question and the
 two-app pattern for a public site at design time, the widening review and
 the narrowing note, the contract's new R10 for anonymous apps with its
-cookie rule, the uploaded-file rule, the review of an app for every audience
-it can take, and, for admins, allowing public apps, narrowing one in an
-emergency and moving a linked pair together. The platform asks for at least
+cookie rule, the uploaded-file rule, the front door's refusal of any request
+from another page that is not a top-level GET navigation (so apps never
+frame, include or call each other from the browser, and a data link is the
+path between apps), the review of an app for every audience it can take,
+and, for admins, allowing public apps, narrowing one in an emergency and
+moving a linked pair together. The platform asks for at least
 4.0.0 once the instance's admins raise `plugin.min_version`, as the v0.17.2
 release asks.
 
@@ -167,7 +171,8 @@ produce is a Dockerfile and app code rather than sentences a user reads.
   discovers how the backend signs people in, provisions a Connection with
   `set_app_connection` (a pasted token, the backend's own login, or a
   per-user client ID/secret pair), and wires
-  the app to consume it. **`mcp-container`** apps only in v1.
+  the app to consume it. Identity-aware **`mcp-container`** apps only in
+  v1.
 - **`skills/inno-safety-preflight`**: run the CI security gates, plus a
   guardrails, application-contract, `get_app_security` (app-code
   authorization/IDOR) and `get_app_accessibility` (advisory) review, by

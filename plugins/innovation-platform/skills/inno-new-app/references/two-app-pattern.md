@@ -39,8 +39,10 @@ the editor must be on the site's list.
    the editor.
 2. Grant the editor's members on the site (`grant_access`), so the link
    below is contained. That is fine for an anonymous source, whose content
-   is meant for anyone, and the platform's guardrails say so in one
-   sentence (`get_guardrails`), so their data rule is not read against it.
+   is meant for anyone, and the guardrails' **Data handling** section says
+   so in one sentence of its cross-app data links bullet (`get_guardrails`),
+   so that bullet's rule against widening a source's membership to satisfy
+   the check is not read against it.
 3. Link: `link_app_data` with the editor as `consumer` and the site as
    `source`, then deploy the editor (a link takes effect on the consumer's
    next deploy).

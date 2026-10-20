@@ -88,9 +88,10 @@ sentence in this flow.
    invalid, ask the user for a different one; a name it refuses as unusable is
    echoed back inside `«»` guillemets, which fence it as untrusted text rather
    than marking it as quoted by the user. If it says the name **was
-   recently purged and is held until** a UTC time, nobody, admins included,
-   can register it before then: offer a different name or wait. If it's the
-   caller's *own* existing app, tell them that (a stopped app is brought back
+   recently purged and is held until** a UTC time, or that it is held until
+   an app that read the purged app's data has been rebuilt, nobody, admins
+   included, can register it before then: offer a different name or wait.
+   If it's the caller's *own* existing app, tell them that (a stopped app is brought back
    with `start_app`, not by re-registering it). `list_apps` cannot prove a
    name is free, since an ordinary user sees only their own apps there: use
    `check_name`.
@@ -555,8 +556,10 @@ app, and binds the repo. It returns text beginning
   at call 2 even after the setup page said verified, because call 2 re-checks
   the file right before provisioning, so never delete it early.
 - **`name_quarantined`**: the name is held after a purge until the UTC time
-  the message names, with no admin bypass: pick another name (check it with
-  `check_name`), or wait until that time.
+  the message names, and past it while a `function` or `mcp-function` app
+  that read the purged app's data has not been rebuilt (the message says
+  so), with no admin bypass: pick another name (check it with
+  `check_name`), or wait until the hold ends.
 - **`repo_unreachable`**: have the user reinstall the App on the repo, then
   call again.
 - **`repo_identity_changed`**: confirm the repo's current `owner/repo` slug

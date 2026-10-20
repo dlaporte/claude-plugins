@@ -110,14 +110,15 @@ have the whole repo in front of you; this is judgment, not grep.
 today**, since a widening changes no code (`app_status` names its audience
 and identity). An identity-aware app can be widened to internal, so review
 what anyone who signs in, member or not, would see and could do, against
-the guardrails' internal section. An anonymous app can be widened to
-public, so review it as public, whatever its audience now: what anyone on
-the internet would see and could do, against the guardrails' **Public
+the guardrails' **Internal apps** section. An anonymous app can be widened
+to public, so review it as public, whatever its audience now: what anyone
+on the internet would see and could do, against the guardrails' **Public
 apps** section (only content meant for anyone; nothing institutional,
 personal or confidential; nothing that proxies institutional systems or
-other apps to anonymous callers; and what is published cannot be
-withdrawn). A violation at the app's current audience is the hard stop
-below. One that holds only at a wider audience does not stop this release:
+other apps to anonymous callers; what visitors submit stays unpublished;
+and what is published cannot be withdrawn). A violation at the app's
+current audience is the hard stop below. One that holds only at a wider
+audience does not stop this release:
 report it, name the audience it needs, and say it bars that widening until
 it is fixed (`inno-manage-app`'s widening review runs the same reading
 again).
@@ -145,9 +146,9 @@ front door's headers, no home-grown auth, the app's own cookies host-only
 with no `Domain` attribute, no `Clear-Site-Data`, and nothing routed under
 `/_auth/`), the cookie rule for every app (each cookie the app sets
 carries the `__Host-` prefix and is `HttpOnly` unless the app's own script
-must read it; R10 states it, and `get_app_security` §9 and §12 hold every
-app to it), R10 itself for an anonymous app (it reads no identity
-header, has no accounts, per-person views or keys or limits taken from a
+must read it; R10 states it for every app's cookies, an identity-aware
+app's included, and `get_app_security` §9 states it too), R10 itself for
+an anonymous app (it reads no identity header, has no accounts, per-person views or keys or limits taken from a
 person, and stores what a visitor submits without ever rendering it), R4
 (if the app shows a user, a plain link to `/_auth/signout`
 wherever it does; not applicable to `mcp-function` and `mcp-container`

@@ -314,9 +314,12 @@ What to do with its refusals and answers:
   function-shaped one again a day later, and a redeploy by hand (its owner's
   tag, or `rebuild_app`) cuts it sooner. Tell the admin and that app's owner.
 - `link_containment`: `force` does not override it. Grant the recipient
-  access to the named source app first, or unlink and redeploy the consumer,
-  then transfer. From platform v0.16.12 the source must hold the same person
-  as the recipient (the same account when both rows are pinned, else the same
+  access to the named source app first, move the source with the app in
+  `also` (from platform v0.17.2, when that source shares the link with `app`
+  itself), or unlink and redeploy the consumer, then transfer. A source
+  that is internal or public holds everyone who signs in, so only a
+  members-only source refuses. From platform v0.16.12 the source must hold
+  the same person as the recipient (the same account when both rows are pinned, else the same
   address), and on a transfer to the owner's own address, a source owned
   under that address by another account is named to re-point first, with
   `transfer_app` to the same address on that source.
@@ -526,12 +529,20 @@ public.
   is notified. Its description says when it takes effect and what it does
   to data links. It does not withdraw what crawlers, archives and caches
   already hold.
-- **A public app being abused** (abuse reports, spam, a usage jump): narrow
-  it at once with `set_app_access`, then purge it (`purge_app`) or transfer
-  it to an accountable owner. Every app shares the platform's one domain,
-  so one public app's abuse reaches the domain's reputation for all of
-  them. The operator guide's abuse runbook (`docs/OPERATIONS.md` in the
-  platform's repository; no tool serves it) has the rest.
+- **A public app being abused** (phishing, malware, spam, content that
+  breaks the guardrails' **Public apps** section, or a `usage_anomaly`
+  jump): narrow it at once with `set_app_access` to `members-only`. To keep
+  its owner from widening it again while you look, set `access.allow_public`
+  false for the app at app scope with `set_config` (an app-scope value
+  decides over the owner's and the platform's), and `access.allow_internal`
+  false there too to hold it members-only; if it must stop serving its
+  members as well, `stop_app`. Then purge it (`purge_app`) or transfer it to
+  an accountable owner. Every app shares the platform's one domain, so one
+  public app's abuse reaches the domain's reputation for all of them, and
+  nothing withdraws what it published. The operator guide's "5.6.4 The
+  abuse runbook for a public app" (`docs/OPERATIONS.md` in the platform's
+  repository; no tool serves it) has the rest, where to start forensics
+  included.
 
 ## Settings: `get_config`, `set_config`, `remove_config`
 

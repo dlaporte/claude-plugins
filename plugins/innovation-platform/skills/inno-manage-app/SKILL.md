@@ -193,7 +193,9 @@ the purge date from the response.
 There is no un-purge: once the window lapses (or an admin purges
 deliberately), only the repo and history remain. The name is then held:
 `check_name` reports it unavailable with the date it frees up, and
-`register_app` refuses it with `name_quarantined` until then. No admin can
+`register_app` refuses it with `name_quarantined` until then. Past that
+date the name stays held while a `function` or `mcp-function` app that read
+the purged app's data has not been rebuilt, and both say so. No admin can
 lift the hold, so do not suggest asking one. After the hold a fresh
 registration (`register_app`, see `inno-new-app`) can take the name again.
 Purge also releases the repo binding, so the same repo can be registered again
@@ -214,10 +216,11 @@ whole contract. Quote the app's hostname from the `URL:` line of
 
 **What admits a person** is the app's audience (`set_app_access`, below),
 on every type, MCP (`mcp-function`, `mcp-container`) and browser
-(`container`, `function`) alike, and the front door asks at every request:
-a members-only app admits a person the member list holds, an internal app
-everyone the identity provider signs in, and a public app anyone, with no
-sign-in. A browser app's front door answers someone it
+(`container`, `function`) alike: a members-only app admits a person the
+member list holds and an internal app everyone the identity provider signs
+in, the front door asking the platform at every request, and a public app
+admits anyone, with no sign-in and no question to the platform. A browser
+app's front door answers someone it
 refuses with a plain 403 "No access" page that names no one, and shows a 503
 "Try again shortly" page when it cannot get an answer: that is an outage
 (the platform, or the sign-in keys it checks people against, could not be
@@ -230,8 +233,11 @@ the panel, in every browser) is `get_platform_docs`' **Signing in and out:
 what people see**: quote it rather than describing it from memory. Two cases
 come up: a "Sign-in not confirmed" page, whose way out is the identity
 provider's sign-out that the page links, after which the next sign-in
-authenticates afresh; and an app opened inside another page's frame, which
-cannot start a sign-in there, so the person opens the app in its own tab.
+authenticates afresh; and an app shown inside a frame, which cannot start a
+sign-in there: framed by its own page, it shows a "Sign in" page whose link
+opens the app in the whole window, and framed by any other page, a
+members-only or internal app is refused (the browser shows its
+blocked-frame placeholder), since apps never frame each other (contract R3).
 
 **When someone was signed out without asking** (from platform v0.17.0).
 Signing out anywhere, on the panel or on any app, ends every session that
@@ -299,8 +305,9 @@ must confirm.
   owner, and narrow the app (`set_app_access`) if the person must be kept
   out.
 - **When the removal bites depends on the app type** (the description gives
-  each window). An MCP app refuses them once the front door's introspection
-  cache lets go of their token. A browser app refuses them once the front
+  each window). On a members-only app, an MCP app refuses them once the
+  front door's introspection cache lets go of their token, and a browser
+  app refuses them once the front
   door's held answer runs out; their sign-in session runs on, but it no
   longer gets them in.
 - **The revoke cascades** to every app that reads this app's data through a
@@ -451,8 +458,8 @@ audit row, and an admin's acceptance stands in for the owner's.
       sets;
    4. its data links in both directions (`list_app_links`);
    5. for internal: that what a signed-in non-member sees and can do is
-      meant for anyone in the institution, per the internal section of
-      `get_guardrails`;
+      meant for anyone in the institution, per the **Internal apps**
+      section of `get_guardrails`;
    6. for public: the **Public apps** section of `get_guardrails`, and that
       what is published cannot be withdrawn from crawlers and caches, even
       by a later narrowing;

@@ -430,8 +430,10 @@ that template has no such helper either, read an empty or missing
   included, gets a `401` rather than the sign-in redirect, so a background
   request (a `fetch`) that meets a `401` reloads the page to sign in again,
   and a form posted then loses what it carried; and a sign-in never starts
-  inside a frame, so an app shown in
-  another page's frame is opened in its own tab to sign in. What people see
+  inside a frame, so a page of the app framed by the app's own page, with
+  no session, shows a "Sign in" page whose link opens the app's root
+  address in the whole window (another page's frame of the app is refused:
+  **No browser calls or frames between apps**, below). What people see
   is the platform docs' **Signing in and out: what people see**
   (`get_platform_docs`).
 
@@ -455,10 +457,11 @@ strips a `Clear-Site-Data` header. So keep your cookies host-only (no
 
 **Every cookie your app sets** carries the `__Host-` prefix (so `Secure`,
 `Path=/` and no `Domain`) and is `HttpOnly` unless the app's own script
-must read it. Every app shares one site, public apps included, and a page
-on another app's host can shadow any other cookie. This is R10's cookie
-rule, and `get_app_security` §9 and §12 hold every app to it, an
-identity-aware one included.
+must read it: every app shares one site, and a page on another app's host,
+a public one included, can shadow any other cookie with one of its own.
+This is R10's cookie rule, its paragraph **Every app's own cookies**, which
+binds every app's cookies, an identity-aware app's included (R3 says so
+too); `get_app_security` §9 states the same rule.
 
 **WebSockets and event streams** (R3). The front door refuses a WebSocket
 upgrade from another origin's page, a sibling app's included, so your app
@@ -485,18 +488,25 @@ session: it never identifies anyone.
 
 ### An anonymous app: R10
 
-An app registered `anonymous` is never told who the caller is, at any
-audience: the four identity headers arrive present and empty on every
-request, and no `X-Caller-Assertion` arrives. It reads none of them, keys
-nothing on them, and shows no sign-out link (it never shows who is signed
-in, so R4 asks for none). The contract's rule for it, R10
-(`get_app_contract` with `sections: ["2"]`, the authoritative text), reads:
+The contract's rule for an app registered `anonymous`, R10
+(`get_app_contract` with `sections: ["2"]`, the authoritative text), opens:
 
-> No accounts, no per-person views, no keys or limits taken from a person.
-> What a visitor submits is stored and never rendered. Per-visitor state (a
-> cart, a multi-step form, a vote already cast) lives in the app's own
-> cookie or under a random cookie key, is never an identity, and follows
-> APP-SECURITY's forged-request rules. The app may be public.
+> **R10: An anonymous app keeps nothing per person.** An app registered with
+> `identity: "anonymous"` is never told who its caller is, at any audience
+> (R3): the four identity headers arrive present and empty on every request,
+> and no `X-Caller-Assertion` arrives, so it has no Connections (§2.2). Only an
+> anonymous app can be public. No accounts, no per-person views, no keys or
+> limits taken from a person. What a visitor submits is stored and never
+> rendered. Per-visitor state (a cart, a multi-step form, a vote already cast)
+> lives in the app's own cookie or under a random cookie key, is never an
+> identity, and follows APP-SECURITY's forged-request rules. The app may be
+> public.
+
+So the app reads none of the identity headers, keys nothing on them, and
+shows no sign-out link (it never shows who is signed in, so R4 asks for
+none). R10 goes on to every app's cookies (above), where the promise ends
+(below) and a site with a signed-in part, which is two apps (the
+`inno-new-app` skill's `references/two-app-pattern.md`).
 
 - **Per-visitor state** takes the cookie rule above (`__Host-`, `HttpOnly`
   unless the app's own script reads it), and a state change is accepted
@@ -505,17 +515,16 @@ in, so R4 asks for none). The contract's rule for it, R10
   them (an identity-aware editor, the two-app pattern's) protects them in
   its own code, and serves any uploaded file as **Files someone uploaded**
   (under **Rendering**) says.
-- **Where the promise ends.** The platform does not tell the app who the
-  caller is, and it does not make visits unlinkable against an owner who
-  tries: the app still sees each caller's address (`X-Forwarded-For` and
-  `CF-Connecting-IP`) and the timing of each request, small counts can
-  single a person out, a request to start the app while it is stopped
-  tells the owner who asked, and an identity-aware app of the same owner
-  can link a visit to a person.
-  While the app is members-only or internal, the platform itself still
-  knows who signed in to reach it (its admins, its audit log and its logs),
-  though the owner's panel shows sign-in counts, not people. Say so plainly
-  to an owner who promises anonymity.
+- **Where the promise ends** (R10). While the app is members-only or
+  internal, people still sign in to reach it, and the platform knows who
+  did (its admins and its audit log), though the owner's panel shows
+  sign-in counts, not people; a public app's visitors never sign in. The
+  platform does not tell the app who the caller is, and it does not make
+  visits unlinkable against an owner who tries: the app still sees each
+  caller's address (`X-Forwarded-For` and `CF-Connecting-IP`) and the
+  timing of each request, small counts can single a person out, and an
+  identity-aware app of the same owner on the site can link a visit to a
+  person. Say so plainly to an owner who promises anonymity.
 - **No Connections**: there is no user to hold one (**Per-user backend
   access**, below).
 
