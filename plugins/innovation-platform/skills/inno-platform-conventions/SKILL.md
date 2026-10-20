@@ -466,6 +466,14 @@ need not check `Origin` itself, and no endpoint may rely on another
 origin's pages opening it. On a members-only or internal browser app an open WebSocket or event stream ends
 when the person's session does: design for reconnect-and-catch-up (§5).
 
+**No browser calls or frames between apps** (R3). On a members-only or
+internal app the front door refuses every request from another app's page
+that is not a plain link (a top-level GET navigation), so never have one
+app's page frame, include or call another app (a frame, a script, a
+stylesheet, an image, a `fetch`, a form post), and when an app needs another
+app's data, read it through a data link (`link_app_data`, contract §2.1), on
+the server.
+
 **Never implement login pages, sessions for signing people in, password
 storage, or an "auth disabled" dev path**: the front door strips inbound
 copies of the headers it owns before injecting its own values, so there is
