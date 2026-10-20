@@ -484,11 +484,19 @@ audit row, and an admin's acceptance stands in for the owner's.
      platform admin transfers the app to an active owner first.
    - `[guardrails_not_accepted]`: no acceptance was passed. **When it is the
      only entry**, every other requirement is met, and that is the cue for
-     the acceptance step. With any other entry beside it, fix what the other
-     entries name (or ask for it) and run the precheck again; never accept
-     past an unmet requirement.
-4. **The acceptance.** Show the user the review's conclusions and ask for an
-   explicit yes that the app follows the guardrails for its new audience.
+     the acceptance step, since the review has already run (step 2). With
+     any other entry beside it, fix what the other entries name (or ask for
+     it) and run the precheck again; never accept past an unmet requirement.
+4. **The acceptance.** A guardrails conflict the review found for the new
+   audience is a HARD STOP: it bars this widening, as
+   `inno-safety-preflight` says. Name the guardrail line the app conflicts
+   with for that audience, and the ways forward: change the app and run the
+   review again, keep the narrower audience it has, or ask a platform admin
+   for an explicit exception (you cannot grant one). Do not ask for the
+   acceptance or pass `accept_guardrails: true` until the app is changed or
+   that exception is granted. With no conflict, show the user the review's
+   conclusions and ask for an explicit yes that the app follows the
+   guardrails for its new audience.
    Only then call `set_app_access({ app, audience, accept_guardrails: true })`.
    Never pass `accept_guardrails: true` without the review and that yes.
 5. **Relay the answer.** It says the app was widened and when that takes
@@ -521,13 +529,15 @@ no acceptance. Confirm it with the user by name, then call
   consumer, which makes unlinking now optional.
 - **A function consumer it cuts is narrowed and rebuilt with it.** A
   function-shaped consumer (`function`, `mcp-function`) whose link a
-  narrowing revokes for reach is rebuilt by the platform, whoever owns it,
-  and, when it is wider than this app's new audience, narrowed to that
-  audience in the same step, so its wider audience loses this app's data
-  and files when this app's does. Its owner widens it again, with the whole
-  review and acceptance, once the rebuild (or a redeploy) of it has landed;
-  until then a widening of it past this app's audience is refused
-  `link_containment`. The result, and that owner's notice, say which.
+  narrowing revokes for reach is rebuilt by the platform, whoever owns it.
+  In the same step, every function-shaped consumer wider than this app's
+  new audience is narrowed to that audience, whether its link to this app
+  goes now or went earlier with its binding still deployed, so its wider
+  audience loses this app's data and files when this app's does. Its owner
+  widens it again, with the whole review and acceptance, once the rebuild
+  (or a redeploy) of it has landed; until then a widening of it past this
+  app's audience is refused `link_containment`. The result, and that
+  owner's notice, say which.
 - **Published content is not withdrawn.** Narrowing a public app does not
   take back what search indexes, archives and caches already hold.
 - **What people meet**: someone the app no longer admits is sent to sign in

@@ -221,7 +221,13 @@ and who keeps what, and which data links (if any) it will break.
   a set, after the review of what the public app reaches (`inno-manage-app`'s
   widening review, read for public); without it the call is refused
   `guardrails_not_accepted`. Run the review with the admin, get their
-  explicit yes, then pass it; never pass it on your own. The platform
+  explicit yes, then pass it; never pass it on your own. A guardrails
+  conflict the review finds for the public app is a HARD STOP, as for a
+  widening: name the policy line, and do not ask for the yes or pass the
+  acceptance unless the admin makes an explicit exception for it (never
+  assume one). The other ways forward: narrow the app first with
+  `set_app_access` (the transfer of an app that is not public needs no
+  acceptance), or have its owner change it. The platform
   records it on each app's `app_transferred` row (`accepted_guardrails`,
   `accepted_by`, and `moved_with` naming the set's other apps), and each
   public app's transfer tells the platform admins (an admin `transferred`

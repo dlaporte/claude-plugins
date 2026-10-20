@@ -112,7 +112,7 @@ order:
    file/route to remove; an existing sign-out link becomes a plain link to
    `/_auth/signout` (R4), shown wherever the app shows who is signed in. Keep
    the app's own **authorization** (who may edit what), decided per request
-   for each of the three kinds of caller contract R3 names (a member is only
+   for each kind of caller contract R3 names (a member is only
    one of them, and a caller with no identity gets no per-person data or
    role), rewired to key on `X-Forwarded-Subject` (the person's identity
    provider ID, never the email address, which can change for one person
