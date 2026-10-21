@@ -1,6 +1,6 @@
 ---
 name: inno-add-connection
-description: Use when an app needs to reach an external backend AS EACH INDIVIDUAL USER (a per-user API or SaaS account the app fronts, such as a departmental system, a niche tool or a dev instance) rather than with one shared app key. Discovers how people sign in to that backend, provisions a Connection with set_app_connection (a pasted token, the backend's own login, or a per-user client ID/secret pair), and wires the app to consume it. mcp-container apps only in v1.
+description: Use when an app needs to reach an external backend AS EACH INDIVIDUAL USER (a per-user API or SaaS account the app fronts, such as a departmental system, a niche tool or a dev instance) rather than with one shared app key. Discovers how people sign in to that backend, provisions a Connection with set_app_connection (a pasted token, the backend's own login, or a per-user client ID/secret pair), and wires the app to consume it. Identity-aware mcp-container apps only in v1.
 ---
 
 # inno-add-connection
@@ -78,7 +78,7 @@ ready-made integration.
 
 ## 1. Confirm this app actually needs a Connection
 
-Check all three before doing anything else:
+Check all four before doing anything else:
 
 - **Per-user, not shared.** A Connection is for a backend where each person
   sees or does *their own* things: the backend itself tells users apart. If
@@ -96,6 +96,14 @@ Check all three before doing anything else:
   (If you're not sure of the app's type, check `app_status` or ask the user.
   A `container` app that only serves a browser UI, with no MCP endpoint, is
   also out of scope today.)
+- **The app is identity-aware.** Connections are for apps the platform
+  tells who each caller is (§2.2). An **anonymous** app is never told, so no
+  user of it can hold a Connection, and `set_app_connection` refuses it with
+  `app_anonymous`. `app_status` names the app's identity. If it is
+  anonymous, say so and stop: an app's identity is fixed at registration,
+  so reaching a backend as each person takes a new, identity-aware app (for
+  a public site with a signed-in part, the editor of the `inno-new-app`
+  skill's `references/two-app-pattern.md`).
 - **The user owns or administers the app.** `set_app_connection` is gated
   server-side to the app's owner or a platform admin. A `forbidden` answer
   means exactly that; don't try to work around it locally.
@@ -305,8 +313,10 @@ row it writes first may remain), so a retry repeats the whole of it. An
 such as another edit of this connection or its pause, is in flight: retry
 once after a moment, never in a loop.
 
-Four answers are **not** bad arguments, so don't retry blindly:
+Five answers are **not** bad arguments, so don't retry blindly:
 
+- **`app_anonymous`**: the app is anonymous, and an anonymous app has no
+  Connections (step 1). Stop, and say so plainly.
 - **`connections_disabled` or `connections_key_invalid`**: passing a
   `client_secret` needs the platform's encryption key, and it is unset or
   malformed. Relay the message to the user and stop: nothing you change in

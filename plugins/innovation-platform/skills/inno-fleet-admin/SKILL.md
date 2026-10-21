@@ -1,6 +1,6 @@
 ---
 name: inno-fleet-admin
-description: "Use when a platform admin manages the Innovation Platform fleet through the inno-platform MCP tools: the admin list (list_admins, grant_admin, revoke_admin), the Okta import (import_okta_memberships, which only fills an empty admin list), ownership transfers (transfer_app), immediate purges (purge_app), rebuilds (rebuild_app), ending someone's panel and browser app sessions (revoke_sessions), the instance's Okta admin group and naming (claim_instance_objects, accept_naming_change), platform settings (get_config, set_config, remove_config), and the fleet-wide reads (list_apps, list_users, query_audit, get_platform_logs, export_platform_backup). Use when an admin wants to add or remove an admin, fill or check the admin list, reassign an app, delete an app now, offboard someone, change a setting or a safety waiver, read the audit log or every app's logs, or take a registry snapshot. An owner's work on their own app is inno-manage-app."
+description: "Use when a platform admin manages the Innovation Platform fleet through the inno-platform MCP tools: the admin list (list_admins, grant_admin, revoke_admin), the Okta import (import_okta_memberships, which only fills an empty admin list), ownership transfers (transfer_app, a linked pair or a public app included), allowing public apps and narrowing one in an emergency (set_config, set_app_access), immediate purges (purge_app), rebuilds (rebuild_app), ending someone's panel and browser app sessions (revoke_sessions), the instance's Okta admin group and naming (claim_instance_objects, accept_naming_change), platform settings (get_config, set_config, remove_config), and the fleet-wide reads (list_apps, list_users, query_audit, get_platform_logs, export_platform_backup). Use when an admin wants to add or remove an admin, fill or check the admin list, reassign an app, allow an owner or an app to go public, take a public app down fast, delete an app now, offboard someone, change a setting or a safety waiver, read the audit log or every app's logs, or take a registry snapshot. An owner's work on their own app is inno-manage-app."
 ---
 
 # inno-fleet-admin
@@ -179,7 +179,7 @@ written. Its description says what it compares and how it reports.
 4. **A fresh dry run.** `parity: clean` is the proof; keep that answer. A
    second apply writes nothing.
 
-## `transfer_app({ app, new_owner_email, force? })`: reassign ownership
+## `transfer_app({ app, new_owner_email, force?, also?, accept_guardrails? })`: reassign ownership
 
 Admins only: there is no accept step, so in an owner's hands a transfer could
 dump unwanted apps on people. When the person asking is an app's owner and
@@ -194,6 +194,45 @@ never a reason to refuse), who is notified, and, on this instance, which
 account becomes the owner. Confirm before calling: state plainly who gains
 and who keeps what, and which data links (if any) it will break.
 
+**A linked set, and a public app** (from platform v0.17.2):
+
+- **`also`** moves up to nine more apps in the same call, as one set: the
+  set moves whole or not at all, under every app's lease, and the
+  recipient's active-app limit counts every app of it that is not stopped.
+  Each app in `also` must share a data link with `app` itself, as its
+  source or its consumer (a live link, or a revoked one whose binding is
+  still deployed), else the call is refused `also_not_linked`: an app
+  linked only to another app of `also` is not admitted, so name the app
+  the others link to as `app`. A link between two apps of the set is kept,
+  and nothing is rebuilt for it; a link to an app outside the set follows
+  `link_transfer_blocked` below. Use it for the two-app pattern's pair (a
+  public site and its editor) and whenever an owner's linked apps should
+  stay together. An app in `also` the recipient already owns, or `also` on
+  a transfer to the owner's own address (which re-points that one app
+  only), is refused `bad_request`.
+- **An app's audience does not change with its owner**: a public app stays
+  public and an internal one internal. So the recipient's settings are
+  read, under the leases: an app of the set that is internal while
+  `access.allow_internal` is false for it under the recipient, or public
+  while `access.allow_public` is, is refused `audience_disallowed`. Allow it
+  for the recipient with `set_config`, or narrow the app first with
+  `set_app_access`: the admin's choice.
+- **A public app's transfer needs `accept_guardrails: true`**, alone or in
+  a set, after the review of what the public app reaches (`inno-manage-app`'s
+  widening review, read for public); without it the call is refused
+  `guardrails_not_accepted`. Run the review with the admin, get their
+  explicit yes, then pass it; never pass it on your own. A guardrails
+  conflict the review finds for the public app is a HARD STOP, as for a
+  widening: name the policy line, and do not ask for the yes or pass the
+  acceptance unless the admin makes an explicit exception for it (never
+  assume one). The other ways forward: narrow the app first with
+  `set_app_access` (the transfer of an app that is not public needs no
+  acceptance), or have its owner change it. The platform
+  records it on each app's `app_transferred` row (`accepted_guardrails`,
+  `accepted_by`, and `moved_with` naming the set's other apps), and each
+  public app's transfer tells the platform admins (an admin `transferred`
+  entry).
+
 **A previous owner who is not kept** loses their member row in that write;
 after it their stored connections for the app are deleted and, for an MCP
 app, their token grants for it revoked. Those later steps can fail without
@@ -203,8 +242,9 @@ undoing the transfer, and the answer then says so:
   address and the app shows what is left, and `disconnect_user_connection`
   removes each;
 - if the grant revocation cannot be verified, their tokens still stop at the
-  front door's next introspection, since their row is gone, unless the app
-  is open to every SSO user.
+  front door's next introspection, since their row is gone. On an internal
+  app they still get in by signing in; on a public app anyone reaches it
+  without signing in.
 
 They keep their panel and browser app sessions until `revoke_sessions` ends
 them (below).
@@ -274,9 +314,12 @@ What to do with its refusals and answers:
   function-shaped one again a day later, and a redeploy by hand (its owner's
   tag, or `rebuild_app`) cuts it sooner. Tell the admin and that app's owner.
 - `link_containment`: `force` does not override it. Grant the recipient
-  access to the named source app first, or unlink and redeploy the consumer,
-  then transfer. From platform v0.16.12 the source must hold the same person
-  as the recipient (the same account when both rows are pinned, else the same
+  access to the named source app first, move the source with the app in
+  `also` (from platform v0.17.2, when that source shares the link with `app`
+  itself), or unlink and redeploy the consumer, then transfer. A source
+  that is internal or public holds everyone who signs in, so only a
+  members-only source refuses. From platform v0.16.12 the source must hold
+  the same person as the recipient (the same account when both rows are pinned, else the same
   address), and on a transfer to the owner's own address, a source owned
   under that address by another account is named to re-point first, with
   `transfer_app` to the same address on that source.
@@ -323,6 +366,24 @@ domains (above), keeps their sessions until this ends them.
    account does not pass with their address to its next holder, but one
    still waiting for its first sign-in would: one more reason to revoke.
 
+None of the three stops a removed person reaching a public app: anyone on
+the internet reaches one, with no sign-in. And `revoke_access` alone does
+not keep someone whose account can still sign in out of an internal app,
+which admits everyone who signs in.
+
+**Offboarding an owner of public apps.** `list_apps` names each of their
+apps' audience. Once their account can no longer sign in, the hourly pass
+narrows each public app they own to members-only and tells the admins (an
+admin `access_changed` entry), and a later widening is refused
+`owner_inactive` until the app has an active owner. So decide each public
+app with the admin, best before the account is suspended: transfer it to an
+accountable owner (with `accept_guardrails` after the review, and its
+linked editor in `also`), where it stays public, or, once the pass has
+narrowed it, where its new owner widens it again through the review;
+narrow it now with `set_app_access`; or purge it. On an instance with no
+Okta token the owner check never fires, so narrow or transfer each one by
+hand.
+
 ## `purge_app({ app })`: delete an app now
 
 The scheduler's end-of-window teardown, on demand, and final. Its
@@ -342,9 +403,10 @@ Before calling it:
   the nightly database dumps and any `export_platform_backup` snapshot hold
   it.
 - **Name the consumers.** It revokes every data link touching the app, in
-  both directions, and an app that READS this one's database keeps a binding
-  that now fails (the description says how). Run `list_app_links` first and
-  tell the admin which apps that is.
+  both directions, and an app that READS this one's database and files keeps
+  bindings to them that now fail; the platform rebuilds a function-shaped
+  one, and the name stays held until it has (the description says how). Run
+  `list_app_links` first and tell the admin which apps that is.
 - Confirm with the admin by name, and say plainly that it is permanent.
 
 What to do with its refusals and answers:
@@ -436,6 +498,53 @@ deployed values and ends the report.
 - **To undo an accidental change, do not call it.** Revert the manifest and
   deploy; the report clears by itself.
 
+## Audiences: allowing public, emergency narrowing, abuse
+
+An app's audience is members-only, internal or public, and its owner or an
+admin changes it with `set_app_access`, whose widening review is
+`inno-manage-app`'s. Two settings gate it, each at platform, user and app
+scope: `access.allow_internal` (default on) and `access.allow_public`
+(default off). They gate the ability only: no app widens until its owner or
+an admin runs the review and widens it, and only an anonymous app can be
+public.
+
+- **Allowing public** for one owner or one app is `set_config` of
+  `access.allow_public` to true at user or app scope, once the admin agrees
+  that what the owner means to publish belongs on the open internet (the
+  guardrails' **Public apps** section, `get_guardrails`). Turning a gate off
+  again narrows the app within the hour: a public app moves to internal, or
+  to members-only when internal is not allowed for it either, and its owner
+  is told.
+- **Unusual-usage detection.** A widening to public turns
+  `anomaly.usage_enabled` on for that app, at app scope, unless a setting
+  already decides it (a platform-scope or app-scope value); the widening's
+  answer and the admins' `access_changed` entry say which. The admin can
+  leave it on, or set it otherwise at app scope with `set_config`. It is
+  notify-only, a jump shows as a `usage_anomaly` notification, and it also
+  gates the storage forecast.
+- **An admin's widening** runs the same review and acceptance as an
+  owner's: the admin's acceptance stands in for the owner's and is recorded
+  as theirs (`accepted_by`), and the owner is notified.
+- **Emergency narrowing.** A narrowing is never gated: `set_app_access` to
+  `members-only` acts at once, by the admin as by the owner, and the owner
+  is notified. Its description says when it takes effect and what it does
+  to data links. It does not withdraw what crawlers, archives and caches
+  already hold.
+- **A public app being abused** (phishing, malware, spam, content that
+  breaks the guardrails' **Public apps** section, or a `usage_anomaly`
+  jump): narrow it at once with `set_app_access` to `members-only`. To keep
+  its owner from widening it again while you look, set `access.allow_public`
+  false for the app at app scope with `set_config` (an app-scope value
+  decides over the owner's and the platform's), and `access.allow_internal`
+  false there too to hold it members-only; if it must stop serving its
+  members as well, `stop_app`. Then purge it (`purge_app`) or transfer it to
+  an accountable owner. Every app shares the platform's one domain, so one
+  public app's abuse reaches the domain's reputation for all of them, and
+  nothing withdraws what it published. The operator guide's "5.6.4 The
+  abuse runbook for a public app" (`docs/OPERATIONS.md` in the platform's
+  repository; no tool serves it) has the rest, where to start forensics
+  included.
+
 ## Settings: `get_config`, `set_config`, `remove_config`
 
 The catalog is the authority on each setting: `get_config` with no
@@ -461,7 +570,9 @@ owner uses (`get_config app=` and `get_config user=`) are in
   admin's explicit yes.
 - Keys admins reach for most: `apps.max_active` (user scope, an owner's
   active-app cap), `lifecycle.pinned`, the `lifecycle.*_days` idle windows,
-  `start.self_max`, `access.allow_open` and `container.sleep_after`.
+  `start.self_max`, `access.allow_internal`, `access.allow_public`,
+  `anomaly.usage_enabled` and `container.sleep_after`. The audience keys
+  are **Audiences**, below.
 - **Sign-in lifetimes**, `auth.app_session_hours` and
   `auth.session_idle_hours` (from platform v0.17.0, platform scope): how
   long a browser sign-in lasts and how long it may sit unused, each
@@ -481,7 +592,8 @@ serves. The panel's Platform screen is the same act on a visual surface.
 
 ## Fleet-wide reads
 
-- `list_apps` lists every app on the platform for an admin, with
+- `list_apps` lists every app on the platform for an admin, naming each
+  app's audience and identity, with
   `[UNLINKED]` when the platform's GitHub App is no longer installed on the
   app's repo.
 - `list_users` lists app owners and platform admins; someone who is only a
@@ -566,6 +678,15 @@ serves. The panel's Platform screen is the same act on a visual surface.
   with the app's owner first, since the app loses its read of that
   source's data.
 
+  From platform v0.17.2 admins also get their own `access_changed` entry
+  when an app is widened to public (who widened it, and whether
+  unusual-usage detection is now on: **Audiences**, above) and when the
+  hourly pass narrows a public app whose owner can no longer sign in
+  (transfer it to an active owner before anyone widens it again:
+  **Offboarding an owner of public apps**, above), and their own
+  `transferred` entry for each public app a transfer moved, which stays
+  public.
+
   `mark_all_notifications_read` called by an admin marks every unread
   notification read, everyone's, not only the admin's own.
 
@@ -575,7 +696,7 @@ serves. The panel's Platform screen is the same act on a visual surface.
 |---|---|
 | `list_admins` / `grant_admin` / `revoke_admin` | platform admins (`revoke_admin` never on yourself) |
 | `import_okta_memberships` | platform admins |
-| `transfer_app` | platform admins only (owners ask an admin) |
+| `transfer_app` | platform admins only (owners ask an admin; `also` moves a linked set, and a public app needs `accept_guardrails`) |
 | `purge_app` | platform admins only |
 | `rebuild_app` | platform admins only (owners redeploy by tagging their own repo) |
 | `revoke_sessions` | platform admins only |

@@ -3,7 +3,7 @@
 Read this when a result or a notification says an address now belongs to a
 different account than the one its grant is pinned to (`grant_access` on
 someone the member list already holds, a `link_containment` refusal or a
-grant on a linked source app, a close of a source app, or a
+grant on a linked source app, a narrowing of a source app, or a
 `member_reassigned` notification), when a grant's result says the row is
 pinned and the platform (with no Okta token) cannot ask whether the address
 has passed to someone else, or when a result names another address to revoke
@@ -31,10 +31,11 @@ platform with no Okta token, the hand-off through another address that
 `grant_access`'s answer names. Offer to draft the request, as the skill's
 **Transferring an app: ask an admin** says.
 
-**A linked source app.** A link, a grant and an open compare people, not
-addresses, so a source app that lists the address for the account that held
-it before can refuse a grant here with `link_containment`, and a close of
-this app names a consumer's member it lists for another account. The fix is
+**A linked source app.** A link, a grant and a narrowing compare people,
+not addresses, so a source app that lists the address for the account that
+held it before can refuse a grant here with `link_containment`, and a
+narrowing of this app names a consumer's member it lists for another
+account. The fix is
 the same re-share on the app that lists the old account (`revoke_access`,
 then `grant_access`), or, when that address is that app's owner's own row, a
 platform admin's `transfer_app` of that app to it.

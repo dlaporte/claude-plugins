@@ -88,9 +88,11 @@ sentence in this flow.
    invalid, ask the user for a different one; a name it refuses as unusable is
    echoed back inside `«»` guillemets, which fence it as untrusted text rather
    than marking it as quoted by the user. If it says the name **was
-   recently purged and is held until** a UTC time, nobody, admins included,
-   can register it before then: offer a different name or wait. If it's the
-   caller's *own* existing app, tell them that (a stopped app is brought back
+   recently purged and is held until** a UTC time, or that it is held until
+   an app that read the purged app's data has been rebuilt or redeployed,
+   nobody, admins included, can register it before then: offer a different
+   name or wait.
+   If it's the caller's *own* existing app, tell them that (a stopped app is brought back
    with `start_app`, not by re-registering it). `list_apps` cannot prove a
    name is free, since an ordinary user sees only their own apps there: use
    `check_name`.
@@ -116,11 +118,13 @@ sentence in this flow.
    access alongside the owner. The list can be added to later with the
    `inno-manage-app` skill's `grant_access`.
 5. **Does the app need to reach another service *as each person using it*?**
-   Not the app's own sign-in (every app gets that for free): this is about
+   Not the sign-in in front of the app (the platform runs that for free on a
+   members-only or internal app): this is about
    your app calling out to some *other* system that also tells its own users
    apart (a departmental system, a niche tool, a per-user account on some
    outside service). If yes, note it now: today that only works for an MCP
-   server built the container way (affects the type choice in §1b below), and
+   server built the container way that is told who each caller is (it
+   affects the type and the identity choices in §1b below), and
    once the app is registered you'll set it up with the `inno-add-connection`
    skill.
 
@@ -143,8 +147,8 @@ so do not pass it until you've actually done this review.
 
 Confirm the name, repo, purpose, and members back to the user before going
 further: registration provisions real resources (a database and file
-storage, and for a browser app a sign-in in front of its address) and binds
-them to the user's repo.
+storage, and for a members-only or internal browser app a sign-in in front
+of its address) and binds them to the user's repo.
 
 ## 1b. Design the app before registering
 
@@ -178,9 +182,24 @@ way, the design still has to be written into your reply and approved (see
 "Present the design, THEN ask for approval" below); the skill's absence is not a
 reason to skip that.
 
-The design includes three contract-informed choices that are **the user's to
+The design includes four contract-informed choices that are **the user's to
 make, with your recommendation**:
 
+- **Identity**: ask the user, in these words, **"does the app need to know
+  who each caller is?"** Yes is `identity-aware`, the default: the platform
+  tells the app who each caller is, so it can keep per-person data and
+  roles and use a Connection. No is `anonymous`: the app is never told who
+  the caller is, at any audience, takes no Connections, and is the only kind
+  of app that can later be made public (a public site or tool, a public MCP
+  server, or an internal app that must not know who answered, such as an
+  unattributed staff survey). An anonymous app follows the contract's R10
+  (`get_app_contract` with `sections: ["2"]`): no accounts, no per-person
+  views, and what a visitor submits is stored and never rendered. Like the
+  type, identity is fixed when the app is created: a different identity is
+  a new app. If the user wants a public site with an editing area, wants to
+  collect submissions from the public, or wants an existing app made public,
+  that is **two apps**, an anonymous one and an identity-aware editor: read
+  `references/two-app-pattern.md` and design both.
 - **Deployment type**: `function`, `container`, `mcp-function`, or
   `mcp-container` (passed to `register_app`; the server defaults to
   container, but for a **greenfield** app you recommend and default to
@@ -207,11 +226,13 @@ make, with your recommendation**:
     do not; if the design needs those, it does not fit this type today, so
     surface that HERE, not after registration. Access is given and taken away
     with the same tools as the other types (`grant_access`, `revoke_access`,
-    `set_app_access`); there is no browser SSO, and §1.2 says what admits a
-    caller. **One hard constraint:** if §1 flagged that the app must reach
+    and `set_app_access` for its audience); there is no browser SSO, and
+    §1.2 says what admits a caller. **One hard constraint:** if §1 flagged
+    that the app must reach
     another service *as each person using it* (a per-user **Connection**),
     this type **cannot**: only `mcp-container` can consume a Connection in
-    v1. Choose `mcp-container` instead; do not land such an app on
+    v1, and only on an identity-aware app. Choose `mcp-container` instead;
+    do not land such an app on
     `mcp-function` and discover the gap after registration (the type is
     fixed at registration).
     **Idle clock:** an MCP app that is built and then left connected but
@@ -224,7 +245,8 @@ make, with your recommendation**:
     needs the **container** shape instead: a **non-TS/JS stack**, **native
     dependencies**, **heavy/long-running compute** a Cloudflare Worker can't
     give it, **or an MCP server that must consume a per-user Connection**
-    (this is the only type that can, in v1; see `inno-add-connection`). It
+    (this is the only type that can, in v1, and only when the app is
+    identity-aware; see `inno-add-connection`). It
     is `mcp-function`'s MCP contract (`POST /mcp`, **stateless only**, no
     browser SSO) on the container baseline (§1.3). Default stack: **Python +
     the official MCP Python SDK** (FastMCP).
@@ -251,6 +273,16 @@ make, with your recommendation**:
   **mcp-container** app defaults to **Python + the official MCP Python SDK**
   (FastMCP), but any language is equally supported.
 
+**Who may reach the app, its audience, is not a registration choice.** Every
+new app starts **members-only**: its member list (the owner and anyone
+granted access). Widening it later, to **internal** (everyone the identity
+provider signs in, members or not) or to **public** (anyone on the internet,
+with no sign-in, an anonymous app only), is `inno-manage-app`'s widening
+review, run once the app is built and checked, never at registration. Ask
+which audience the app is meant for in the end, so the design serves it
+(an anonymous app is reviewed as public from the start, `inno-safety-preflight`),
+and say plainly that it starts members-only.
+
 ### Present the design, THEN ask for approval
 
 The user deserves to see what they're approving. **Write the full design into
@@ -262,22 +294,29 @@ not a shortcut: the user cannot approve what they have not seen.
 The written design covers, at minimum:
 
 - **What the app does**: in the user's own terms, a short paragraph
+- **Identity** (identity-aware or anonymous) and the user's answer to the
+  identity question; for a two-app design, both apps and their roles
 - **Deployment type** and why (and the Connection constraint if §1 flagged it)
 - **Data model**: the tables and files it will store
 - **Routes / pages**: what the user can actually open and do
+- **Audience**: members-only at registration, and the audience it is meant
+  to be widened to later, if any
 - **Access model**: who can see what, and who can edit, decided per request
-  for each of the three kinds of caller contract R3 names (`get_app_contract`
-  with `sections: ["2"]`). A member is only one of them: never design as if
+  for each kind of caller contract R3 names (`get_app_contract`
+  with `sections: ["2"]`). For an identity-aware app a member is only one
+  of them: never design as if
   every caller is one, and give per-person data and roles only to a caller
   with an identity. The platform manages only membership:
-  `X-Forwarded-Groups` carries at most this app's own two
-  groups (the `App groups:` line of the status you read in the Version gate,
-  with the app's name in place of `{app}`). Any finer role (an editor, an
+  `X-Forwarded-Groups` carries at most this app's own members group, and
+  only for a member (the `App groups:` line of the status you read in the
+  Version gate, with the app's name in place of `{app}`). Any finer role (an editor, an
   admin view) needs the app's own role table keyed on `X-Forwarded-Subject`,
   the person's identity provider ID, never on the email address, which can
   change for one person and pass to another; key per-person data on it too,
   and do not design around reading other groups from the header. The
-  header rule is `inno-platform-conventions`' **Identity** section.
+  header rule is `inno-platform-conventions`' **Identity** section. For an
+  anonymous app every caller is anonymous, at every audience: the design
+  has no per-person data, roles or views at all (R10).
 - **Accessibility** (a browser-facing app): who will use it, the main flows
   a person has to complete, and how each one works from the keyboard alone
   and with a screen reader. For an MCP app, say it does not apply.
@@ -289,13 +328,13 @@ The written design covers, at minimum:
 Only after that design is in your reply: **stop and get explicit user
 approval** (of the design *and* the name) before §2. Ask the approval question
 in your own words referencing the design the user can now read; put genuinely
-separate decisions (name choice, deployment type, members) in their own
+separate decisions (name choice, identity, deployment type, members) in their own
 questions rather than folding them into the approval. Registration provisions
-real resources (a database and file storage, and for a browser app a
-sign-in in front of its address) and binds them to the user's repo; the
-type is fixed at registration.
+real resources (a database and file storage, and for a members-only or
+internal browser app a sign-in in front of its address) and binds them to
+the user's repo; the type and the identity are fixed at registration.
 
-The type and design seed the scaffolding in §4.
+The type, the identity and the design seed the scaffolding in §4.
 
 ## 2. Create the repo from the template
 
@@ -347,7 +386,7 @@ then call it again.
 ### Call 1: start registration, commit the proof file, get the install link
 
 ```
-register_app({ app, repo, description, type, members, accept_guardrails: true, connections })
+register_app({ app, repo, description, type, identity, members, accept_guardrails: true, connections })
 ```
 
 - `app`: the app name from §1 (drives the hostname). The wire parameter is
@@ -362,6 +401,13 @@ register_app({ app, repo, description, type, members, accept_guardrails: true, c
   an MCP server, `"mcp-container"` for an MCP server that needs the container
   shape. Omit for container. The type is fixed at registration and can't be
   switched later (register a new app to change it).
+- `identity`: from the design's identity question (§1b): `"anonymous"`
+  when the app must not know who each caller is; omit it, or pass
+  `"identity-aware"`, otherwise. The app's identity is set by the call
+  that creates the app (call 2) and never changes: a call that resumes or
+  repeats a registration keeps the identity the app already has, and call
+  2's answer names it on its `Identity:` line. So pass the same `type` and
+  `identity` on both calls, and check that line.
 - `accept_guardrails: true`: required; you must have done the §1a review.
 - `members` is an optional list of Okta emails (at most 50). Each address is
   added to the app's member list and notified that the app was shared with
@@ -389,7 +435,8 @@ register_app({ app, repo, description, type, members, accept_guardrails: true, c
   to configure each one. A badly-shaped name is noted in the response and
   never fails the registration. The schema bounds the list (at most 16
   names, each at most 64 characters); add any beyond that afterwards with
-  `set_app_connection`.
+  `set_app_connection`. An anonymous app takes none: a call with
+  `identity: "anonymous"` and any `connections` is refused.
 
 The first call returns text beginning **`Registration started for "{name}" ←
 {repo}.`** It carries, in this order: (a) the template link again, in case the
@@ -455,7 +502,9 @@ Once the proof file is pushed to the default branch AND the user confirms
 they've installed the App (or the App already covered the repo), call
 `register_app` **again with the same arguments**. This re-checks the proof file,
 then finishes the job server-side: it prunes the template scaffold to the
-chosen type in a new commit on the repo's default branch, provisions the
+chosen type in a new commit on the repo's default branch (for an anonymous
+app, laying the template's anonymous guide for that type over the root in
+the same commit), provisions the
 app, and binds the repo. It returns text beginning
 **`App "{name}" registered from {repo}`** and containing:
 
@@ -464,6 +513,10 @@ app, and binds the repo. It returns text beginning
   the instance's). For an **mcp-function** or **mcp-container** app the
   response surfaces the **MCP endpoint** (`…/mcp`) instead; same rule: quote
   it from the response. The URL 404s until the first successful `inno-ship`.
+- `Identity: <identity-aware or anonymous>`: the identity the app was
+  created with, which never changes. If it is not the one the design chose,
+  stop and tell the user before building: a different identity is a new
+  app.
 - A `.github/workflows/deploy.yml`: the thin caller workflow that wires the
   repo to the platform's reusable CI. **Overwrite the repo's copy with the
   snippet the response returned** (an older template may still carry one). The template ships no `deploy.yml`: this file
@@ -494,14 +547,21 @@ app, and binds the repo. It returns text beginning
 - **`name_unavailable`**: an app with that name already exists and is not the
   caller's own partial registration; pick another name.
 - **`invalid_type`**: pass one of the four type names.
+- **`app_anonymous`**: the call named `identity: "anonymous"` and some
+  `connections`. An anonymous app has no Connections, since it is never told
+  who its caller is. Drop `connections`, or, if the app really must reach a
+  backend as each person, go back to the design: that app is identity-aware.
 - **`invalid_repo`**: pass an `owner/repo` slug, not a URL or a bare name.
 - **`repo_control_unproven`**: the error text repeats the exact path and
   contents: commit that file (call 1 above) and call again. It can come back
   at call 2 even after the setup page said verified, because call 2 re-checks
   the file right before provisioning, so never delete it early.
 - **`name_quarantined`**: the name is held after a purge until the UTC time
-  the message names, with no admin bypass: pick another name (check it with
-  `check_name`), or wait until that time.
+  the message names, and past it while a `function` or `mcp-function` app
+  that read the purged app's data has not been rebuilt or redeployed since
+  (the message says so), with no admin bypass of the date: pick another name
+  (check it with `check_name`), or wait until the hold ends, which that
+  app's rebuild or redeploy brings about for the second part.
 - **`repo_unreachable`**: have the user reinstall the App on the repo, then
   call again.
 - **`repo_identity_changed`**: confirm the repo's current `owner/repo` slug
@@ -574,7 +634,7 @@ push from the stale clone would be rejected as non-fast-forward):
 
 ```bash
 cd <repo>
-git pull --ff-only   # picks up the registration's "scaffold: <type>" commit, if it applied one
+git pull --ff-only   # picks up the registration's "scaffold: <type>" (or "scaffold: <type>, anonymous") commit, if it applied one
 ```
 
 If the proof file was committed through GitHub's web UI instead, clone now:
@@ -611,8 +671,27 @@ to prune, so author the layout by hand.** A repo created via GitHub's blank
 scaffold, so call 2 leaves it as-is. Recognize this early: the repo is
 missing the type-specific files described above. Then read
 `references/hand-authored-layout.md`, which says what to copy from the
-template repo for each type and why `CLAUDE.md` is copied rather than
-written, and write `.github/workflows/deploy.yml` from call 2's response.
+template repo for each type (and, for an anonymous app, which guide) and
+why `CLAUDE.md` is copied rather than written, and write
+`.github/workflows/deploy.yml` from call 2's response.
+
+**An anonymous app gets its own guide.** For an app registered
+`anonymous`, call 2's scaffold commit (`scaffold: <type>, anonymous`) also
+laid the template's `scaffold/anonymous/<type>/` over the root, so the
+repo's `CLAUDE.md` is the anonymous guide for its type. That guide, not the
+identity notes in the type bullets below, is the rule for this app: it
+reads no identity header and shows no sign-out link (it never shows who is
+signed in, so R4 asks for none); the scaffold's identity helper calls
+answer no user on every request, so remove them, its `/me` route and its
+sign-out footer as you build; it follows R10 (`get_app_contract` with
+`sections: ["2"]`), its cookie rule and the uploaded-file rule
+(`inno-platform-conventions`' **An anonymous app: R10** and **Files someone
+uploaded**). When call 2 warned
+that no `scaffold/anonymous/<type>/` guide was found, the template copy
+predates anonymous apps and the repo carries the identity-aware guide:
+copy `scaffold/anonymous/<type>/` from the current template repo (the
+`Template repo:` line) over the repo's root before building, as the
+warning says.
 
 **Scaffold by the deployment type you chose in §1b.** The contract sections
 you read in §1b (§1.1 to §1.3) are the authority for each type's deltas.
@@ -758,9 +837,17 @@ gates and deploys nothing), then `inno-ship`. Beyond the registration
 proof file (§3), don't push anything yet unless asked: `inno-new-app`'s job is
 registration + scaffolding, not deploying.
 
+Tell the user the app is members-only for now. When the design means it
+for a wider audience (internal, or public for an anonymous app), that
+widening comes after `inno-ship`, through `inno-manage-app`'s widening
+review; `inno-ship` hands over to it. For a two-app design, register the
+second app the same way, and follow `references/two-app-pattern.md` for the
+order.
+
 If §1 flagged that the app needs to reach another service as each person using
 it, do that setup now, before writing the rest of the app: run the
-`inno-add-connection` skill (requires the `mcp-container` type from §1b).
+`inno-add-connection` skill (requires the `mcp-container` type and an
+identity-aware app, from §1b).
 
 If the app needs an app-level key or config value instead (one API key the
 whole app shares, a base URL), set it after registration with

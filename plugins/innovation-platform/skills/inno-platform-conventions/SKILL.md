@@ -39,7 +39,7 @@ your job is everything under `app/`. These rules are not style
 preferences: each one maps to a CI gate that will fail the deploy.
 
 **Fetch the contract before writing app code:** call `get_app_contract` with
-`sections: ["2", "3", "4"]` (the requirements R1 to R9, the recommendations,
+`sections: ["2", "3", "4"]` (the requirements R1 to R10, the recommendations,
 and the stack policy), adding the section for the app's type (`1.1` for
 `function`, `1.1` and `1.2` for `mcp-function`, `1.2` and `1.3` for
 `mcp-container`)
@@ -204,6 +204,20 @@ from there, not from memory. For a `container` app the CI run's
 response-header report shows what the app sends today; R8 says when it runs
 and that it never blocks a deploy.
 
+**Files someone uploaded.** Serve a file a person uploaded back only as a
+download, never inline, with three headers: `Content-Disposition:
+attachment; filename="<name>"` (each character of the name outside
+`[A-Za-z0-9._-]` replaced by `_`), `X-Content-Type-Options: nosniff` and
+`Content-Security-Policy: sandbox`. The rule holds from any host, a public
+one included: every app shares one site, so an uploaded HTML or SVG file
+shown inline could run script beside every other app, in a signed-in
+person's session. It covers a visitor's submission, a file an editor app
+republishes (the two-app pattern's editor publishing a visitor's upload),
+and every file read through a data link. The template's storage client
+returns the three headers from `file_download_headers` (`fileDownloadHeaders`
+in `lib/storage.js`); a function app sets the same three itself. The rule's
+home is `get_app_security` §3.
+
 ## Accessibility: native elements first
 
 Every browser-facing app (`container`, `function`; the two MCP types have no
@@ -270,6 +284,18 @@ app process entirely outside the container (unusual). File storage is
 backed by R2. Non-Python stacks call the plain-HTTP endpoints R5 lists
 directly.
 
+A data link (`link_app_data`, contract §2.1) gives the consumer the source
+app's database **and its files**. The same client reaches the source's
+files with `put_linked_file`/`get_linked_file`/`list_linked_files`/`delete_linked_file`
+(`putLinkedFile`/`getLinkedFile`/`listLinkedFiles`/`deleteLinkedFile` in
+`lib/storage.js`), on the `/_storage/linked/{source}/files` routes beside the
+linked SQL ones; a function app reads them as the binding
+`env.LINK_FILES_<SOURCE>` beside `env.LINKED_<SOURCE>`. The grant is
+read-write over the source's database and every one of its files, and on a
+public source a write is published at once. A file someone uploaded is
+served back as **Files someone uploaded** (under **Rendering**, above)
+says, wherever it is read from.
+
 A listing can be partial. `list_files` returns the keys as an ordinary list
 that also carries `truncated`, which is true when the platform's host
 stopped listing at its cap (R5 gives the cap), so the keys are only part of the
@@ -301,11 +327,15 @@ own message, and sends the body with its length. Neither applies to a function-s
 
 ## Identity: read the header, never build auth
 
-The front door decides who reaches the app and tells you who the caller is,
-in the identity headers. R3 (`get_app_contract` §2) is the authoritative
-text for every header the front door owns and for the three kinds of caller
-an app serves; this is how to apply it. Decide per request what each kind
-of caller may see and do, and never assume a caller is a member.
+The front door decides who reaches the app, by its audience (members-only,
+internal or public), and tells an identity-aware app who the caller is, in
+the identity headers. R3 (`get_app_contract` §2) is the authoritative text
+for every header the front door owns and for the kinds of caller an app
+serves; this is how to apply it. Decide per request what each kind of
+caller may see and do, and never assume a caller is a member. **An
+anonymous app is never told who the caller is**, at any audience: its rule
+is R10, below (**An anonymous app: R10**), and the rest of this section's
+helper and header guidance is for identity-aware apps.
 
 Read the caller through the template's identity helper:
 `current_user(request)` in `app/storage.py` (Python),
@@ -369,38 +399,41 @@ that template has no such helper either, read an empty or missing
   does from the start. An existing app keyed on the address may re-key its
   rows once, since every identified request carries both headers: a
   migration in the app's own code, recommended and not required (§3).
-- **`X-Forwarded-Groups`** carries at most two groups, both this app's own,
-  in this order: the members group when the caller is a member, and the open
-  group while the app is open. Their names are in the `App groups:` line of
-  the status you read in the Version gate, with the app's name in place of
-  `{app}`. It never carries the platform admin group, another app's groups,
-  or any other group, so use it only to tell a member from an open-access
-  visitor (the helper's `member` is that test); any finer role (an editor,
-  a staff view, an in-app admin) needs your own role store keyed on
-  `X-Forwarded-Subject`, and only for a caller who has one. Every person an
-  app admits carries at least one of the two, so a visitor admitted only
-  because the app is open carries the open group alone.
+- **`X-Forwarded-Groups`** carries at most one group, this app's own
+  members group, and only when the caller is a member; every other request,
+  a signed-in non-member of an internal app included, carries no group (R3's
+  group rule). The group's name is in the `App groups:` line of the status
+  you read in the Version gate, with the app's name in place of `{app}`. It
+  never carries the platform admin group, another app's groups, or any
+  other group, so use it only to tell a member from a signed-in non-member
+  (the helper's `member` is that test); any finer role (an editor, a staff
+  view, an in-app admin) needs your own role store keyed on
+  `X-Forwarded-Subject`, and only for a caller who has one.
 - **An empty identity is no user: an expected caller, not a fault, and
-  never a member or a key.** The platform's health probe, `GET /healthz`,
-  arrives with empty identity headers (on contract 34 the only request that
-  does, R3), and a request that never passed the front door (the app run
-  locally, a test) can carry none; the helper reads both as no user. A
+  never a member or a key.** The platform's health probe (`GET /healthz`),
+  and every request to an anonymous app, arrive with the four identity headers present and
+  empty (R3; on an identity-aware app the probe is the only request that
+  does), and a request that never passed the front door (the app run
+  locally, a test) can carry none; the helper reads each as no user. A
   person the platform refuses never reaches your code: the front door
   answers them itself, with a plain 403 "No access" page, or a 503 "Try
   again shortly" page when it cannot ask the platform.
 - **How fast a change reaches the header** is R3's to state: within the
   front door's cache, at most 60 seconds on an MCP app and 10 seconds on a
   browser app.
-- **The platform signs people in, outside your code.** On a browser app the
-  front door sends a person with no session through the platform's own
+- **The platform signs people in, outside your code.** On a members-only or
+  internal browser app the front door sends a person with no session through
+  the platform's own
   sign-in and back to the page they asked for (R3 says how, and how long a
   session lasts). Two things that reach an app's own pages: once the
   session has ended, anything but a top-level GET page load, a form POST
   included, gets a `401` rather than the sign-in redirect, so a background
   request (a `fetch`) that meets a `401` reloads the page to sign in again,
   and a form posted then loses what it carried; and a sign-in never starts
-  inside a frame, so an app shown in
-  another page's frame is opened in its own tab to sign in. What people see
+  inside a frame, so a page of the app framed by the app's own page, with
+  no session, shows a "Sign in" page whose link opens the app's root
+  address in the whole window (another page's frame of the app is refused:
+  **No browser calls or frames between apps**, below). What people see
   is the platform docs' **Signing in and out: what people see**
   (`get_platform_docs`).
 
@@ -422,18 +455,78 @@ strips a `Clear-Site-Data` header. So keep your cookies host-only (no
 `Domain`), route nothing under `/_auth/`, and never rely on
 `Clear-Site-Data`.
 
+**Every cookie your app sets** carries the `__Host-` prefix (so `Secure`,
+`Path=/` and no `Domain`) and is `HttpOnly` unless the app's own script
+must read it: every app shares one site, and a page on another app's host,
+a public one included, can shadow any other cookie with one of its own.
+This is R10's cookie rule, its paragraph **Every app's own cookies**, which
+binds every app's cookies, an identity-aware app's included (R3 says so
+too); `get_app_security` §9 states the same rule.
+
 **WebSockets and event streams** (R3). The front door refuses a WebSocket
 upgrade from another origin's page, a sibling app's included, so your app
 need not check `Origin` itself, and no endpoint may rely on another
-origin's pages opening it. On a browser app an open WebSocket or event stream ends
+origin's pages opening it. On a members-only or internal browser app an open WebSocket or event stream ends
 when the person's session does: design for reconnect-and-catch-up (§5).
 
-**Never implement login pages, sessions, password storage, or an "auth
-disabled" dev path**: the front door strips inbound copies of the headers
-it owns before injecting its own values, so there is no spoofing surface as
-long as you don't add one. A missing user is no user in local dev too:
-send the headers yourself (**Keep `ENVIRONMENT=production`** below) rather
-than default the absence into a value.
+**No browser calls or frames between apps** (R3). On a members-only or
+internal app the front door refuses every request from another page, on the
+site or elsewhere, that is not a plain link (a top-level GET navigation), so
+never have one app's page frame, include or call another app (a frame, a
+script, a stylesheet, an image, a `fetch`, a form post), and when an app
+needs another app's data, read it through a data link (`link_app_data`,
+contract §2.1), on the server.
+
+**Never implement login pages, sessions for signing people in, password
+storage, or an "auth disabled" dev path**: the front door strips inbound
+copies of the headers it owns before injecting its own values, so there is
+no spoofing surface as long as you don't add one. A missing user is no user
+in local dev too: send the headers yourself (**Keep
+`ENVIRONMENT=production`** below) rather than default the absence into a
+value. An anonymous app's per-visitor state (below) is not a sign-in
+session: it never identifies anyone.
+
+### An anonymous app: R10
+
+The contract's rule for an app registered `anonymous`, R10
+(`get_app_contract` with `sections: ["2"]`, the authoritative text), opens:
+
+> **R10: An anonymous app keeps nothing per person.** An app registered with
+> `identity: "anonymous"` is never told who its caller is, at any audience
+> (R3): the four identity headers arrive present and empty on every request,
+> and no `X-Caller-Assertion` arrives, so it has no Connections (§2.2). Only an
+> anonymous app can be public. No accounts, no per-person views, no keys or
+> limits taken from a person. What a visitor submits is stored and never
+> rendered. Per-visitor state (a cart, a multi-step form, a vote already cast)
+> lives in the app's own cookie or under a random cookie key, is never an
+> identity, and follows APP-SECURITY's forged-request rules. The app may be
+> public.
+
+So the app reads none of the identity headers, keys nothing on them, and
+shows no sign-out link (it never shows who is signed in, so R4 asks for
+none). R10 goes on to every app's cookies (above), where the promise ends
+(below) and a site with a signed-in part, which is two apps (the
+`inno-new-app` skill's `references/two-app-pattern.md`).
+
+- **Per-visitor state** takes the cookie rule above (`__Host-`, `HttpOnly`
+  unless the app's own script reads it), and a state change is accepted
+  only from the app's own pages (`get_app_security` §12).
+- **Submissions** are stored and never rendered by this app; whatever reads
+  them (an identity-aware editor, the two-app pattern's) protects them in
+  its own code, and serves any uploaded file as **Files someone uploaded**
+  (under **Rendering**) says.
+- **Where the promise ends** (R10). While the app is members-only or
+  internal, people still sign in to reach it, and the platform knows who
+  did (its admins and its audit log), though the owner's panel shows
+  sign-in counts, not people; a public app's visitors never sign in. The
+  platform does not tell the app who the caller is, and it does not make
+  visits unlinkable against an owner who tries: the app still sees each
+  caller's address (`X-Forwarded-For` and `CF-Connecting-IP`) and the
+  timing of each request, small counts can single a person out, and an
+  identity-aware app of the same owner on the site can link a visit to a
+  person. Say so plainly to an owner who promises anonymity.
+- **No Connections**: there is no user to hold one (**Per-user backend
+  access**, below).
 
 ## Configuration & secrets (Variables)
 
@@ -474,7 +567,10 @@ secret, a **Variable** (above), not a Connection; if the backend tells your
 users apart, it's a Connection.
 
 Connections are reachable from **`mcp-container`** apps only in v1; the
-other three types can't consume one yet. Setting one up (discovering how
+other three types can't consume one yet. They are for **identity-aware**
+apps only: an anonymous app is never told who its caller is, so no user of
+it can hold one, and `set_app_connection` refuses it with `app_anonymous`
+(§2.2). Setting one up (discovering how
 the backend signs people in, choosing among the three strategies, calling
 `set_app_connection`) and wiring the code that consumes it (the template's
 `connections.get(name, callerAssertion)` helper, every seam answer the code
@@ -504,7 +600,8 @@ Whenever a browser-facing app shows who is signed in, it links to
 ```
 
 Show it only when the helper returns a user, as the template's pages do; an
-app that never shows who is signed in needs no link. Make it a plain link
+app that never shows who is signed in needs no link, and an anonymous app
+never does. Make it a plain link
 the person clicks, never a `fetch`, a frame or a prefetch: R4 says why, and
 what signing out ends, which is the person's panel and every app session
 they hold on the platform, in every browser. So label it plainly ("Sign
@@ -535,15 +632,16 @@ app's Worker, and a container app's host is the platform's own (R7, and
 **Environment & config integrity**). No wrangler config may live in your
 repo (below), and `ENVIRONMENT` is a reserved Variable name that
 `set_app_variable` refuses. For local dev, pass mock identity headers
-straight to the locally run container, and try each of the three kinds of
-caller R3 names; never add an "auth disabled in dev" code path:
+straight to the locally run container, and try each kind of caller R3
+names; never add an "auth disabled in dev" code path. An anonymous app
+tries the last one alone, since every request it gets looks like that:
 
 ```bash
 # A member: the members group from the App groups: line of the status.
 curl -H 'X-Forwarded-User: user@example.com' -H 'X-Forwarded-Subject: user-id' -H 'X-Forwarded-Groups: <members group>' http://localhost:8080/
-# Signed in but not a member: the open group alone, as an open app sends it.
-curl -H 'X-Forwarded-User: other@example.com' -H 'X-Forwarded-Subject: other-id' -H 'X-Forwarded-Groups: <open group>' http://localhost:8080/
-# No identity, as the front door sends it: the headers present and empty.
+# Signed in but not a member, as an internal app gets one: no group.
+curl -H 'X-Forwarded-User: other@example.com' -H 'X-Forwarded-Subject: other-id' -H 'X-Forwarded-Groups;' http://localhost:8080/
+# No identity, as the front door sends the health probe and every request to an anonymous app: the headers present and empty.
 curl -H 'X-Forwarded-User;' -H 'X-Forwarded-Subject;' -H 'X-Forwarded-Groups;' http://localhost:8080/
 ```
 
