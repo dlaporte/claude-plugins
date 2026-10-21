@@ -634,8 +634,7 @@ provisions the app, and binds the repo. It returns text beginning
     not bound to the app): lay the type's files out from a current copy of
     the template repo (`references/hand-authored-layout.md`), and delete
     `scaffold/` before deploying, since the leftover fails the first
-    deploy's `config-integrity` gate. Where the warning says to re-create
-    the repo, do that in this repo, never as a new one.
+    deploy's `config-integrity` gate.
   - **`scaffold not applied`** (a warning): the platform could not write
     the prune commit, so the repo is as it was. Lay the type's files out
     the same way (a template copy already holds them under

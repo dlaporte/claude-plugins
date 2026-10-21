@@ -1,9 +1,10 @@
 #!/usr/bin/env bash
 # Prints the version a plugin manifest declares, and exits 0, when it is a
 # plain MAJOR.MINOR.PATCH string (scripts/semver.sh's SEMVER_TRIPLE, which
-# says why that shape). Otherwise it prints nothing and exits 1: a missing or unreadable manifest, a missing or null version, a number, a
-# v prefix, a pre-release or build suffix, a field of ten digits or more, or
-# whitespace anywhere in the string, a trailing newline included. Whitespace
+# says why that shape). Otherwise it prints nothing and exits 1: a missing or
+# unreadable manifest, a missing or null version, a number, a v prefix, a
+# pre-release or build suffix, a field of ten digits or more, or whitespace
+# anywhere in the string, a trailing newline included. Whitespace
 # is refused although compareSemver trims it: CLAUDE.md allows the plain
 # triple only.
 #
