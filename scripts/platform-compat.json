@@ -1,7 +1,7 @@
 {
   "format": 1,
   "contract": {
-    "version": 35,
+    "version": 36,
     "sections": [
       "1",
       "1.1",
@@ -20,16 +20,16 @@
     ]
   },
   "served": {
-    "docs/APP-ACCESSIBILITY.md": "2f775d621a68cb142b729cca48e87df59efe1870428ec0efdfdfb2a274674b0f",
-    "docs/APP-CONTRACT-HISTORY.md": "66bb0584a46038ad0737accc9a92de6bd1f0f2d3d45246fe38d91a5ab9119ff2",
-    "docs/APP-CONTRACT.md": "6188529192c554b4dcba326208acd118f756143761d28e4d6e7e7b9e4fc7ce07",
-    "docs/APP-SECURITY.md": "00d9b971c199e1bdf66837a9be06f93b80ab3616aa6a4ff54ed579123ba4dc4d",
-    "docs/GUARDRAILS.md": "e0343dcfa65cccc1390a5431f3d5d5777ab1505e562916e4e7d89621c9af919d",
-    "docs/PLATFORM-DOCS.md": "15b7e97a827fa84cc6d610bc17162e19365fe419bd8884e3a2fcd18754df98e2"
+    "docs/APP-ACCESSIBILITY.md": "dcaf468497f8d629a4a81b61ac5b5f824dcc72809465a5bd283ec3377b4a20e5",
+    "docs/APP-CONTRACT-HISTORY.md": "e4ae129e5c01b23011a803b7a1e1a8d96b3c2b855305a5d1e4eaf5f061bb6ab0",
+    "docs/APP-CONTRACT.md": "fb44641152ea3c7d1e057160f3e0e36a7997a7ce4755a87f63740003b05f45b6",
+    "docs/APP-SECURITY.md": "47b08412ec68534ec13a0124531b9354a103bc27c57e4589ee2c96a0d0b9aa01",
+    "docs/GUARDRAILS.md": "a9b651c0b1055e5b3a16c50f1eaa500d741febe87fce31ef76287e3d146ef9c6",
+    "docs/PLATFORM-DOCS.md": "ae83fed0a3f54281180f7f86afa49018b4d520bf29534b3c1065fa33de5951f1"
   },
   "tools": {
     "count": 54,
-    "revision": "4f578e3606303e76ae917303ea219e14aa40f507af66d19557bbfc3014e732ae",
+    "revision": "1de05f6834b9819a5e19d98e916fec6436404b44c1ebffb9b827cd0382c79dda",
     "list": [
       {
         "name": "accept_naming_change",
@@ -237,7 +237,7 @@
         ],
         "required": [],
         "inputRevision": "8f76013ebddc2b879c8fe537190d09af7df0c2fda4187fd4c065edab7b152cff",
-        "outputRevision": "4b2cb2271aa5a786bd42d2e17db2b76f40bc243cb77759d6c4f79e278c21e1bf"
+        "outputRevision": "774cc18104d5a42e4d5c14c948bca1674cd73b664eb0e675628b09d2214e4517"
       },
       {
         "name": "grant_access",
@@ -656,14 +656,13 @@
   },
   "plugins": {
     "app": {
-      "minVersion": "4.0.0"
+      "minVersion": "4.1.0"
     },
     "admin": {
-      "minVersion": "1.1.0"
+      "minVersion": "1.2.0"
     }
   },
   "behavior": {
-    "membershipAuthority": "platform",
     "deployHealth": {
       "probeTimeoutMs": 45000,
       "retryPauseMs": 5000,
@@ -671,7 +670,7 @@
     }
   },
   "pinned": {
-    "ref": "v0.17.2",
-    "commit": "7f268cd776f2982a7afb60dee4747b25094da1ee"
+    "ref": "v0.17.3",
+    "commit": "a5b3b005f4ced48344d5c42d2917d5bc5b6c60ba"
   }
 }

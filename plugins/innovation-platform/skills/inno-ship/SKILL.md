@@ -77,9 +77,7 @@ fi
 
 Every package the code imports must be declared under `dependencies` in
 `app/package.json`; the rule is the contract's §1.1 **Dependencies** bullet
-(`get_app_contract` with `sections: ["1.1"]`). If `get_app_contract` refuses
-the arguments, or the platform is older than v0.16.14, call it with no
-arguments and read the sections needed from the whole contract.
+(`get_app_contract` with `sections: ["1.1"]`).
 
 ### Declared variables, if the app has any
 
@@ -177,10 +175,8 @@ the tagged commit and then deploys.
 gh run watch    # or poll get_ci_status
 ```
 
-If you poll `get_ci_status` instead, wait at least 30 seconds between calls,
-and never poll the same run from several subagents at once: the platform's
-call budget is per person, not per agent. The rule is `inno-manage-app`'s
-**Call budget** section.
+If you poll `get_ci_status` instead, poll at the cadence `inno-manage-app`'s
+**Call budget** section sets.
 
 ### On failure: fix quietly, report plainly
 
@@ -213,16 +209,20 @@ and ask first, whether or not the row below says so.
 | `app-build` fails with `the app Worker's bundle is <N> bytes; the platform takes at most 16777216 (16 MiB) before compression` (function-shaped apps) | the built Worker is over the platform's size cap (the contract's §1.1) | drop large imported files, or dependencies the Worker does not use, and keep large data in the app's file storage; push, confirm `app-build` is green, then cut the next patch tag |
 | `deploy` fails at finalize with `script_rejected` (function-shaped apps; the `Finalize deployment` step logs `deploy-complete failed (409): script_rejected: Cloudflare refused the Worker upload (HTTP <status>): <reason>`, the reason Cloudflare's own codes and messages, read whole from up to 2000 characters of its answer) | Cloudflare refused the Worker upload, most often for an error the app's code throws as it starts (at module top level, outside `fetch`), or for a Worker over Cloudflare's own size limit after compression. A 400 can also be the platform's side: a binding whose database or file storage was deleted outside the platform, which the reason names. Nothing went live, and the app keeps serving its previous version | read the reason on that line. If it is about the app's code, fix the code, push, confirm the gates are green, then cut the next patch tag. If it names a database or file storage binding, change nothing in the app: tell the user in one plain sentence that the platform could not finish this deploy and that their platform admin needs to look at it, then offer a support bundle. If it is about neither, re-run the whole tag run once (`gh run rerun <run-id>`); if it repeats, stop and offer a support bundle |
 | `deploy` fails with `app_not_deployable` | the app was stopped, or its repo lost the platform GitHub App, while this deploy was starting | if the repo was unlinked, have the user reinstall the GitHub App on it first (re-linking leaves the app stopped); then `start_app` (`inno-manage-app`) and cut the next patch tag |
-| `deploy` fails at finalize with `app_not_deploying` | the app was stopped or purged while the deploy ran; nothing went live | `app_status` to see which; if stopped, `start_app`, then cut the next patch tag |
+| `deploy` fails at finalize with `app_not_deploying` | the app was stopped or purged while the deploy ran; nothing went live. (A newer deploy of the app started meanwhile answers `deployment_not_completable` instead, which `references/deploy-failures.md` covers: never re-run the older release on its own) | `app_status` to see which; if stopped, `start_app`, then cut the next patch tag |
 
 The rarer `deploy` and broker failures and warnings, each with its fix, are
 in `references/deploy-failures.md`. Read it when the run shows any of
 these: `No scanned image recorded`; `Image mismatch` or `image_mismatch`;
+a `deploy-token failed` line naming `app_not_ready`, `link_invalid`,
+`link_source_missing` or `app_busy`;
+a `deploy-complete failed` line naming `deployment_not_completable`,
+`link_invalid`, `link_source_missing`, `app_busy`, `host_in_use` or
+`host_check_failed`;
 a container app's `deploy-complete failed` line naming
 `image_not_this_apps`, `container_rollout_failed`,
 `container_policy_unexpected`, `container_namespace_missing` or
-`platform_key_missing` (none is about the app's code, so change nothing in
-the app before reading its row);
+`platform_key_missing` (change nothing in the app before reading its row);
 a function app's `App Worker bundle` error from the `Check the downloaded
 bundle against app-build's digest` step or the `Hand the bundle to the
 platform` step, or its `deploy-complete failed` line naming
@@ -230,18 +230,21 @@ platform` step, or its `deploy-complete failed` line naming
 `bundle_compat_mismatch` or `bundle_store_unavailable`;
 a `deploy-complete failed (500)` line, or `deploy-complete failed: no answer
 within 600 s`;
-a `deploy-sbom failed (403)` line naming `app_mismatch` or saying the app is
-no longer linked to its repository, `Gate policy unavailable`, or a tag
-run's `deploy-token request failed (HTTP 403)` (the broker refusing
+a tag run's `deploy-sbom failed (403)` line naming `app_mismatch` or saying
+the app is no longer linked to its repository, `Gate policy unavailable`,
+or a tag run's `deploy-token failed (403)` line (the broker refusing
 `app_mismatch` or `repo_unlinked`); or `policy` failing with `Invalid app
-name`. On a push, a
-`deploy-sbom failed (403)` line reading `deploy_denied:ref` is normal.
+name`.
 
-A gate failure is real signal; there is no override or admin bypass. A
-finding that's a false positive gets a **central admin ignore** (see
-`inno-safety-preflight`), never an in-code workaround. Gitleaks is the one
-exception: it has no central ignore family, so a false-positive `secrets`
-finding is suppressed with a `.gitleaksignore` entry in the app's own repo.
+A gate failure is real signal: nothing in the repo or the run overrides it.
+A platform admin can turn a gate off for an app by policy (`safety.gate.*`,
+which `get_config app=<name>` shows; the run then logs `SAFETY GATE
+DISABLED`), but that is a policy decision about the app, never the fix for
+a finding. A finding that's a false positive gets a **central admin
+ignore** (see `inno-safety-preflight`), never an in-code workaround.
+Gitleaks is the one exception: it has no central ignore family, so a
+false-positive `secrets` finding is suppressed with a `.gitleaksignore`
+entry in the app's own repo.
 
 #### Moving a devDependency into dependencies
 

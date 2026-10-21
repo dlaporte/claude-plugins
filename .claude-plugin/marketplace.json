@@ -8,14 +8,14 @@
     {
       "name": "innovation-platform",
       "source": "./plugins/innovation-platform",
-      "description": "Build and ship apps on an Innovation Platform (you enter your platform's address once): create an app via the inno-platform MCP server as a container (any stack, the default type), a function (its own Cloudflare Worker), or an MCP server for AI assistants (mcp-function / mcp-container) behind the same identity gateway, write it against the platform's application + app-security contracts, run the security gates before shipping through CI/CD, and manage access to a live app. The skills recommend function for greenfield.",
+      "description": "Build and ship apps on your organization's Innovation Platform: create an app via the inno-platform MCP server as a container (any stack, the default type), a function (its own Cloudflare Worker), or an MCP server for AI assistants (mcp-function / mcp-container) behind the platform's own front door, write it against the platform's application + app-security contracts, run the security gates before shipping through CI/CD, and manage access to a live app.",
       "category": "development",
       "homepage": "https://github.com/dlaporte/claude-plugins"
     },
     {
       "name": "servicenow",
       "source": "./plugins/servicenow",
-      "description": "Work in ServiceNow as yourself via the snow-mcp server: triage incidents and approvals, drive changes through their state model, order from the service catalog, author knowledge, and report on any table — with skills that adapt to read-only deployments.",
+      "description": "Work in ServiceNow as yourself via the snow-mcp server (per-user OAuth): triage incidents and approvals, drive changes through their state model with conflict checks, order from the service catalog, author knowledge, and report on any table. Skills adapt to the deployment's read-only mode and tool packages.",
       "category": "productivity",
       "homepage": "https://github.com/dlaporte/claude-plugins"
     }

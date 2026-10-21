@@ -7,17 +7,16 @@ grant on a linked source app, a narrowing of a source app, or a
 `member_reassigned` notification), when a grant's result says the row is
 pinned and the platform (with no Okta token) cannot ask whether the address
 has passed to someone else, or when a result names another address to revoke
-or the address a person's row is stored under. It applies from
-platform v0.16.12, where a grant is pinned to the identity provider account
-that holds its address; `grant_access`'s description says how, and where a
-sign-in is matched by its address instead.
+or the address a person's row is stored under. A grant is pinned to the
+identity provider account that holds its address; `grant_access`'s
+description says how, and where a sign-in is matched by its address
+instead.
 
-The grant stays with the account it is pinned to, and every sign-in
-carries the person's identity provider subject (the panel's, an MCP
-client's, and from platform v0.17.0 a browser app's, which is the
-platform's own), so the address's new holder is refused like anyone the
-app does not admit (contract R3, `get_app_contract` with
-`sections: ["2"]`).
+The grant stays with the account it is pinned to, and every sign-in carries
+the person's identity provider subject (the panel's, an MCP client's, and a
+browser app's, which is the platform's own), so the address's new holder is
+refused like anyone the app does not admit (contract R3, `get_app_contract`
+with `sections: ["2"]`).
 
 **Sharing with the new holder.** Confirm with the owner first: the revoke
 also ends the access of the account the row was pinned to, which may be the

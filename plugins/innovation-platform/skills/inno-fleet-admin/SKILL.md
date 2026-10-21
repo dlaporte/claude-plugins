@@ -87,7 +87,7 @@ through the one account-status answer every tool uses, held for
   make them an admin, and removing someone from it by hand does not end their
   standing: use `grant_admin` or `revoke_admin`, or suspend the account in
   Okta.
-- From platform v0.16.12 each admin row is pinned to the identity provider
+- Each admin row is pinned to the identity provider
   account that holds its address (`grant_admin`'s description says when, and
   where the pin applies), so an address that passes to another person does
   not take the standing with it. The admins get an `identity_reassigned`
@@ -107,7 +107,7 @@ through the one account-status answer every tool uses, held for
   revoke, it still does: that gives no standing while the list holds anyone
   (above), and only a change in Okta by hand takes them out of that group.
   Confirm the person by name before either.
-- What to do when they refuse:
+- What to do when `grant_admin` refuses:
   - `email_domain_not_allowed` when the instance lists allowed email domains
     and the address is outside them (a listed domain's subdomains are
     inside). The message names the address and the list. Fix the address.
@@ -115,15 +115,20 @@ through the one account-status answer every tool uses, held for
     `identity.allowedEmailDomains`, which the operator changes by editing the
     manifest and redeploying.
   - `okta_user_not_found`, on an instance with an Okta token, for an address
-    Okta does not know, or, from platform v0.16.12, whose every account is
-    suspended or deprovisioned ("No Okta account that can still sign in
-    holds <address>."): the person needs an account first.
-  - `self_admin_change` (`revoke_admin` naming yourself): another admin must
-    do it. From platform v0.16.12 it compares accounts, so your own row under
-    another address is refused too.
+    Okta does not know, or whose every account is suspended or deprovisioned
+    ("No Okta account that can still sign in holds <address>."): the person
+    needs an account first.
+  - `admin_table_empty`: below.
+- What to do when `revoke_admin` refuses. It never checks the allowed email
+  domains or asks Okta, so an admin outside the domains, or one Okta no
+  longer knows, can always be removed:
+  - `self_admin_change` (naming yourself): another admin must do it. It
+    compares accounts, so your own row under another address is refused too.
   - `last_admin`: the removal would leave the platform with no admin, and
     changes nothing. Grant another admin first.
   - `admin_table_empty`: below.
+  - An address the list does not hold is not refused: the answer says it is
+    not an admin.
 
 ### `admin_table_empty`
 
@@ -183,9 +188,8 @@ written. Its description says what it compares and how it reports.
 
 Admins only: there is no accept step, so in an owner's hands a transfer could
 dump unwanted apps on people. When the person asking is an app's owner and
-not an admin, do NOT call it for them: tell them a platform admin must do it,
-and offer to draft the request, naming the app and the new owner
-(`inno-manage-app` says the same).
+not an admin, do NOT call it for them: `inno-manage-app`'s **Transferring an
+app: ask an admin** is what to tell them.
 
 It takes effect at once, in one write. Its description says what moves to the
 recipient, what becomes of the previous owner (kept as a member unless the
@@ -194,14 +198,15 @@ never a reason to refuse), who is notified, and, on this instance, which
 account becomes the owner. Confirm before calling: state plainly who gains
 and who keeps what, and which data links (if any) it will break.
 
-**A linked set, and a public app** (from platform v0.17.2):
+**A linked set, and a public app:**
 
 - **`also`** moves up to nine more apps in the same call, as one set: the
   set moves whole or not at all, under every app's lease, and the
   recipient's active-app limit counts every app of it that is not stopped.
   Each app in `also` must share a data link with `app` itself, as its
   source or its consumer (a live link, or a revoked one whose binding is
-  still deployed), else the call is refused `also_not_linked`: an app
+  still deployed in a function-shaped consumer), else the call is refused
+  `also_not_linked`: an app
   linked only to another app of `also` is not admitted, so name the app
   the others link to as `app`. A link between two apps of the set is kept,
   and nothing is rebuilt for it; a link to an app outside the set follows
@@ -241,15 +246,16 @@ undoing the transfer, and the answer then says so:
 - if the connections delete fails, `list_user_connections` with their
   address and the app shows what is left, and `disconnect_user_connection`
   removes each;
-- if the grant revocation cannot be verified, their tokens still stop at the
-  front door's next introspection, since their row is gone. On an internal
-  app they still get in by signing in; on a public app anyone reaches it
-  without signing in.
+- if the grant revocation cannot be verified, the answer says so. On a
+  members-only app their tokens are refused at the front door's next
+  introspection all the same, since their row is gone. On an internal app
+  their tokens keep working, since an internal app admits everyone who
+  signs in, and on a public app anyone reaches it with no token at all.
 
 They keep their panel and browser app sessions until `revoke_sessions` ends
 them (below).
 
-**A transfer to the owner's own address** (from platform v0.16.12) re-points
+**A transfer to the owner's own address** re-points
 an app whose owner's address has passed to another person (the admins'
 `identity_reassigned` notification names such an app, **Fleet-wide reads**).
 With an Okta token the platform asks Okta who holds the address now, and the
@@ -287,13 +293,14 @@ What to do with its refusals and answers:
 - `app_busy`: retry once after a moment, never in a loop.
 - `link_transfer_blocked`. Data links are same-owner only, so a transfer has
   to revoke every link that touches the app. While any of those links still
-  has a deployed binding (a live link, or one revoked after the consumer
-  app's last deploy began, since a revoke landing while that deploy ran can
-  still be in it; before platform v0.16.11 the guard counted from when that
-  deploy finished), the transfer is refused with `link_transfer_blocked`,
-  naming each `consumer->source` pair. There are two ways forward and the
-  choice is the admin's: unlink with `unlink_app_data` and redeploy each
-  consumer, then transfer (unlinking alone does not clear the block: a
+  has a deployed binding (a live link, or one revoked from a function-shaped
+  consumer no deploy of which begun after the revocation has completed, so a
+  deploy still in flight still blocks; a container-shaped consumer's host refuses a revoked
+  link at once, so its revoked link does not count), the transfer is refused
+  with `link_transfer_blocked`, naming each `consumer->source` pair. There
+  are two ways forward and the choice is the admin's: unlink with
+  `unlink_app_data` and redeploy each function-shaped consumer, then
+  transfer (for one of those, unlinking alone does not clear the block: a
   redeploy of the consumer begun after the unlink does, once it has
   finished), or call again with `force: true`. **Never add `force: true` on
   your own.** Explain what it does, name the affected apps, and get an
@@ -301,28 +308,28 @@ What to do with its refusals and answers:
 - **What `force: true` does.** Its argument's description says how it
   revokes those links and rebuilds each affected consumer; each consumer's
   owner is also notified (`link_rebuild_pending`). Say before the yes who
-  keeps access until a rebuild lands: a container-shaped consumer deployed
-  on platform v0.14.2 or later is cut off within 60 seconds anyway by the
-  platform's live link check (its reads then fail `link_revoked`), but a
+  keeps access until a rebuild lands: a container-shaped consumer is cut
+  off within 60 seconds anyway by its host's live link check (its reads of
+  the database and the files then fail `link_revoked`), but a
   function-shaped consumer keeps read-write access to the other app's
-  database until its rebuild finishes. From platform v0.16.12, for a
-  function-shaped consumer another account owns, the source's owner and the
-  admins are told too (`cross_owner_link_revoked`); the answer says which.
-  If it says
+  database and files until its rebuild finishes. For a function-shaped
+  consumer another account owns, the source's owner and the admins are told
+  too (`cross_owner_link_revoked`); the answer says which. If it says
   `REBUILD NOT DISPATCHED` for an app, that app keeps its binding until a
-  deploy of it completes: from platform v0.16.12 the hourly check tries a
-  function-shaped one again a day later, and a redeploy by hand (its owner's
-  tag, or `rebuild_app`) cuts it sooner. Tell the admin and that app's owner.
+  deploy of it completes: the hourly check tries a function-shaped one again
+  a day later, and a redeploy by hand (its owner's tag, or `rebuild_app`)
+  cuts it sooner. Tell the admin and that app's owner.
 - `link_containment`: `force` does not override it. Grant the recipient
   access to the named source app first, move the source with the app in
-  `also` (from platform v0.17.2, when that source shares the link with `app`
-  itself), or unlink and redeploy the consumer, then transfer. A source
-  that is internal or public holds everyone who signs in, so only a
-  members-only source refuses. From platform v0.16.12 the source must hold
-  the same person as the recipient (the same account when both rows are pinned, else the same
-  address), and on a transfer to the owner's own address, a source owned
-  under that address by another account is named to re-point first, with
-  `transfer_app` to the same address on that source.
+  `also` (when that source shares the link with `app` itself), or unlink
+  and redeploy the consumer (starting it first if it is stopped), then
+  transfer. A source that is internal or
+  public holds everyone who signs in, so only a members-only source
+  refuses. The source must hold the same person as the recipient (the same
+  account when both rows are pinned, else the same address), and on a
+  transfer to the owner's own address, a source owned under that address by
+  another account is named to re-point first, with `transfer_app` to the
+  same address on that source.
 - **A refused transfer leaves nothing to clean up**: the recipient's
   member-list row is written only in the write that makes them the owner.
 - **Outcome unknown.** Rarely the answer says the platform "could not tell
@@ -340,8 +347,8 @@ touches nothing else (not MCP tokens, not group memberships), and a
 WebSocket or event stream already open on a browser app runs on until its
 sign-in session ends; its description has the rest. Use it when offboarding
 someone or when a session may be compromised. A person who wants their own
-sessions ended needs no admin: from platform v0.17.0 their own sign-out, on
-the panel or any app, ends every session they hold, in every browser. It is
+sessions ended needs no admin: their own sign-out, on the panel or any app,
+ends every session they hold, in every browser. It is
 deliberately not part
 of `transfer_app`: a previous owner usually stays a member and a legitimate
 user, and even one a transfer does not keep, being outside the allowed email
@@ -359,12 +366,16 @@ domains (above), keeps their sessions until this ends them.
    (whose front door asks the platform at every request), and their admin
    standing, if they had one.
 2. **`revoke_sessions`** ends their panel and browser app sessions now.
-3. **`revoke_access` on each app they can reach** removes them from its member
-   list and deletes their stored connections there (`inno-manage-app` has its
-   rules). It refuses `owner_not_revocable` on an app they own: transfer it
-   first, or stop it. From platform v0.16.12 a grant pinned to their
+3. **`revoke_access` on each app they are a member of** removes them from
+   its member list and deletes their stored connections there
+   (`inno-manage-app` has its rules). It refuses `owner_not_revocable` on an
+   app they own: transfer it first, or stop it. A grant pinned to their
    account does not pass with their address to its next holder, but one
    still waiting for its first sign-in would: one more reason to revoke.
+   To find every app they are a member of, take `export_platform_backup`
+   and filter its member rows (`app_members`) by their address: that
+   snapshot holds every member row, and no other tool lists a person's
+   apps (`list_apps` names owners, `list_users` only owners and admins).
 
 None of the three stops a removed person reaching a public app: anyone on
 the internet reaches one, with no sign-in. And `revoke_access` alone does
@@ -380,17 +391,27 @@ app with the admin, best before the account is suspended: transfer it to an
 accountable owner (with `accept_guardrails` after the review, and its
 linked editor in `also`), where it stays public, or, once the pass has
 narrowed it, where its new owner widens it again through the review;
-narrow it now with `set_app_access`; or purge it. On an instance with no
-Okta token the owner check never fires, so narrow or transfer each one by
-hand.
+narrow it now with `set_app_access`; or stop it and then purge it
+(`purge_app` takes a stopped app only; a pinned app is unpinned before the
+stop, below). On an instance with no Okta token
+the owner check never fires, so narrow or transfer each one by hand.
 
 ## `purge_app({ app })`: delete an app now
 
-The scheduler's end-of-window teardown, on demand, and final. Its
-description lists everything it deletes and what remains (the GitHub repo,
-the audit and the notification history). The name is then held, as the
-description says, and no admin can lift that hold. An owner who wants their
-own app gone now cannot call it: they stop the app (`stop_app`,
+The scheduler's end-of-window teardown, on demand, and final, for a
+**stopped** app only: stop it first (`stop_app`). A pinned app refuses
+`stop_app` with `app_pinned`, an admin's call included: unpin it first
+(`set_config` of `lifecycle.pinned` to false at app scope). Its description
+lists everything it deletes and what remains (the GitHub repo, the audit
+and the notification history). The name is then held, as the description
+says. No admin can lift the dated hold; the part past it ends once each
+function-shaped app that read this one's data has been rebuilt or
+redeployed. The purge dispatches that rebuild itself, and when it could
+not, or the rebuild never landed, an admin's `rebuild_app` of that app
+brings it about (not within an hour of the purge's own dispatch, which
+`rebuild_app` refuses `dispatch_in_flight`; `inno-manage-app`'s
+**`stop_app`** section has the rest). An owner who
+wants their own app gone now cannot call it: they stop the app (`stop_app`,
 `inno-manage-app`) and ask an admin for the purge.
 
 Before calling it:
@@ -401,7 +422,7 @@ Before calling it:
   owner's ready notice (or the app's Data exports card on the panel), then
   purge. Its member list goes too, and no Okta import can rebuild it: only
   the nightly database dumps and any `export_platform_backup` snapshot hold
-  it.
+  it. This bullet is the plugin's one home for that rule.
 - **Name the consumers.** It revokes every data link touching the app, in
   both directions, and an app that READS this one's database and files keeps
   bindings to them that now fail; the platform rebuilds a function-shaped
@@ -411,22 +432,28 @@ Before calling it:
 
 What to do with its refusals and answers:
 
-- `app_deploying`: wait for the deploy to finish, then purge. A run that died
-  holds the app `deploying` until a later deploy finishes or the recovery
-  sweep reverts it, which `inno-manage-app`'s **A deploy whose CI run died**
-  explains, and `rebuild_app` cannot release it.
+- `app_not_stopped`: the app is not stopped. Stop it first (`stop_app`,
+  after confirming with the admin, and with the owner when the admin is not
+  the one asking; unpinned first if it is pinned), then purge.
+- `app_deploying`: wait for the deploy to finish, then stop it and purge. A
+  run that died holds the app `deploying` until a later deploy finishes or
+  the recovery sweep reverts it, which `inno-manage-app`'s **A deploy whose
+  CI run died** explains, and `rebuild_app` cannot release it.
 - `app_busy`: retry once after a moment, never in a loop.
-- `image_budget_exhausted`: a container app holds more images in the
-  registry than one call deletes. The purge is unfinished, not failed: call
-  `purge_app` again, as often as it answers this, until it finishes. Until
-  then the app's data and record are kept; its container and Worker may
-  already be gone.
+- `image_budget_exhausted` or `r2_budget_exhausted`: the purge deletes a
+  container app's registry images, and the app's files, up to a fixed number
+  per call, and this app holds more. The purge is unfinished, not failed:
+  call `purge_app` again, as often as it answers either, until it finishes.
+  Until then the app's record is kept; after the image budget its data is
+  kept too, but its container and Worker may already be gone, and after the
+  files budget its database may already be deleted.
 - **Okta groups left in place.** Only the Okta groups and rule an earlier
   release recorded for the app are deleted, by id (an app registered from
   platform v0.16.5, or an MCP app from v0.16.4, records none), and the
   `app_purged` audit row's `idp_skipped` detail lists any it left: a group
-  another instance marked, or a recorded open group whose open rule the
-  record never named. No app admits by them. The operator guide's "Leftover
+  another instance marked, a recorded open group whose open rule the record
+  never named, or a recorded open rule that does not assign to this app's
+  own open group alone. No app admits by them. The operator guide's "Leftover
   app groups and rules" (`docs/OPERATIONS.md` in the platform's repository,
   its Teardown section; no tool serves it) says how to tell whether one is
   this instance's before removing it.
@@ -438,14 +465,14 @@ tag: the full CI gates run and the app deploys only if they pass, with no
 new commit and no code change. It exists for what an owner cannot
 self-serve, such as redeploying a third-party-owned repo an admin cannot
 push a tag to. Owners never need it: they redeploy by tagging their own repo (`inno-ship`).
-From platform v0.16.12 the platform also rebuilds, on its own, a
-function-shaped consumer whose data link to another account's app was
-revoked (`inno-manage-app`'s **Data links across owners**); its notices name
-`rebuild_app` to do that sooner, and from platform v0.16.18 the
-`cross_owner_link_revoked` notice also names `stop_app`, `transfer_app` and
-`purge_app` for a consumer whose rebuilds never land (**Fleet-wide reads**,
-below). It starts CI in a repository the platform does not own, which cannot
-be recalled, so confirm first.
+The platform also rebuilds, on its own, a function-shaped consumer whose
+revoked data link it owes a rebuild: one another account owns
+(`inno-manage-app`'s **Data links across owners**), one a narrowing or a
+purge cut for reach, and one `revoke_access`'s cascade meets. A same-owner
+`unlink_app_data` is not rebuilt: that consumer's owner redeploys. A notice
+names `rebuild_app` to do it sooner only when the platform's own dispatch
+failed. It starts CI in a repository the platform does not own, which
+cannot be recalled, so confirm first.
 
 - `app_not_deployed`: decided by the app's status alone, and the message
   says what to do: a stopped app is started first (`start_app`). For a
@@ -460,6 +487,13 @@ be recalled, so confirm first.
 - `app_not_installed`: only the repo's owner can reinstall the platform
   GitHub App on GitHub.
 - `repo_not_linked`: registration never finished.
+- `dispatch_in_flight`: a respin, a rebuild or a redeploy was dispatched for
+  the app within the last hour and may still be in CI, the platform's own
+  link rebuilds and `start_app`'s rebuild included. Whichever run finalizes
+  last wins, so a second dispatch could race the first. Watch that run with
+  `get_ci_status`, and call again once the hour has passed if it did not
+  deploy what was needed. There is no way to force it.
+- `app_busy`: retry once after a moment, never in a loop.
 - `github_app_not_configured`, `github_app_key_invalid` or
   `installation_token_failed`: a platform-side GitHub App fault, fixed on the
   platform's side rather than the app's.
@@ -537,8 +571,10 @@ public.
   false for the app at app scope with `set_config` (an app-scope value
   decides over the owner's and the platform's), and `access.allow_internal`
   false there too to hold it members-only; if it must stop serving its
-  members as well, `stop_app`. Then purge it (`purge_app`) or transfer it to
-  an accountable owner. Every app shares the platform's one domain, so one
+  members as well, `stop_app` (unpinned first if it is pinned). Then, once
+  it is stopped, purge it
+  (`purge_app` takes a stopped app only), or transfer it to an accountable
+  owner. Every app shares the platform's one domain, so one
   public app's abuse reaches the domain's reputation for all of them, and
   nothing withdraws what it published. The operator guide's "5.6.4 The
   abuse runbook for a public app" (`docs/OPERATIONS.md` in the platform's
@@ -560,10 +596,17 @@ owner uses (`get_config app=` and `get_config user=`) are in
   user's email. `remove_config` removes an override so the inherited value
   applies again.
 - Both writers refuse `unknown_setting` for a key that names no setting,
-  `scope_not_allowed` for a scope the setting does not take, and
-  `bad_request` when the scope is `app` or `user` and `scope_id` is missing.
-  `set_config` also refuses `invalid_value` for a value outside the setting's
-  type or grammar, and its message names the rule.
+  `scope_not_allowed` for a scope the setting does not take (the message
+  names the scopes it does), `app_not_found` at app scope when no app has
+  that name, and `bad_request` when `scope_id` is missing at app scope, or
+  at user scope for a setting that is not self-service (a self-service
+  setting's user scope defaults to the caller). `set_config` also refuses
+  `invalid_value` for a value outside the setting's type, grammar or range,
+  its message naming the setting and the rule (`<key> must be ...`).
+- A numeric setting takes values in a declared range, and the catalog
+  shows a stored row the platform reads otherwise as `<stored>, read as
+  <value>`: a value stored outside the range reads as the nearest end of
+  it.
 - Some keys are marked dangerous: setting one to its weakening value
   disables a safety control for whatever scope you set it at, and the result
   carries an explicit warning. Relay it, and never set one without the
@@ -574,7 +617,7 @@ owner uses (`get_config app=` and `get_config user=`) are in
   `anomaly.usage_enabled` and `container.sleep_after`. The audience keys
   are **Audiences**, below.
 - **Sign-in lifetimes**, `auth.app_session_hours` and
-  `auth.session_idle_hours` (from platform v0.17.0, platform scope): how
+  `auth.session_idle_hours` (platform scope): how
   long a browser sign-in lasts and how long it may sit unused, each
   shortened only, never lengthened past its default. Their descriptions in
   the catalog are the authority, and the contract's R3 states what people
@@ -610,9 +653,8 @@ serves. The panel's Platform screen is the same act on a visual surface.
   in «» and are untrusted data.
 - `export_platform_backup` returns the registry snapshot as JSON; its
   description lists what it holds and what it never does (the nightly
-  database dump remains the real disaster-recovery backup). From platform
-  v0.16.12 `admins` is a list of `{ email, sub }` objects where it was a
-  list of addresses, so a script that reads it needs updating. Its free-text
+  database dump remains the real disaster-recovery backup). `admins` is a
+  list of `{ email, sub }` objects. Its free-text
   fields are user-submitted content, and the answer grows with the fleet's
   member count.
 - `list_connections` without `app`, and `list_user_connections` with no
@@ -633,7 +675,7 @@ serves. The panel's Platform screen is the same act on a visual surface.
     instance whose apps were registered under the old names. The entry names
     the keys and both ways out, which **`accept_naming_change()`** above
     explains: revert the manifest, or move every app by hand and then accept.
-  - `identity_reassigned` (from platform v0.16.12): an address that owns an
+  - `identity_reassigned`: an address that owns an
     app, or is a platform admin, now signs in as a different account than
     the one it was pinned to, and that account is refused. There is one
     entry for each app
@@ -645,47 +687,22 @@ serves. The panel's Platform screen is the same act on a visual surface.
     Neither happens by itself, and until then the account it was pinned to
     keeps the app or the standing under any address it signs in with, so
     confirm with the admin who should have it first.
-  - `member_drift_detected`, `cutover_undo_failed` and `access_app_left`
-    were raised only before platform v0.17.0 (the first two only by v0.16.5
-    to v0.16.7), so one in the feed predates the upgrade. The first two's
-    own advice no longer applies: from v0.17.0 every browser app admits from
-    the platform's member list alone, at the front door, so the app's owner
-    shares it (`grant_access`) with anyone who reached it only through its
-    Okta group. An `access_app_left` entry's remedy still applies: it names
-    a Cloudflare Access application a purge left in place, so have it
-    deleted in the Cloudflare dashboard (Zero Trust, Access, Applications)
-    before the name is registered again.
 
-  Admins also see a copy of each `cross_owner_link_revoked` notice (from
-  platform v0.16.12), an owner stage that tells a source's owner a data link
-  from a function-shaped app another account owns was revoked, and whether
-  that app's rebuild was dispatched (`inno-manage-app`'s **Data links
-  across owners**). The platform rebuilds it on its own, tries again a day
-  later, and names `rebuild_app` to do it sooner. From platform v0.16.18,
-  when the notice reports a rebuild dispatched or one that could not be, it
-  also names what ends that app's reach into the source's data if its
-  rebuilds never land (its owner can cancel each run): `stop_app` for it,
-  `transfer_app` for it, or `purge_app` for it. Before a stop, tell the admin
-  that it holds only once the app's owner has spent their self-service
-  starts: until then the owner can start it again.
+  Admins also get a copy of each `cross_owner_link_revoked` notice, and see
+  each app's `host_upload_blocked` notice in the fleet feed (it goes to the
+  owner alone, and the release run fails on it). The meaning and remedies
+  of both are `inno-manage-app`'s **Notifications**, the owner's and an
+  admin's: the stop, transfer or stop-then-purge the first names, and the
+  unlink then `restart_app` that clears the second. Confirm with the app's
+  owner before acting on either.
 
-  Admins also see each `host_upload_blocked` notice (from platform
-  v0.17.0): a platform release could not upload a new host for a container
-  app because one of its data links no longer holds, so the app stays on
-  the host an earlier release uploaded, and the release run failed on it.
-  An admin can clear it as the owner can, with `unlink_app_data` and then
-  `restart_app` on the app (`inno-manage-app`'s **Notifications**); confirm
-  with the app's owner first, since the app loses its read of that
-  source's data.
-
-  From platform v0.17.2 admins also get their own `access_changed` entry
-  when an app is widened to public (who widened it, and whether
-  unusual-usage detection is now on: **Audiences**, above) and when the
-  hourly pass narrows a public app whose owner can no longer sign in
-  (transfer it to an active owner before anyone widens it again:
-  **Offboarding an owner of public apps**, above), and their own
-  `transferred` entry for each public app a transfer moved, which stays
-  public.
+  Admins also get their own `access_changed` entry when an app is widened to
+  public (who widened it, and whether unusual-usage detection is now on:
+  **Audiences**, above) and when the hourly pass narrows a public app whose
+  owner can no longer sign in (transfer it to an active owner before anyone
+  widens it again: **Offboarding an owner of public apps**, above), and
+  their own `transferred` entry for each public app a transfer moved, which
+  stays public.
 
   `mark_all_notifications_read` called by an admin marks every unread
   notification read, everyone's, not only the admin's own.

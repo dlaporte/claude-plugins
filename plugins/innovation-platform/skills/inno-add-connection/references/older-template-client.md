@@ -30,11 +30,12 @@ The current client brings `ConnectionLocked`, `ConnectionsError` and the
 - the JS message is still `connections_error:<status>`.
 
 The one changed shape is the identity helper (`current_user` in Python,
-`currentUser` in JS). From platform v0.16.19's template it answers no user
-(`None`, `null`) for a caller with no identity, where an older one answered
-an empty email, and its answer adds `member`. After the copy, make every
-place that reads the helper handle no user first and never default it into
-a value (`inno-platform-conventions`' **Identity** section).
+`currentUser` in JS). The current one answers no user (`None`, `null`) for
+a caller with no identity, where an older one answered an empty email, and
+its answer adds `member` and `subject`, the key for per-person data. After
+the copy, make every place that reads the helper handle no user first and
+never default it into a value (`inno-platform-conventions`' **Identity**
+section).
 
 The text of a failed seam call's error, as a whole, changed as well in
 both clients: in Python `str(e)` is now `connections_error:<status>` rather

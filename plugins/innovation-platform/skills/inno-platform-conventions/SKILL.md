@@ -36,17 +36,19 @@ container app runs in a host Worker the platform uploads for it, and a
 function app is its own Worker in the platform's app namespace. Nothing of
 the front door or the host lives in your repo, and CI polices the rest;
 your job is everything under `app/`. These rules are not style
-preferences: each one maps to a CI gate that will fail the deploy.
+preferences. Most map to a CI gate that fails the deploy; the rest, R3 to
+R6 and R10, no gate can see, so the safety preflight's review judges them
+(`inno-safety-preflight`), and the contract's §6 enforcement map says which
+is which.
 
 **Fetch the contract before writing app code:** call `get_app_contract` with
 `sections: ["2", "3", "4"]` (the requirements R1 to R10, the recommendations,
 and the stack policy), adding the section for the app's type (`1.1` for
 `function`, `1.1` and `1.2` for `mcp-function`, `1.2` and `1.3` for
 `mcp-container`)
-and `2.2` or `2.3` when the app uses a connection or reads platform
-variables. If `get_app_contract` refuses the arguments, or the platform is
-older than v0.16.14, call it with no arguments and read the sections needed
-from the whole contract. Every contract or section answer opens with the
+and `2.1`, `2.2` or `2.3` when the app reads another app's data through a
+link, uses a connection or reads platform variables. Every contract or
+section answer opens with the
 CURRENT digest-pinned recommended base images. The tool is the live source:
 never restate contract values from memory or hard-code a base-image digest.
 This skill says how to apply the contract while writing code, and names the
@@ -73,8 +75,7 @@ when a tool answers one:
   address again.
 - `upstream_error`: a service the platform calls failed, or the call failed
   in a way the platform did not expect. Its message says what was running,
-  and one retry may succeed. A platform before v0.16.9 answers an
-  unexpected failure with `internal_error` instead.
+  and one retry may succeed.
 
 ## Deployment types: `container` (below), `function`, `mcp-function`, `mcp-container`
 
@@ -167,13 +168,16 @@ that the lockfile resolves a clean Starlette before committing to it.
   **every push to the default branch**, so the preflight catches a missing
   lockfile, an import that does not resolve, a devDependency used at
   runtime, a symlink out of the repository and a bundle over 16 MiB before
-  you tag. The `deps` gate builds a throwaway lockfile to audit when none is
-  committed, so its own green proves nothing about this.
+  you tag. The `deps` gate refuses a function-shaped app's `app/package.json`
+  with no committed lockfile as well.
 - A container app should commit it too: while an admin has the release-age
   cooldown on (`safety.min_release_age_days` above 0), an app shipping
   `app/package.json` with no committed, parseable `app/package-lock.json`
   fails the `dep-age` gate, because ranges have no single publish date to
   check.
+- The cooldown dates a function-shaped app's `dependencies` alone, since
+  its build never installs `devDependencies`, and a container app's
+  `devDependencies` too, since its Dockerfile may install them.
 - That app-owned lockfile under `app/` is fine; a lockfile at the **repo
   root** is not (**Files you must not touch** below).
 
@@ -273,13 +277,15 @@ The caller is read and "no user" handled before any per-person query, and
 the rows are keyed on the caller's `subject`, as the **Identity** section
 below says. A route that changes state is never a
 GET, and on a browser app it also takes the origin check `get_app_security`
-§12 sets (from platform v0.16.19).
+§12 sets.
 
 `Storage()` defaults its base URL to `http://storage.internal`, which the
 platform's host intercepts (the container's outbound handler) and routes to
-the app's own D1 database and R2 bucket. **Leave `INNO_STORAGE_BASE` unset**: locally and in
-production the default is correct; only override it if you're running the
-app process entirely outside the container (unusual). File storage is
+the app's own D1 database and R2 bucket. **Leave `INNO_STORAGE_BASE` unset
+in production**, where that default is correct. A local run of the container
+has no host around it, so it has no storage either: its storage calls fail
+unless `INNO_STORAGE_BASE` points at a local stand-in that serves the same
+endpoints (R5). Never point it at the app's public address. File storage is
 `put_file`/`get_file`/`list_files`/`delete_file` against the same client,
 backed by R2. Non-Python stacks call the plain-HTTP endpoints R5 lists
 directly.
@@ -363,8 +369,8 @@ if user is None or user["subject"] is None:  # a route that needs a person
 `?? ""`, `"unknown"`): a placeholder bound into `WHERE owner = ?` is one key
 that every caller with no identity shares, and a SQL `NULL` is no better.
 The helper answers no object at all, so code that reads the email without
-the check fails rather than share a key; keep it that way. Contract §3
-(from contract 32) is the authoritative text for this rule.
+the check fails rather than share a key; keep it that way. Contract §3 is
+the authoritative text for this rule.
 
 Refuse a caller with no user only in a route that needs a person, never in
 a middleware or ahead of routing: the platform's health probe,
@@ -372,7 +378,7 @@ a middleware or ahead of routing: the platform's health probe,
 200 (R2). In a route that needs a person, the branch is the one-line refusal
 above. **An MCP app refuses inside MCP**, with a tool result marked as an
 error or a JSON-RPC error, never with an HTTP status: §1.2 and §1.3 make it
-a MUST from contract 32 and say why.
+a MUST and say why.
 
 A repo made from a template older than platform v0.17.0 has an older
 helper with no `subject`; one older than v0.16.19 also answers an empty
@@ -395,7 +401,7 @@ that template has no such helper either, read an empty or missing
   anything your app keys on the address, its own data or its own role
   store, still goes to whoever holds the address. `X-Forwarded-Subject`
   stays with the person and comes with every identified request, on every
-  app type, from contract 34 (R3). §3 recommends keying on it, so a new app
+  app type (R3). §3 recommends keying on it, so a new app
   does from the start. An existing app keyed on the address may re-key its
   rows once, since every identified request carries both headers: a
   migration in the app's own code, recommended and not required (§3).
@@ -416,8 +422,10 @@ that template has no such helper either, read an empty or missing
   does), and a request that never passed the front door (the app run
   locally, a test) can carry none; the helper reads each as no user. A
   person the platform refuses never reaches your code: the front door
-  answers them itself, with a plain 403 "No access" page, or a 503 "Try
-  again shortly" page when it cannot ask the platform.
+  answers them itself. On a browser app that is a plain 403 "No access"
+  page, or a 503 "Try again shortly" page when it cannot ask the platform;
+  an MCP app's caller gets a 401 with a bearer challenge instead, which
+  sends their MCP client back to authorize.
 - **How fast a change reaches the header** is R3's to state: within the
   front door's cache, at most 60 seconds on an MCP app and 10 seconds on a
   browser app.
@@ -582,9 +590,11 @@ than wiring this ad hoc. The rules the code must hold are §2.2 and
 - Read the inbound `X-Caller-Assertion` header off the request you are
   serving and pass it straight through to the seam; never keep, persist or
   log it.
-- Use the returned credential for the one backend call at hand, cache it
-  in memory only until its `expires_at`, and never write it to disk or a log
-  line. On `NotConnected`, relay its `connect_url` to the user; on
+- Use the returned credential for the backend call at hand, and never write
+  it to disk, a database row or a log line. Whether the app may keep it in
+  memory between calls, and keyed how, is `get_app_security` §8's rule: one
+  person's credential never serves another person's request. On
+  `NotConnected`, relay its `connect_url` to the user; on
   `ConnectionLocked` (a subclass of `NotConnected`, so catch it first), tell
   them to **re-authorize this MCP client** (in Claude: `/mcp`, then
   re-authenticate that server), never to reconnect the backend, which
@@ -593,7 +603,7 @@ than wiring this ad hoc. The rules the code must hold are §2.2 and
 ## Sign out: one link, no session code
 
 Whenever a browser-facing app shows who is signed in, it links to
-`/_auth/signout` on its own host (R4, from contract 34; a footer is fine):
+`/_auth/signout` on its own host (R4; a footer is fine):
 
 ```html
 <a href="/_auth/signout">Sign out</a>
@@ -604,7 +614,8 @@ app that never shows who is signed in needs no link, and an anonymous app
 never does. Make it a plain link
 the person clicks, never a `fetch`, a frame or a prefetch: R4 says why, and
 what signing out ends, which is the person's panel and every app session
-they hold on the platform, in every browser. So label it plainly ("Sign
+they hold on the platform, in every browser, and their identity provider
+session in the browser they sign out in. So label it plainly ("Sign
 out"), never as signing out of this app alone. The path is the same on
 every app and every instance, so there is nothing to look up, and `/_auth/`
 is the platform's on every app host (R3): route nothing under it yourself.
@@ -656,11 +667,11 @@ naming each path it finds ("delete `<file>`: the platform injects ...").
 Never create or restore one locally, even to "match the template": there is
 no version of these files that belongs in your repo.
 
-- `src/`, all of it, at the repo root. The platform owns that directory, and
-  anything of yours under it (a source file, `src/node_modules/`,
-  `src/package.json`, `src/tsconfig.json`) could shadow the platform's build
-  dependencies, so the gate fails the repo with a "delete src/" message.
-  Put your code under `app/`; an `app/src/` directory is yours and fine.
+- `src/`, all of it, at the repo root. The platform owns that directory, so
+  the gate fails a repo with anything of yours under it (a source file,
+  `src/node_modules/`, `src/package.json`, `src/tsconfig.json`) with a
+  "delete src/" message. An empty `src/` passes. Put your code under `app/`;
+  an `app/src/` directory is yours and fine.
 - `package.json` and its lockfile (`package-lock.json`) **at the repo
   root**: nothing is installed there. Your app's own build files under
   `app/` (a Node app's `app/package.json`, etc.) are yours and fine.
@@ -693,11 +704,11 @@ no version of these files that belongs in your repo.
   allowed (an unbuilt repo can run CI before a prune lands), and
   `scaffold-check` skips that run's deploy anyway; deleting the marker to
   start building re-arms the check, so delete `scaffold/` with it. When
-  `register_app` warns that the repository has no `scaffold/<preset>/`, or a
-  prune answers `scaffold not applied`, follow what it says.
+  `register_app` warns that the repository's `scaffold/` has no overlay for
+  its type, or answers `scaffold not applied`, follow what it says.
 - **A directory symlink anywhere in the repo**, at any depth and dangling
   ones too, and **a file symlink whose target resolves outside the
-  repository** (from contract 33). A file symlink that resolves inside the
+  repository**. A file symlink that resolves inside the
   repository (an alias such as `alias.ts -> real.ts`) stays legal. The gate
   walks your tree without following links, so anything behind a directory
   link (an `app/.npmrc`, say) would never be inspected, and the build reads
@@ -721,17 +732,14 @@ headers are required of every app, whatever its type:
 `## Innovation Platform App`, `## Identity (do not build auth)` and
 `## What CI enforces`. The remaining two are variant groups, and ANY member
 of a group satisfies the gate: `## Persistence (use the storage client)` or
-`## Persistence (use your bindings)`, and `## Container contract`,
-`## Function contract`, or the legacy `## Worker contract`, which still
-passes. The gate never asks what type your app is, so a container app
-carrying the function headers passes, and the reverse passes as well. If
-you're hand-authoring `CLAUDE.md` (see `inno-new-app`'s empty-repo path),
-copy the template's version for your type: `scaffold/function/CLAUDE.md`,
-`scaffold/mcp-function/CLAUDE.md` or `scaffold/mcp-container/CLAUDE.md` in
-the template repo (the `Template repo:` line of the status you read in the
-Version gate) for those three types, and the template's root `CLAUDE.md`
-for `container`. Those are the only four: there is no `scaffold/container/`,
-because the container files ARE the template root.
+`## Persistence (use your bindings)`, and `## Container contract` or
+`## Function contract`. The retired `## Worker contract` heading no longer
+passes: an app still carrying it renames it `## Function contract`. The
+gate never asks what type your app is, so a container app carrying the
+function headers passes, and the reverse passes as well. Which of the
+template's eight guides to start from (one per type, and an anonymous one
+per type), and how to merge the headers into a `CLAUDE.md` a repo already
+has, is `inno-new-app`'s `references/hand-authored-layout.md`.
 
 Everything under `app/` (routes, templates, requirements, your own modules)
 is yours to change freely.

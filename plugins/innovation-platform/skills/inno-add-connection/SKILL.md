@@ -44,9 +44,7 @@ If this is the first call against it this session, expect a browser Okta
 login; that's expected, not an error.
 
 **Read the contract's Connections section before you start:** call
-`get_app_contract` with `sections: ["2.2"]`. If `get_app_contract` refuses
-the arguments, or the platform is older than v0.16.14, call it with no
-arguments and read the sections needed from the whole contract. §2.2 is the
+`get_app_contract` with `sections: ["2.2"]`. §2.2 is the
 authoritative text for the seam the app calls, every answer the seam can
 give and whose each is to fix, the three strategies, and the five connection
 tools. This skill is the workflow around it, and points at its subsections
@@ -168,6 +166,8 @@ is how to choose and fill it.
     "where do you create that token?", for example *"Create a personal access
     token at Settings → Developer → Tokens in your Acme account, then paste
     it here."*
+  - **No `client_id` or `client_secret`**: each user brings their own token,
+    and the tool refuses a definition-level pair for this strategy.
 
 - **`oauth2_client_creds`** (also zero-admin): the backend's only token flow
   is POSTing a client ID and secret to a token URL, and each user can mint
@@ -295,7 +295,8 @@ set_app_connection({ app, connection, label, strategy, config,
 - `label`: the human-readable name shown to the user when they connect (for
   example "Acme CRM").
 - `strategy` and `config`: from step 3.
-- `client_id` and `client_secret`: only for `oauth2_code`.
+- `client_id` and `client_secret`: only for `oauth2_code` (the other two
+  strategies refuse them).
 - `scopes`: the minimal set the app needs.
 - `disabled`: omit it for the normal case. `true` pauses the connection for
   every user, and it is the reversible switch: stored credentials are kept
@@ -305,24 +306,26 @@ The tool checks every endpoint against a denylist of non-public hosts, and
 that check is **syntactic, never a DNS lookup**: a public hostname that
 happens to resolve to a private address is not caught, so read the endpoint
 you were handed rather than treating the gate as proof it is external. If the
-call is refused `connections_config_invalid`, its message names the rule (a
-non-public endpoint, a missing field, a bad strategy and config pairing): fix
-that one thing and retry. A call that fails changed nothing (only the audit
-row it writes first may remain), so a retry repeats the whole of it. An
-`app_busy` answer (from platform v0.16.11) means another change to the app,
-such as another edit of this connection or its pause, is in flight: retry
-once after a moment, never in a loop.
+call is refused `invalid_connection_definition`, its message names the rule
+(a non-public endpoint, a missing field, a bad strategy and config pairing,
+a client pair on a strategy that takes none), and `invalid_connection_name`
+names the connection name's grammar: fix that one thing and retry. A call
+that fails changed nothing (only the audit rows it may write before the
+write itself, `connection_sink_split` and `connection_credentials_invalidated`,
+can remain), so a retry repeats the whole of it. An
+`app_busy` answer means another change to the app, such as another edit of
+this connection or its pause, is in flight: retry once after a moment,
+never in a loop.
 
 Five answers are **not** bad arguments, so don't retry blindly:
 
 - **`app_anonymous`**: the app is anonymous, and an anonymous app has no
   Connections (step 1). Stop, and say so plainly.
-- **`connections_disabled` or `connections_key_invalid`**: passing a
+- **`encryption_key_missing` or `encryption_key_invalid`**: passing a
   `client_secret` needs the platform's encryption key, and it is unset or
   malformed. Relay the message to the user and stop: nothing you change in
   the arguments fixes it, and the person who can fix it is a platform admin,
-  not them. (A platform before v0.16.9 answers the malformed case with
-  `internal_error`.)
+  not them.
 - **A warning about `refresh: "rotating"`**: the call **succeeded**
   (rotating is supported). Relay the warning that concurrent refreshes for
   one user can race into a spurious disconnect; it is a flag, not a failure
@@ -349,9 +352,8 @@ Five answers are **not** bad arguments, so don't retry blindly:
   carried back to yours, or this is a new connection and credentials an
   earlier one left under its name were removed. Those users were notified to
   reconnect. Run `list_connections` and check the stored definition is the
-  one you meant before anyone connects. From platform v0.16.11 an
-  overlapping edit is refused `app_busy` instead, so on an existing
-  connection this note should be rare.
+  one you meant before anyone connects. An overlapping edit is refused
+  `app_busy` instead, so on an existing connection this note should be rare.
 
 Tell the user in plain terms what just got stored (the backend's address and
 how the app will reach it, kept encrypted on the platform). **Never echo a
@@ -465,6 +467,9 @@ try {
   if (e instanceof NotConnected) {
     return `Not connected to your CRM: open ${e.connect_url} to link your account (one time), then try again.`;
   }
+  if (e instanceof ConnectionsError && e.code === "connections_def_disabled") {
+    return "Your CRM connection is paused right now. Try again later; you don't need to reconnect.";
+  }
   throw e;
 }
 ```
@@ -478,9 +483,12 @@ Rules that hold regardless of language:
   and drop it (§2.2's **What the app MUST NOT do** says why).
 - On success you get back a live credential for *that* user (an
   `access_token`, or a ready-made `header`, depending on strategy) plus an
-  `expires_at`. Use it for the backend call you're about to make; cache it
-  **in memory only**, until `expires_at`, and never write it to disk, a
-  database row, or a log line.
+  `expires_at`. Use it for the backend call you're about to make, and never
+  write it to disk, a database row, or a log line. Keeping it in memory
+  between calls is `get_app_security` §8's rule, which says how a cache must
+  be keyed: one MCP container serves every user of the app from one
+  process, and one person's credential must never serve another person's
+  request. Read it before you add a cache.
 - On `NotConnected`, don't treat it as an error to swallow: relay the connect
   link it returns (`connect_url`) to the user in the words of §2.2's
   **Tool-copy convention**: *"Not connected to {Backend}: open {connect_url}
@@ -496,7 +504,13 @@ Rules that hold regardless of language:
   only a new authorization writes the key into the grant, so they loop,
   connecting over and over while the app reports the same thing. Check for
   `ConnectionLocked` first, since it is a subclass of `NotConnected` and
-  would otherwise be caught by the parent clause.
+  would otherwise be caught by the parent clause. The platform tells the
+  person as well: while their credential stays locked it sends them a
+  `connection_locked` notice, at most once a day per app (its email follows
+  their `notify.email.connection_locked` setting), with the same remedy:
+  re-authorize the MCP client, and do not reconnect the backend. A
+  `connection_expired` notice is the other case: the stored credential is
+  gone, and connecting again is the fix.
 - **Every other non-success answer is not the user's fault**, so don't send
   any of them down the connect-link path. Each raises `ConnectionsError` in
   both template clients, with the HTTP status as `.status` and the answer's
@@ -516,8 +530,8 @@ Rules that hold regardless of language:
     outage, not the user's connection: retry later.
   - **`429 rate_limited`** (with `Retry-After: 60`): the seam's abuse brake.
     Wait the `Retry-After` interval, then retry. If a tool trips this in
-    normal use, it is calling the seam per backend request instead of
-    caching the credential in memory until `expires_at`.
+    normal use, it is calling the seam for every backend request: reuse the
+    credential as `get_app_security` §8 allows instead.
   - **`401 connections_bad_assertion`** and **`403
     connections_not_declared`** are the **app's** to fix: echo the
     `X-Caller-Assertion` of the request you are serving now, not one kept

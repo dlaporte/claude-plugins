@@ -15,13 +15,19 @@
 #
 # Every version is read through scripts/plugin-version.sh, so a changed plugin
 # with no manifest, or one whose version is not a plain MAJOR.MINOR.PATCH
-# string, fails here whether or not it existed at the base.
+# string, fails here whether or not it existed at the base. The new version
+# must be above the old by scripts/semver.sh's semver_above, field by field as
+# numbers, so 1.10.0 beats 1.9.0 (a plain string compare would get that
+# backwards); an old version of another shape fails the compare the same as a
+# real regression would.
 # scripts/test-version-bump.sh runs this gate on a planted repository.
 #
 # Usage (from the repo root): BASE_SHA=<sha> [FORCED=true] bash scripts/version-bump.sh
 set -euo pipefail
 
 here="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=scripts/semver.sh
+. "$here/semver.sh"
 base="${BASE_SHA:-}"
 # A first push to a branch (or an initial commit) reports an all-zero
 # "before" SHA with nothing to diff against, so there is nothing to enforce.
@@ -49,26 +55,6 @@ if ! git rev-parse --verify --quiet --end-of-options "$base^{commit}" >/dev/null
     exit 1
   fi
 fi
-
-# Splits a MAJOR.MINOR.PATCH string into three numeric fields and
-# compares them component by component, so 1.10.0 correctly beats
-# 1.9.0 (a plain string compare would get that backwards). A
-# differently-shaped string, or a non-numeric field, fails the
-# comparison the same as a real regression would.
-version_gt() {
-  local newv="$1" oldv="$2"
-  local n1 n2 n3 o1 o2 o3 extra
-  IFS=. read -r n1 n2 n3 extra <<<"$newv"
-  [ -z "${extra:-}" ] || return 1
-  IFS=. read -r o1 o2 o3 extra <<<"$oldv"
-  [ -z "${extra:-}" ] || return 1
-  for f in "$n1" "$n2" "$n3" "$o1" "$o2" "$o3"; do
-    case "$f" in ''|*[!0-9]*) return 1 ;; esac
-  done
-  if [ "$n1" -ne "$o1" ]; then [ "$n1" -gt "$o1" ]; return; fi
-  if [ "$n2" -ne "$o2" ]; then [ "$n2" -gt "$o2" ]; return; fi
-  [ "$n3" -gt "$o3" ]
-}
 
 # scripts/test-version-bump.sh compares this loop's whole output, and
 # restates word for word the two refusals and the two OK lines marked
@@ -111,7 +97,7 @@ for dir in plugins/*/; do
     continue
   fi
 
-  if version_gt "$new" "$old"; then
+  if semver_above "$new" "$old"; then
     # Fixture: its OK lines.
     echo "OK: $plugin $old -> $new"
   else

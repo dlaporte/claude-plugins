@@ -59,10 +59,8 @@ connections: instant blockers to surface). Fetch `"2.2"` too when the repo
 authenticates to a backend as each user (item 2), `"2.3"` when it reads
 configuration from its environment or a `.env` file (item 5), and `"2.1"`
 when it shares a database with another app of the user's (item 3), which on
-the platform takes a data link. If `get_app_contract` refuses the
-arguments, or the platform is older than v0.16.14, call it with no
-arguments and read the sections needed from the whole contract. Judge the
-repo against the contract, not a remembered summary of it.
+the platform takes a data link. Judge the repo against the contract, not a
+remembered summary of it.
 
 If the app has pages people open in a browser, **fetch `get_app_accessibility`
 beside it.** It serves the platform's accessibility notes (WCAG 2.2 AA as the
@@ -147,8 +145,9 @@ order:
 4. **Contract deltas**: listens on 8080, serves `/healthz`, runs non-root,
    patched base image (container; see `inno-containerize`); app code arranged
    under `app/`; a root `CLAUDE.md` carrying the platform's required section
-   headers (config-integrity checks them; copy the `CLAUDE.md` of the template repo, the `Template repo:` line of the status you read
-   in the Version gate, and adapt its body). The repo's **default branch** needs no
+   headers (config-integrity checks them; which guide to start from, and how
+   to merge it into a `CLAUDE.md` the repo already has, is `inno-new-app`'s
+   `references/hand-authored-layout.md`). The repo's **default branch** needs no
    special handling: registration's scaffold prune and the `deploy.yml` that
    `register_app` returns both target the repo's actual default branch,
    whatever it is named, and `inno-safety-preflight` and
@@ -173,14 +172,14 @@ order:
      which in a Node repo are often the app's real manifests rather than
      leftovers, so show them to the user before touching them;
    - **any committed symlink that resolves to a directory, or to a file
-     outside the repository** (the file rule from contract 33), at any
-     depth, dangling ones included. A migrated repo is exactly where one
-     turns up: a vendored path, a shared assets directory, a link to a
-     config file elsewhere on the author's machine, a link left by an old
-     build layout. It shows nothing useful in `ls` or a file tree, so scan
-     the index with the check in `inno-safety-preflight` §2, which is the
-     plugin's copy of it, and replace each hit with the real directory or
-     file inside the repository, or drop it.
+     outside the repository**, at any depth, dangling ones included. A
+     migrated repo is exactly where one turns up: a vendored path, a shared
+     assets directory, a link to a config file elsewhere on the author's
+     machine, a link left by an old build layout. It shows nothing useful in
+     `ls` or a file tree, so scan the index with the check in
+     `inno-safety-preflight` §2, which is the plugin's copy of it, and
+     replace each hit with the real directory or file inside the repository,
+     or drop it.
 
    List every existing file under `.github/workflows/`. The platform's caller
    workflow must live at exactly `.github/workflows/deploy.yml` (the platform
@@ -205,11 +204,10 @@ order:
    always-on/websocket assumptions.
 7. **Proposed app name.** The name rules, every `check_name` answer and the
    active-app limit have one home: `inno-new-app` §1's name bullet. Follow it
-   here unchanged, including checking the name before you propose it. Two
-   things this flow adds: a repo called `something-app` makes the rejected
-   **`-app`** suffix an easy reflex, so drop it rather than carrying the repo
-   name across, and the name is independent of the repo name, though it does
-   drive the app's hostname. Quote the exact URL from `register_app`'s
+   here unchanged, including checking the name before you propose it. One
+   thing this flow adds: the name is independent of the repo name, though it
+   does drive the app's hostname, so choose it for the hostname rather than
+   carrying the repo name across. Quote the exact URL from `register_app`'s
    response; never construct it.
    Also ask who else needs access: optional Okta emails feed `register_app`'s
    `members` and can be added later via `inno-manage-app`.
@@ -275,9 +273,11 @@ The written plan covers, at minimum, each assessment product above:
 - **Accessibility**: item 8's users, flows and keyboard and screen-reader
   paths, and the fixes the migration will make
 - **How the repo is protected**: the branch/restore-point strategy Phase 2
-  will use, and the one small commit registration itself needs on the default
-  branch (a proof-of-control file under `.inno-platform/`), so the user approves
-  that write in advance
+  will use, and the writes registration itself makes on the default branch,
+  so the user approves them in advance: the one small commit of a
+  proof-of-control file under `.inno-platform/`, and, when the repo has a
+  top-level `scaffold/` directory, the commit call 2 pushes to rewrite it
+  (Phase 2 step 1)
 - **Effort summary and open decisions** (read-only default, members, …)
 
 Only after that plan is in your reply: **stop and get explicit user approval**
@@ -307,7 +307,9 @@ restore point is.
    call that creates the app (call 2) fixes its identity, a call that
    resumes or repeats a registration keeps the identity the app has, and
    call 2's answer names it on its `Identity:` line, so pass the same `type`
-   and `identity` both times and check that line. Pass `connections`
+   and `identity` both times and check that line: if it is not the one the
+   plan chose, stop and tell the user before adapting anything, since a
+   different identity is a new app. Pass `connections`
    only if step 2's assessment found per-user backend auth to replace: a list of
    the names you plan to set up. It creates nothing (only `set_app_connection`
    can); the response echoes it back as a reminder to configure each one. An
@@ -332,11 +334,18 @@ restore point is.
      repositories"), they can skip the link. A setup page that says **GitHub
      App installed** (rather than **Repository verified**) is fine: run call 2.
 
+   The rest of call 1 (the setup page's titles, the link's expiry, a new
+   proof path after it) is `inno-new-app` §3's: follow it there.
+
    Once the proof file is on the default branch and the App is installed, call
    `register_app` **again with the same arguments**; the second call binds the
    repo and returns the app URL and a `deploy.yml`. If the repo carries a
-   top-level `scaffold/` directory, call 2 may delete it in a server-side commit
-   on the repo's default branch, so `git pull` before editing. Branch on the
+   top-level `scaffold/` directory, call 2 treats it as a template copy's,
+   in a server-side commit on the repo's default branch, the commit the plan
+   named: for a `container` app it deletes `scaffold/` wholesale, and for
+   another type it lays `scaffold/<type>/` over the root when the repo has
+   one, or else leaves the repo untouched and warns (`register_app`'s
+   description says the rest). So `git pull` before editing. Branch on the
    response the same way `inno-new-app` §3 documents (`repo_control_unproven`,
    `name_quarantined`, `repo_already_registered`, `repo_owner_claimed`,
    `repo_identity_changed`, `app_limit_reached`, `repo_mismatch`,
@@ -369,18 +378,21 @@ restore point is.
      the repo lacks it: `current_user(request)` in `app/storage.py` (Python
      container), `currentUser` in `lib/storage.js` (JS or TS container), or
      `app/identity.ts` from `scaffold/function/app/` or
-     `scaffold/mcp-function/app/` (function-shaped, in a template from
-     platform v0.16.19, with `subject` from v0.17.0). Any other stack reads
+     `scaffold/mcp-function/app/` (function-shaped). Any other stack reads
      `X-Forwarded-User` and `X-Forwarded-Subject` by the same contract.
      Handle no user first in each route that needs a person, never in a
      middleware, and never default it into a value
      (`inno-platform-conventions`' **Identity** section says why); an MCP
      app refuses inside MCP, never with an HTTP status (a MUST of §1.2 and
-     §1.3 from contract 32). Per-person data and any in-app roles are kept
+     §1.3). Per-person data and any in-app roles are kept
      in the app's own store keyed on the caller's subject,
-     `X-Forwarded-Subject` (Phase 1 step 2). A browser app's own cookies stay
-     host-only, with no `Domain` attribute, and it routes nothing under
-     `/_auth/` (R3).
+     `X-Forwarded-Subject` (Phase 1 step 2). Every cookie a browser app sets
+     follows `inno-platform-conventions`' **Every cookie your app sets**
+     paragraph (the `__Host-` prefix, so `Secure`, `Path=/` and no `Domain`,
+     and `HttpOnly` unless the app's own script must read it), which binds an
+     identity-aware app as it binds an anonymous one: the CSRF, flash and
+     preference cookies a migrated app keeps after its sign-in is stripped
+     included. It routes nothing under `/_auth/` (R3).
      If the app trusts proxy headers (a proxy-fix middleware, a trust-proxy
      setting, or a server's proxy-headers flag), trust only the three that
      R3's table says the front door sets itself (`X-Forwarded-For`,
@@ -392,8 +404,7 @@ restore point is.
      auth and every account, per-person view and per-person key or limit
      with it (R10), reads no `X-Forwarded-*` identity header (they arrive
      present and empty on every request), and shows no sign-out link. Its
-     cookies follow R10's cookie rule (`inno-platform-conventions`'
-     **Identity** section).
+     cookies follow the same paragraph.
    - **Persistence rewired** to the storage endpoints (container) or the app's
      `env.DATA`/`env.FILES` bindings (function).
    - **Dependencies** pinned in the stack's manifest under `app/`, CVE-clean.
@@ -406,16 +417,17 @@ restore point is.
      rule is `inno-platform-conventions`' **Node apps** paragraph.
    - **Dockerfile** (container) written per `inno-containerize` for the app's
      actual runtime.
-   - A root **`CLAUDE.md`** carrying the required section headers (copy
-     the `CLAUDE.md` of the template repo, the `Template repo:` line, and rewrite the body to describe this app's real
-     stack; only the headers are gate-checked). **For an anonymous app**,
-     copy `scaffold/anonymous/<type>/CLAUDE.md` from the template repo
-     instead and keep the guide's anonymous rules as they are: its Identity
-     section (R10, the cookie rule, where the anonymous promise ends) and its
-     Persistence section's **Files someone uploaded** paragraph, rewriting
-     only the rest of the body: the platform lays that guide over
-     a template copy at registration, never over a migrated repo, which
-     carries no `scaffold/`, as `inno-new-app`'s hand-laid case says.
+   - A root **`CLAUDE.md`** carrying the required section headers: start
+     from the guide `inno-new-app`'s `references/hand-authored-layout.md`
+     names for the app's type and identity (an anonymous app keeps its
+     guide's anonymous rules as they are), and when the repo already has a
+     `CLAUDE.md`, merge into it as that file says, with the user's okay,
+     rather than replacing it. Only the headers are gate-checked; rewrite the
+     rest of the body to describe this app's real stack. The platform lays a
+     guide at registration only from a template copy's scaffold: a type's
+     overlay `CLAUDE.md` from `scaffold/<type>/`, and an anonymous app's from
+     `scaffold/anonymous/<type>/`. A migrated repo carries neither, so the
+     guide is yours to lay.
    - **Remove or move every forbidden path** flagged in Phase 1, working from
      the list in `inno-platform-conventions`' **Files you must not touch**
      section. Move code out of a repo-root `src/` (for example to `app/src/`,

@@ -12,8 +12,9 @@ accept_guardrails         # register_app, set_app_access and transfer_app argume
 # Refusal codes and status labels that begin with a tool verb.
 export_dispatch_failed    # export_app_data refusal
 export_in_progress        # export_app_data refusal
-link_containment          # grant_access / transfer_app refusal; set_app_access names it inside widening_requirements
+link_containment          # link_app_data / grant_access / transfer_app refusal; set_app_access names it inside widening_requirements
 link_invalid              # restart_app / remove_app_variable refusal
+link_not_found            # unlink_app_data refusal
 link_rebuild_pending      # notification kind
 link_revoked              # a linked read's failure
 link_severed              # notification kind
