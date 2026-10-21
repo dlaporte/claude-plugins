@@ -424,9 +424,10 @@ restore point is.
      `CLAUDE.md`, merge into it as that file says, with the user's okay,
      rather than replacing it. Only the headers are gate-checked; rewrite the
      rest of the body to describe this app's real stack. The platform lays a
-     guide at registration only from a template copy's
-     `scaffold/anonymous/<type>/`, which a migrated repo does not carry, so
-     the guide is yours to lay.
+     guide at registration only from a template copy's scaffold: a type's
+     overlay `CLAUDE.md` from `scaffold/<type>/`, and an anonymous app's from
+     `scaffold/anonymous/<type>/`. A migrated repo carries neither, so the
+     guide is yours to lay.
    - **Remove or move every forbidden path** flagged in Phase 1, working from
      the list in `inno-platform-conventions`' **Files you must not touch**
      section. Move code out of a repo-root `src/` (for example to `app/src/`,
