@@ -1,7 +1,8 @@
 name: CI
 
 # Seven jobs, all cheap and dependency-free (jq is preinstalled on the
-# runner): the manifests and the marketplace catalog must be well-formed, any
+# runner): the manifests and the marketplace catalog must be well-formed, each
+# catalog entry's description must be its plugin.json's, any
 # change to a plugin must come with a version bump for that plugin
 # (scripts/version-bump.sh, which scripts/test-version-bump.sh first runs on a
 # planted repository; both jobs read a version through
@@ -11,8 +12,9 @@ name: CI
 # no one platform instance (scripts/instance-neutral.sh), every MCP tool it
 # names must be one the platform serves, and it must name every one the
 # platform serves (scripts/check-tool-names.sh, against the pinned
-# scripts/platform-tools.txt, which needs no platform checkout), no file in it
-# may hold an em or en dash (scripts/check-dashes.sh, which
+# scripts/platform-tools.txt, which needs no platform checkout), no file in it,
+# and none of the repository's other public text (README.md, CLAUDE.md, the
+# marketplace catalog), may hold an em or en dash (scripts/check-dashes.sh, which
 # scripts/test-check-dashes.sh first runs on trees it plants), and it must
 # agree with the pinned platform release: the tool list is the pinned
 # record's (scripts/check-platform-tools.sh), every contract section a skill
@@ -94,6 +96,30 @@ jobs:
             exit 1
           fi
           echo "Marketplace catalog OK."
+
+      # The catalog's description is the one users read at install, and
+      # plugin.json's is the one the plugin carries: one text, compared
+      # whole, so neither drifts from the other unseen (they did once, after
+      # a sync).
+      - name: Each catalog entry's description is its plugin.json's
+        run: |
+          set -euo pipefail
+          fail=0
+          while IFS=$'\t' read -r name source; do
+            manifest="${source#./}/.claude-plugin/plugin.json"
+            if [ ! -f "$manifest" ]; then
+              echo "::error file=.claude-plugin/marketplace.json::the entry \"$name\" names $source, which has no .claude-plugin/plugin.json"
+              fail=1; continue
+            fi
+            catalog="$(jq -c --arg n "$name" '.plugins[] | select(.name == $n) | .description' .claude-plugin/marketplace.json)"
+            own="$(jq -c '.description' "$manifest")"
+            if [ "$catalog" != "$own" ]; then
+              echo "::error file=.claude-plugin/marketplace.json::the entry \"$name\"'s description differs from $manifest's; copy that one here"
+              fail=1
+            fi
+          done < <(jq -r '.plugins[] | [.name, .source] | @tsv' .claude-plugin/marketplace.json)
+          [ "$fail" -eq 0 ] || exit 1
+          echo "Every catalog description is its plugin.json's."
 
   version-bump:
     runs-on: ubuntu-26.04
@@ -217,10 +243,12 @@ jobs:
           set -euo pipefail
           bash scripts/test-check-dashes.sh
 
-      - name: The innovation-platform plugin holds no em or en dash
+      # With no path the check reads the plugin and the repository's other
+      # public text: README.md, CLAUDE.md and the marketplace catalog.
+      - name: The innovation-platform plugin and the repository's public text hold no em or en dash
         run: |
           set -euo pipefail
-          bash scripts/check-dashes.sh plugins/innovation-platform
+          bash scripts/check-dashes.sh
 
   platform-compat:
     runs-on: ubuntu-26.04

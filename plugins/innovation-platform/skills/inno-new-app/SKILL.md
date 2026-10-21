@@ -75,9 +75,7 @@ sentence in this flow.
    domain (the `App host pattern:` line of the status you read in the Version gate, with the app's name in place of `{app}`; `register_app`'s answer gives the real hostname), so keep it short and DNS-safe. It is NOT
    the repo name, which is the user's choice (see below). A handful of
    names are reserved server-side; `check_name` reports those, so don't
-   enumerate or guess. A name ending in **`-app`** is rejected as well: the
-   server returns `invalid_name` for `todo-app`, so propose `todo` instead.
-   Steer the user off that suffix before you check the name.
+   enumerate or guess.
 
    **Verify availability before you settle on a name: never recommend or
    confirm a name without checking it first.** (This step is the plugin's one
@@ -93,7 +91,13 @@ sentence in this flow.
    nobody, admins included, can register it before then: offer a different
    name or wait.
    If it's the caller's *own* existing app, tell them that (a stopped app is brought back
-   with `start_app`, not by re-registering it). `list_apps` cannot prove a
+   with `start_app`, not by re-registering it). If it is the caller's own
+   **partially-provisioned** app, `register_app` resumes that registration
+   rather than starting fresh: carry on at §3 with the repo it began with
+   (another repo is refused `repo_mismatch`). For a platform admin the report
+   names the owner when the app is someone else's, and `register_app` would
+   resume someone else's partial registration for them: do that only when
+   it is what the admin means to do. `list_apps` cannot prove a
    name is free, since an ordinary user sees only their own apps there: use
    `check_name`.
 
@@ -146,9 +150,8 @@ so do not pass it until you've actually done this review.
   you cannot grant one, and you must not register the app without it.
 
 Confirm the name, repo, purpose, and members back to the user before going
-further: registration provisions real resources (a database and file
-storage, and for a members-only or internal browser app a sign-in in front
-of its address) and binds them to the user's repo.
+further: registration provisions real resources (a database, file storage
+and the app's member list) and binds them to the user's repo.
 
 ## 1b. Design the app before registering
 
@@ -162,9 +165,7 @@ the recommendations (§3), the stack policy (§4), and the deployment patterns
 with what the platform does NOT support (§5: background jobs,
 machine-to-machine APIs, guaranteed long-lived connections); the answer
 opens with the contract version and the current recommended base images.
-If `get_app_contract` refuses the arguments, or the platform is older than
-v0.16.14, call it with no arguments and read the sections needed from the
-whole contract. Evaluate the user's idea against it before designing; a
+Evaluate the user's idea against it before designing; a
 not-supported requirement surfaces HERE, not after registration.
 
 For an app people will open in a browser (a `container` or `function`
@@ -249,12 +250,8 @@ make, with your recommendation**:
     identity-aware; see `inno-add-connection`). It
     is `mcp-function`'s MCP contract (`POST /mcp`, **stateless only**, no
     browser SSO) on the container baseline (§1.3). Default stack: **Python +
-    the official MCP Python SDK** (FastMCP).
-    CRITICAL (Python SDK): keep the starter's `transport_security` setting,
-    which `get_app_contract` §1.3 states and explains; changing it breaks every
-    `/mcp` request the front door forwards. A deploy starts a new container
-    instance on the next request, so a fix reaches a running app with no
-    restart (§1.3).
+    the official MCP Python SDK** (FastMCP), from a starter whose transport
+    setting §4 says to keep.
     Note the idle **cold start**: a sleeping container wakes on request, so
     expect a seconds-scale delay on the first `POST /mcp` after idle (how
     long it stays up with no requests is the `container.sleep_after`
@@ -330,9 +327,9 @@ approval** (of the design *and* the name) before §2. Ask the approval question
 in your own words referencing the design the user can now read; put genuinely
 separate decisions (name choice, identity, deployment type, members) in their own
 questions rather than folding them into the approval. Registration provisions
-real resources (a database and file storage, and for a members-only or
-internal browser app a sign-in in front of its address) and binds them to
-the user's repo; the type and the identity are fixed at registration.
+real resources (a database, file storage and the app's member list) and
+binds them to the user's repo; the type and the identity are fixed at
+registration.
 
 The type, the identity and the design seed the scaffolding in §4.
 
@@ -417,9 +414,9 @@ register_app({ app, repo, description, type, identity, members, accept_guardrail
   `Warnings:`. Check its spelling with the user, and if it is
   mistyped, remove it with `revoke_access` (`inno-manage-app`). An address
   the platform could not check in Okta is added too, with its own warning.
-  From platform v0.16.12 each added address is pinned to an account as
-  `grant_access` pins it (`inno-manage-app`), and the owner's own row to the
-  account that registers the app. A member whose address resolves to an
+  Each added address is pinned to an account as `grant_access` pins it
+  (`inno-manage-app`), and the owner's own row to the account that registers
+  the app. A member whose address resolves to an
   account the list already holds under another address (such as the owner's
   own alias) gets no second row and is not notified, and the answer names it
   among the warnings.
@@ -503,9 +500,9 @@ they've installed the App (or the App already covered the repo), call
 `register_app` **again with the same arguments**. This re-checks the proof file,
 then finishes the job server-side: it prunes the template scaffold to the
 chosen type in a new commit on the repo's default branch (for an anonymous
-app, laying the template's anonymous guide for that type over the root in
-the same commit), provisions the
-app, and binds the repo. It returns text beginning
+app, laying the template's anonymous layer for that type over the root in
+the same commit: its guide, and reference code that reads no identity),
+provisions the app, and binds the repo. It returns text beginning
 **`App "{name}" registered from {repo}`** and containing:
 
 - `URL (after first deploy): https://<app host>`: **quote
@@ -546,7 +543,6 @@ app, and binds the repo. It returns text beginning
   this with `check_name`).
 - **`name_unavailable`**: an app with that name already exists and is not the
   caller's own partial registration; pick another name.
-- **`invalid_type`**: pass one of the four type names.
 - **`app_anonymous`**: the call named `identity: "anonymous"` and some
   `connections`. An anonymous app has no Connections, since it is never told
   who its caller is. Drop `connections`, or, if the app really must reach a
@@ -604,21 +600,38 @@ app, and binds the repo. It returns text beginning
   so an admin can register under a shared-org account directly without going
   through the first user.
 - **`repo_mismatch`**: a partially-finished registration exists for this name
-  with a *different* repo; finish it with the original repo, or start over with
-  a consistent `repo`.
+  with a *different* repo. Finish it with the original repo. To start over
+  instead, stop that app (`stop_app`, `inno-manage-app`), have a platform
+  admin purge it (`purge_app`), and register again once the name's hold
+  ends, or under another name.
+- **`app_exists`**, **`provision_in_progress`**, **`app_not_registered`**,
+  **`repo_not_provisioned`** or **`scaffold_not_provisioned`**: another call
+  on the same name raced this one. `app_exists` means the other call
+  registered it (`check_name` says whose it is now); `provision_in_progress`
+  means it is provisioning it, so call again in a moment; the other three
+  mean the app's record changed under this call, so call again.
 - **`github_app_not_configured`**: the platform's GitHub App isn't set up on
   this deployment; nobody can register until an admin configures it.
+- **`github_app_key_invalid`** or **`github_app_unavailable`** (on a call
+  that makes the install link): a fault in the platform's GitHub App, which
+  only a platform admin can fix. Tell the user it is not theirs to fix, and
+  stop until an admin has.
 - **Repo wasn't template-derived.** The user registered a repo that didn't
   come from §2's "Use this template" flow (a blank GitHub "New repository" is
-  the common way this happens), so the server had nothing to prune. There are
-  two real cues, and they differ by type. A **container** registration says
-  nothing about it: the response does not mention the scaffold step at
-  all. A **function**, **mcp-function** or **mcp-container**
-  registration warns, naming the overlay it could not find, in a warning
-  beginning `no scaffold/<preset>/ overlay found in <repo>`. The
-  second cue is the one that holds for every type: after call 2 finishes, the
-  repo shows none of the type-specific files described in §4. This is not an
-  error to retry. Treat it as the empty-repo path in §4 below.
+  the common way this happens). Two cases:
+  - **No `scaffold/` at all.** Call 2 leaves the repo untouched and says
+    nothing about it, for every type. The cue: after call 2 finishes, the
+    repo shows none of the type-specific files described in §4. This is not
+    an error to retry. Treat it as the empty-repo path in §4 below.
+  - **`scaffold/` with no overlay for the type** (a `function`,
+    `mcp-function` or `mcp-container` registration). The repo came from a
+    template copy older than that type, and call 2's answer warns, naming
+    `scaffold/` and the missing `<type>/` overlay. Call 2 wrote nothing, and
+    the leftover `scaffold/` fails the first deploy's `config-integrity`
+    gate. Do what the warning says: re-create the repo from a current copy
+    of the template (§2), or lay the type's files out by hand
+    (`references/hand-authored-layout.md`) and delete `scaffold/` before
+    deploying.
 - **`registration_disabled`**: a platform admin must re-enable self-service
   registration (`registration.enabled`).
 - Any other non-empty error: surface it verbatim rather than retrying
@@ -671,27 +684,39 @@ to prune, so author the layout by hand.** A repo created via GitHub's blank
 scaffold, so call 2 leaves it as-is. Recognize this early: the repo is
 missing the type-specific files described above. Then read
 `references/hand-authored-layout.md`, which says what to copy from the
-template repo for each type (and, for an anonymous app, which guide) and
-why `CLAUDE.md` is copied rather than written, and write
+template repo for each type (and, for an anonymous app, its anonymous
+layer) and which `CLAUDE.md` to start from, and write
 `.github/workflows/deploy.yml` from call 2's response.
 
-**An anonymous app gets its own guide.** For an app registered
-`anonymous`, call 2's scaffold commit (`scaffold: <type>, anonymous`) also
-laid the template's `scaffold/anonymous/<type>/` over the root, so the
-repo's `CLAUDE.md` is the anonymous guide for its type. That guide, not the
-identity notes in the type bullets below, is the rule for this app: it
-reads no identity header and shows no sign-out link (it never shows who is
-signed in, so R4 asks for none); the scaffold's identity helper calls
-answer no user on every request, so remove them, its `/me` route and its
-sign-out footer as you build; it follows R10 (`get_app_contract` with
-`sections: ["2"]`), its cookie rule and the uploaded-file rule
+**An anonymous app gets its own guide and reference code.** For an app
+registered `anonymous`, call 2's scaffold commit (`scaffold: <type>,
+anonymous`) also laid the template's `scaffold/anonymous/<type>/` over the
+root: the repo's `CLAUDE.md` is the anonymous guide for its type, its entry
+files are reference code that reads no identity (a page with no `/me` route
+and no sign-out footer, or an MCP server with no `whoami` tool), and a
+function-shaped repo carries no `app/identity.ts`, which the layer's own
+`.scaffold-remove` deleted. That guide, not the identity notes in the type
+bullets below, is the rule for this app: it reads no identity header and
+shows no sign-out link (it never shows who is signed in, so R4 asks for
+none); a container repo's storage client still carries the identity
+helper, which this app never calls; and it follows R10 (`get_app_contract`
+with `sections: ["2"]`), its cookie rule and the uploaded-file rule
 (`inno-platform-conventions`' **An anonymous app: R10** and **Files someone
-uploaded**). When call 2 warned
-that no `scaffold/anonymous/<type>/` guide was found, the template copy
-predates anonymous apps and the repo carries the identity-aware guide:
-copy `scaffold/anonymous/<type>/` from the current template repo (the
-`Template repo:` line) over the repo's root before building, as the
-warning says.
+uploaded**). Two older template copies show here:
+
+- call 2 warned that no `scaffold/anonymous/<type>/` guide was found: the
+  template copy has no anonymous layer, and the repo carries the
+  identity-aware guide and entry files. Copy the files of
+  `scaffold/anonymous/<type>/` from the current template repo (the
+  `Template repo:` line) over the repo's root, and delete the paths its
+  `.scaffold-remove` lists without copying that file, before building, as
+  the warning says;
+- the guide is the anonymous one but the entry files still read identity (a
+  function-shaped repo still has `app/identity.ts`, or the entry file still
+  has a `/me` route, a sign-out footer or a `whoami` tool): the template
+  copy is older than the layer's reference code. Take the layer's entry
+  files from the current template repo the same way, or remove that helper
+  and those reads as you build.
 
 **Scaffold by the deployment type you chose in §1b.** The contract sections
 you read in §1b (§1.1 to §1.3) are the authority for each type's deltas.
@@ -700,8 +725,9 @@ you read in §1b (§1.1 to §1.3) are the authority for each type's deltas.
   exporting `export default { fetch(request, env, ctx) }`; extend it rather
   than re-scaffolding. Read the caller with `currentUser(request.headers)`
   from the scaffold's `app/identity.ts`, handling no user (`null`) first in
-  each route that needs a person and never defaulting it into a value
-  (`inno-platform-conventions`' **Identity** section), serve **`GET /healthz` as a
+  each route that needs a person, never defaulting it into a value, and
+  keying per-person data on its `subject` (`inno-platform-conventions`'
+  **Identity** section), serve **`GET /healthz` as a
   route** returning **exactly 200** (a 204 or a redirect to `/healthz/` fails
   both the CI smoke gate and the runtime probe), and reach storage through
   the app's **own bindings** `env.DATA` (D1) and `env.FILES` (R2), not
@@ -718,9 +744,7 @@ you read in §1b (§1.1 to §1.3) are the authority for each type's deltas.
   scaffold's page already carries the **sign-out link** (R4), a plain link
   to `/_auth/signout` shown only when `currentUser` returns a user: keep that
   rule wherever the app shows who is signed in (`inno-platform-conventions`'
-  **Sign out** section). Read the caller with `currentUser` from
-  `app/identity.ts`, handling no user first, and key per-person data on its
-  `subject` (`inno-platform-conventions`' **Identity** section).
+  **Sign out** section).
 - **`mcp-function` app:** everything in the function bullet applies except
   the sign-out link (there is no browser session); the scaffold ships both
   `app/package.json` and its lockfile. Serve MCP at `POST /mcp` with the MCP
@@ -728,8 +752,7 @@ you read in §1b (§1.1 to §1.3) are the authority for each type's deltas.
   **without a `sessionIdGenerator`** (stateless), and implement **no auth of
   any kind**: never route `/.well-known/oauth-protected-resource` yourself
   (§1.2 says why). The app refuses inside MCP (a tool result marked as an
-  error, or a JSON-RPC error), never with an HTTP status: a MUST of §1.2
-  from contract 32.
+  error, or a JSON-RPC error), never with an HTTP status: a MUST of §1.2.
 - **`container` app, tested stack (Python):** start from the reference app
   (`app/main.py` + `Dockerfile`) and extend it; don't regenerate from scratch.
   Read the caller with `current_user(request)` from `app/storage.py`,
@@ -760,15 +783,12 @@ you read in §1b (§1.1 to §1.3) are the authority for each type's deltas.
   `subject`, never route `/.well-known/oauth-protected-resource` or a path
   under `/_auth/` yourself, and add no sign-out link.
   The app refuses inside MCP (a tool result marked as an error, or a
-  JSON-RPC error), never with an HTTP status: a MUST of §1.3 from contract
-  32.
+  JSON-RPC error), never with an HTTP status: a MUST of §1.3.
   **Keep the starter's `transport_security` setting**, which
   `get_app_contract` §1.3 states and explains; changing it breaks every
   `/mcp` request the front door forwards. The starter pins FastMCP below `mcp` 2 in
   `app/requirements.txt` (2 renamed the `FastMCP` API the starter uses);
-  build the container image per `inno-containerize`. Expect a seconds-scale
-  cold start on the first request after the container has been idle for the
-  app's `container.sleep_after`, which `get_config app=<name>` shows.
+  build the container image per `inno-containerize`.
 
 **Delete the scaffold marker as you build.** The template repo ships
 `app/.needs-build`, which makes CI skip deployment until it's removed. Once you

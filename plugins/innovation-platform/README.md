@@ -125,6 +125,33 @@ moving a linked pair together. The platform asks for at least
 4.0.0 once the instance's admins raise `plugin.min_version`, as the v0.17.2
 release asks.
 
+Plugin 4.1.0 follows platform v0.17.3 and contract 36. No tool takes new
+input, but `get_platform_status` no longer reports a membership authority,
+so reconnect after that upgrade too. The skills follow what the release
+changed: a purge takes a stopped app only, so an admin's fast takedown of a
+public app is a stop, then a purge; a function app that still holds a
+revoked data link's binding counts for `grant_access`, which refuses
+`link_containment` until it is redeployed, and for `revoke_access`, which
+rebuilds it; a locked backend credential has its own `connection_locked`
+notice and email setting, and `connection_expired` means removed again;
+app names may end in `-app`; the refusal codes renamed or added
+(`link_containment` on `link_app_data`, `encryption_key_missing` and
+`encryption_key_invalid`, `invalid_connection_name` and
+`invalid_connection_definition`, `purge_app`'s `app_not_stopped` and
+`r2_budget_exhausted`, `rebuild_app`'s `dispatch_in_flight`); numeric
+settings refused outside their range; the retired `## Worker contract`
+heading no longer passing the `CLAUDE.md` check; and the dependency gate
+refusing a function app's `app/package.json` with no lockfile. The release
+also corrected guidance that did harm when followed: the Dockerfile recipes
+put comments after instructions, which breaks the build, so every comment
+now sits on a line of its own; caching a backend credential is
+`get_app_security` §8's rule, keyed so one person's credential never serves
+another; and `inno-ship` gained rows for a superseded deploy
+(`deployment_not_completable`, which must not be re-run blindly) and for
+the deploy refusals it lacked. The platform asks for at least 4.1.0 once
+the instance's admins raise `plugin.min_version`, as the v0.17.3 release
+asks.
+
 ### House style
 
 Every skill in this plugin speaks to a broad, largely non-technical userbase,
@@ -193,7 +220,7 @@ produce is a Dockerfile and app code rather than sentences a user reads.
 - **`skills/inno-fleet-admin`**: for platform admins only, the actions that
   reach across the fleet: the admin roster (`list_admins`, `grant_admin`,
   `revoke_admin`), filling an empty admin list from the Okta admin group
-  (`import_okta_memberships`, its only job from platform v0.16.8),
+  (`import_okta_memberships`, its only job),
   reassigning an app's owner, purging an app, rebuilding an app's released
   code at its live tag (`rebuild_app`), ending one person's panel and browser
   app sessions everywhere, marking the instance's Okta admin group,
@@ -220,13 +247,17 @@ One line of output means the nine agree. That is the same block CI's
 several skills now has one home and pointers from the rest:
 `inno-platform-conventions` owns the semgrep scope, the forbidden-path list,
 the identity header rule, the Node dependency rule, the storage caps and the
-`CLAUDE.md` header rule; `inno-manage-app` owns the call budget, support
-bundles and the active-app-limit rule; `inno-safety-preflight` owns the pre-push branch and
-symlink checks, how to read `get_ci_status`, and how to read the
-CI accessibility, response-header and Dockerfile reports;
-`inno-containerize` owns the health-probe clock; `inno-new-app` owns the
-name-check rules; `inno-fleet-admin` owns the admin-only actions; and this
-README owns House style.
+`CLAUDE.md` header rule; `inno-new-app`'s
+`references/hand-authored-layout.md` owns which `CLAUDE.md` to start from;
+`inno-manage-app` owns the call budget (the CI poll cadence included),
+support bundles, the active-app-limit rule, the transfer request and the
+`cross_owner_link_revoked` and `host_upload_blocked` notices;
+`inno-safety-preflight` owns the pre-push branch and symlink checks, how to
+read `get_ci_status`, and how to read the CI accessibility, response-header
+and Dockerfile reports; `inno-containerize` owns the health-probe clock;
+`inno-new-app` owns the name-check rules; `inno-fleet-admin` owns the
+admin-only actions (a purge's missing archive included); and this README
+owns House style.
 
 What the platform serves, the skills fetch rather than copy. The
 application contract comes from `get_app_contract`: with no arguments it
@@ -235,10 +266,7 @@ sections named (for example `["2"]` for the requirements R1 to R10, or
 `["2.2"]` for Connections), and with `history: true` the contract's version
 notes alone, newest first. A contract or section answer opens with the
 contract version and the current base images, so a narrow read never loses
-them, and each skill asks only for the sections its step needs. If
-`get_app_contract` refuses the arguments, or the platform is older than
-v0.16.14, call it with no arguments and read the sections needed from the
-whole contract.
+them, and each skill asks only for the sections its step needs.
 
 ## How the platform enforces security
 

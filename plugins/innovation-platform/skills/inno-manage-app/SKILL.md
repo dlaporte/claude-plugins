@@ -58,7 +58,10 @@ note gives the figure; past it, any tool answers `rate_limited`. Wait a full
 minute before retrying, and never retry in a tight loop. If you hit it
 during ordinary work, something is calling too often (a polling loop, a retry
 loop, a parallel fan-out across many apps): stop and change the approach
-rather than pushing through. The web panel has its own brakes (120 changes a
+rather than pushing through. When a skill watches a CI run with
+`get_ci_status` (`inno-safety-preflight`, `inno-ship`), it waits at least 30
+seconds between calls, and never polls one run from several subagents at
+once. The web panel has its own brakes (120 changes a
 minute, and 60 a minute for its live app detail, metrics and log reads) and
 answers HTTP 429 with `Retry-After: 60`. The counts are approximate, never a
 quota to plan against.
@@ -211,11 +214,9 @@ These tools write the platform's **member list** for the app, its only store;
 nothing is written to Okta. So share and unshare with these tools, never by
 hand in Okta. Their descriptions say exactly what each writes and who is
 notified; `revoke_access`'s description and contract R3 (`get_app_contract`
-with `sections: ["2"]`) say when a change reaches a person. If
-`get_app_contract` refuses the arguments, or the platform is older than
-v0.16.14, call it with no arguments and read the sections needed from the
-whole contract. Quote the app's hostname from the `URL:` line of
-`app_status` or from `register_app`'s answer, rather than building it.
+with `sections: ["2"]`) say when a change reaches a person. Quote the app's
+hostname from the `URL:` line of `app_status` or from `register_app`'s
+answer, rather than building it.
 
 **What admits a person** is the app's audience (`set_app_access`, below),
 on every type, MCP (`mcp-function`, `mcp-container`) and browser
@@ -242,14 +243,14 @@ opens the app in the whole window, and framed by any other page, a
 members-only or internal app is refused (the browser shows its
 blocked-frame placeholder), since apps never frame each other (contract R3).
 
-**When someone was signed out without asking** (from platform v0.17.0).
-Signing out anywhere, on the panel or on any app, ends every session that
-person holds on the platform, in every browser; and when someone else signs
-in at a browser where the person signed in before and never signed out,
-that signs the person out everywhere too. Neither is a fault or a revoke:
-they sign in again, and nothing about their access changed.
+**When someone was signed out without asking.** Signing out anywhere, on the
+panel or on any app, ends every session that person holds on the platform,
+in every browser; and when someone else signs in at a browser where the
+person signed in before and never signed out, that signs the person out
+everywhere too. Neither is a fault or a revoke: they sign in again, and
+nothing about their access changed.
 
-**A grant is pinned to one person** (from platform v0.16.12): `grant_access`'s
+**A grant is pinned to one person**: `grant_access`'s
 description says how a grant is pinned to the identity provider account that
 holds its address, and where a sign-in is matched by its address instead.
 Relay whether the result says the grant is pinned or waits for its first
@@ -285,10 +286,16 @@ must confirm.
   says so. It is not an error: tell the user the person already had access,
   and relay anything the result adds about the address passing to someone
   else.
-- `link_containment`: this app reads another app's data through a link, and
-  the person cannot see that source app; the message names every blocked
-  source. Grant them access to the named source app first, or drop the link
-  with `unlink_app_data`, then grant again.
+- `link_containment`: this app still reads another app's data the person
+  cannot see, through a live link or, for a `function` or `mcp-function`
+  app, a revoked one whose binding is still deployed; the message names
+  every blocked source. A refused grant changes nothing. Grant them access
+  to the named source app first, or unlink with `unlink_app_data`,
+  **redeploy this app** (the owner's next release tag, `inno-ship`, or a
+  platform admin's `rebuild_app`), then grant again. Unlinking alone is not
+  enough for a function-shaped app: it keeps the source's database and
+  files in its deployed code until a deploy begun after the unlink has
+  finished.
 
 **`revoke_access` refusals and outcomes:**
 
@@ -318,6 +325,11 @@ must confirm.
   removed the person from. A consumer the person **owns** is left as it is,
   and the result names it and says they may still reach the data there: a
   platform admin's `transfer_app` first, or unlink with `unlink_app_data`.
+  A function-shaped consumer whose link was revoked while its binding is
+  still deployed keeps its member list, since it no longer links: the
+  platform dispatches its rebuild instead, which drops the binding, and the
+  result names it and what the rebuild came to (a stopped one is rebuilt
+  once it next starts, a dispatch that fails is tried again a day later).
 - **A partial cascade is not a finished revoke.** When the response carries a
   `WARNING:` naming apps that could not be updated, relay it plainly, do not
   report the revoke as complete, and run what it names (`revoke_access` on
@@ -348,6 +360,9 @@ app's audience and identity beside its type. For an **mcp-function** or
   keys being unreachable, not the app's code. `none recorded` is no data,
   not proof that nobody was refused. The app's panel page shows the same
   counts under its daily chart.
+- The hourly section and the `Access checks` line are both left out while
+  `signal.red_enabled` is off for the app (`get_config app=<name>` shows
+  it): their absence then says nothing about the app.
 
 Deployment statuses: `pending`, `deploying`, `deployed`, `failed` (the
 deploy could not start, because the app was stopped or unlinked as it
@@ -402,8 +417,9 @@ by shipping it again (`inno-ship`). A deploy needs no restart after it,
 since a deploy starts a new instance by itself. Reach for it when a
 container app is wedged at runtime (hung process, poisoned in-memory state)
 and the logs don't point to a code fix, and say what it does before calling
-it, since in-flight requests drop. If the app was never deployed (or was
-purged), it returns `no_deployments`: there is nothing to restart. It is
+it, since in-flight requests drop. If the app was never deployed, it
+returns `no_deployments`: there is nothing to restart. A purged app answers
+`app_not_found`, since no app has the name any more. It is
 refused with `link_invalid` or `link_source_missing` while one of the app's
 data links is no longer valid: unlink it (`unlink_app_data`), or have the
 source's owner fix it. The same two steps, `unlink_app_data` and then
@@ -555,7 +571,7 @@ no acceptance. Confirm it with the user by name, then call
   or shown the "No access" page, and a page already open gets errors on its
   background requests until it reloads.
 
-**Data links across owners** (from platform v0.16.12). A data link joins
+**Data links across owners.** A data link joins
 one owner's apps (`link_app_data` refuses any other pair), and the hourly
 containment pass revokes a live link whose two apps no longer have one
 owner (a sign-in pinned their owner rows to different accounts, or a
@@ -564,9 +580,9 @@ transfer step was lost). When the pass, a narrowing,
 function-shaped consumer another account owns, the platform rebuilds that
 consumer to remove its binding, and the result or notice says what was done
 (`set_app_access`'s description gives the whole rule, including a stopped
-consumer and one never deployed). A platform admin can run `rebuild_app`
-sooner. Relay it; the consumer's owner redeploys (`inno-ship`) only when the
-answer says to.
+consumer and one never deployed). When a rebuild could not be dispatched, a
+platform admin can run `rebuild_app` sooner. Relay it; the consumer's owner
+redeploys (`inno-ship`) only when the answer says to.
 
 ## Transferring an app: ask an admin
 
@@ -574,7 +590,8 @@ Only a platform admin can transfer an app's ownership (`transfer_app`): there
 is no accept step, so in an owner's hands a transfer could dump unwanted apps
 on people. When an app OWNER asks to transfer their app, do NOT call it for
 them. Tell them a platform admin must do it, and offer to draft the request,
-naming the app and the new owner. How an admin runs it is `inno-fleet-admin`.
+naming the app and the new owner. This section is the plugin's one home for
+that rule; how an admin runs the transfer is `inno-fleet-admin`.
 That includes an app whose owner's own address has passed to another person
 (`references/address-changes.md`). Two linked apps, such as the two-app
 pattern's site and editor, move together in one transfer (the admin names the
@@ -615,8 +632,8 @@ it is deleted on that card.
 - The platform also builds an archive **automatically before the lifecycle's
   own purge** and links it in the purge notice, so "my app was purged, is my
   data gone?" usually has a real answer: the emailed link keeps working for
-  the retention window. An admin's immediate `purge_app` builds no archive,
-  and it fails an export still in flight.
+  the retention window. An admin's immediate `purge_app` builds none
+  (`inno-fleet-admin`'s **`purge_app`** says what to do first).
 
 ## Configuration (`get_config` / `set_config` / `remove_config`)
 
@@ -632,6 +649,10 @@ it is deleted on that card.
   (`inno-fleet-admin`). Passing both `app` and `user` is refused
   (`bad_request`): an app's chain already resolves through its owner's user
   scope, so the combination has no single meaning.
+
+A row that reads `<stored>, read as <value>` holds a stored value the
+platform reads otherwise (a number outside the setting's range reads as the
+nearest end of it): the second is the one in force.
 
 An app's own `safety.ignore.*` suppressions appear in `get_config app=` too,
 with their expiry state, which is how an owner learns why a finding stopped
@@ -649,13 +670,13 @@ account, and naming anyone else's is refused `forbidden`.
 
 - `note_too_long` (from the panel; over MCP the argument's own limit refuses
   it): the note is over 200 characters. Shorten it and call again.
-- `invalid_value`: the message names the rule the value broke. Read the key's
-  type with `get_config` and fix the named thing rather than guessing at the
-  format.
-- `unknown_setting` or `scope_not_allowed`: the message names its rule too.
-  Check the key's spelling against `get_config user=<your address>`, and
-  remember that an owner may set only their own Notifications settings, at
-  user scope.
+- `invalid_value`: the message names the setting and the rule its value
+  broke (`<key> must be ...`: a type, a grammar, or for a number the range
+  it must fall in). Fix the named thing rather than guessing at the format.
+- `unknown_setting`: no setting has that key. Check its spelling against
+  `get_config user=<your address>`.
+- `scope_not_allowed`: the message names the scopes the setting takes. An
+  owner may set only their own Notifications settings, at user scope.
 
 ## Variables (`set_app_variable` / `list_app_variables` / `remove_app_variable`)
 
@@ -687,11 +708,17 @@ Things to relay to the user in plain terms:
   **Timing**). That's the
   delivery mechanism, not a malfunction: say so before setting one on a live
   container app, since requests in flight on the old instance drop.
+- **Stored, but the push was refused.** On a container app one of whose data
+  links no longer holds, the answer's `Delivery:` line says the value was
+  stored and the push refused, naming `link_invalid` or
+  `link_source_missing`. Nothing reaches the running app: unlink that link
+  (`unlink_app_data`), or have the source's owner fix it, and the app's next
+  deploy delivers the value.
 - `variables_invalid`: the message names the rule the name or value broke.
   Fix that and call again.
 - `variables_limit_reached`: the app holds the most variables it may. Remove
   one with `remove_app_variable` before setting another.
-- `variables_disabled`, `connections_key_invalid`, or on a container app
+- `encryption_key_missing`, `encryption_key_invalid`, or on a container app
   `platform_key_missing`: an admin-side precondition, not an argument
   problem. Relay it and stop: only a platform admin can fix any of them, and
   retrying will not help.
@@ -728,10 +755,10 @@ history in one go.
 
 Stages worth acting on when one appears: `respin_failed`, `auto_restarted`,
 `auto_restart_failed`, `link_severed`, `link_rebuild_pending`, `degraded`,
-`usage_anomaly`, `quota_horizon`, `connection_expired`, `unlinked` /
-`relinked`, `transferred`, `access_changed`, `shared`, `exported`,
-`member_reassigned`, `cross_owner_link_revoked`, `host_upload_blocked`.
-What to do on five of them:
+`usage_anomaly`, `quota_horizon`, `connection_expired`, `connection_locked`,
+`unlinked` / `relinked`, `transferred`, `access_changed`, `shared`,
+`exported`, `member_reassigned`, `cross_owner_link_revoked`,
+`host_upload_blocked`. What to do on seven of them:
 
 - `access_changed`: the app's audience changed, and the entry says who
   changed it and why. Someone other than the owner widened or narrowed it,
@@ -744,6 +771,16 @@ What to do on five of them:
 - `member_reassigned`: an address with access now signs in as a different
   account than the one its access is pinned to. The entry names the address
   and the re-share: `references/address-changes.md`.
+- `connection_expired`: a person's stored credential for one of the app's
+  backends was removed (it expired or was revoked, could not be opened,
+  their encryption key was reset, or the connection's endpoints changed),
+  so they connect again from the link the app gives them.
+- `connection_locked`: the person's stored credential still exists, but
+  their MCP client's authorization cannot open it. They re-authorize the
+  connector in their MCP client (in Claude: `/mcp`, then re-authenticate
+  that server), and do not reconnect the backend, which does not help
+  (`inno-add-connection` says why). It comes at most once a day per app,
+  under its own email setting, `notify.email.connection_locked`.
 - `link_rebuild_pending`: a data link this app used was revoked. The entry
   says whether a rebuild was dispatched, whether the owner has to redeploy
   (for an owner that is `inno-ship`), or, for a stopped app, that the platform
@@ -751,14 +788,18 @@ What to do on five of them:
 - `cross_owner_link_revoked`: a function-shaped app another account owns read
   this app's data through a link that was revoked, and the entry says what
   the platform did to remove its binding (**Data links across owners**,
-  above). A platform admin can run `rebuild_app` on that app sooner. From
-  platform v0.16.18, when the entry reports a rebuild dispatched or one that
-  could not be, it also names what a platform admin can do if that app's
-  rebuilds never land (its owner can cancel each run): stop it (`stop_app`,
-  which holds only once its owner has spent their self-service starts),
-  transfer it (`transfer_app`) or purge it (`purge_app`). Those are an
-  admin's calls: offer to draft the request, naming both apps.
-- `host_upload_blocked` (from platform v0.17.0, container apps): a platform
+  above). When it says the rebuild could NOT be dispatched, a platform admin
+  can run `rebuild_app` on that app sooner; after a dispatched one,
+  `rebuild_app` refuses `dispatch_in_flight` for an hour, so the entry does
+  not name it. When the entry reports a rebuild dispatched or one that could
+  not be, it also names what a platform admin can do if that app's rebuilds
+  never land (its owner can cancel each run): stop it (`stop_app`, which
+  holds only once its owner has spent their self-service starts), transfer
+  it (`transfer_app`), or stop it and then purge it (`purge_app` takes a
+  stopped app only). Those are an admin's calls: offer to draft the request,
+  naming both apps. This bullet and the next are the plugin's one home for
+  these two notices; `inno-fleet-admin` points here.
+- `host_upload_blocked` (container apps): a platform
   release could not upload a new host for the app, because one of its data
   links no longer holds, so the app keeps running on the host an earlier
   release uploaded, and every release leaves it out until this is cleared.
@@ -822,7 +863,7 @@ live app:
 `create_support_bundle({ app, description? })` builds a diagnostics zip
 behind an authenticated download link; its description lists what goes in it
 (no app data and no secrets). Use it when an app misbehaves; the user
-attaches the zip to a ticket in the support system (RT/ServiceNow).
+attaches the zip to a ticket in their organization's support system.
 `description` is optional plain text embedded for the support team: ask the
 owner before putting anything sensitive in it.
 

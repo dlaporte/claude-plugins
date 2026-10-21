@@ -43,9 +43,7 @@ skill entirely.
 `sections: ["2", "4.1"]` (add `"1.3"` for an mcp-container app). Section 2's
 R1, R2, R7 and R8 state exactly the rules this skill applies, §4.1 is the
 base-image policy, and the answer opens with the platform's current
-digest-pinned recommended base images. If `get_app_contract` refuses the
-arguments, or the platform is older than v0.16.14, call it with no
-arguments and read the sections needed from the whole contract.
+digest-pinned recommended base images.
 
 The `container` CI job builds your Dockerfile with **no deploy credentials
 present** (an app author fully controls this build's inputs, and nothing of
@@ -56,8 +54,9 @@ must pass before `deploy` will run. Only the Trivy scan can be turned off: an
 admin can set `safety.gate.trivy` off for an app (`get_config` says what that
 costs), and the job then skips the scan and prints a loud
 `SAFETY GATE DISABLED` warning instead. The other three checks always run.
-A CycloneDX SBOM of the built image is uploaded whatever the gate's setting,
-so turning the gate back on restores sweep coverage with no new deploy.
+On a release tag's run the job uploads a CycloneDX SBOM of the built image
+whatever the gate's setting (a push builds it and uploads nothing), so
+turning the gate back on restores sweep coverage with no new deploy.
 
 After the smoke test the job also writes reports, which are not among those
 checks (R8 says which apps get which). The **Dockerfile misconfiguration
@@ -89,9 +88,13 @@ base to the digest `get_app_contract` serves.
    an unset `USER` among them. On `scratch` or any base without a passwd
    file, use a numeric uid (`USER 65532`). Switch user *after* your last
    root-requiring `RUN`.
-3. **CVE-clean image**: patch the base's OS packages in the build
-   (`apt-get upgrade` / `apk upgrade`) so the Trivy gate passes; a stock
-   base commonly ships fixable CVEs that have nothing to do with your code.
+3. **CVE-clean image**: the gate fails on any HIGH or CRITICAL CVE in the
+   image that has a fix, in its OS packages and in the language packages
+   your app installs alike (R8; one with no fix never fails it). Patch the
+   base's OS packages in the build (`apt-get upgrade` / `apk upgrade`), since
+   a stock base commonly ships fixable CVEs that have nothing to do with
+   your code, and move a flagged language dependency to a fixed version in
+   the app's manifest.
 4. **`GET /healthz` answers exactly 200.** A **hard CI gate**, not a nicety,
    and this item is the plugin's one home for the probe clocks (`inno-ship`
    points here). There are three separate clocks, and R2 states each one
@@ -108,8 +111,10 @@ base to the digest `get_app_contract` serves.
    - **The runtime health probe.** It binds to the same endpoint after every
      deploy: immediately on each green one, then on the configured interval
      (`health.probe_interval_hours`, which `get_config app=<name>` shows). It
-     presents a credential chosen by the app's perimeter, which is why
-     `/healthz` must not depend on the caller. The probe a deploy fires, and
+     presents one platform credential on every app, which the front door
+     recognizes and strips, so the app receives the probe with no
+     `Authorization` header and with empty identity headers (R2): that is
+     why `/healthz` must not depend on the caller. The probe a deploy fires, and
      an hourly pass within 10 minutes of a deploy finishing, never judge a
      failure: they defer every unhealthy result and notify no one, so
      `app_status` reading `Health: re-probe pending (not answering yet: ...)`
@@ -121,7 +126,8 @@ base to the digest `get_app_contract` serves.
    - **One probe verdict.** Each attempt allows 45 seconds, and a failing
      one gets a single retry 5 seconds later, so a verdict can take up to
      about 95 seconds. That span is neither the hourly re-probe nor
-     `health.probe_interval_hours`.
+     `health.probe_interval_hours`. A 401, a 403 or a 302 is not retried:
+     it reads as the probe being blocked, not as the app being unhealthy.
 
    Size the boot to answer inside that first 45 second attempt; a second
    attempt follows 5 seconds later, and nothing follows it. Keep it cheap and
@@ -158,27 +164,39 @@ states the exact scope, and what it skips.
 
 ## Reference recipe: Python (the platform's tested stack)
 
-This is the template's Dockerfile; it ships in the template repo's scaffold (the `Template repo:` line of the
-status you read in the Version gate) that a container app is created from.
+This is the template's Dockerfile, the root `Dockerfile` of the template
+repo (the `Template repo:` line of the status you read in the Version gate)
+that a container app is created from, below the header comment it opens
+with. Replace its base with the current pinned ref `get_app_contract`
+serves.
 
 ```dockerfile
-FROM python:3.12-slim          # or the current pinned ref from get_app_contract
+FROM python:3.12-slim
+# Patch base-image OS packages so the container image passes the platform's
+# Trivy HIGH/CRITICAL gate (Debian slim can ship with fixable CVEs).
 RUN apt-get update && apt-get -y upgrade && rm -rf /var/lib/apt/lists/*
-
 WORKDIR /app
-# Install pinned deps first (layer caching), then copy app/ WHOLE: a missing
-# templates/ dir is a common runtime 500 (Jinja2Templates raises at import).
 COPY app/requirements.txt .
 RUN pip install --no-cache-dir -r requirements.txt
 COPY app/ .
-
 RUN useradd -m appuser
 USER appuser
-
 EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=3s CMD python -c "import urllib.request,sys; sys.exit(0 if urllib.request.urlopen('http://localhost:8080/healthz').status==200 else 1)"
 CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8080"]
 ```
+
+It installs the pinned dependencies before it copies the code, so a code
+change reuses the dependency layer, and then copies `app/` whole: a missing
+`templates/` directory is a common runtime 500 (Jinja2Templates raises at
+import).
+
+**Every comment on a line of its own**, above the instruction it explains,
+as the template's are. Docker reads `#` as a comment only at the start of a
+line; after an instruction it is part of the instruction, so a base or a
+user with a trailing note fails the build, and a JSON-form command with one
+turns into a shell command, which a base with no shell (distroless) cannot
+start.
 
 For a Node app, or a Go app built in stages so that only the runtime stage
 ships, start from the sketches in `references/node-and-go.md`.

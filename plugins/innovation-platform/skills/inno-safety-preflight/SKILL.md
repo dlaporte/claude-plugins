@@ -51,9 +51,10 @@ the defaults:
   logging a loud `SAFETY GATE DISABLED` warning instead of scanning. For
   `gitleaks`, `semgrep` and `deps` that means nothing is scanned at all. The
   `trivy` toggle is narrower, because it skips only the image CVE scan: the
-  container job still builds the image, uploads the SBOM, asserts a
-  non-root user and `EXPOSE 8080`, and runs the `/healthz` smoke test. So a
-  green gate is not proof that a scan actually happened.
+  container job still builds the image and its SBOM (which a tag run alone
+  uploads), asserts a non-root user and `EXPOSE 8080`, and runs the
+  `/healthz` smoke test. So a green gate is not proof that a scan actually
+  happened.
 - A finding you expect to be ignored may fail because its ignore's date has
   passed, and one you expect to fail may be suppressed until a date still to
   come. Tell the user while there's still time to act: "that CVE is ignored
@@ -137,9 +138,7 @@ shape section: `"1.1"` for a `function` app, `"1.1"` and `"1.2"` for an
 `mcp-function` app, `"1.3"` for an `mcp-container` app (a `container` app
 adds none: section 2 is its baseline). Add to it too `"2.1"`, `"2.2"` or
 `"2.3"` when the app links data, uses a connection or declares variables.
-If `get_app_contract` refuses the arguments, or the platform is older than
-v0.16.14, call it with no arguments and read the sections needed from the
-whole contract. Judge the app
+Judge the app
 against the MUSTs, focusing on the ones the enforcement map (§6) leaves to
 preflight review because CI cannot judge them: R3 (identity only from the
 front door's headers, no home-grown auth, the app's own cookies host-only
@@ -171,17 +170,13 @@ highest-impact app bug, **authorization and IDOR** (its §1), is invisible to
 them; for any app with **per-user data, an admin surface, a state-changing
 write, or a call to a paid or external upstream**, verify its §1 to §5
 against the code, and for a browser-facing app (`container`, `function`)
-with a state-changing request, its §12 (forged requests, from platform
-v0.16.19; on an older platform, the CSRF paragraph under its **What the
-platform already handles** heading, which names the same two obligations)
-too. Data or a role keyed on `X-Forwarded-User`, an email address that can
-pass to another person (the contract's R3), is the advice above, not a stop
-on its own: from contract 34 `X-Forwarded-Subject` carries the person, and
-§3 recommends keying on it. Per-person data or a role
-taken from a caller with no user is a finding, and so is an MCP app that
-refuses by HTTP status (a MUST of the contract's §1.2 and §1.3 from
-contract 32; on an older platform it is a finding to fix, not a contract
-violation). A real authorization hole is a hard stop: fix or guide the fix
+with a state-changing request, its §12 (forged requests) too. Data or a
+role keyed on `X-Forwarded-User`, an email address that can pass to another
+person (the contract's R3), is the advice above, not a stop on its own:
+`X-Forwarded-Subject` carries the person, and §3 recommends keying on it.
+Per-person data or a role taken from a caller with no user is a finding,
+and so is an MCP app that refuses by HTTP status (a MUST of the contract's
+§1.2 and §1.3). A real authorization hole is a hard stop: fix or guide the fix
 before `inno-ship`. Any app that serves back a file someone uploaded is
 held to its §3, from any host, a public one included: the file goes out
 only as a download with the three headers it names, never inline, and one
@@ -255,8 +250,9 @@ step is green, so neither `get_ci_status`'s job conclusions nor `gh run view
   the summary), and `gh run view <run-id> --log` carries one count line per
   report, beginning `a11y:` and `dockerfile-report:`.
 
-There is no report when the `container` job failed before its smoke test
-passed, or when the app's `safety.a11y.mode` is `off` (the run warns
+There is no report when the `container` job failed before its reports ran
+(at its smoke test, or at the image scan that follows it), or when the
+app's `safety.a11y.mode` is `off` (the run warns
 `Accessibility check off` instead). `Accessibility scan did not run` means
 no page was scanned, which is never a clean result; read the reason it
 gives. Which reasons are the platform's (they never block) and which are the
@@ -307,8 +303,8 @@ This branch check, the symlink check below, and the reading of
 git add -A
 
 # Committed symlinks fail config-integrity (check 1c), which has no policy
-# toggle: a link to a directory, a dangling link, and, from contract 33, a
-# link to a file outside the repository. A link to a file inside the
+# toggle: a link to a directory, a dangling link, and a link to a file
+# outside the repository. A link to a file inside the
 # repository is legal, so classify rather than reject on mode alone: -d and
 # -e follow the link, and the real path decides inside or out, as the gate
 # does. Run this AFTER `git add -A`, so the index covers both
@@ -330,7 +326,9 @@ git push origin HEAD
 Nothing deploys from this push. Watch the run either way:
 
 - **MCP (no gh needed):** call `get_ci_status` with the app name: it returns
-  the run status, the run link, and each gate's conclusion. Its first line
+  the run status, the run link, and each gate's conclusion, under the job's
+  display name where it has one (`app-build` reads `Build the app
+  Worker`). Its first line
   also names the branch and commit the run is for ("... on «<branch>»,
   commit `<sha>`"), with the branch fenced in «» guillemets because anyone
   who can push to the repo chooses it; with no `run_id` it
@@ -347,11 +345,9 @@ Nothing deploys from this push. Watch the run either way:
   platform admin can fix: tell the user it is not theirs to fix, and watch
   the run with the `gh` CLI below meanwhile. The refusals any platform tool
   can give are named once, in the platform MCP server's instructions.
-  Poll every ~30s while `in_progress`; narrate transitions ("secrets ✓,
-  container still building…"). Polling that slowly is well inside the
-  platform's call budget, but never poll the same run from several subagents
-  at once: the budget is per person, not per agent. The rule is
-  `inno-manage-app`'s **Call budget** section.
+  Poll while `in_progress` at the cadence `inno-manage-app`'s **Call
+  budget** section sets, and narrate transitions ("secrets ✓, container
+  still building…").
 - **gh CLI (if authenticated):** `gh run watch` from the repo.
 
 ## 3. Translate the results: this is the actual product
@@ -364,11 +360,11 @@ rule is the plugin README's **House style** section.
 |---|---|
 | All green | "All safety gates passed. Run `/inno-ship` when you're ready to release." |
 | **Real finding** (SAST/deps/CVE) | Show the file:line if the annotations came through. If they didn't, open the run link yourself (or run `gh run view --log-failed` when the user has `gh` authenticated) and read the failing step. Explain the risk in one sentence, fix it (or guide the fix), re-push. |
-| **Likely false positive** | Never work around it in code (renames, string-splitting, suppression comments). Name the exact finding ID and tell the user a platform admin can add a central ignore for it (`safety.ignore.<tool>.<id>`, where the value is the expiry date, or empty for none), which clears it at both the gate and the periodic safety sweep (an `a11y` ignore clears only the deploy check, because accessibility findings never reach the sweep). A `secrets` finding is the exception: gitleaks has no central ignore family, and its supported suppression is a `.gitleaksignore` committed in the app's own repo, an entry there being sanctioned, not an in-code workaround (the contract's R8). Semgrep has no repo-side escape at all: the `sast` gate honors neither a `# nosemgrep` comment nor a `.semgrepignore` (R8), so a semgrep finding is either fixed in the code (when it is real) or ignored centrally by a platform admin (`safety.ignore.semgrep.<rule id>`). |
+| **Likely false positive** | Never work around it in code (renames, string-splitting, suppression comments). Name the exact finding ID and tell the user a platform admin can add a central ignore for it (`safety.ignore.<tool>.<id>`, where the value is the expiry date, or empty for none), which clears it at the gate, and for a `trivy` or `deps` finding at the periodic safety sweep too (the sweep has no semgrep or accessibility lane, so a `semgrep` or `a11y` ignore clears the deploy check alone). A `secrets` finding is the exception: gitleaks has no central ignore family, and its supported suppression is a `.gitleaksignore` committed in the app's own repo, an entry there being sanctioned, not an in-code workaround (the contract's R8). Semgrep has no repo-side escape at all: the `sast` gate honors neither a `# nosemgrep` comment nor a `.semgrepignore` (R8), so a semgrep finding is either fixed in the code (when it is real) or ignored centrally by a platform admin (`safety.ignore.semgrep.<rule id>`). |
 | `yaml.github-actions.security.secrets-inherit` finding on `.github/workflows/deploy.yml` | A real fix, not a false positive: tell the user and, with their okay, delete the `secrets: inherit` line from `deploy.yml`. The platform's reusable workflow needs no inherited secrets (it uses only the automatic `GITHUB_TOKEN` and OIDC), and repos made from older copies of the template carry that line. Keep the `workflow_dispatch` trigger. |
 | `SAFETY GATE DISABLED by platform policy` in the log | Deliberate admin configuration, not a bug. Note it and move on. |
-| config-integrity failure | Something in the repo is a file the platform injects at build time, or one it forbids outright; the failure names each path, and the full list with the reason for each is `inno-platform-conventions`' **Files you must not touch** section. Three rules govern how you act on it. **Never move or delete author code unprompted**: files under a root `src/`, and a root `package.json` / `package-lock.json` / `tsconfig.json`, are often the author's real code and manifests in a migrated repo, so show the user every flagged path and, only with their okay, move it under `app/` (for example `app/src/`), updating the Dockerfile `COPY` paths and any imports or build settings that pointed at the old location; delete only what they confirm is not theirs. **Platform-owned files just go**: a root `wrangler.jsonc` or any competing wrangler config, a `.wrangler/` directory, a `scaffold/` that outlived `app/.needs-build`, a root-level `.env*` (its values move into app Variables with `set_app_variable`) and any root package-manager config, plus every `.npmrc` at any depth. **A symlink the gate refuses has no policy toggle** (a directory link, a dangling one, or, from contract 33, a file link that resolves outside the repository): show the user the link, then replace it with the real directory or file inside the repository, or drop it. If instead `CLAUDE.md`'s required template headers were altered, revert them (the rest of the file is yours). A message that the gate "could not fully inspect the app tree" means a committed directory it could not read; fix or remove that path. Everything else under `app/` (an `app/package.json`, an `app/.yarnrc.yml`, an `app/src/`) is yours and fine. |
-| `dep-age` failure | The **inverse** of a CVE finding: do NOT bump to the newest release, that makes it redder. Either a pinned dependency was published more recently than the platform's cooldown allows (`safety.min_release_age_days`; `get_config app=<name>` tells you the value actually in force, and from it how many days you're short by), or the app ships `app/package.json` with no committed, parseable `app/package-lock.json` and there are no exact versions to date at all. Remedies: wait out the cooldown, pin an older vetted version, commit `app/package-lock.json`, or ask a platform admin for an app-scope `safety.min_release_age_days: 0`. Separately from this gate, a function-shaped app that ships `app/package.json` with no committed `app/package-lock.json` fails the `app-build` job outright, whatever the cooldown says, in this very run rather than at the tag (the contract's §1.1 **Dependencies** bullet). |
+| config-integrity failure | Something in the repo is a file the platform injects at build time, or one it forbids outright; the failure names each path, and the full list with the reason for each is `inno-platform-conventions`' **Files you must not touch** section. Three rules govern how you act on it. **Never move or delete author code unprompted**: files under a root `src/`, and a root `package.json` / `package-lock.json` / `tsconfig.json`, are often the author's real code and manifests in a migrated repo, so show the user every flagged path and, only with their okay, move it under `app/` (for example `app/src/`), updating the Dockerfile `COPY` paths and any imports or build settings that pointed at the old location; delete only what they confirm is not theirs. **Platform-owned files just go**: a root `wrangler.jsonc` or any competing wrangler config, a `.wrangler/` directory, a `scaffold/` that outlived `app/.needs-build`, a root-level `.env*` (its values move into app Variables with `set_app_variable`) and any root package-manager config, plus every `.npmrc` at any depth. **A symlink the gate refuses has no policy toggle** (a directory link, a dangling one, or a file link that resolves outside the repository): show the user the link, then replace it with the real directory or file inside the repository, or drop it. If instead `CLAUDE.md`'s required template headers were altered, revert them (the rest of the file is yours). A message that the gate "could not fully inspect the app tree" means a committed directory it could not read; fix or remove that path. Everything else under `app/` (an `app/package.json`, an `app/.yarnrc.yml`, an `app/src/`) is yours and fine. |
+| `dep-age` failure | The **inverse** of a CVE finding: do NOT bump to the newest release, that makes it redder. Either a pinned dependency was published more recently than the platform's cooldown allows (`safety.min_release_age_days`; `get_config app=<name>` tells you the value actually in force, and from it how many days you're short by), or the app ships `app/package.json` with no committed, parseable `app/package-lock.json` and there are no exact versions to date at all. Remedies: wait out the cooldown, pin an older vetted version, commit `app/package-lock.json`, or ask a platform admin for an app-scope `safety.min_release_age_days: 0`. Separately from this gate, a function-shaped app that ships `app/package.json` with no committed `app/package-lock.json` fails the `app-build` job and the `deps` gate outright, whatever the cooldown says, in this very run rather than at the tag (the contract's §1.1 **Dependencies** bullet). |
 | `app-build` failure (function-shaped apps) | The app's Worker did not build: a missing or stale `app/package-lock.json`, an import that does not resolve, a devDependency imported at runtime, a link in the checkout (most often in a `node_modules` directory, which `config-integrity` does not walk) that points outside the repository or nowhere, or a bundle over 16 MiB. Each has its row, with its fix, in `inno-ship`'s failure table. Fix it, then re-push. |
 | `container` fails with `Accessibility check failed` | Only happens when the app's `safety.a11y.mode` is `enforce`. Read the report (§1c) for what it marks as blocking; the causes and the remedies are the row for it in `inno-ship`'s failure table. Fix, then re-push. |
 | container failure | Dockerfile contract problem (the contract's R1), or the built image never answered `GET /healthz` with exactly 200 inside the smoke test's budget (R2 gives its clocks); hand off to `inno-containerize`, whose item 2 covers a non-root failure. |
@@ -392,8 +388,7 @@ proves the lockfile on its own, because `app-build` runs on every push to the
 default branch, so a missing or stale lockfile is a red job in the run you are
 narrating, not a surprise at the tag; the same job bundles the app, so an
 import that does not resolve or a bundle over the size cap shows here too.
-(The `deps` gate still builds a throwaway lockfile when none is committed,
-so its own green never proved anything here.) One
+(The `deps` gate refuses a function-shaped app's missing lockfile too.) One
 exception, and it is about what you REPORT rather than about safety:
 `app-build` is `needs: [policy, config-integrity, scaffold-check]`, so a
 red `config-integrity` skips it, and while `app/.needs-build` is present

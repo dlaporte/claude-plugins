@@ -57,10 +57,12 @@ site.
 - If it is members-only, follow the new pair's order from step 2 (grant its
   members on the site).
 - If it is internal (everyone who signs in reaches it), it cannot read a
-  members-only site, so the site goes public first, with its built-in
-  content: register the site, ship it, review and widen it to public, and
-  only then link the editor to it (an internal consumer may read a public
-  source).
+  members-only site, but it may read an internal one (contract §2.1's nested
+  containment), so the site goes internal first: register the site, ship
+  it, run `inno-manage-app`'s widening review for internal and widen it,
+  then link the editor to it and deploy the editor. Preview the site with
+  real content written through the editor, as everyone who signs in can,
+  and only then run the review for public and widen it.
 
 **Making an existing app public** is the same recipe: the existing app
 becomes the editor, and nothing it ever stored is public unless the owner

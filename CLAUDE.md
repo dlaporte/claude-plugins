@@ -1,7 +1,7 @@
 # Working in this repo
 
 Plugins for Claude Code, published through the `davidlaporte` marketplace.
-Everything here is markdown and JSON — there is no build and no runtime.
+Everything here is markdown and JSON: there is no build and no runtime.
 
 ## The one rule: change a plugin, bump its version
 
@@ -14,18 +14,18 @@ an installed plugin at
 `~/.claude/plugins/cache/<marketplace>/<plugin>/<version>/` and records the
 version in `installed_plugins.json`. Ship edited content under a version a
 user already has and they can stay on the old build indefinitely, with nothing
-anywhere telling them so — which is exactly the failure that prompted the
+anywhere telling them so, which is exactly the failure that prompted the
 version gate in the first place.
 
 So it applies to *every* change that reaches a user, not just interesting
-ones. A typo fix in a SKILL.md still needs a patch bump — the user has to
+ones. A typo fix in a SKILL.md still needs a patch bump: the user has to
 receive the typo fix.
 
 Which component to bump:
 
-- **patch** — wording, clarifications, fixes within existing guidance
-- **minor** — a new skill, a new documented workflow, new capability
-- **major** — guidance that contradicts a previous version (a retired tool, a
+- **patch**: wording, clarifications, fixes within existing guidance
+- **minor**: a new skill, a new documented workflow, new capability
+- **major**: guidance that contradicts a previous version (a retired tool, a
   renamed skill, a changed contract)
 
 Plain `MAJOR.MINOR.PATCH` only. No `v` prefix, no pre-release or build
@@ -34,8 +34,10 @@ suffixes: the Innovation Platform parses this value server-side, and its
 MAJOR.MINOR.PATCH triple", which every skill's Version gate treats as a stop.
 
 `.claude-plugin/marketplace.json` entries deliberately carry no version of
-their own — `plugin.json` is the single source of truth, and
-`claude plugin tag` validates the two agree when both are present.
+their own: `plugin.json` is the single source of truth, and
+`claude plugin tag` validates the two agree when both are present. An
+entry's `description` is its plugin's `plugin.json` description, word for
+word: change both together. The `manifests` CI job fails when they differ.
 
 ## Releasing
 
@@ -57,7 +59,7 @@ claude plugin update <name>@davidlaporte     # restart to apply
 Every skill opens with an identical **Version gate** block: it reads
 `version` from `plugin.json` and passes it to the `get_platform_status` MCP
 tool, which holds the minimum version the platform accepts and does the
-comparison server-side. Keep that block byte-identical across all skills — if
+comparison server-side. Keep that block byte-identical across all skills: if
 you edit one, edit them all.
 
 Skill content must match what the platform actually does. When in doubt,
@@ -110,8 +112,10 @@ Refresh both files at every resync with the platform:
 Never merge a pin that is not at a release tag. A branch commit can still
 move before the release, and CI does not check that the pinned ref is a tag.
 
-No file under `plugins/innovation-platform/` may hold an em dash (U+2014) or
-an en dash (U+2013): write a colon, a semicolon, a comma or a pair of
-parentheses instead, as the platform's served documents do. The `no-dashes`
-CI job enforces it with `scripts/check-dashes.sh`. A pattern typed into grep
-may not match these characters, so check by bytes with that script.
+No file under `plugins/innovation-platform/`, and neither this file, the
+repository's `README.md` nor the marketplace catalog, may hold an em dash
+(U+2014) or an en dash (U+2013): write a colon, a semicolon, a comma or a pair
+of parentheses instead, as the platform's served documents do. The
+`no-dashes` CI job enforces it with `scripts/check-dashes.sh`, which reads all
+four by default. A pattern typed into grep may not match these characters, so
+check by bytes with that script.
