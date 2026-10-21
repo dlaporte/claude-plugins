@@ -715,9 +715,9 @@ uploaded**). Two older template copies show here:
   template copy has no anonymous layer, and the repo carries the
   identity-aware guide and entry files. Copy the files of
   `scaffold/anonymous/<type>/` from the current template repo (the
-  `Template repo:` line) over the repo's root before building, as the
-  warning says, and delete the paths its `.scaffold-remove` lists without
-  copying that file, as the platform's scaffold commit would have;
+  `Template repo:` line) over the repo's root before building, then delete
+  the paths its `.scaffold-remove` lists and that file itself, as the
+  warning says and the platform's scaffold commit would have;
 - the guide is the anonymous one but the entry files still read identity (a
   function-shaped repo still has `app/identity.ts`, or the entry file still
   has a `/me` route, a sign-out footer or a `whoami` tool): the template

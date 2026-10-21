@@ -295,7 +295,8 @@ must confirm.
   changes nothing. Grant them access to the named source app first, or cut
   the source off and then grant again: for a live link, unlink it with
   `unlink_app_data` and then **redeploy this app** (the owner's next
-  release tag, `inno-ship`, or a platform admin's `rebuild_app`); for a
+  release tag, `inno-ship`, or a platform admin's `rebuild_app`), starting
+  it first if it is stopped, since neither reaches a stopped app; for a
   revoked link whose binding is still deployed, there is nothing to unlink
   (`unlink_app_data` answers `link_not_found`), so only redeploy it.
   Unlinking alone is not enough for a function-shaped app: it keeps the

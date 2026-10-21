@@ -293,9 +293,9 @@ What to do with its refusals and answers:
 - `app_busy`: retry once after a moment, never in a loop.
 - `link_transfer_blocked`. Data links are same-owner only, so a transfer has
   to revoke every link that touches the app. While any of those links still
-  has a deployed binding (a live link, or one revoked after a function-shaped
-  consumer's last deploy began, since a revoke landing while that deploy ran
-  can still be in it; a container-shaped consumer's host refuses a revoked
+  has a deployed binding (a live link, or one revoked from a function-shaped
+  consumer no deploy of which begun after the revocation has completed, so a
+  deploy still in flight still blocks; a container-shaped consumer's host refuses a revoked
   link at once, so its revoked link does not count), the transfer is refused
   with `link_transfer_blocked`, naming each `consumer->source` pair. There
   are two ways forward and the choice is the admin's: unlink with
@@ -322,7 +322,8 @@ What to do with its refusals and answers:
 - `link_containment`: `force` does not override it. Grant the recipient
   access to the named source app first, move the source with the app in
   `also` (when that source shares the link with `app` itself), or unlink
-  and redeploy the consumer, then transfer. A source that is internal or
+  and redeploy the consumer (starting it first if it is stopped), then
+  transfer. A source that is internal or
   public holds everyone who signs in, so only a members-only source
   refuses. The source must hold the same person as the recipient (the same
   account when both rows are pinned, else the same address), and on a
