@@ -124,8 +124,15 @@ whatever its reason was, its earlier keys still inside the cut-down
   `unlink_app_data`, `revoke_access`'s cascade, a purge of the source, and
   the containment pass (when it first revokes a link and on its daily
   retry). `app_rebuild_deferred` records a consumer's rebuild waiting: a
-  stopped one's until it next starts, and, from `revoke_access`'s cascade,
-  one that is mid-deploy or never deployed (`consumer_status` says which).
+  stopped one's until it next starts; and, for a function consumer still
+  holding a revoked link's binding, from `revoke_access`'s cascade or from a
+  narrowing of its source to members-only (`set_app_access` or the hourly
+  enforcement pass), one found mid-deploy, its first deploy included, or one
+  whose earlier rebuild (an admin's `rebuild_app`, a start's) was attempted
+  within the day and has not landed (`consumer_status` says which:
+  `deploying`, or `active` or `warned`). The hourly sweep carries that
+  rebuild through unless a deploy of the consumer begun after the revocation
+  completes.
 
 ## Identity (from platform v0.16.12)
 
