@@ -196,17 +196,19 @@ the purge date from the response.
 There is no un-purge: once the window lapses (or an admin purges
 deliberately), only the repo and history remain. The name is then held:
 `check_name` reports it unavailable with the date it frees up, and
-`register_app` refuses it with `name_quarantined` until then. Past that
-date the name stays held while a `function` or `mcp-function` app that read
-the purged app's data has not been rebuilt or redeployed since, and both say
-so. That part ends once the app is rebuilt or redeployed: its owner's next
-release tag, or an admin's `rebuild_app` of it (`list_app_links` before the
-purge names it). No admin can lift the dated hold, so do not suggest asking
-one for that. After the hold a fresh
-registration (`register_app`, see `inno-new-app`) can take the name again.
-Purge also releases the repo binding, so the same repo can be registered again
-right away under a different name. An admin's immediate `purge_app` is
-`inno-fleet-admin`'s.
+`register_app` refuses it with `name_quarantined` until then. Past that date
+the name stays held while a `function` or `mcp-function` app that read the
+purged app's data has not been rebuilt or redeployed since, and both say so.
+That part ends once the app is rebuilt or redeployed. The purge itself
+dispatches that app's rebuild; if the hold outlasts it (the dispatch failed,
+or the rebuild never landed), its owner's next release tag, or an admin's
+`rebuild_app` of it, ends it (`rebuild_app` answers `dispatch_in_flight`
+within an hour of the purge's own dispatch; `list_app_links` before the
+purge names the app). No admin can lift the dated hold, so do not suggest
+asking one for that. After the hold a fresh registration (`register_app`,
+see `inno-new-app`) can take the name again. Purge also releases the repo
+binding, so the same repo can be registered again right away under a
+different name. An admin's immediate `purge_app` is `inno-fleet-admin`'s.
 
 ## `grant_access({ app, email })` / `revoke_access({ app, email })`
 
@@ -289,13 +291,16 @@ must confirm.
 - `link_containment`: this app still reads another app's data the person
   cannot see, through a live link or, for a `function` or `mcp-function`
   app, a revoked one whose binding is still deployed; the message names
-  every blocked source. A refused grant changes nothing. Grant them access
-  to the named source app first, or unlink with `unlink_app_data`,
-  **redeploy this app** (the owner's next release tag, `inno-ship`, or a
-  platform admin's `rebuild_app`), then grant again. Unlinking alone is not
-  enough for a function-shaped app: it keeps the source's database and
-  files in its deployed code until a deploy begun after the unlink has
-  finished.
+  every blocked source, and its own remedy for each. A refused grant
+  changes nothing. Grant them access to the named source app first, or cut
+  the source off and then grant again: for a live link, unlink it with
+  `unlink_app_data` and then **redeploy this app** (the owner's next
+  release tag, `inno-ship`, or a platform admin's `rebuild_app`); for a
+  revoked link whose binding is still deployed, there is nothing to unlink
+  (`unlink_app_data` answers `link_not_found`), so only redeploy it.
+  Unlinking alone is not enough for a function-shaped app: it keeps the
+  source's database and files in its deployed code until a deploy begun
+  after the unlink has finished.
 
 **`revoke_access` refusals and outcomes:**
 
@@ -326,10 +331,11 @@ must confirm.
   and the result names it and says they may still reach the data there: a
   platform admin's `transfer_app` first, or unlink with `unlink_app_data`.
   A function-shaped consumer whose link was revoked while its binding is
-  still deployed keeps its member list, since it no longer links: the
-  platform dispatches its rebuild instead, which drops the binding, and the
-  result names it and what the rebuild came to (a stopped one is rebuilt
-  once it next starts, a dispatch that fails is tried again a day later).
+  still deployed, and where the cascade would take the person's row, keeps
+  its member list, since it no longer links: the platform dispatches its
+  rebuild instead, which drops the binding, and the result names it and
+  what the rebuild came to (a stopped one is rebuilt once it next starts, a
+  dispatch that fails is tried again a day later).
 - **A partial cascade is not a finished revoke.** When the response carries a
   `WARNING:` naming apps that could not be updated, relay it plainly, do not
   report the revoke as complete, and run what it names (`revoke_access` on
@@ -652,7 +658,8 @@ it is deleted on that card.
 
 A row that reads `<stored>, read as <value>` holds a stored value the
 platform reads otherwise (a number outside the setting's range reads as the
-nearest end of it): the second is the one in force.
+nearest end of it): the second is what the platform reads for that row, and
+so what applies wherever that row is the one that decides.
 
 An app's own `safety.ignore.*` suppressions appear in `get_config app=` too,
 with their expiry state, which is how an owner learns why a finding stopped
@@ -675,8 +682,9 @@ account, and naming anyone else's is refused `forbidden`.
   it must fall in). Fix the named thing rather than guessing at the format.
 - `unknown_setting`: no setting has that key. Check its spelling against
   `get_config user=<your address>`.
-- `scope_not_allowed`: the message names the scopes the setting takes. An
-  owner may set only their own Notifications settings, at user scope.
+- `scope_not_allowed`: the message names the scopes the setting takes.
+- `forbidden`: an owner may set only their own Notifications settings, at
+  user scope; any other key, scope or person is an admin's to set.
 
 ## Variables (`set_app_variable` / `list_app_variables` / `remove_app_variable`)
 

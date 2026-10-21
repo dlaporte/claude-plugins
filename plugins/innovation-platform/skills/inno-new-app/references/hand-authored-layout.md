@@ -59,12 +59,15 @@ For an app registered with `identity: "anonymous"`, after the type's files,
 copy the files of `scaffold/anonymous/<type>/` from the template repo over
 them, then read its `.scaffold-remove` without copying it and delete the
 paths it lists (one path per line; an entry ending `/` is a directory), as
-the platform's scaffold commit does for a template-derived repo. That lays the anonymous guide (above) and
-reference entry files that read no identity, and for a function-shaped type
-it deletes `app/identity.ts`. A template whose `scaffold/anonymous/<type>/`
-holds only a `CLAUDE.md` is older than the layer's reference code: keep the
-type's entry files and remove their identity reads (the helper, a `/me`
-route, a sign-out footer, a `whoami` tool) as you build. A template with no
+the platform's scaffold commit does for a template-derived repo. That lays
+the anonymous guide (above) and reference entry files that read no identity,
+and for a function-shaped type it deletes `app/identity.ts`; a container
+type's storage client keeps its identity helper, which the app never calls.
+A template whose `scaffold/anonymous/<type>/` holds only a `CLAUDE.md` is
+older than the layer's reference code: keep the type's entry files and
+remove their identity reads as you build (`app/identity.ts` and its calls in
+a function-shaped repo, the storage helper's calls in a container one, a
+`/me` route, a sign-out footer, a `whoami` tool). A template with no
 `scaffold/anonymous/` predates anonymous apps: tell the user, and write the
 app to R10 (`get_app_contract` with `sections: ["2"]`) and
 `inno-platform-conventions`' **An anonymous app: R10**.

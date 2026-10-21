@@ -24,8 +24,9 @@ the import changes the admin list (an import row carries `detail.source`
   and `count` is every notification it marked read, everyone's. The panel's
   own-feed button writes `scope: "own"` only when it cleared the admins'
   shared notices too, and then `count` is those shared notices alone, not
-  the admin's own. `notification_read` is the same for one notice of
-  someone else's (`id`, `owner_email`).
+  the admin's own. `notification_read` (`id`, `owner_email`) is an admin
+  clearing one notice not addressed to them alone: someone else's, or one
+  of the admins' shared notices.
 
 ## Access and its cascade
 
@@ -75,7 +76,8 @@ whatever its reason was, its earlier keys still inside the cut-down
 - `config_set` with the actor `access-widening`: the platform turned
   `anomaly.usage_enabled` on for an app widened to public. A `config_set`
   or `config_removed` row of the retired `access.allow_open` reads
-  `access.allow_internal`.
+  `access.allow_internal`, except the rows written in 0061's window, which
+  keep `access.allow_open` (above).
 - `mcp_grant_issued` carries `audience` (`internal` or `members-only`)
   where it carried `open`; no grant names a public app.
 - `app_registered` carries the app's `identity`.
@@ -113,15 +115,17 @@ whatever its reason was, its earlier keys still inside the cut-down
   set (`also`) names the set's other apps in `moved_with`, and one that
   moved a public app records `accepted_guardrails: true` and
   `accepted_by`.
-- `app_rebuild_dispatched` and `app_rebuild_dispatch_failed` carry the
-  `ref` rebuilt, and a `reason` that says who asked: none for `rebuild_app`;
-  `"start"` for `start_app`'s rebuild of an app with no script in the app
-  namespace; `"link_revoked"` for the rebuild of a consumer whose data link
-  was revoked, from `transfer_app`, a narrowing, `unlink_app_data`,
-  `revoke_access`'s cascade, a purge of the source, and the containment pass
-  (when it first revokes a link and on its daily retry).
-  `app_rebuild_deferred` records a stopped consumer's rebuild waiting until
-  it next starts.
+- `app_rebuild_dispatched` carries the `ref` rebuilt, and
+  `app_rebuild_dispatch_failed` the `error` (`rebuild_app`'s the `ref` as
+  well). Each carries a `reason` that says who asked: none for
+  `rebuild_app`; `"start"` for `start_app`'s rebuild of an app with no
+  script in the app namespace; `"link_revoked"` for the rebuild of a
+  consumer whose data link was revoked, from `transfer_app`, a narrowing,
+  `unlink_app_data`, `revoke_access`'s cascade, a purge of the source, and
+  the containment pass (when it first revokes a link and on its daily
+  retry). `app_rebuild_deferred` records a consumer's rebuild waiting: a
+  stopped one's until it next starts, and, from `revoke_access`'s cascade,
+  one that is mid-deploy or never deployed (`consumer_status` says which).
 
 ## Identity (from platform v0.16.12)
 
@@ -151,7 +155,9 @@ whatever its reason was, its earlier keys still inside the cut-down
 - `deploy_started`: a deploy began (`detail.sha`), for every app; a
   container app's also carries `expires_on`, the expiry of the push token it
   was minted. Migration 0062 (platform v0.17.3) renamed the earlier
-  container deploys' `deploy_token_minted` rows to it, keeping their detail.
+  container deploys' `deploy_token_minted` rows to it, keeping their detail;
+  a container deploy that ran between the migration and v0.17.3's deploy
+  still wrote `deploy_token_minted`.
 - `script_uploaded`: the platform uploaded a function app's Worker, at its
   deploy's finalize, from the bundle the app's CI handed over
   (`detail.sha256`, `detail.reason` `deploy`). `deploy_bundle_staged` records

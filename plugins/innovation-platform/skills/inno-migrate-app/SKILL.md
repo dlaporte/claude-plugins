@@ -340,11 +340,12 @@ restore point is.
    Once the proof file is on the default branch and the App is installed, call
    `register_app` **again with the same arguments**; the second call binds the
    repo and returns the app URL and a `deploy.yml`. If the repo carries a
-   top-level `scaffold/` directory, call 2 treats it as a template copy's and
-   rewrites it in a server-side commit on the repo's default branch, the
-   commit the plan named (`register_app`'s description says what each type
-   gets, and when it leaves the repo untouched and warns instead), so `git
-   pull` before editing. Branch on the
+   top-level `scaffold/` directory, call 2 treats it as a template copy's,
+   in a server-side commit on the repo's default branch, the commit the plan
+   named: for a `container` app it deletes `scaffold/` wholesale, and for
+   another type it lays `scaffold/<type>/` over the root when the repo has
+   one, or else leaves the repo untouched and warns (`register_app`'s
+   description says the rest). So `git pull` before editing. Branch on the
    response the same way `inno-new-app` §3 documents (`repo_control_unproven`,
    `name_quarantined`, `repo_already_registered`, `repo_owner_claimed`,
    `repo_identity_changed`, `app_limit_reached`, `repo_mismatch`,
@@ -423,8 +424,9 @@ restore point is.
      `CLAUDE.md`, merge into it as that file says, with the user's okay,
      rather than replacing it. Only the headers are gate-checked; rewrite the
      rest of the body to describe this app's real stack. The platform lays a
-     guide over a template copy at registration, never over a migrated repo,
-     which carries no `scaffold/`.
+     guide at registration only from a template copy's
+     `scaffold/anonymous/<type>/`, which a migrated repo does not carry, so
+     the guide is yours to lay.
    - **Remove or move every forbidden path** flagged in Phase 1, working from
      the list in `inno-platform-conventions`' **Files you must not touch**
      section. Move code out of a repo-root `src/` (for example to `app/src/`,

@@ -17,7 +17,11 @@ and the fix is to copy it again.
   and is it enabled), then whether the person may use the app. On a
   members-only app that means its member list (`grant_access` if they are
   not on it); an internal app admits everyone who signs in, so there the
-  cause is one of the others. Never tell the user the backend is down.
+  cause is one of the others. The same page also answers for a public app,
+  which takes no Connections, and when the platform could not check the
+  person's access just then (its identity provider or its database did not
+  answer), so one more try a little later is worth it. Never tell the user
+  the backend is down.
 - **"Connections unavailable"** (HTTP 503, "Connections is not enabled on
   this platform"). The platform's own Connections setup is missing. Nothing
   in the app or the connection fixes it: a platform admin does.
@@ -27,11 +31,12 @@ and the fix is to copy it again.
   it with `list_connections`, and have the app's owner write it again with
   `set_app_connection` (step 4's approval rules apply); if it still fails, a
   platform admin looks at it.
-- **"Connecting failed"** (HTTP 502 or 503, "Try again from your chat in a
-  minute"). The backend's own sign-in or token address failed while the
-  platform was checking or storing the credential, or the platform's
-  sealing key was briefly unreachable. Wait a minute and start again from
-  the chat; if it keeps failing, the backend is the place to look.
+- **"Connecting failed"** ("Try again from your chat in a minute"). With
+  HTTP 502, the backend's own sign-in or token address failed while the
+  platform was checking or storing the credential; with HTTP 503, the
+  platform's own sealing key was briefly unreachable. Wait a minute and
+  start again from the chat; if a 502 keeps coming, the backend is the
+  place to look, and if a 503 does, a platform admin is.
 
 **The person's own account or browser:**
 
@@ -42,11 +47,13 @@ and the fix is to copy it again.
   or deprovisioned. Nothing about the connection can fix that.
 - **"Your encryption key isn't reachable from here"**. The person's stored
   connections are sealed to them personally, and this browser session
-  cannot unlock them. The page gives both ways out: use the app once from
+  cannot unlock them. The page gives two ways out: use the app once from
   the chat (or the device where they last connected) and retry the link
   within the minutes it names, which loses nothing; or **Start fresh**,
   which removes every backend connection stored under their address, so
-  they reconnect each one. Let them choose.
+  they reconnect each one. Let them choose. When the page is reached on the
+  way back from a backend's sign-in, it offers no **Start fresh**, only a
+  link to sign in and retry the connection.
 
 **The connect flow itself:**
 

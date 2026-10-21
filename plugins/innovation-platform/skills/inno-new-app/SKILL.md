@@ -251,7 +251,7 @@ make, with your recommendation**:
     is `mcp-function`'s MCP contract (`POST /mcp`, **stateless only**, no
     browser SSO) on the container baseline (§1.3). Default stack: **Python +
     the official MCP Python SDK** (FastMCP), from a starter whose transport
-    setting §4 says to keep.
+    setting this skill's §4 says to keep.
     Note the idle **cold start**: a sleeping container wakes on request, so
     expect a seconds-scale delay on the first `POST /mcp` after idle (how
     long it stays up with no requests is the `container.sleep_after`
@@ -409,17 +409,18 @@ register_app({ app, repo, description, type, identity, members, accept_guardrail
 - `members` is an optional list of Okta emails (at most 50). Each address is
   added to the app's member list and notified that the app was shared with
   them, in-platform plus email per their own notification settings, so name
-  only people who should hear about it now. An address Okta does not know
-  is still added but not notified, and call 2's answer names it under
-  `Warnings:`. Check its spelling with the user, and if it is
-  mistyped, remove it with `revoke_access` (`inno-manage-app`). An address
-  the platform could not check in Okta is added too, with its own warning.
-  Each added address is pinned to an account as `grant_access` pins it
+  only people who should hear about it now. An address Okta does not know is
+  still added but not notified, and call 2's answer names it under
+  `Warnings:`. Check its spelling with the user, and if it is mistyped,
+  remove it with `revoke_access` (`inno-manage-app`). An address the
+  platform could not check in Okta is added too, with its own warning. Each
+  added address is pinned to an account as `grant_access` pins it
   (`inno-manage-app`), and the owner's own row to the account that registers
-  the app. A member whose address resolves to an
-  account the list already holds under another address (such as the owner's
-  own alias) gets no second row and is not notified, and the answer names it
-  among the warnings.
+  the app (when a platform admin resumes someone else's registration, the
+  owner's row waits for that owner's first sign-in instead). A member whose
+  address resolves to an account the list already holds under another
+  address (such as the owner's own alias) gets no second row and is not
+  notified, and the answer names it among the warnings.
 
   On a platform that lists allowed email domains, an address outside them
   refuses the whole call with `email_domain_not_allowed` before anything is
@@ -626,12 +627,19 @@ provisions the app, and binds the repo. It returns text beginning
   - **`scaffold/` with no overlay for the type** (a `function`,
     `mcp-function` or `mcp-container` registration). The repo came from a
     template copy older than that type, and call 2's answer warns, naming
-    `scaffold/` and the missing `<type>/` overlay. Call 2 wrote nothing, and
-    the leftover `scaffold/` fails the first deploy's `config-integrity`
-    gate. Do what the warning says: re-create the repo from a current copy
-    of the template (§2), or lay the type's files out by hand
-    (`references/hand-authored-layout.md`) and delete `scaffold/` before
-    deploying.
+    `scaffold/` and the missing `<type>/` overlay. Call 2 wrote nothing to
+    the repo, but it has bound the app to it and provisioned it, and every
+    deploy finds the app by this repo's id. So bring this repo up to the
+    current template in place, never by creating a new repo (a new one is
+    not bound to the app): lay the type's files out from a current copy of
+    the template repo (`references/hand-authored-layout.md`), and delete
+    `scaffold/` before deploying, since the leftover fails the first
+    deploy's `config-integrity` gate. Where the warning says to re-create
+    the repo, do that in this repo, never as a new one.
+  - **`scaffold not applied`** (a warning): the platform could not write
+    the prune commit, so the repo is as it was. Lay the type's files out
+    the same way (a template copy already holds them under
+    `scaffold/<type>/`) and delete `scaffold/` before deploying.
 - **`registration_disabled`**: a platform admin must re-enable self-service
   registration (`registration.enabled`).
 - Any other non-empty error: surface it verbatim rather than retrying
@@ -708,9 +716,9 @@ uploaded**). Two older template copies show here:
   template copy has no anonymous layer, and the repo carries the
   identity-aware guide and entry files. Copy the files of
   `scaffold/anonymous/<type>/` from the current template repo (the
-  `Template repo:` line) over the repo's root, and delete the paths its
-  `.scaffold-remove` lists without copying that file, before building, as
-  the warning says;
+  `Template repo:` line) over the repo's root before building, as the
+  warning says, and delete the paths its `.scaffold-remove` lists without
+  copying that file, as the platform's scaffold commit would have;
 - the guide is the anonymous one but the entry files still read identity (a
   function-shaped repo still has `app/identity.ts`, or the entry file still
   has a `/me` route, a sign-out footer or a `whoami` tool): the template

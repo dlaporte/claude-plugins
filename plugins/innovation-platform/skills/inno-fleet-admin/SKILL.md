@@ -370,11 +370,11 @@ domains (above), keeps their sessions until this ends them.
    (`inno-manage-app` has its rules). It refuses `owner_not_revocable` on an
    app they own: transfer it first, or stop it. A grant pinned to their
    account does not pass with their address to its next holder, but one
-   still waiting for its first sign-in would: one more reason to revoke. No
-   tool lists the apps a person is a member of (`list_apps` names owners,
-   and `list_users` lists owners and admins only), so this step reaches the
-   apps the admin, the person's colleagues or the apps' owners know of. Say
-   so to the admin rather than promising every app.
+   still waiting for its first sign-in would: one more reason to revoke.
+   To find every app they are a member of, take `export_platform_backup`
+   and filter its member rows (`app_members`) by their address: that
+   snapshot holds every member row, and no other tool lists a person's
+   apps (`list_apps` names owners, `list_users` only owners and admins).
 
 None of the three stops a removed person reaching a public app: anyone on
 the internet reaches one, with no sign-in. And `revoke_access` alone does
@@ -391,19 +391,25 @@ accountable owner (with `accept_guardrails` after the review, and its
 linked editor in `also`), where it stays public, or, once the pass has
 narrowed it, where its new owner widens it again through the review;
 narrow it now with `set_app_access`; or stop it and then purge it
-(`purge_app` takes a stopped app only). On an instance with no Okta token
+(`purge_app` takes a stopped app only; a pinned app is unpinned before the
+stop, below). On an instance with no Okta token
 the owner check never fires, so narrow or transfer each one by hand.
 
 ## `purge_app({ app })`: delete an app now
 
 The scheduler's end-of-window teardown, on demand, and final, for a
-**stopped** app only: stop it first (`stop_app`). Its description lists
-everything it deletes and what remains (the GitHub repo, the audit and the
-notification history). The name is then held, as the description says. No
-admin can lift the dated hold; the part past it ends once each
+**stopped** app only: stop it first (`stop_app`). A pinned app refuses
+`stop_app` with `app_pinned`, an admin's call included: unpin it first
+(`set_config` of `lifecycle.pinned` to false at app scope). Its description
+lists everything it deletes and what remains (the GitHub repo, the audit
+and the notification history). The name is then held, as the description
+says. No admin can lift the dated hold; the part past it ends once each
 function-shaped app that read this one's data has been rebuilt or
-redeployed, which an admin's `rebuild_app` of that app brings about
-(`inno-manage-app`'s **`stop_app`** section has the rest). An owner who
+redeployed. The purge dispatches that rebuild itself, and when it could
+not, or the rebuild never landed, an admin's `rebuild_app` of that app
+brings it about (not within an hour of the purge's own dispatch, which
+`rebuild_app` refuses `dispatch_in_flight`; `inno-manage-app`'s
+**`stop_app`** section has the rest). An owner who
 wants their own app gone now cannot call it: they stop the app (`stop_app`,
 `inno-manage-app`) and ask an admin for the purge.
 
@@ -427,7 +433,7 @@ What to do with its refusals and answers:
 
 - `app_not_stopped`: the app is not stopped. Stop it first (`stop_app`,
   after confirming with the admin, and with the owner when the admin is not
-  the one asking), then purge.
+  the one asking; unpinned first if it is pinned), then purge.
 - `app_deploying`: wait for the deploy to finish, then stop it and purge. A
   run that died holds the app `deploying` until a later deploy finishes or
   the recovery sweep reverts it, which `inno-manage-app`'s **A deploy whose
@@ -459,9 +465,11 @@ new commit and no code change. It exists for what an owner cannot
 self-serve, such as redeploying a third-party-owned repo an admin cannot
 push a tag to. Owners never need it: they redeploy by tagging their own repo (`inno-ship`).
 The platform also rebuilds, on its own, a function-shaped consumer whose
-data link was revoked while its binding stays deployed (`inno-manage-app`'s
-**Data links across owners**, and `revoke_access`'s cascade); a notice
-names `rebuild_app` to do that sooner only when the platform's own dispatch
+revoked data link it owes a rebuild: one another account owns
+(`inno-manage-app`'s **Data links across owners**), one a narrowing or a
+purge cut for reach, and one `revoke_access`'s cascade meets. A same-owner
+`unlink_app_data` is not rebuilt: that consumer's owner redeploys. A notice
+names `rebuild_app` to do it sooner only when the platform's own dispatch
 failed. It starts CI in a repository the platform does not own, which
 cannot be recalled, so confirm first.
 
@@ -562,7 +570,8 @@ public.
   false for the app at app scope with `set_config` (an app-scope value
   decides over the owner's and the platform's), and `access.allow_internal`
   false there too to hold it members-only; if it must stop serving its
-  members as well, `stop_app`. Then, once it is stopped, purge it
+  members as well, `stop_app` (unpinned first if it is pinned). Then, once
+  it is stopped, purge it
   (`purge_app` takes a stopped app only), or transfer it to an accountable
   owner. Every app shares the platform's one domain, so one
   public app's abuse reaches the domain's reputation for all of them, and
@@ -677,11 +686,13 @@ serves. The panel's Platform screen is the same act on a visual surface.
     Neither happens by itself, and until then the account it was pinned to
     keeps the app or the standing under any address it signs in with, so
     confirm with the admin who should have it first.
-  Admins also see a copy of each `cross_owner_link_revoked` notice and each
-  `host_upload_blocked` notice, two owner stages whose meaning and remedies
-  are `inno-manage-app`'s **Notifications** (both the owner's and an
+
+  Admins also get a copy of each `cross_owner_link_revoked` notice, and see
+  each app's `host_upload_blocked` notice in the fleet feed (it goes to the
+  owner alone, and the release run fails on it). The meaning and remedies
+  of both are `inno-manage-app`'s **Notifications**, the owner's and an
   admin's: the stop, transfer or stop-then-purge the first names, and the
-  unlink then `restart_app` that clears the second). Confirm with the app's
+  unlink then `restart_app` that clears the second. Confirm with the app's
   owner before acting on either.
 
   Admins also get their own `access_changed` entry when an app is widened to
