@@ -202,7 +202,7 @@ and ask first, whether or not the row below says so.
 | `container` | Trivy CVE, a `USER` the non-root gate refuses (the forms it accepts are the contract's R1; `inno-containerize` item 2 applies them), missing `EXPOSE 8080`, or the image never answered `GET /healthz` | `inno-containerize` |
 | `container` fails with `Accessibility check failed` (only when the app's `safety.a11y.mode` is `enforce`) | the accessibility report found something that blocks in `enforce` mode: an unwaived critical or serious violation, or a landing page `/` (or every page) the app left unscannable. Exactly what blocks, and what only warns, is the `enforce` row of the mode table `get_app_accessibility` serves | read what the report marks as blocking (`inno-safety-preflight` §1c) and fix it, push, confirm the gates are green, then cut the next patch tag. A failing `/` has to render in CI, where there is no stored data, as a real page (an empty state, not an error or a redirect off the app): `app/inno-a11y.json` adds pages that render without stored data, but it never stands in for `/`. A rule that is wrong for this app: name its rule id and have the user ask a platform admin for a time-limited waiver, `safety.ignore.a11y.<rule-id>` with an expiry date as its value |
 | `scaffold-check` | not a failure: it suppresses `deploy` while `app/.needs-build` exists (see §0) | build the app, remove the marker |
-| `deploy` fails with `app_stopped` | the app was stopped by the lifecycle (or deliberately), and **stopped apps cannot be deployed**. Only the release tag's `deploy` job fails this way; a push to the default branch still runs every gate green on a stopped app, so a clean preflight is not evidence that the app can deploy | `inno-manage-app`: `start_app` first, then cut the next patch tag |
+| `deploy` fails with `app_stopped`, or a container app's `container` job fails at `SBOM upload failed` naming it | the app was stopped by the lifecycle (or deliberately), and **stopped apps cannot be deployed**. Only a release tag's run fails this way (a container app's at its `container` job's SBOM upload, before `deploy` runs); a push to the default branch still runs every gate green on a stopped app, so a clean preflight is not evidence that the app can deploy | `inno-manage-app`: `start_app` first, then cut the next patch tag |
 | `app-build` fails with `Missing app/package-lock.json` (function-shaped apps) | `app/package.json` exists but no lockfile is committed (the contract's §1.1 **Dependencies** bullet). This job runs on pushes too, so the failure blocks before any tag exists | run `npm install` inside `app/`, commit `app/package-lock.json`, push, confirm `app-build` is green, then tag |
 | `app-build` fails in `npm ci`, or its `Bundle the app Worker` step reports `Could not resolve "<package>"` with the titled error `Undeclared import`, or reports it with the titled error `devDependency imported at runtime` (function-shaped apps; on pushes as well as tags) | the lockfile no longer matches `app/package.json`, or the code imports a package not declared anywhere (nothing is installed at the repo root), or the code imports at runtime a package declared only under `devDependencies` (`app-build` installs `--omit=dev`, so that tree was never installed) | for an undeclared package: declare it in `app/package.json`, run `npm install` inside `app/`, commit both files, push, confirm `app-build` is green, then cut the next patch tag. For a devDependency: move it as **Moving a devDependency into dependencies**, below this table, says; then commit `app/package.json` and `app/package-lock.json`, push, confirm `app-build` is green, then cut the next patch tag |
 | `app-build` fails with `Symlink escapes the repository` or `Dangling symlink` (function-shaped apps; the step ends `A symlink in your repository points outside it; a link may name only a file inside your repository. Remove it, or point it inside.`) | a link in the checkout points outside the repository or nowhere. The check walks the whole checkout but `.git` and the platform's own CI checkout, `node_modules` directories included, which `config-integrity` does not walk: a link an installed package ships, a `file:` dependency that points outside the repository, a link among a `file:` dependency's own dependencies (installed in a `node_modules` beside it), or one in a `node_modules` committed anywhere but the repository root and `app/` (those two are removed before the install). A committed link anywhere else fails `config-integrity` first. A link may name only a file inside the repository | for a `file:` dependency, bring what it points at inside the repository; for a package that ships such a link, pin a version that ships none, or replace the package; for a committed `node_modules`, remove it from the repository; each with the user's okay. Push, confirm `app-build` is green, then cut the next patch tag |
@@ -213,9 +213,11 @@ and ask first, whether or not the row below says so.
 
 The rarer `deploy` and broker failures and warnings, each with its fix, are
 in `references/deploy-failures.md`. Read it when the run shows any of
-these: `No scanned image recorded`; `Image mismatch` or `image_mismatch`;
-a `deploy-token failed` line naming `app_not_ready`, `link_invalid`,
-`link_source_missing` or `app_busy`;
+these: a tag run's `container` job failing at `SBOM upload failed`;
+`No scanned image recorded`; `Image mismatch` or `image_mismatch`;
+a `deploy-token failed` line naming `app_not_ready`, `image_not_recorded`,
+`link_invalid`, `link_source_missing` or `app_busy`, or, for a container
+app, naming `upstream_error` or `diagnostics_unavailable`;
 a `deploy-complete failed` line naming `deployment_not_completable`,
 `link_invalid`, `link_source_missing`, `app_busy`, `host_in_use` or
 `host_check_failed`;
@@ -232,9 +234,8 @@ a `deploy-complete failed (500)` line, or `deploy-complete failed: no answer
 within 600 s`;
 a tag run's `deploy-sbom failed (403)` line naming `app_mismatch` or saying
 the app is no longer linked to its repository, `Gate policy unavailable`,
-or a tag run's `deploy-token failed (403)` line (the broker refusing
-`app_mismatch` or `repo_unlinked`); or `policy` failing with `Invalid app
-name`.
+or a tag run's `deploy-token failed (403)` line naming `repo_unlinked`; or
+`policy` failing with `Invalid app name`.
 
 A gate failure is real signal: nothing in the repo or the run overrides it.
 A platform admin can turn a gate off for an app by policy (`safety.gate.*`,

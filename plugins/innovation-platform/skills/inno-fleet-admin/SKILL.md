@@ -306,10 +306,12 @@ What to do with its refusals and answers:
   your own.** Explain what it does, name the affected apps, and get an
   explicit yes.
 - **What `force: true` does.** Its argument's description says how it
-  revokes those links and rebuilds each affected consumer; each consumer's
-  owner is also notified (`link_rebuild_pending`). Say before the yes who
-  keeps access until a rebuild lands: a container-shaped consumer is cut
-  off within 60 seconds anyway by its host's live link check (its reads of
+  revokes those links and rebuilds each affected function-shaped consumer;
+  a container-shaped consumer is not rebuilt, since its host refuses the
+  revoked link live. Each consumer's owner is also notified
+  (`link_rebuild_pending`). Say before the yes who keeps access, and for
+  how long: a container-shaped consumer is cut off within 60 seconds by
+  its host's live link check (its reads of
   the database and the files then fail `link_revoked`), but a
   function-shaped consumer keeps read-write access to the other app's
   database and files until its rebuild finishes. For a function-shaped
