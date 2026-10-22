@@ -180,14 +180,20 @@ the revoked data links whose binding is still deployed, which
 warning names the redeploy, or an admin's `rebuild_app`, for each such
 link; a `link_rebuild_pending` notice says that the code reading the
 revoked source fails, and how to fix it; an instance whose manifest names a
-support contact serves it on the status's `Support:` line, where
-`inno-manage-app` sends every request for a platform admin, and the
-platform's own refusals, notices and sign-in pages name it too; the panel
-serves the platform's user guide at `/guide`, for anyone signed in; and a
-registered app whose first deploy has not completed by the date
-`register_app`'s answer gives is deleted, after a `first_deploy_due`
-reminder, its name then free at once, while the members named at
-registration are told when it first deploys. The v0.17.5 release does not
+support contact serves it on the status's `Support:` line, where every
+skill sends a request for a platform admin (`inno-manage-app` holds the
+rule), and the platform's own refusals, notices and sign-in pages name it
+too; the panel serves the platform's user guide at `/guide`, for anyone
+signed in; and a registered app whose first deploy has not completed by
+the date `register_app`'s answer gives is deleted, after a
+`first_deploy_due` reminder, its name then free at once, which
+`inno-new-app` and `inno-migrate-app` both pass on at the hand-off, while
+the members named at registration are told when it first deploys. For an
+admin, `list_apps` marks each running app's health and every vulnerable
+app, `get_platform_status` names the apps behind its UNHEALTHY and
+VULNERABLE counts, and the audit reference reads the release's three new
+rows (`app_signin_denied`, `connection_connect_failed` and
+`app_first_deploy_due`). The v0.17.5 release does not
 raise the floor: its output changes are additive, and what 4.1.x lacks is
 guidance, not a step that breaks.
 

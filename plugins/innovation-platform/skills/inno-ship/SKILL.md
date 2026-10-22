@@ -45,6 +45,14 @@ verdict covers BOTH the safety gates and the guardrails policy review: if
 the guardrails review flagged an unresolved violation, **do not ship**, even
 with green gates, until it's resolved or the user has an admin exception.
 
+**Asking a platform admin.** Where this skill, or its
+`references/deploy-failures.md`, sends the user to a platform admin (an
+exception, an ignore or a waiver, a shorter release-age cooldown, a fix on
+the platform's side), the request goes to the contact the platform names:
+the `Support:` line of the status you read in the Version gate, when it has
+one. `inno-manage-app`'s **Asking a platform admin** is the one home for
+that rule.
+
 ## 0. Precondition: the app must actually be built
 
 If `app/.needs-build` still exists in the repo, STOP: this app is still the

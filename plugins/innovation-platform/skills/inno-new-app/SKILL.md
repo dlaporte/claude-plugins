@@ -73,6 +73,13 @@ product names unless they have shown technical fluency. The full rule is the
 plugin README's **House style** section, and it applies to every user-facing
 sentence in this flow.
 
+**Asking a platform admin.** Where this skill sends the user to a platform
+admin (a guardrails exception, a higher app limit, registration turned back
+on), the request goes to the contact the platform names: the `Support:` line
+of the status you read in the Version gate, when it has one.
+`inno-manage-app`'s **Asking a platform admin** is the one home for that
+rule.
+
 ## 1. Intake: ask the user for five things
 
 1. **App name**: lowercase letters, digits, hyphens only, 3-29 chars,

@@ -42,6 +42,13 @@ gate policy, IS the preflight. Never install or run scanners locally: local
 results drift from CI's and know nothing about centrally-configured ignores
 or gate toggles.
 
+**Asking a platform admin.** Where this skill sends the user to a platform
+admin (a guardrails exception, a central ignore or waiver, a shorter
+release-age cooldown, a fix on the platform's side), the request goes to
+the contact the platform names: the `Support:` line of the status you read
+in the Version gate, when it has one. `inno-manage-app`'s **Asking a
+platform admin** is the one home for that rule.
+
 **Know the policy that applies to THIS app before you narrate anything.** Call
 `get_config app=<name>`: the app's owner can read it, no admin needed. It
 gives you the actual `safety.gate.*` toggles, the `safety.a11y.mode` in
