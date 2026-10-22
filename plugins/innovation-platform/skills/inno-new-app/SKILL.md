@@ -520,14 +520,14 @@ the same commit: its guide, and reference code that reads no identity),
 provisions the app, and binds the repo. It returns text beginning
 **`App "{name}" registered from {repo}`** and containing:
 
-- On that first line, the deploy-by time: `Deploy it by <date> <time>
-  UTC`, with what happens if the first deploy has not completed by then and
-  when the reminder comes, and, when the call named members, that they are told
-  when the app first deploys. Keep both for the hand-off (§5). The date
-  comes only on the call that provisions an app that is not pinned: a
-  pinned app's answer has none, and neither has a repeat of a
-  registration already provisioned (nor its members sentence). Then
-  read the deadline from `app_status`'s `Lifecycle:` line, which says
+- On that first line, the deploy-by time:
+  `Deploy it by <date> <time> UTC`, with what happens if the first deploy
+  has not completed by then and when the reminder comes, and, when the call
+  named members, that they are told when the app first deploys. Keep both
+  for the hand-off (§5). The date comes only on the call that provisions an
+  app that is not pinned: a pinned app's answer has none, and neither has a
+  repeat of a registration already provisioned (nor its members sentence).
+  Then read the deadline from `app_status`'s `Lifecycle:` line, which says
   plainly when an app is pinned.
 - `URL (after first deploy): https://<app host>`: **quote
   this from the response, never construct it** (the host and domain are
