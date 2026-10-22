@@ -520,9 +520,9 @@ the same commit: its guide, and reference code that reads no identity),
 provisions the app, and binds the repo. It returns text beginning
 **`App "{name}" registered from {repo}`** and containing:
 
-- On that first line, the deploy-by date: `Deploy it by <date> UTC`, with
-  what happens if the first deploy has not completed by then and when the
-  reminder comes, and, when the call named members, that they are told
+- On that first line, the deploy-by time: `Deploy it by <date> <time>
+  UTC`, with what happens if the first deploy has not completed by then and
+  when the reminder comes, and, when the call named members, that they are told
   when the app first deploys. Keep both for the hand-off (§5). The date
   comes only on the call that provisions an app that is not pinned: a
   pinned app's answer has none, and neither has a repeat of a
@@ -628,8 +628,9 @@ provisions the app, and binds the repo. It returns text beginning
 - **`repo_mismatch`**: a partially-finished registration exists for this name
   with a *different* repo. Finish it with the original repo. To start over
   instead, stop that app (`stop_app`, `inno-manage-app`), have a platform
-  admin purge it (`purge_app`), and register again once the name's hold
-  ends, or under another name.
+  admin purge it (`purge_app`), and register again (the purge of an app
+  that never completed a deploy frees its name at once, unless another app
+  still holds a deployed data link to it), or under another name.
 - **`app_exists`**, **`provision_in_progress`**, **`app_not_registered`**,
   **`repo_not_provisioned`** or **`scaffold_not_provisioned`**: another call
   on the same name raced this one. `app_exists` means the other call
@@ -889,10 +890,10 @@ gates and deploys nothing), then `inno-ship`. Beyond the registration
 proof file (§3), don't push anything yet unless asked: `inno-new-app`'s job is
 registration + scaffolding, not deploying.
 
-Tell them the deadline too, with the date quoted from call 2's answer
-(`Deploy it by <date> UTC`), never worked out from memory: an app whose first
-deploy has not completed by then is deleted (its repository is never
-touched), a reminder (`first_deploy_due`) comes the number of days before it
+Tell them the deadline too, with the date and time quoted from call 2's
+answer (`Deploy it by <date> <time> UTC`), never worked out from memory: an
+app whose first deploy has not completed by then is deleted (its repository
+is never touched), a reminder (`first_deploy_due`) comes the number of days before it
 that the answer gives, and its name is then free again at once, unless
 another app still holds a deployed data link to it. When the answer gives
 no date (a pinned app, or a repeat of a registration already provisioned),

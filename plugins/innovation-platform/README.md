@@ -189,7 +189,8 @@ notices and sign-in pages name the contact too. The panel serves the
 platform's user guide at `/guide`, for anyone signed in. A registered app
 whose first deploy has not completed by the date `register_app`'s answer
 gives is deleted, after a `first_deploy_due` reminder, and its name is
-then free at once.
+then free at once, unless another app still holds a deployed data link to
+it.
 `inno-new-app` and `inno-migrate-app` pass that date on at the hand-off,
 and say that the members named at registration are told when the app
 first deploys.

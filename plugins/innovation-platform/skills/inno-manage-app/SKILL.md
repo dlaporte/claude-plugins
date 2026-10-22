@@ -264,12 +264,16 @@ on every type, MCP (`mcp-function`, `mcp-container`) and browser
 (`container`, `function`) alike: a members-only app admits a person the
 member list holds and an internal app everyone the identity provider signs
 in, the front door asking the platform at every request, and a public app
-admits anyone, with no sign-in and no question to the platform. A browser
-app's front door answers someone it
-refuses with a plain 403 "No access" page that names no one, and shows a 503
-"Try again shortly" page when it cannot get an answer: that is an outage
-(the platform, or the sign-in keys it checks people against, could not be
-reached), not a revoke, so do not re-grant for it.
+admits anyone, with no sign-in and no question to the platform. A person a
+members-only browser app does not admit is refused when they sign in, on the
+platform's host, with a "No access" page that names the account they signed
+in with and links a sign-out to use another; once the app is shared with
+that address, they open the app again. Someone already signed in whom the
+app stops admitting gets the front door's 403 "No access" page, which names
+no account and also links a sign-out to use another account. The front door
+shows a 503 "Try again shortly" page when it cannot get an answer: that is
+an outage (the platform, or the sign-in keys it checks people against, could
+not be reached), not a revoke, so do not re-grant for it.
 
 **When someone cannot sign in.** The platform signs people in to a browser
 app itself, on the platform's host, and what they see (the address bar
@@ -848,8 +852,8 @@ them:
 - `connection_locked`: the person's stored credential still exists, but
   their MCP client's authorization cannot open it. They re-authorize the
   connector in their MCP client (in Claude: `/mcp`, then re-authenticate
-  that server), and do not reconnect the backend, which does not help
-  (`inno-add-connection` says why). It comes at most once a day per app,
+  that server), the fix that lasts; reconnecting the backend does not fix
+  it for good (`inno-add-connection` says why). It comes at most once a day per app,
   under its own email setting, `notify.email.connection_locked`.
 - `link_rebuild_pending`: a data link this app used was revoked. The entry
   says whether a rebuild was dispatched, whether the owner has to redeploy
@@ -857,8 +861,8 @@ them:
   rebuilds it after it next starts. For an app that has deployed, it also
   says that the app's code that reads the source's database or files fails
   (a function-shaped app's once it is rebuilt, since its link bindings are
-  gone; a container-shaped app's at once, since those reads answer
-  `link_revoked`): so a rebuild is not the end of it. Remove that code, or
+  gone; a container-shaped app's within about a minute, since those reads
+  then answer `link_revoked`): so a rebuild is not the end of it. Remove that code, or
   link the data again with `link_app_data` where the rules allow, as the
   entry says.
 - `cross_owner_link_revoked`: a function-shaped app another account owns read

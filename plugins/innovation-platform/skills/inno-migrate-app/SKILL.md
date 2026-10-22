@@ -481,8 +481,8 @@ abandons the migration after registering, point at `inno-manage-app` (`stop_app`
 so the app winds down; uninstalling the GitHub App also unlinks and stops it.
 
 Tell the user the deadline too, as `inno-new-app` §5 does, with the date
-quoted from call 2's answer (`Deploy it by <date> UTC` on its first line),
-never worked out from memory: an app whose first deploy has not completed by
+and time quoted from call 2's answer (`Deploy it by <date> <time> UTC` on
+its first line), never worked out from memory: an app whose first deploy has not completed by
 then is deleted (the repository is never touched), a reminder
 (`first_deploy_due`) comes the number of days before it that the answer
 gives, and its name is then free again at once, unless another app still

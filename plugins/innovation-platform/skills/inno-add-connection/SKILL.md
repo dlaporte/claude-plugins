@@ -521,9 +521,10 @@ Rules that hold regardless of language:
   person as well: while their credential stays locked it sends them a
   `connection_locked` notice, at most once a day per app (its email follows
   their `notify.email.connection_locked` setting), with the same remedy:
-  re-authorize the MCP client, and do not reconnect the backend. A
-  `connection_expired` notice is the other case: the stored credential is
-  gone, and connecting again is the fix.
+  re-authorize the MCP client, the fix that lasts, since reconnecting the
+  backend does not fix it for good. A `connection_expired` notice is the
+  other case: the stored credential is gone, and connecting again is the
+  fix.
 - **Every other non-success answer is not the user's fault**, so don't send
   any of them down the connect-link path. Each raises `ConnectionsError` in
   both template clients, with the HTTP status as `.status` and the answer's
