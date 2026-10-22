@@ -122,9 +122,10 @@ Traffic is the only keep-alive: there is no "renew" action.
   per app or per user): `get_config app=<name>` shows the app's own values
   and what each means, and `app_status` gives its dates.
 - **A stopped app can't be deployed.** A push to the default branch still runs
-  the gates green on a stopped app; it is the **release tag's** `deploy` job
-  that fails with `app_stopped`. Start it first, then cut the next patch tag
-  (a tag is immutable, so never force-move one).
+  the gates green on a stopped app; it is the **release tag's** run that
+  fails with `app_stopped` (a container app's at its `container` job's SBOM
+  upload, a function app's at `deploy`). Start it first, then cut the next
+  patch tag (a tag is immutable, so never force-move one).
 - **Before a purge, name the consumers.** A purge revokes every data link
   touching the app, in both directions (`purge_app`'s description says what
   that does to an app reading this one's data). Run `list_app_links` before
@@ -157,7 +158,20 @@ so never quote one from memory: `get_config app=<name>` shows the app's own
 value, and while the app is stopped `app_status` shows how many of them are
 used. Admins are unlimited and don't consume the owner's allowance.
 
-- **`start_limit_reached`**: the owner is out of starts. Use
+An app with an open vulnerability finding is the exception, and
+`start_app`'s description states the rule: the first start after the
+finding uses no self-service start, even for an owner `app_status` shows
+with none left, and a later start before the finding clears counts as any
+start does. After a start the safety sweep holds off stopping the app
+again for a while, so the fix has time to ship. The answer says when a
+start used none, and for an app the sweep can stop it gives the date and
+time before which the sweep does not stop it again: relay that as the time
+by which a fix that passes the safety gates must be released (`inno-ship`).
+Do not quote the window's length from memory: `get_config app=<name>`
+shows `safety.sweep_interval_hours`, which sets it.
+
+- **`start_limit_reached`**: the owner is out of starts (never the answer to
+  that first start after a vulnerability finding). Use
   `request_start({ app, reason })` instead, which notifies every platform
   admin. Call it once: when a request is already waiting with the admins, the
   tool says so and sends no second notification. Relay that instead of asking

@@ -152,6 +152,21 @@ the deploy refusals it lacked. The platform asks for at least 4.1.0 once
 the instance's admins raise `plugin.min_version`, as the v0.17.3 release
 asks.
 
+Plugin 4.1.1 follows platform v0.17.4, still contract 36. No tool takes new
+input. A container app's release run now fails at its `container` job when
+the upload that records the scanned image fails (`SBOM upload failed`, with
+the platform's answer), and the platform refuses the deploy of a run that
+recorded no image (`image_not_recorded`) before it mints or starts
+anything; `inno-ship`'s rows tell an image too large for the platform from
+an outage, and say where a stopped, mismatched or unlinked app's release
+now fails. The first start of an app after a vulnerability finding uses no
+self-service start, a start holds off the safety sweep for a while, and
+`start_app`'s answer gives the time by which the fix must ship;
+`inno-manage-app` relays it. A forced `transfer_app` rebuilds
+function-shaped consumers only, since a container-shaped consumer's host
+refuses the revoked link live. The v0.17.4 release does not raise the
+floor: 4.1.0's rows misdiagnose a rare failure without breaking a build.
+
 ### House style
 
 Every skill in this plugin speaks to a broad, largely non-technical userbase,
