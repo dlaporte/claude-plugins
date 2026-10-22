@@ -7,7 +7,7 @@ description: Use to share, check on, start, stop, export, widen or narrow, or co
 
 ## Version gate: do this first
 
-Before anything else in this skill, do these five steps in order.
+Before anything else in this skill, do these six steps in order.
 
 1. If no `inno-platform` tools are available at all, the platform address is
    probably unset. Tell the user to open their platform's panel, copy the
@@ -15,16 +15,21 @@ Before anything else in this skill, do these five steps in order.
    and restart Claude Code. Then STOP.
 2. Read the `version` field of `${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json`
    and call the `get_platform_status` MCP tool with it as `plugin_version`.
-3. If the `Plugin:` line says `OUTDATED`, `version not reported`, or
+3. If that call fails with an error (a validation or schema error, not one of
+   the refusals the platform's instructions name), the session still holds
+   the platform's tools from before an upgrade. Tell the user to reconnect
+   the platform's server (in Claude Code, `/mcp`, then Reconnect, or start a
+   new session), then start the skill again. Then STOP.
+4. If the `Plugin:` line says `OUTDATED`, `version not reported`, or
    `reported version is not a MAJOR.MINOR.PATCH triple`, STOP. Tell the user
    to run the commands that line gives, then restart Claude Code and start
    again. Do not continue on a stale plugin: its guidance may describe
    platform behavior that no longer exists. If there is no `Plugin:` line at
    all, the platform sets no minimum version: go on to the next step.
-4. If the `Plugin:` line says `current` and adds that a newer version
+5. If the `Plugin:` line says `current` and adds that a newer version
    `is available`, that is advice, not a block. Mention it once, with the
    commands from the `Update commands:` line, and go on to the next step.
-5. If the status has no `Template repo:` line, the platform is older than
+6. If the status has no `Template repo:` line, the platform is older than
    v0.15.8. Say so, ask the user's admin to upgrade it, and STOP before any
    step that needs an instance value. Never fall back to a literal value.
 
@@ -50,6 +55,18 @@ app sessions,
 naming, settings, the audit log and the platform's logs) is
 `inno-fleet-admin`.
 
+**Asking a platform admin** (this paragraph is the plugin's one home for
+where such a request goes). Several remedies below are a platform admin's
+alone: a transfer, an allowed audience, a higher app limit, an unpin, a
+rebuild. When the status you read in the Version gate has a `Support:` line,
+that is the instance's support contact (an email address or a web address):
+the request goes there, so name it when you offer to draft one. The
+platform's own refusals and notices name the same contact when the instance
+sets one. With no `Support:` line the instance names no contact: the user
+reaches a platform admin the way their organization usually does, and you
+never guess an address. A start the owner has run out of is the one request
+the platform carries itself (`request_start`, below).
+
 **Call budget** (this section is the plugin's one home for the rule; the other
 skills state one sentence and point here). Every platform tool call counts
 against one budget per signed-in person, and every agent and session that
@@ -69,7 +86,11 @@ quota to plan against.
 There is also a web panel (the `Panel URL:` line of the status you read in the
 Version gate) with the same capabilities (same API, same authorization); point
 users there for anything visual: dashboards, notification history, lifecycle
-timelines.
+timelines. The panel also serves the platform's user guide at `/guide` (the
+`Panel URL:` address with `/guide` after it), filled in with this instance's
+own values and readable by anyone signed in to the platform (it is not
+public): point a member or an owner there for how the platform works from
+their side.
 
 If the panel, a download link, or a Connections page answers
 `account_inactive` (HTTP 401, "This account can no longer sign in"), that
@@ -179,13 +200,15 @@ shows `safety.sweep_interval_hours`, which sets it.
 - **`app_limit_reached`**: starting would put the owner over their active-app
   limit (the message carries the numbers). Report it factually and name the
   remedies: the owner stops one of their own apps when THEY choose to, or a
-  platform admin raises their `apps.max_active` user-scope override. **Do NOT
+  platform admin raises their `apps.max_active` user-scope override
+  (**Asking a platform admin**, above). **Do NOT
   propose or offer to stop specific apps to make room on a start**: that
   trade-off (taking down something running) is the user's to initiate,
   unprompted.
 - **`host_in_use`** and **`host_check_failed`** (an instance with an empty
   host prefix, where apps sit at `{name}.{domain}`): neither is the owner's to
-  fix from here. Report it to a platform admin.
+  fix from here. Report it to a platform admin (**Asking a platform admin**,
+  above).
 - **`app_not_stopped`**: another change moved the app out of stopped and back
   before this call could tell. Call `app_status` to see where the app is now.
 - **`app_unlinked`**: the platform's GitHub App is no longer installed on the
@@ -205,7 +228,7 @@ the purge date from the response.
 - **`app_deploying`**: a stop does not win a race with a deploy (**Answers
   with one remedy everywhere**, above).
 - **`app_pinned`**: the app is pinned, and only a platform admin can unpin
-  it. Ask one.
+  it. Ask one (**Asking a platform admin**, above).
 
 There is no un-purge: once the window lapses (or an admin purges
 deliberately), only the repo and history remain. The name is then held:
@@ -219,7 +242,9 @@ or the rebuild never landed), its owner's next release tag, or an admin's
 `rebuild_app` of it, ends it (`rebuild_app` answers `dispatch_in_flight`
 within an hour of the purge's own dispatch; `list_app_links` before the
 purge names the app). No admin can lift the dated hold, so do not suggest
-asking one for that. After the hold a fresh registration (`register_app`,
+asking one for that. A purge of an app that never completed a deploy has no
+dated hold, so only the part that waits on such an app's rebuild applies.
+After the hold a fresh registration (`register_app`,
 see `inno-new-app`) can take the name again. Purge also releases the repo
 binding, so the same repo can be registered again right away under a
 different name. An admin's immediate `purge_app` is `inno-fleet-admin`'s.
@@ -315,13 +340,23 @@ must confirm.
   (`unlink_app_data` answers `link_not_found`), so only redeploy it.
   Unlinking alone is not enough for a function-shaped app: it keeps the
   source's database and files in its deployed code until a deploy begun
-  after the unlink has finished.
+  after the unlink has finished. `list_app_links` lists each such revoked
+  link apart from the live ones, with its revocation time, and `app_status`'s
+  `Data links` line names it as revoked but still deployed, until that
+  deploy completes: read either to see whether a redeploy has cleared it.
 
 **`revoke_access` refusals and outcomes:**
 
 - `owner_not_revocable`: the address is the app's current owner, whose access
   comes from owning it. A platform admin's `transfer_app` comes first
   (**Transferring an app: ask an admin**), or `stop_app`.
+- **Before a revoke, read the member list.** `app_status`'s `Members` line
+  names the app's members, its owner aside (its typed `members` field holds
+  every one), so a mistyped revoke is caught before it leaves the person
+  in: pass `revoke_access` the address as that list shows it. A row shown
+  as `<newer address> (shared as <address>)` was shared as the second
+  address, the one to pass (the typed `email`). A row marked `waiting for a
+  first sign-in` is not pinned to an account yet.
 - **Read the result text, not just the absence of an error, before telling
   anyone the person is off.** It says when the member list did not hold the
   address (a mistyped revoke leaves the member it was meant for in place, so
@@ -355,11 +390,14 @@ must confirm.
   `WARNING:` naming apps that could not be updated, relay it plainly, do not
   report the revoke as complete, and run what it names (`revoke_access` on
   that app; a revoke is safe to repeat). When the warning says the cascade
-  stopped because it could not read a link or a linked app, run
-  `list_app_links` on the source app, then `revoke_access` on each consumer
-  for that person. Never repair it by hand in Okta. `list_app_links`
-  enumerates the consumers at any time; the audit rows a cascade writes are
-  `inno-fleet-admin`'s.
+  stopped because it could not read a link or a linked app, do what it says:
+  run `list_app_links` on the source app, then `revoke_access` for that
+  person on each app it lists as reading the source's data, and redeploy
+  each one it lists as revoked but still deployed (the owner's next release
+  tag, `inno-ship`), or ask a platform admin to run `rebuild_app` for it
+  (**Asking a platform admin**, above). Never repair it by hand in Okta.
+  `list_app_links` enumerates the consumers at any time; the audit rows a
+  cascade writes are `inno-fleet-admin`'s.
 
 ## `app_status({ app })` / `get_app_metrics({ app, days?, hours? })`
 
@@ -519,7 +557,8 @@ audit row, and an admin's acceptance stands in for the owner's.
    - `[audience_disallowed]`: the target's setting (`access.allow_internal`
      or `access.allow_public`) does not allow it for this app or its owner.
      Only a platform admin can change that, with `set_config`: offer to
-     draft the request. Never work around it with mass `grant_access`.
+     draft the request (**Asking a platform admin**, above). Never work
+     around it with mass `grant_access`.
    - `[link_containment]`: the app reads a source, through a live data link
      or a revoked one whose binding is still deployed, that does not reach
      as far as the target, so the wider audience would reach that source's
@@ -539,7 +578,8 @@ audit row, and an admin's acceptance stands in for the owner's.
    `inno-safety-preflight` says. Name the guardrail line the app conflicts
    with for that audience, and the ways forward: change the app and run the
    review again, keep the narrower audience it has, or ask a platform admin
-   for an explicit exception (you cannot grant one). Do not ask for the
+   for an explicit exception (you cannot grant one; **Asking a platform
+   admin**, above, says where the request goes). Do not ask for the
    acceptance or pass `accept_guardrails: true` until the app is changed or
    that exception is granted. With no conflict, show the user the review's
    conclusions and ask for an explicit yes that the app follows the
@@ -611,7 +651,8 @@ Only a platform admin can transfer an app's ownership (`transfer_app`): there
 is no accept step, so in an owner's hands a transfer could dump unwanted apps
 on people. When an app OWNER asks to transfer their app, do NOT call it for
 them. Tell them a platform admin must do it, and offer to draft the request,
-naming the app and the new owner. This section is the plugin's one home for
+naming the app and the new owner, for the address **Asking a platform
+admin** (above) gives. This section is the plugin's one home for
 that rule; how an admin runs the transfer is `inno-fleet-admin`.
 That includes an app whose owner's own address has passed to another person
 (`references/address-changes.md`). Two linked apps, such as the two-app
@@ -743,8 +784,8 @@ Things to relay to the user in plain terms:
   one with `remove_app_variable` before setting another.
 - `encryption_key_missing`, `encryption_key_invalid`, or on a container app
   `platform_key_missing`: an admin-side precondition, not an argument
-  problem. Relay it and stop: only a platform admin can fix any of them, and
-  retrying will not help.
+  problem. Relay it and stop: only a platform admin can fix any of them
+  (**Asking a platform admin**, above), and retrying will not help.
 - `link_invalid` or `link_source_missing` from `remove_app_variable`: one of
   the app's data links is no longer valid, and nothing was removed. Unlink it
   (`unlink_app_data`), or have the source's owner fix it, then remove again.
@@ -776,12 +817,18 @@ sends corresponds to an entry here. A call returns a capped number of rows,
 so narrow by app, `stage` or unread rather than trying to read a long
 history in one go.
 
-Stages worth acting on when one appears: `respin_failed`, `auto_restarted`,
+Stages worth acting on when one appears: `first_deploy_due`,
+`respin_failed`, `auto_restarted`,
 `auto_restart_failed`, `link_severed`, `link_rebuild_pending`, `degraded`,
 `usage_anomaly`, `quota_horizon`, `connection_expired`, `connection_locked`,
 `unlinked` / `relinked`, `transferred`, `access_changed`, `shared`,
 `exported`, `member_reassigned`, `cross_owner_link_revoked`,
-`host_upload_blocked`. What to do on seven of them:
+`host_upload_blocked`. What to do on eight of them:
+
+- `first_deploy_due`: a registered app has not completed its first deploy,
+  and the entry gives the date and time it is deleted unless one completes
+  first. To keep it, ship a release (`inno-ship`); if it is no longer
+  needed, nothing is required, and the repository is never touched.
 
 - `access_changed`: the app's audience changed, and the entry says who
   changed it and why. Someone other than the owner widened or narrowed it,
@@ -807,7 +854,13 @@ Stages worth acting on when one appears: `respin_failed`, `auto_restarted`,
 - `link_rebuild_pending`: a data link this app used was revoked. The entry
   says whether a rebuild was dispatched, whether the owner has to redeploy
   (for an owner that is `inno-ship`), or, for a stopped app, that the platform
-  rebuilds it after it next starts.
+  rebuilds it after it next starts. For an app that has deployed, it also
+  says that the app's code that reads the source's database or files fails
+  (a function-shaped app's once it is rebuilt, since its link bindings are
+  gone; a container-shaped app's at once, since those reads answer
+  `link_revoked`): so a rebuild is not the end of it. Remove that code, or
+  link the data again with `link_app_data` where the rules allow, as the
+  entry says.
 - `cross_owner_link_revoked`: a function-shaped app another account owns read
   this app's data through a link that was revoked, and the entry says what
   the platform did to remove its binding (**Data links across owners**,
@@ -820,7 +873,8 @@ Stages worth acting on when one appears: `respin_failed`, `auto_restarted`,
   holds only once its owner has spent their self-service starts), transfer
   it (`transfer_app`), or stop it and then purge it (`purge_app` takes a
   stopped app only). Those are an admin's calls: offer to draft the request,
-  naming both apps. This bullet and the next are the plugin's one home for
+  naming both apps (**Asking a platform admin**, above). This bullet and the
+  next are the plugin's one home for
   these two notices; `inno-fleet-admin` points here.
 - `host_upload_blocked` (container apps): a platform
   release could not upload a new host for the app, because one of its data
