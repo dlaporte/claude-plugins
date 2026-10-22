@@ -514,7 +514,9 @@ Rules that hold regardless of language:
   never `connect_url`: in Claude, run `/mcp` and re-authenticate that server.
   Removing and re-adding the connector is usually not enough. Do **not** tell
   the user to reconnect the backend: connecting stores a credential, while
-  only a new authorization writes the key into the grant, so they loop,
+  the grant takes the key only at a new authorization or at a token refresh
+  that lands while the platform briefly holds it (§2.2), so a reconnect
+  opens the credential for a while and a pause locks it again: they loop,
   connecting over and over while the app reports the same thing. Check for
   `ConnectionLocked` first, since it is a subclass of `NotConnected` and
   would otherwise be caught by the parent clause. The platform tells the
