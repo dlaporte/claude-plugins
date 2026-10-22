@@ -71,6 +71,14 @@ paste in." Never "OAuth," "PKCE" or "client secret." Those words are fine in
 your own reasoning and in the tool calls you make, just not in the sentences
 you say back to a non-technical user.
 
+**Asking a platform admin.** Where this skill sends the user to a platform
+admin (the platform's encryption key, or its own Connections setup), the
+request goes to the contact the platform names: the `Support:` line of the
+status you read in the Version gate, when it has one. `inno-manage-app`'s
+**Asking a platform admin** is the one home for that rule. A request to
+the backend's own administrators (for a registered client, say) is not
+one of these.
+
 **No catalog, no steering.** This skill doesn't maintain or suggest a list of
 backends. If the target is a big enterprise service that already has its own
 first-party integration for AI assistants, it's fine to mention that exists,

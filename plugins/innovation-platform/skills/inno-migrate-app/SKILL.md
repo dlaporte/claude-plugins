@@ -51,6 +51,13 @@ assess it, then adapt it in place before shipping.
 Requires the `inno-platform` MCP server (ships with this plugin). The first tool
 call triggers an Okta browser login: expected, not an error.
 
+**Asking a platform admin.** Where this skill sends the user to a platform
+admin (a guardrails exception, a higher app limit, a fix on the platform's
+side), the request goes to the contact the platform names: the `Support:`
+line of the status you read in the Version gate, when it has one.
+`inno-manage-app`'s **Asking a platform admin** is the one home for that
+rule.
+
 ## Phase 1: Assess (read-only; register nothing yet)
 
 **Fetch the contract first: it IS the assessment checklist.** Call the
@@ -479,8 +486,10 @@ never worked out from memory: an app whose first deploy has not completed by
 then is deleted (the repository is never touched), a reminder
 (`first_deploy_due`) comes the number of days before it that the answer
 gives, and its name is then free again at once, unless another app still
-holds a deployed data link to it. A pinned app's answer gives no date,
-because it has no deadline. So a migration that will take longer than that
+holds a deployed data link to it. When the answer gives no date (a pinned
+app, or a repeat of a registration already provisioned), read the deadline
+from `app_status`'s `Lifecycle:` line; only that line says an app is
+pinned. So a migration that will take longer than that
 needs its first release before the date, or a fresh registration after it.
 When the registration named members, say they are told when the app first
 deploys, not now. Point the user at the platform's user guide too: the

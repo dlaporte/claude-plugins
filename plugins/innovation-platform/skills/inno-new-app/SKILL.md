@@ -522,9 +522,13 @@ provisions the app, and binds the repo. It returns text beginning
 
 - On that first line, the deploy-by date: `Deploy it by <date> UTC`, with
   what happens if the first deploy has not completed by then and when the
-  reminder comes (a pinned app's answer has none), and, when the call named
-  members, that they are told when the app first deploys. Keep both for
-  the hand-off (§5).
+  reminder comes, and, when the call named members, that they are told
+  when the app first deploys. Keep both for the hand-off (§5). The date
+  comes only on the call that provisions an app that is not pinned: a
+  pinned app's answer has none, and neither has a repeat of a
+  registration already provisioned (nor its members sentence). Then
+  read the deadline from `app_status`'s `Lifecycle:` line, which says
+  plainly when an app is pinned.
 - `URL (after first deploy): https://<app host>`: **quote
   this from the response, never construct it** (the host and domain are
   the instance's). For an **mcp-function** or **mcp-container** app the
@@ -890,8 +894,10 @@ Tell them the deadline too, with the date quoted from call 2's answer
 deploy has not completed by then is deleted (its repository is never
 touched), a reminder (`first_deploy_due`) comes the number of days before it
 that the answer gives, and its name is then free again at once, unless
-another app still holds a deployed data link to it. A pinned app's answer
-gives no date, because it has no deadline. When the registration named
+another app still holds a deployed data link to it. When the answer gives
+no date (a pinned app, or a repeat of a registration already provisioned),
+read the deadline from `app_status`'s `Lifecycle:` line; only that line
+says an app is pinned. When the registration named
 members, say they are told when the app first deploys, not now. Point them
 at the platform's user guide too: the `Panel URL:` address with `/guide`
 after it, readable by anyone signed in to the platform.

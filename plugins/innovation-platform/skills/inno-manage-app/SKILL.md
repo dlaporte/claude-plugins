@@ -243,7 +243,7 @@ or the rebuild never landed), its owner's next release tag, or an admin's
 within an hour of the purge's own dispatch; `list_app_links` before the
 purge names the app). No admin can lift the dated hold, so do not suggest
 asking one for that. A purge of an app that never completed a deploy has no
-dated hold, so only the part that waits on such an app's rebuild applies.
+dated hold, so only the second part (past the date, above) can apply to it.
 After the hold a fresh registration (`register_app`,
 see `inno-new-app`) can take the name again. Purge also releases the repo
 binding, so the same repo can be registered again right away under a
@@ -345,18 +345,19 @@ must confirm.
   `Data links` line names it as revoked but still deployed, until that
   deploy completes: read either to see whether a redeploy has cleared it.
 
+**Before a revoke, read the member list.** `app_status`'s `Members` line
+names the app's members, its owner aside (its typed `members` field holds
+every one), so a mistyped revoke is caught before it leaves the person in:
+pass `revoke_access` the address as that list shows it. A row shown as
+`<newer address> (shared as <address>)` was shared as the second address,
+the one to pass (the typed `email`). A row marked `waiting for a first
+sign-in` is not pinned to an account yet.
+
 **`revoke_access` refusals and outcomes:**
 
 - `owner_not_revocable`: the address is the app's current owner, whose access
   comes from owning it. A platform admin's `transfer_app` comes first
   (**Transferring an app: ask an admin**), or `stop_app`.
-- **Before a revoke, read the member list.** `app_status`'s `Members` line
-  names the app's members, its owner aside (its typed `members` field holds
-  every one), so a mistyped revoke is caught before it leaves the person
-  in: pass `revoke_access` the address as that list shows it. A row shown
-  as `<newer address> (shared as <address>)` was shared as the second
-  address, the one to pass (the typed `email`). A row marked `waiting for a
-  first sign-in` is not pinned to an account yet.
 - **Read the result text, not just the absence of an error, before telling
   anyone the person is off.** It says when the member list did not hold the
   address (a mistyped revoke leaves the member it was meant for in place, so
@@ -818,18 +819,17 @@ so narrow by app, `stage` or unread rather than trying to read a long
 history in one go.
 
 Stages worth acting on when one appears: `first_deploy_due`,
-`respin_failed`, `auto_restarted`,
-`auto_restart_failed`, `link_severed`, `link_rebuild_pending`, `degraded`,
-`usage_anomaly`, `quota_horizon`, `connection_expired`, `connection_locked`,
-`unlinked` / `relinked`, `transferred`, `access_changed`, `shared`,
-`exported`, `member_reassigned`, `cross_owner_link_revoked`,
-`host_upload_blocked`. What to do on eight of them:
+`respin_failed`, `auto_restarted`, `auto_restart_failed`, `link_severed`,
+`link_rebuild_pending`, `degraded`, `usage_anomaly`, `quota_horizon`,
+`connection_expired`, `connection_locked`, `unlinked` / `relinked`,
+`transferred`, `access_changed`, `shared`, `exported`, `member_reassigned`,
+`cross_owner_link_revoked`, `host_upload_blocked`. What to do on eight of
+them:
 
 - `first_deploy_due`: a registered app has not completed its first deploy,
   and the entry gives the date and time it is deleted unless one completes
   first. To keep it, ship a release (`inno-ship`); if it is no longer
   needed, nothing is required, and the repository is never touched.
-
 - `access_changed`: the app's audience changed, and the entry says who
   changed it and why. Someone other than the owner widened or narrowed it,
   the hourly pass narrowed it (its setting no longer allows the audience,

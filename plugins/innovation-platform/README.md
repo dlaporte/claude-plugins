@@ -169,33 +169,39 @@ floor: 4.1.0's rows misdiagnose a rare failure without breaking a build.
 
 Plugin 4.2.0 follows platform v0.17.5 and contract 37. No tool takes new
 input, but `app_status` and `get_platform_status` answer in a new shape, so
-reconnect after that upgrade too; from this version the Version gate says
-so itself: when its `get_platform_status` call fails with a validation or
-schema error, it tells the user to reconnect the platform's server (in
-Claude Code, `/mcp`, then Reconnect, or a new session) and start the skill
-again. The skills follow what the release changed for members and owners:
-`app_status` lists the app's members, with the address a revoke takes, and
-the revoked data links whose binding is still deployed, which
-`list_app_links` lists too; when `revoke_access`'s cascade stops, its
+reconnect after that upgrade too. From this version the Version gate says
+so itself. When its `get_platform_status` call fails with a validation or
+schema error, it tells the user to reconnect the platform's server and
+start the skill again (in Claude Code, `/mcp`, then Reconnect, or a new
+session).
+
+For members and owners, the skills follow what the release changed.
+`app_status` lists the app's members, with the address a revoke takes. It
+also names the revoked data links whose binding is still deployed, which
+`list_app_links` lists too. When `revoke_access`'s cascade stops, its
 warning names the redeploy, or an admin's `rebuild_app`, for each such
-link; a `link_rebuild_pending` notice says that the code reading the
-revoked source fails, and how to fix it; an instance whose manifest names a
-support contact serves it on the status's `Support:` line, where every
-skill sends a request for a platform admin (`inno-manage-app` holds the
-rule), and the platform's own refusals, notices and sign-in pages name it
-too; the panel serves the platform's user guide at `/guide`, for anyone
-signed in; and a registered app whose first deploy has not completed by
-the date `register_app`'s answer gives is deleted, after a
-`first_deploy_due` reminder, its name then free at once, which
-`inno-new-app` and `inno-migrate-app` both pass on at the hand-off, while
-the members named at registration are told when it first deploys. For an
-admin, `list_apps` marks each running app's health and every vulnerable
-app, `get_platform_status` names the apps behind its UNHEALTHY and
-VULNERABLE counts, and the audit reference reads the release's three new
-rows (`app_signin_denied`, `connection_connect_failed` and
-`app_first_deploy_due`). The v0.17.5 release does not
-raise the floor: its output changes are additive, and what 4.1.x lacks is
-guidance, not a step that breaks.
+link. A `link_rebuild_pending` notice says that the code reading the
+revoked source fails, and how to fix it. An instance whose manifest names a
+support contact serves it on the status's `Support:` line. Each skill
+that sends the user to a platform admin sends the request there, under
+the rule `inno-manage-app` holds, and the platform's own refusals,
+notices and sign-in pages name the contact too. The panel serves the
+platform's user guide at `/guide`, for anyone signed in. A registered app
+whose first deploy has not completed by the date `register_app`'s answer
+gives is deleted, after a `first_deploy_due` reminder, and its name is
+then free at once.
+`inno-new-app` and `inno-migrate-app` pass that date on at the hand-off,
+and say that the members named at registration are told when the app
+first deploys.
+
+For admins, `list_apps` marks each running app's health and every
+vulnerable app, and `get_platform_status` names the apps behind its
+UNHEALTHY and VULNERABLE counts. The audit reference reads the release's
+three new rows: `app_signin_denied`, `connection_connect_failed` and
+`app_first_deploy_due`.
+
+The v0.17.5 release does not raise the floor: its output changes are
+additive, and what 4.1.x lacks is guidance, not a step that breaks.
 
 ### House style
 
