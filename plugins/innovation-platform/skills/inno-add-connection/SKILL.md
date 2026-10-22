@@ -7,7 +7,7 @@ description: Use when an app needs to reach an external backend AS EACH INDIVIDU
 
 ## Version gate: do this first
 
-Before anything else in this skill, do these five steps in order.
+Before anything else in this skill, do these six steps in order.
 
 1. If no `inno-platform` tools are available at all, the platform address is
    probably unset. Tell the user to open their platform's panel, copy the
@@ -15,16 +15,21 @@ Before anything else in this skill, do these five steps in order.
    and restart Claude Code. Then STOP.
 2. Read the `version` field of `${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json`
    and call the `get_platform_status` MCP tool with it as `plugin_version`.
-3. If the `Plugin:` line says `OUTDATED`, `version not reported`, or
+3. If that call fails with an error (a validation or schema error, not one of
+   the refusals the platform's instructions name), the session still holds
+   the platform's tools from before an upgrade. Tell the user to reconnect
+   the platform's server (in Claude Code, `/mcp`, then Reconnect, or start a
+   new session), then start the skill again. Then STOP.
+4. If the `Plugin:` line says `OUTDATED`, `version not reported`, or
    `reported version is not a MAJOR.MINOR.PATCH triple`, STOP. Tell the user
    to run the commands that line gives, then restart Claude Code and start
    again. Do not continue on a stale plugin: its guidance may describe
    platform behavior that no longer exists. If there is no `Plugin:` line at
    all, the platform sets no minimum version: go on to the next step.
-4. If the `Plugin:` line says `current` and adds that a newer version
+5. If the `Plugin:` line says `current` and adds that a newer version
    `is available`, that is advice, not a block. Mention it once, with the
    commands from the `Update commands:` line, and go on to the next step.
-5. If the status has no `Template repo:` line, the platform is older than
+6. If the status has no `Template repo:` line, the platform is older than
    v0.15.8. Say so, ask the user's admin to upgrade it, and STOP before any
    step that needs an instance value. Never fall back to a literal value.
 
@@ -65,6 +70,14 @@ section. Here that means "connect your app to {backend} as each person,"
 paste in." Never "OAuth," "PKCE" or "client secret." Those words are fine in
 your own reasoning and in the tool calls you make, just not in the sentences
 you say back to a non-technical user.
+
+**Asking a platform admin.** Where this skill sends the user to a platform
+admin (the platform's encryption key, or its own Connections setup), the
+request goes to the contact the platform names: the `Support:` line of the
+status you read in the Version gate, when it has one. `inno-manage-app`'s
+**Asking a platform admin** is the one home for that rule. A request to
+the backend's own administrators (for a registered client, say) is not
+one of these.
 
 **No catalog, no steering.** This skill doesn't maintain or suggest a list of
 backends. If the target is a big enterprise service that already has its own
@@ -501,16 +514,19 @@ Rules that hold regardless of language:
   never `connect_url`: in Claude, run `/mcp` and re-authenticate that server.
   Removing and re-adding the connector is usually not enough. Do **not** tell
   the user to reconnect the backend: connecting stores a credential, while
-  only a new authorization writes the key into the grant, so they loop,
+  the grant takes the key only at a new authorization or at a token refresh
+  that lands while the platform briefly holds it (§2.2), so a reconnect
+  opens the credential for a while and a pause locks it again: they loop,
   connecting over and over while the app reports the same thing. Check for
   `ConnectionLocked` first, since it is a subclass of `NotConnected` and
   would otherwise be caught by the parent clause. The platform tells the
   person as well: while their credential stays locked it sends them a
   `connection_locked` notice, at most once a day per app (its email follows
   their `notify.email.connection_locked` setting), with the same remedy:
-  re-authorize the MCP client, and do not reconnect the backend. A
-  `connection_expired` notice is the other case: the stored credential is
-  gone, and connecting again is the fix.
+  re-authorize the MCP client, the fix that lasts, since reconnecting the
+  backend does not fix it for good. A `connection_expired` notice is the
+  other case: the stored credential is gone, and connecting again is the
+  fix.
 - **Every other non-success answer is not the user's fault**, so don't send
   any of them down the connect-link path. Each raises `ConnectionsError` in
   both template clients, with the HTTP status as `.status` and the answer's

@@ -1,7 +1,7 @@
 {
   "format": 1,
   "contract": {
-    "version": 36,
+    "version": 37,
     "sections": [
       "1",
       "1.1",
@@ -20,16 +20,16 @@
     ]
   },
   "served": {
-    "docs/APP-ACCESSIBILITY.md": "dcaf468497f8d629a4a81b61ac5b5f824dcc72809465a5bd283ec3377b4a20e5",
-    "docs/APP-CONTRACT-HISTORY.md": "e4ae129e5c01b23011a803b7a1e1a8d96b3c2b855305a5d1e4eaf5f061bb6ab0",
-    "docs/APP-CONTRACT.md": "61c40abcc03487d9dfb546d7ccb234984e4c25d72d7a6cb778d1ddcde3aeac57",
-    "docs/APP-SECURITY.md": "47b08412ec68534ec13a0124531b9354a103bc27c57e4589ee2c96a0d0b9aa01",
-    "docs/GUARDRAILS.md": "a9b651c0b1055e5b3a16c50f1eaa500d741febe87fce31ef76287e3d146ef9c6",
-    "docs/PLATFORM-DOCS.md": "d5c022c97b1525f41fd2ffb4f88bcd1506e37aec22dc63e0f147c2c61cc912bd"
+    "docs/APP-ACCESSIBILITY.md": "db05be7ad23b1d327c9e9f802b3ca788ce6895c59d252648fb04cfd52ce63472",
+    "docs/APP-CONTRACT-HISTORY.md": "b3f27380063d8c7de420591ceb5037d10518cce69a96d6659a43cf10c6860e4c",
+    "docs/APP-CONTRACT.md": "e8f9309e7c510166c1a65011f52eea1553e6bcdef1003d18122b89b01c5d90b4",
+    "docs/APP-SECURITY.md": "87e0f8c37a4e23626de9d8434c6ec261cb7d44d1e53a44de85bd25acdce54ad6",
+    "docs/GUARDRAILS.md": "15314e2ccc34080ac7c11a0f94a4b1c104de2af6ea54b4387004cf3e8aa2b8ac",
+    "docs/PLATFORM-DOCS.md": "4094c450994ae4785c7031387632d01b6aafb24a5ee1f280939b857cd477fe65"
   },
   "tools": {
     "count": 54,
-    "revision": "1de05f6834b9819a5e19d98e916fec6436404b44c1ebffb9b827cd0382c79dda",
+    "revision": "58a19295fffb584f250c3c0043cccf7740bb5a06188d3779653925beda7f00c1",
     "list": [
       {
         "name": "accept_naming_change",
@@ -48,7 +48,7 @@
           "app"
         ],
         "inputRevision": "c6c59b7052bd6e5e515379f0ee5cdd5c0830d050632184170c4df16a65d1edff",
-        "outputRevision": "b25d715974761d172443addef6b412c2a951bdfad6ba4de388eaf2ad0fbebddc"
+        "outputRevision": "1b1d25ae09098ea3f32f715cfed74726dd736cd3c422ee49dfc21be4e82ff097"
       },
       {
         "name": "check_name",
@@ -237,7 +237,7 @@
         ],
         "required": [],
         "inputRevision": "8f76013ebddc2b879c8fe537190d09af7df0c2fda4187fd4c065edab7b152cff",
-        "outputRevision": "774cc18104d5a42e4d5c14c948bca1674cd73b664eb0e675628b09d2214e4517"
+        "outputRevision": "cfe34ef701ce8795b542eddf6c058b97e024922c2452660e0f3c91a70f5a2e48"
       },
       {
         "name": "grant_access",
@@ -670,7 +670,7 @@
     }
   },
   "pinned": {
-    "ref": "v0.17.4",
-    "commit": "825cca4f64b700bf4c8459dc5b670e48ce94438a"
+    "ref": "v0.17.5",
+    "commit": "68edaf95d982b41b3a036e87f402471eed4e6062"
   }
 }

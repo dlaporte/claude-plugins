@@ -7,7 +7,7 @@ description: Use when the user wants to create a new app on the Innovation Platf
 
 ## Version gate: do this first
 
-Before anything else in this skill, do these five steps in order.
+Before anything else in this skill, do these six steps in order.
 
 1. If no `inno-platform` tools are available at all, the platform address is
    probably unset. Tell the user to open their platform's panel, copy the
@@ -15,16 +15,21 @@ Before anything else in this skill, do these five steps in order.
    and restart Claude Code. Then STOP.
 2. Read the `version` field of `${CLAUDE_PLUGIN_ROOT}/.claude-plugin/plugin.json`
    and call the `get_platform_status` MCP tool with it as `plugin_version`.
-3. If the `Plugin:` line says `OUTDATED`, `version not reported`, or
+3. If that call fails with an error (a validation or schema error, not one of
+   the refusals the platform's instructions name), the session still holds
+   the platform's tools from before an upgrade. Tell the user to reconnect
+   the platform's server (in Claude Code, `/mcp`, then Reconnect, or start a
+   new session), then start the skill again. Then STOP.
+4. If the `Plugin:` line says `OUTDATED`, `version not reported`, or
    `reported version is not a MAJOR.MINOR.PATCH triple`, STOP. Tell the user
    to run the commands that line gives, then restart Claude Code and start
    again. Do not continue on a stale plugin: its guidance may describe
    platform behavior that no longer exists. If there is no `Plugin:` line at
    all, the platform sets no minimum version: go on to the next step.
-4. If the `Plugin:` line says `current` and adds that a newer version
+5. If the `Plugin:` line says `current` and adds that a newer version
    `is available`, that is advice, not a block. Mention it once, with the
    commands from the `Update commands:` line, and go on to the next step.
-5. If the status has no `Template repo:` line, the platform is older than
+6. If the status has no `Template repo:` line, the platform is older than
    v0.15.8. Say so, ask the user's admin to upgrade it, and STOP before any
    step that needs an instance value. Never fall back to a literal value.
 
@@ -67,6 +72,13 @@ and adapts it to the contract, with no scaffolding from the template.
 product names unless they have shown technical fluency. The full rule is the
 plugin README's **House style** section, and it applies to every user-facing
 sentence in this flow.
+
+**Asking a platform admin.** Where this skill sends the user to a platform
+admin (a guardrails exception, a higher app limit, registration turned back
+on), the request goes to the contact the platform names: the `Support:` line
+of the status you read in the Version gate, when it has one.
+`inno-manage-app`'s **Asking a platform admin** is the one home for that
+rule.
 
 ## 1. Intake: ask the user for five things
 
@@ -407,9 +419,11 @@ register_app({ app, repo, description, type, identity, members, accept_guardrail
   `identity` on both calls, and check that line.
 - `accept_guardrails: true`: required; you must have done the §1a review.
 - `members` is an optional list of Okta emails (at most 50). Each address is
-  added to the app's member list and notified that the app was shared with
-  them, in-platform plus email per their own notification settings, so name
-  only people who should hear about it now. An address Okta does not know is
+  added to the app's member list at once, and is notified that the app was
+  shared with them (in-platform plus email per their own notification
+  settings) when the app's first deploy completes, once its address answers,
+  not at registration; call 2's answer says so. Name only people who should
+  hear about it when it goes live. An address Okta does not know is
   still added but not notified, and call 2's answer names it under
   `Warnings:`. Check its spelling with the user, and if it is mistyped,
   remove it with `revoke_access` (`inno-manage-app`). An address the
@@ -506,6 +520,15 @@ the same commit: its guide, and reference code that reads no identity),
 provisions the app, and binds the repo. It returns text beginning
 **`App "{name}" registered from {repo}`** and containing:
 
+- On that first line, the deploy-by time:
+  `Deploy it by <date> <time> UTC`, with what happens if the first deploy
+  has not completed by then and when the reminder comes, and, when the call
+  named members, that they are told when the app first deploys. Keep both
+  for the hand-off (§5). The date comes only on the call that provisions an
+  app that is not pinned: a pinned app's answer has none, and neither has a
+  repeat of a registration already provisioned (nor its members sentence).
+  Then read the deadline from `app_status`'s `Lifecycle:` line, which says
+  plainly when an app is pinned.
 - `URL (after first deploy): https://<app host>`: **quote
   this from the response, never construct it** (the host and domain are
   the instance's). For an **mcp-function** or **mcp-container** app the
@@ -558,7 +581,9 @@ provisions the app, and binds the repo. It returns text beginning
   that read the purged app's data has not been rebuilt or redeployed since
   (the message says so), with no admin bypass of the date: pick another name
   (check it with `check_name`), or wait until the hold ends, which that
-  app's rebuild or redeploy brings about for the second part.
+  app's rebuild or redeploy brings about for the second part. A purge of an
+  app that never completed a deploy has no dated hold, so only the second
+  part can apply to it.
 - **`repo_unreachable`**: have the user reinstall the App on the repo, then
   call again.
 - **`repo_identity_changed`**: confirm the repo's current `owner/repo` slug
@@ -603,8 +628,9 @@ provisions the app, and binds the repo. It returns text beginning
 - **`repo_mismatch`**: a partially-finished registration exists for this name
   with a *different* repo. Finish it with the original repo. To start over
   instead, stop that app (`stop_app`, `inno-manage-app`), have a platform
-  admin purge it (`purge_app`), and register again once the name's hold
-  ends, or under another name.
+  admin purge it (`purge_app`), and register again (the purge of an app
+  that never completed a deploy frees its name at once, unless another app
+  still holds a deployed data link to it), or under another name.
 - **`app_exists`**, **`provision_in_progress`**, **`app_not_registered`**,
   **`repo_not_provisioned`** or **`scaffold_not_provisioned`**: another call
   on the same name raced this one. `app_exists` means the other call
@@ -863,6 +889,19 @@ app, run
 gates and deploys nothing), then `inno-ship`. Beyond the registration
 proof file (§3), don't push anything yet unless asked: `inno-new-app`'s job is
 registration + scaffolding, not deploying.
+
+Tell them the deadline too, with the date and time quoted from call 2's
+answer (`Deploy it by <date> <time> UTC`), never worked out from memory: an
+app whose first deploy has not completed by then is deleted (its repository
+is never touched), a reminder (`first_deploy_due`) comes the number of days before it
+that the answer gives, and its name is then free again at once, unless
+another app still holds a deployed data link to it. When the answer gives
+no date (a pinned app, or a repeat of a registration already provisioned),
+read the deadline from `app_status`'s `Lifecycle:` line; only that line
+says an app is pinned. When the registration named
+members, say they are told when the app first deploys, not now. Point them
+at the platform's user guide too: the `Panel URL:` address with `/guide`
+after it, readable by anyone signed in to the platform.
 
 Tell the user the app is members-only for now. When the design means it
 for a wider audience (internal, or public for an anonymous app), that
