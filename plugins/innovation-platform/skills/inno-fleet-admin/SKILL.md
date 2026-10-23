@@ -443,9 +443,12 @@ What to do with its refusals and answers:
   after confirming with the admin, and with the owner when the admin is not
   the one asking; unpinned first if it is pinned), then purge.
 - `app_deploying`: wait for the deploy to finish, then stop it and purge. A
-  run that died holds the app `deploying` until a later deploy finishes or
-  the recovery sweep reverts it, which `inno-manage-app`'s **A deploy whose
-  CI run died** explains, and `rebuild_app` cannot release it.
+  deploy whose CI run fails releases the app at once; only a run that never
+  reached its last step (cancelled, timed out, or its runner died), or whose
+  release warned `App not released`, holds the app `deploying` until a
+  later deploy finishes or the recovery sweep reverts it, which
+  `inno-manage-app`'s **A deploy whose CI run died** explains, and
+  `rebuild_app` cannot release it.
 - `app_busy`: retry once after a moment, never in a loop.
 - `image_budget_exhausted` or `r2_budget_exhausted`: the purge deletes a
   container app's registry images, and the app's files, up to a fixed number
@@ -487,9 +490,11 @@ cannot be recalled, so confirm first.
   since platform v0.17.0 moved its apps there), the start dispatches the
   rebuild itself and its answer says so: do not call `rebuild_app` after it,
   unless that answer says the dispatch failed. A deploying
-  one waits for its deploy, or, when its CI run died, for a later deploy or
-  the recovery sweep (`inno-manage-app`'s **A deploy whose CI run died**); a
-  created one has never deployed, and its first release tag deploys it.
+  one waits for its deploy, which releases the app at once if its CI run
+  fails; only when the run never reached its last step (or its release
+  warned `App not released`) does it wait for a later deploy or the recovery
+  sweep (`inno-manage-app`'s **A deploy whose CI run died**). A created one
+  has never deployed, and its first release tag deploys it.
 - `no_release_tag`: the owner cuts one `v*` tag first.
 - `app_not_installed`: only the repo's owner can reinstall the platform
   GitHub App on GitHub.

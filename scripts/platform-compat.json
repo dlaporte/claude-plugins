@@ -1,7 +1,7 @@
 {
   "format": 1,
   "contract": {
-    "version": 37,
+    "version": 38,
     "sections": [
       "1",
       "1.1",
@@ -21,8 +21,8 @@
   },
   "served": {
     "docs/APP-ACCESSIBILITY.md": "db05be7ad23b1d327c9e9f802b3ca788ce6895c59d252648fb04cfd52ce63472",
-    "docs/APP-CONTRACT-HISTORY.md": "b3f27380063d8c7de420591ceb5037d10518cce69a96d6659a43cf10c6860e4c",
-    "docs/APP-CONTRACT.md": "e8f9309e7c510166c1a65011f52eea1553e6bcdef1003d18122b89b01c5d90b4",
+    "docs/APP-CONTRACT-HISTORY.md": "658c5ee95ef707df2560f14263a7cb472ac8f5da1ebd0392762bbb3c775991fa",
+    "docs/APP-CONTRACT.md": "641b78f8d5ffe50c04709f7932c115401390bb03aa5f47c3889922a3721ccf1c",
     "docs/APP-SECURITY.md": "87e0f8c37a4e23626de9d8434c6ec261cb7d44d1e53a44de85bd25acdce54ad6",
     "docs/GUARDRAILS.md": "15314e2ccc34080ac7c11a0f94a4b1c104de2af6ea54b4387004cf3e8aa2b8ac",
     "docs/PLATFORM-DOCS.md": "4094c450994ae4785c7031387632d01b6aafb24a5ee1f280939b857cd477fe65"
@@ -670,7 +670,7 @@
     }
   },
   "pinned": {
-    "ref": "v0.17.5",
-    "commit": "68edaf95d982b41b3a036e87f402471eed4e6062"
+    "ref": "v0.17.6",
+    "commit": "b946771a3ad103f37ec906f14542a6fc279cb4c9"
   }
 }
