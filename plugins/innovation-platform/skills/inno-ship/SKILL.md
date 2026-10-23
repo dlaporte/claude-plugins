@@ -260,10 +260,16 @@ deploy job's last step ending in an `App not released` warning.
 after the platform started the deployment (a finalize refusal, a failed
 image push or bundle hand-over, any failure after the token), its last
 step, `Release the app after a failed deploy`, asks the platform to undo
-that start and ends in one line. `App released` (a notice): the app is
-back as it was, still serving its previous release or, if it never
-deployed, waiting for its first, so `stop_app`, `set_app_variable` and the
-rest work at once; fix what failed above it, then cut the next patch tag.
+that start and ends in one line. `App released` (a notice): the platform
+set the app back to active, or to created if it never completed a deploy,
+so `stop_app`, `set_app_variable` and the rest work at once; fix what
+failed above it, then cut the next patch tag. It says nothing about which
+code serves: most failures leave the previous release serving, but a
+function app's finalize that failed after its upload landed already serves
+the new code (the `deploy-complete failed (500)` row and the message-less
+`deployment_not_completable` case in `references/deploy-failures.md`), and
+a container rollout that timed out may still finish (its
+`container_rollout_failed` row).
 `Nothing to release` (a notice): the deployment was no longer this run's
 deploy in flight, most often because a finalize completed first, as its
 sentence says; read `app_status` before anything else. `App not released`

@@ -216,8 +216,9 @@ app`, naming `app_mismatch` (with the app the repository is registered as
 and the line to fix) or `repo_unlinked`, instead of running every gate on a
 guessed policy, and a release tag on an unbuilt scaffold fails with
 `Nothing deployed`. A deploy whose CI run fails releases its app at once,
-so only a run that never reached its last step waits for the recovery
-sweep, and a restart or a start checks the app's health again right after.
+so only a run that never reached its last step, or whose release warned
+`App not released`, waits for the recovery sweep, and a restart of a
+running app, or a start, checks the app's health again right after.
 The secret scan reads every commit on every branch and tag, on every run, a
 release tag's included, so a secret its default rules find anywhere in an
 app's history fails its next release: `inno-ship`'s and

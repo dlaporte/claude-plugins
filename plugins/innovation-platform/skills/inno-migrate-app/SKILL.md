@@ -462,9 +462,12 @@ restore point is.
      `inno-platform-conventions`' **Accessibility** section and **Response
      headers** paragraph.
 4. **Secrets in history**: because this is the same repo, a credential in any
-   past commit still trips the `secrets` gate. Rotate it (a history rewrite
-   alone doesn't un-leak it), scrub it from history before shipping, and set
-   the rotated value as an app **Variable**; never re-commit it.
+   past commit still trips the `secrets` gate. Rotate it first (a history
+   rewrite alone doesn't un-leak it), then, before shipping, either remove it
+   from the history or record its finding's fingerprint in `.gitleaksignore`,
+   as Phase 1's **Gate risks** and `inno-ship`'s `secrets` row say; never
+   delete the file in a new commit, which leaves the secret in the old one.
+   Set the rotated value as an app **Variable**; never re-commit it.
 5. **Rewrite `README.md`** to describe the migrated app (what it does, who it's
    for, its URL), drawing on the existing README. Platform mechanics stay in
    `CLAUDE.md`, not here.
