@@ -215,7 +215,7 @@ is how to choose and fill it.
   - `revocation_endpoint` is **optional but worth setting** when the backend
     (or its discovery document) advertises one: it is where the platform
     revokes a user's token at the backend when they disconnect from the
-    **Connections tab on their account page**. That is the only disconnect
+    **Connected backends tab on their account page**. That is the only disconnect
     that ever calls it (`disconnect_user_connection` is local only, whoever
     calls it). Omit the endpoint and every disconnect only forgets the token
     platform-side: the credential stays live at the backend until it
@@ -591,7 +591,7 @@ description.
   than `remove_app_connection`. It is **local only** and never revokes the
   credential at the backend, even for a user disconnecting their own
   session; to revoke upstream as well, the user disconnects from the
-  **Connections tab on their account page**. Whether a reconnect shows the
+  **Connected backends tab on their account page**. Whether a reconnect shows the
   disclosure page again is the `connections.consent` setting's to say
   (`get_config` with `app` prints its description).
 

@@ -950,12 +950,12 @@ live app:
   credential so the next call returns a fresh connect link, leaving the
   connection configured for everyone else. Only that user or a platform admin
   can call it: an owner whose user is stuck has the user disconnect (their own
-  call, or the Connections tab on their account page), or asks a platform
+  call, or the Connected backends tab on their account page), or asks a platform
   admin. Confirm with the user before calling it; it is not reversible for
   them beyond reconnecting. Called over
   MCP it never revokes the credential at the backend (its description says
   why): if the user needs the backend to invalidate it, they disconnect from
-  the Connections tab on their account page instead.
+  the Connected backends tab on their account page instead.
 
 ## Support bundles (`create_support_bundle`)
 
