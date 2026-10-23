@@ -440,10 +440,14 @@ stale).
 
 **A deploy whose CI run died.** A deploy whose CI run fails releases the app
 at once: the run's last step asks the platform to, and its `App released`
-notice says the app is back as it was, so every tool that refuses
-`app_deploying` (`stop_app`, `restart_app`, `set_app_variable`,
-`remove_app_variable`, and an admin's `purge_app`) works again as soon as
-the run ends. Only a run that never reached that step (it was cancelled or
+notice says the app is active again (or created, if it never completed a
+deploy), so every tool that refuses `app_deploying` (`stop_app`,
+`restart_app`, `set_app_variable`, `remove_app_variable`, and an admin's
+`purge_app`) works again as soon as the run ends. The app's host stays
+attached and serves its last completed release, unless this deploy's
+finalize failed after its upload landed (a function app's script, or a
+container rollout that went through), when this deploy's own code may be
+what serves. Only a run that never reached that step (it was cancelled or
 timed out, or its runner died), or whose step warned `App not released`,
 holds the app `deploying` until a later deploy finishes or the lifecycle
 pass's recovery sweep reverts it, and until then those tools keep refusing.
