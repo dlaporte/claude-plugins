@@ -204,6 +204,32 @@ three new rows: `app_signin_denied`, `connection_connect_failed` and
 The v0.17.5 release does not raise the floor: its output changes are
 additive, and what 4.1.x lacks is guidance, not a step that breaks.
 
+Plugin 4.3.0 follows platform v0.17.6 and contract 38. No tool takes new
+input and no tool's output moved, so there is nothing to reconnect for.
+The skills follow what the release changed. `get_ci_status` names each
+failed job's failed step and the last lines of its log, fenced as
+untrusted data, so a skill can tell why a gate failed with no `gh`
+installed, where it used to send the reader to the run link; a failing
+gate now prints one titled line that says what failed and how to fix it.
+A refused repository fails the `policy` job with `Platform refused this
+app`, naming `app_mismatch` (with the app the repository is registered as
+and the line to fix) or `repo_unlinked`, instead of running every gate on a
+guessed policy, and a release tag on an unbuilt scaffold fails with
+`Nothing deployed`. A deploy whose CI run fails releases its app at once,
+so only a run that never reached its last step waits for the recovery
+sweep, and a restart or a start checks the app's health again right after.
+The secret scan reads every commit on every branch and tag, on every run, a
+release tag's included, so a secret its default rules find anywhere in an
+app's history fails its next release: `inno-ship`'s and
+`inno-safety-preflight`'s gitleaks guidance gives the fix (rotate the
+secret, then rewrite the history or record the finding's fingerprint in
+`.gitleaksignore`, its only waiver), and never a new commit that deletes
+the file.
+
+The v0.17.6 release does not raise the floor, which stays 4.1.0: an older
+build reads a failure from the run link and waits for the sweep where it
+no longer has to, which costs time without breaking a step.
+
 ### House style
 
 Every skill in this plugin speaks to a broad, largely non-technical userbase,
@@ -307,7 +333,8 @@ request for a platform admin goes, and the
 `cross_owner_link_revoked` and `host_upload_blocked` notices;
 `inno-safety-preflight` owns the pre-push branch and symlink checks, how to
 read `get_ci_status`, and how to read the CI accessibility, response-header
-and Dockerfile reports; `inno-containerize` owns the health-probe clock;
+and Dockerfile reports; `inno-ship`'s `secrets` row owns the gitleaks fix
+and the fingerprint waiver; `inno-containerize` owns the health-probe clock;
 `inno-new-app` owns the name-check rules; `inno-fleet-admin` owns the
 admin-only actions (a purge's missing archive included); and this README
 owns House style.

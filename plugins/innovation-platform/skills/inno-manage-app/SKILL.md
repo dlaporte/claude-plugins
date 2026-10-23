@@ -117,8 +117,10 @@ this skill, and their remedy is the same on every tool:
   so, to an app linked to it) is in flight. Retry **once** after a moment,
   never in a loop.
 - **`app_deploying`**: a deploy is in flight. Wait for it to finish, then
-  retry. If it does not clear, **A deploy whose CI run died**, below, says
-  what holds the app and how to release it.
+  retry: a deploy whose CI run fails releases the app at once, so the
+  refusal normally clears as the run ends, green or red. If it does not
+  clear, **A deploy whose CI run died**, below, says what holds the app and
+  how to release it.
 
 ## The lifecycle (know this before advising anyone)
 
@@ -165,8 +167,10 @@ anything. If an app should genuinely never expire, that's the admin-set
 
 ## `start_app({ app })`: bring back a stopped app
 
-Its description says what a start does and who is notified. A start needs
-no redeploy, with one exception: an app that was stopped when the platform
+Its description says what a start does and who is notified. Its health is
+checked again right after the start, as after a deploy, so `app_status`
+reads pending, then the probe's answer. A start needs no redeploy, with one
+exception: an app that was stopped when the platform
 moved its apps into its app namespace (platform v0.17.0) has no script
 there, so starting it, when it has a released deployment, also dispatches a
 rebuild of its live release tag, and it serves once that rebuild deploys
@@ -430,18 +434,26 @@ app's audience and identity beside its type. For an **mcp-function** or
 
 Deployment statuses: `pending`, `deploying`, `deployed`, `failed` (the
 deploy could not start, because the app was stopped or unlinked as it
-began), and `abandoned` (a run that died, closed out when a later deploy
-finalizes or the recovery sweep finds it stale).
+began), and `abandoned` (a deploy released after its CI run failed, or one
+closed out when a later deploy finalizes or the recovery sweep finds it
+stale).
 
-**A deploy whose CI run died** holds the app `deploying` until a later deploy
-finishes or the lifecycle pass's recovery sweep reverts it, and until then
-every tool that refuses `app_deploying` (`stop_app`, `restart_app`,
-`set_app_variable`, `remove_app_variable`, and an admin's `purge_app`) keeps
-refusing. Each of those tools' descriptions says when the sweep comes; the
-interval it counts is the platform-scope `lifecycle.run_interval_hours`, which
-an owner's `get_config app=` does not list. When a
-refusal persists, check the run with `get_ci_status`. If it has already
-failed, the way out now is the owner's next deploy: re-run that whole tag
+**A deploy whose CI run died.** A deploy whose CI run fails releases the app
+at once: the run's last step asks the platform to, and its `App released`
+notice says the app is back as it was, so every tool that refuses
+`app_deploying` (`stop_app`, `restart_app`, `set_app_variable`,
+`remove_app_variable`, and an admin's `purge_app`) works again as soon as
+the run ends. Only a run that never reached that step (it was cancelled or
+timed out, or its runner died), or whose step warned `App not released`,
+holds the app `deploying` until a later deploy finishes or the lifecycle
+pass's recovery sweep reverts it, and until then those tools keep refusing.
+Each of their descriptions says when the sweep comes; the interval it counts
+is the platform-scope `lifecycle.run_interval_hours`, which an owner's
+`get_config app=` does not list. While an app is deploying, `app_status`'s
+`Lifecycle:` line says when that deploy began and names its CI run, as its
+`Last deployment:` line does. When a refusal persists, check that run with
+`get_ci_status`. If it has already ended without releasing the app, the way
+out now is the owner's next deploy: re-run that whole tag
 run, by the rule in `inno-ship`'s **Right after a deploy, health may read
 `re-probe pending`, which is not a verdict** section, or cut the next patch
 tag (`inno-ship`). An admin's `rebuild_app` is not a way out: it refuses an
@@ -475,7 +487,13 @@ On a `container` or `mcp-container` app it starts a new generation of the
 app's container: the app's next request starts a new container instance on
 its current image and variables, and the previous one stops from the new
 host's first request on, or within about six minutes whatever the traffic;
-its description says the rest. A `function` or `mcp-function` app runs no
+its description says the rest. For a running app (active or warned) it
+re-checks the app's health right after, as a deploy does: `app_status` and
+the panel read pending, then the probe's answer, within about a minute. So
+read `app_status` a minute after a restart to tell whether it fixed the
+app: a healthy answer is recorded at once, while a failing one stays
+pending, with what the probe saw, until the next hourly pass judges it. A
+`function` or `mcp-function` app runs no
 container, so it answers `not_a_container`: a wedged function app is fixed
 by shipping it again (`inno-ship`). A deploy needs no restart after it,
 since a deploy starts a new instance by itself. Reach for it when a
