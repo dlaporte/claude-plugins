@@ -321,10 +321,14 @@ restore point is.
    `identity: "anonymous"` when item 9 chose it, and omit it otherwise: the
    call that creates the app (call 2) fixes its identity, a call that
    resumes or repeats a registration keeps the identity the app has, and
-   call 2's answer names it on its `Identity:` line, so pass the same `type`
-   and `identity` both times and check that line: if it is not the one the
-   plan chose, stop and tell the user before adapting anything, since a
-   different identity is a new app. Pass `connections`
+   call 2's answer names it on its `Identity:` line, so pass the same
+   `identity` both times (call 1 does not record it) and check that line:
+   if it is not the one the plan chose, stop and tell the user before
+   adapting anything, since a different identity is a new app. Call 2 may
+   leave `type` and `description` out: the first call's are used, and one
+   call 2 names differently is kept from the first, on a `WARNING:` or
+   `NOTE:` line of its answer (`inno-new-app` §3's `type` bullet has the
+   rule and how to change either before call 2). Pass `connections`
    only if step 2's assessment found per-user backend auth to replace: a list of
    the names you plan to set up. It creates nothing (only `set_app_connection`
    can); the response echoes it back as a reminder to configure each one. An
@@ -353,7 +357,8 @@ restore point is.
    proof path after it) is `inno-new-app` §3's: follow it there.
 
    Once the proof file is on the default branch and the App is installed, call
-   `register_app` **again with the same arguments**; the second call binds the
+   `register_app` **again with the same arguments** (`type` and
+   `description` may be left out, `identity` may not); the second call binds the
    repo and returns the app URL and a `deploy.yml`. If the repo carries a
    top-level `scaffold/` directory, call 2 treats it as a template copy's,
    in a server-side commit on the repo's default branch, the commit the plan

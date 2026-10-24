@@ -231,6 +231,28 @@ The v0.17.6 release does not raise the floor, which stays 4.1.0: an older
 build reads a failure from the run link and waits for the sweep where it
 no longer has to, which costs time without breaking a step.
 
+Plugin 4.4.0 follows platform v0.17.7, still contract 38. No tool takes new
+input and no tool's output moved. A platform admin's MCP client now lists
+the admin-only tools and a member's does not, and a client keeps the list
+it read when it connected, so a person granted or revoked admin reconnects
+to see the right one; `inno-fleet-admin` says when, and its tools are the
+admin-only ones. The skills follow what else the release changed.
+`get_app_contract` serves one requirement by its id (`sections: ["R3"]`),
+so a skill that reads one requirement asks for that one alone, and
+`["2"]` still serves all ten. A write tool's answer puts each caveat to act
+on in a `WARNING:` line of its own and each note in a `NOTE:` line, where
+`register_app` listed its caveats under `Warnings:` and `set_app_connection`
+wrote `Warning:` and `Note:` (its sign-in and token sites on different
+domains are now a `WARNING:`); the skills quote the new labels. The panel's
+over-long note, reason or description is refused `text_too_long`, which
+retires `note_too_long`. `register_app`'s second call may leave out `type`
+and `description`, the first call's being used, and `inno-new-app` and
+`inno-migrate-app` say so; `identity` still goes on both calls.
+
+The v0.17.7 release does not raise the floor, which stays 4.1.0: 4.3.0
+quotes labels the platform no longer writes and reads a whole section where
+one requirement would do, which costs words without breaking a step.
+
 ### House style
 
 Every skill in this plugin speaks to a broad, largely non-technical userbase,
@@ -344,8 +366,9 @@ What the platform serves, the skills fetch rather than copy. The
 application contract comes from `get_app_contract`: with no arguments it
 serves the whole current contract, with `sections` only the numbered
 sections named (for example `["2"]` for the requirements R1 to R10, or
-`["2.2"]` for Connections), and with `history: true` the contract's version
-notes alone, newest first. A contract or section answer opens with the
+`["2.2"]` for Connections) or one requirement by its id (`["R10"]` for R10
+alone), and with `history: true` the contract's version notes alone,
+newest first. A contract or section answer opens with the
 contract version and the current base images, so a narrow read never loses
 them, and each skill asks only for the sections its step needs.
 

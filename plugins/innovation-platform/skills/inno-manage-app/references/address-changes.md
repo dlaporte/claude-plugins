@@ -16,7 +16,7 @@ The grant stays with the account it is pinned to, and every sign-in carries
 the person's identity provider subject (the panel's, an MCP client's, and a
 browser app's, which is the platform's own), so the address's new holder is
 refused like anyone the app does not admit (contract R3, `get_app_contract`
-with `sections: ["2"]`).
+with `sections: ["R3"]`).
 
 **Sharing with the new holder.** Confirm with the owner first: the revoke
 also ends the access of the account the row was pinned to, which may be the

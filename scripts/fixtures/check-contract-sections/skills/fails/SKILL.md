@@ -14,3 +14,6 @@ description: A fixture for scripts/test-check-contract-sections.sh, not a skill.
   "3"]`.
 - A literal glued to the one before it, the second bad: `sections: ["2"]sections: ["9"]`.
 - An id that is not numbers joined by dots, though each part is a section: `sections: ["1.3 2"]`.
+- A requirement the contract does not have: `sections: ["R9"]`.
+- A requirement id in lower case: `sections: ["r3"]`.
+- A requirement id with a part after a dot: `sections: ["R3.1"]`.

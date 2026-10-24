@@ -14,10 +14,12 @@
 # `]` on the same line, in any text file under path; a line may hold more
 # than one, even glued to the one before it. The key must start a word, so
 # `subsections: [` is not one. Each element of it must be a double-quoted id
-# the record's contract has. Prints file:line: and what is wrong, once per bad
-# element, and exits 1 if there is any:
-#   - an id that is not numbers joined by dots, such as "1.3 2", which would
-#     otherwise match two ids side by side in the record's list;
+# the record's contract has: a numbered section ("2", "2.1") or, from
+# platform v0.17.7, one requirement by its id ("R3"). Prints file:line: and
+# what is wrong, once per bad element, and exits 1 if there is any:
+#   - an id that is neither numbers joined by dots nor R and a number, such as
+#     "1.3 2", which would otherwise match two ids side by side in the
+#     record's list;
 #   - an id the pinned contract does not have;
 #   - an element that is not a quoted string;
 #   - a literal with no `]` on its line, which this cannot read, so it fails
@@ -62,7 +64,7 @@ if [ "$rc" -gt 1 ]; then
   exit 2
 fi
 
-idshape='^[0-9]+(\.[0-9]+)*$'
+idshape='^([0-9]+(\.[0-9]+)*|R[0-9]+)$'
 nliterals=0
 nids=0
 report=""
@@ -96,7 +98,7 @@ while IFS= read -r hit; do
         id="${element#\"}"; id="${id%\"}"
         nids=$((nids + 1))
         if [[ ! $id =~ $idshape ]]; then
-          report+="$file:$line: \"$id\" is not a section id: an id is numbers joined by dots"$'\n'
+          report+="$file:$line: \"$id\" is not a section id: an id is numbers joined by dots, or R and a number"$'\n'
           continue
         fi
         case "$known" in

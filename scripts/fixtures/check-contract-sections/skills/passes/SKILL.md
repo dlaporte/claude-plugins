@@ -15,3 +15,4 @@ description: A fixture for scripts/test-check-contract-sections.sh, not a skill.
 - A word that ends in sections is not the key: `subsections: ["9"]`, `x_sections: ["9"]`.
 - The key right after a bracket: `[sections: ["2"]]`.
 - An id the fixture's own record has, which the real pinned contract need not: `sections: ["8"]`.
+- One requirement by its id, alone and beside a numbered id: `sections: ["R3"]`, `sections: ["R1", "2.3"]`.

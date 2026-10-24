@@ -502,9 +502,11 @@ session: it never identifies anyone.
 ### An anonymous app: R10
 
 The contract's rule for an app registered `anonymous`, R10
-(`get_app_contract` with `sections: ["2"]`, the authoritative text), opens:
+(`get_app_contract` with `sections: ["R10"]`, the authoritative text), opens:
 
-> **R10: An anonymous app keeps nothing per person.** An app registered with
+> **R10: An anonymous app keeps nothing per person**
+>
+> An app registered with
 > `identity: "anonymous"` is never told who its caller is, at any audience
 > (R3): the four identity headers arrive present and empty on every request,
 > and no `X-Caller-Assertion` arrives, so it has no Connections (§2.2). Only an

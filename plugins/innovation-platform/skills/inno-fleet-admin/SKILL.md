@@ -35,19 +35,34 @@ Before anything else in this skill, do these six steps in order.
 
 Carry on.
 
-This skill covers two kinds of tool. Most are admin-only, and anyone else
-gets `forbidden` and nothing more: the admin list and the import,
-`transfer_app`, `purge_app`, `rebuild_app`, `revoke_sessions`,
-`claim_instance_objects`, `accept_naming_change`,
+This skill covers two kinds of tool. Most are admin-only: the admin list
+and the import, `transfer_app`, `purge_app`, `rebuild_app`,
+`revoke_sessions`, `claim_instance_objects`, `accept_naming_change`,
 `list_users`, `query_audit`, `get_platform_logs` and
-`export_platform_backup`. The rest are shared tools that answer anyone in
-their own scope and give an admin the whole fleet: `list_apps`, the config
-tools, `list_notifications`, `mark_all_notifications_read`,
-`list_connections` and `list_user_connections`. There is no local way around
-a `forbidden`, because authorization lives in the platform, not the client.
+`export_platform_backup`. A platform admin's MCP client lists them and a
+member's does not (the platform's MCP server note says so), so a member
+never sees them, and a call to one from a list read before the caller's
+standing changed is refused and does nothing. The rest are shared tools
+that answer anyone in their own scope and give an admin the whole fleet:
+`list_apps`, the config tools, `list_notifications`,
+`mark_all_notifications_read`, `list_connections` and
+`list_user_connections`. There is no local way around a `forbidden`, or
+around a missing tool, because authorization lives in the platform, not the
+client.
 The refusals every tool can answer are named once in the platform's MCP
 server note, and `inno-platform-conventions`' **Refusals every tool shares**
 section says what each means; this skill names only the ones its tools add.
+
+**The admin-only tools come with the connection.** The platform lists a
+caller's tools by their standing when the client reads the list, as it
+connects, and the client keeps that list. So a person just granted admin
+reconnects the platform's server (in Claude Code, `/mcp`, then Reconnect,
+or a new session) before the admin-only tools appear, and a person whose
+standing was revoked keeps them listed, each call refused, until they
+reconnect. When an admin runs this skill and those tools are missing, have
+them reconnect first; still missing, the person is not an admin right now
+(not on the list, or Okta could not be reached when they connected: below),
+and another admin checks `list_admins`.
 
 An admin's work on one app (sharing it, starting or stopping it, its logs,
 metrics, variables and support bundles) is `inno-manage-app`, and so are two
@@ -82,7 +97,9 @@ through the one account-status answer every tool uses, held for
   the powers within that window, and reactivating the account restores them.
 - While Okta cannot be reached, admin powers fail closed: an admin whose
   status is unknown is not an admin for that call. A `forbidden` during an
-  Okta outage is not a lost standing; retry later.
+  Okta outage is not a lost standing; retry later. A client that connects
+  during one is given a member's tool list, with no admin-only tool in it,
+  so reconnect once Okta answers again.
 - The `Admin group:` line of `get_platform_status` names an Okta group that
   does not follow the list: `grant_admin` and `revoke_admin` change only the
   list, so read who the admins are with `list_admins`. The platform reads
@@ -111,7 +128,9 @@ through the one account-status answer every tool uses, held for
   and neither touches the Okta admin group. If that group lists someone you
   revoke, it still does: that gives no standing while the list holds anyone
   (above), and only a change in Okta by hand takes them out of that group.
-  Confirm the person by name before either.
+  Confirm the person by name before either. Tell the person that their
+  client's tool list changes only when they reconnect (**The admin-only
+  tools come with the connection**, above).
 - What to do when `grant_admin` refuses:
   - `email_domain_not_allowed` when the instance lists allowed email domains
     and the address is outside them (a listed domain's subdomains are
@@ -733,6 +752,10 @@ serves. The panel's Platform screen is the same act on a visual surface.
   notification read, everyone's, not only the admin's own.
 
 ## Authorization summary
+
+The first eight rows are the admin-only tools: a member's MCP client does
+not list them, and an admin's lists them once it connects as one. The
+shared tools below them are listed for everyone.
 
 | Tool | Who can call it |
 |---|---|

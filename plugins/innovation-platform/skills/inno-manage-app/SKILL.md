@@ -259,7 +259,7 @@ These tools write the platform's **member list** for the app, its only store;
 nothing is written to Okta. So share and unshare with these tools, never by
 hand in Okta. Their descriptions say exactly what each writes and who is
 notified; `revoke_access`'s description and contract R3 (`get_app_contract`
-with `sections: ["2"]`) say when a change reaches a person. Quote the app's
+with `sections: ["R3"]`) say when a change reaches a person. Quote the app's
 hostname from the `URL:` line of `app_status` or from `register_app`'s
 answer, rather than building it.
 
@@ -758,8 +758,9 @@ user scope. So "stop emailing me about deploys but keep the purge warnings"
 is self-service. At `user` scope an omitted `scope_id` means your own
 account, and naming anyone else's is refused `forbidden`.
 
-- `note_too_long` (from the panel; over MCP the argument's own limit refuses
-  it): the note is over 200 characters. Shorten it and call again.
+- `text_too_long` (from the panel; over MCP the argument's own limit refuses
+  it first): the note is longer than its limit, which the message names
+  (200 characters). Shorten it and call again.
 - `invalid_value`: the message names the setting and the rule its value
   broke (`<key> must be ...`: a type, a grammar, or for a number the range
   it must fall in). Fix the named thing rather than guessing at the format.
