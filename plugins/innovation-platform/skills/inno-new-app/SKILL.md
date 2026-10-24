@@ -413,10 +413,16 @@ register_app({ app, repo, description, type, identity, members, accept_guardrail
   and `description` out: the first call's are used (`register_app`'s
   description says so), and a call 2 that names another keeps the first
   call's, saying so on a `WARNING:` line for the type and a `NOTE:` line
-  for the description (a description call 1 left out takes call 2's). To
-  change either before call 2, repeat call 1 with the new one
-  (`get_platform_docs`' **What the tools do in detail**, its Registration
-  item, has the rule).
+  for the description (a description call 1 left out takes call 2's). A
+  repeated call 1 changes either only while the platform still answers it
+  as call 1 (`Registration started`, with the install link), which is only
+  until the platform GitHub App covers the repo: from then on a repeat
+  checks the proof file (`repo_control_unproven`, changing nothing, while
+  it is missing) and, once it finds it, runs as call 2 and creates the app
+  with the first call's type, fixed for good. So settle the type
+  before call 1 when the App already covers the repo, and otherwise before
+  the user installs it (`get_platform_docs`' **What the tools do in
+  detail**, its Registration item, has the rule).
 - `identity`: from the design's identity question (§1b): `"anonymous"`
   when the app must not know who each caller is; omit it, or pass
   `"identity-aware"`, otherwise. The app's identity is set by the call

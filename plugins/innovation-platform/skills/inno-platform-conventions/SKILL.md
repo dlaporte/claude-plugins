@@ -86,11 +86,13 @@ answers one:
   says a retry will not help, don't, and tell the user in plain words that
   the platform could not do it (the error is in the platform's log, for a
   platform admin).
-- `app_busy`: another change to the app is in flight. Retry once after a
-  moment, never in a loop.
+- `app_busy`: another change to the app, or to an app linked to it, is in
+  flight. Retry **once** after a moment, never in a loop.
 - `app_deploying`: a deploy of the app is in flight. Wait for it to finish,
-  then retry; if it does not clear, `inno-manage-app`'s **A deploy whose CI
-  run died** says what holds the app.
+  then retry: a deploy whose CI run fails releases the app at once, so the
+  refusal normally clears as the run ends, green or red. If it does not
+  clear, `inno-manage-app`'s **A deploy whose CI run died** says what holds
+  the app and how to release it.
 - `github_app_not_configured`, `github_app_key_invalid` or
   `installation_token_failed`: a fault on the platform's side in reaching
   the app's repository through the platform GitHub App, which only a
@@ -356,10 +358,11 @@ own message, and sends the body with its length. Neither applies to a function-s
 
 The front door decides who reaches the app, by its audience (members-only,
 internal or public), and tells an identity-aware app who the caller is, in
-the identity headers. R3 (`get_app_contract` §2) is the authoritative text
-for every header the front door owns and for the kinds of caller an app
-serves; this is how to apply it. Decide per request what each kind of
-caller may see and do, and never assume a caller is a member. **An
+the identity headers. R3 (`get_app_contract` with `sections: ["R3"]`) is
+the authoritative text for every header the front door owns and for the
+kinds of caller an app serves; this is how to apply it. Decide per request
+what each kind of caller may see and do, and never assume a caller is a
+member. **An
 anonymous app is never told who the caller is**, at any audience: its rule
 is R10, below (**An anonymous app: R10**), and the rest of this section's
 helper and header guidance is for identity-aware apps.

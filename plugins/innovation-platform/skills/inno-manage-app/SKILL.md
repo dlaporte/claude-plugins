@@ -112,18 +112,12 @@ for YOUR reasoning, not for recitation.
 
 Each refusal a tool can answer is named in its description or, when many
 tools share it, in the instructions the platform's MCP server sends when a
-client connects (`app_busy`, `app_deploying` and the GitHub App faults among
-them; `inno-platform-conventions`' **Refusals every tool shares** says what
-to do for each). Two recur across this skill, and their remedy is the same
-on every tool:
-
-- **`app_busy`**: another change to the app (or to an app linked to it) is
-  in flight. Retry **once** after a moment, never in a loop.
-- **`app_deploying`**: a deploy is in flight. Wait for it to finish, then
-  retry: a deploy whose CI run fails releases the app at once, so the
-  refusal normally clears as the run ends, green or red. If it does not
-  clear, **A deploy whose CI run died**, below, says what holds the app and
-  how to release it.
+client connects. What to do for each shared one, the same on every tool,
+has one home: `inno-platform-conventions`' **Refusals every tool shares**.
+Two of them recur across this skill, `app_busy` (another change to the app
+is in flight) and `app_deploying` (a deploy of it is in flight): follow
+that section for both. When `app_deploying` does not clear, **A deploy
+whose CI run died**, below, says what holds the app and how to release it.
 
 ## The lifecycle (know this before advising anyone)
 

@@ -327,8 +327,9 @@ restore point is.
    adapting anything, since a different identity is a new app. Call 2 may
    leave `type` and `description` out: the first call's are used, and one
    call 2 names differently is kept from the first, on a `WARNING:` or
-   `NOTE:` line of its answer (`inno-new-app` §3's `type` bullet has the
-   rule and how to change either before call 2). Pass `connections`
+   `NOTE:` line of its answer. Settle the type before call 1: the App often
+   covers the repo already, and then a repeated call 1 cannot change it
+   (`inno-new-app` §3's `type` bullet has the rule). Pass `connections`
    only if step 2's assessment found per-user backend auth to replace: a list of
    the names you plan to set up. It creates nothing (only `set_app_connection`
    can); the response echoes it back as a reminder to configure each one. An

@@ -40,14 +40,17 @@ and the import, `transfer_app`, `purge_app`, `rebuild_app`,
 `revoke_sessions`, `claim_instance_objects`, `accept_naming_change`,
 `list_users`, `query_audit`, `get_platform_logs` and
 `export_platform_backup`. A platform admin's MCP client lists them and a
-member's does not (the platform's MCP server note says so), so a member
-never sees them, and a call to one from a list read before the caller's
-standing changed is refused and does nothing. The rest are shared tools
-that answer anyone in their own scope and give an admin the whole fleet:
-`list_apps`, the config tools, `list_notifications`,
-`mark_all_notifications_read`, `list_connections` and
-`list_user_connections`. There is no local way around a `forbidden`, or
-around a missing tool, because authorization lives in the platform, not the
+member's client lists none (the platform's MCP server note says so). A
+call to one by someone the platform does not see as an admin at that
+moment (from a list read before their standing changed, or during an Okta
+outage) is not answered `forbidden`: the call answers that the tool is not
+found, because the platform did not list it for that caller, and nothing
+is done. The rest are shared tools that answer anyone in their own scope
+and give an admin the whole fleet: `list_apps`, the config tools,
+`list_notifications`, `mark_all_notifications_read`, `list_connections`
+and `list_user_connections`; their fleet forms still answer `forbidden` to
+anyone else. There is no local way around a `forbidden`, or around a tool
+that is not found, because authorization lives in the platform, not the
 client.
 The refusals every tool can answer are named once in the platform's MCP
 server note, and `inno-platform-conventions`' **Refusals every tool shares**
@@ -58,11 +61,12 @@ caller's tools by their standing when the client reads the list, as it
 connects, and the client keeps that list. So a person just granted admin
 reconnects the platform's server (in Claude Code, `/mcp`, then Reconnect,
 or a new session) before the admin-only tools appear, and a person whose
-standing was revoked keeps them listed, each call refused, until they
-reconnect. When an admin runs this skill and those tools are missing, have
-them reconnect first; still missing, the person is not an admin right now
-(not on the list, or Okta could not be reached when they connected: below),
-and another admin checks `list_admins`.
+standing was revoked keeps them listed until they reconnect, each call
+answering that the tool is not found. When an admin runs this skill and
+those tools are missing, or a call to one answers that the tool is not
+found, have them reconnect first; if it persists, the platform does not
+see them as an admin right now (not on the list, or Okta cannot be
+reached: below), and another admin checks `list_admins`.
 
 An admin's work on one app (sharing it, starting or stopping it, its logs,
 metrics, variables and support bundles) is `inno-manage-app`, and so are two
@@ -96,10 +100,13 @@ through the one account-status answer every tool uses, held for
 - An admin Okta reports suspended or deprovisioned keeps their row but loses
   the powers within that window, and reactivating the account restores them.
 - While Okta cannot be reached, admin powers fail closed: an admin whose
-  status is unknown is not an admin for that call. A `forbidden` during an
-  Okta outage is not a lost standing; retry later. A client that connects
-  during one is given a member's tool list, with no admin-only tool in it,
-  so reconnect once Okta answers again.
+  status is unknown is not an admin for that call. An admin-only tool then
+  answers that the tool is not found (an error, not `forbidden`), and a
+  shared tool's fleet form (such as `list_connections` with no `app`)
+  answers `forbidden`; neither is a lost standing: retry later, and
+  reconnect once Okta answers again. A client that connects during an
+  outage is given a member's tool list, with no admin-only tool in it, so
+  reconnect then too.
 - The `Admin group:` line of `get_platform_status` names an Okta group that
   does not follow the list: `grant_admin` and `revoke_admin` change only the
   list, so read who the admins are with `list_admins`. The platform reads

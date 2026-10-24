@@ -235,8 +235,8 @@ Plugin 4.4.0 follows platform v0.17.7, still contract 38. No tool takes new
 input and no tool's output moved. A platform admin's MCP client now lists
 the admin-only tools and a member's does not, and a client keeps the list
 it read when it connected, so a person granted or revoked admin reconnects
-to see the right one; `inno-fleet-admin` says when, and its tools are the
-admin-only ones. The skills follow what else the release changed.
+to see the right one; `inno-fleet-admin` says when, and says which tools
+are admin-only. The skills follow what else the release changed.
 `get_app_contract` serves one requirement by its id (`sections: ["R3"]`),
 so a skill that reads one requirement asks for that one alone, and
 `["2"]` still serves all ten. A write tool's answer puts each caveat to act
@@ -347,8 +347,9 @@ One line of output means the nine agree. That is the same block CI's
 `version-gate-parity` job compares, so this check and CI cannot disagree. Everything else that appeared in
 several skills now has one home and pointers from the rest:
 `inno-platform-conventions` owns the semgrep scope, the forbidden-path list,
-the identity header rule, the Node dependency rule, the storage caps and the
-`CLAUDE.md` header rule; `inno-new-app`'s
+the identity header rule, the Node dependency rule, the storage caps, the
+`CLAUDE.md` header rule and what to do for each refusal the platform's
+tools share; `inno-new-app`'s
 `references/hand-authored-layout.md` owns which `CLAUDE.md` to start from;
 `inno-manage-app` owns the call budget (the CI poll cadence included),
 support bundles, the active-app-limit rule, the transfer request, where a
