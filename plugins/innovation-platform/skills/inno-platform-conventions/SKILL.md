@@ -131,7 +131,7 @@ in ways one contract section each states; read the one for the app's type:
 
 Identity (read the header, never build auth), ephemerality, the protected
 and injected files, and the safety-gate discipline below are **identical**
-across the types (the sign-out link applies to the browser-facing types
+across the types (the sign-out link applies to the browser app types
 only, wherever the app shows who is signed in). The
 rest of this skill's code examples are the container reference; translate
 them into the `fetch` handler for a function or mcp-function app.
@@ -221,7 +221,7 @@ engine. In the Python reference, `Jinja2Templates(directory="templates")`
 autoescapes by default: route all dynamic content through
 `templates.TemplateResponse(request, "page.html", {...})`.
 
-**Response headers.** A browser-facing app (`container`, `function`) should
+**Response headers.** A browser app (`container`, `function`) should
 send a baseline of security headers on its HTML responses (§3), set in one
 middleware in the app so they travel with the code through the gated
 deploy. `get_app_security` §9 is the one place that names each header and
@@ -247,7 +247,7 @@ home is `get_app_security` §3.
 
 ## Accessibility: native elements first
 
-Every browser-facing app (`container`, `function`; the two MCP types have no
+Every browser app (`container`, `function`; the two MCP types have no
 browser UI) should meet WCAG 2.2 Level AA (§3), and a school or unit with
 its own accessibility policy is governed by that policy. **Fetch the
 `get_app_accessibility` MCP tool before writing UI code**: it is the live
@@ -628,7 +628,7 @@ than wiring this ad hoc. The rules the code must hold are §2.2 and
 
 ## Sign out: one link, no session code
 
-Whenever a browser-facing app shows who is signed in, it links to
+Whenever a browser app shows who is signed in, it links to
 `/_auth/signout` on its own host (R4; a footer is fine):
 
 ```html

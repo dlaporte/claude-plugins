@@ -326,7 +326,7 @@ The written design covers, at minimum:
   header rule is `inno-platform-conventions`' **Identity** section. For an
   anonymous app every caller is anonymous, at every audience: the design
   has no per-person data, roles or views at all (R10).
-- **Accessibility** (a browser-facing app): who will use it, the main flows
+- **Accessibility** (a browser app): who will use it, the main flows
   a person has to complete, and how each one works from the keyboard alone
   and with a screen reader. For an MCP app, say it does not apply.
 - **Deployment pattern and stack**
@@ -864,7 +864,7 @@ handle no user first in each route that needs a person, read/write
   commit the updated `app/package-lock.json` in the same commit (see the
   function bullet above).
 
-**Browser-facing apps (`container`, `function`): accessible pages and
+**Browser apps (`container`, `function`): accessible pages and
 response headers from the first commit.** Scaffold every page with
 `<html lang>`, a real `<title>`, a visible label on each form control, and
 visible focus styles, and add one middleware that sets the response headers

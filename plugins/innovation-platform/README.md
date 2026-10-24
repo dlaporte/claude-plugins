@@ -247,7 +247,10 @@ domains are now a `WARNING:`); the skills quote the new labels. The panel's
 over-long note, reason or description is refused `text_too_long`, which
 retires `note_too_long`. `register_app`'s second call may leave out `type`
 and `description`, the first call's being used, and `inno-new-app` and
-`inno-migrate-app` say so; `identity` still goes on both calls.
+`inno-migrate-app` say so; `identity` still goes on both calls. The skills
+name a `container` or `function` app a browser app, and a platform that
+cannot ask the identity provider who holds an address one with no identity
+provider lookup, as the platform's own text now does.
 
 The v0.17.7 release does not raise the floor, which stays 4.1.0: 4.3.0
 quotes labels the platform no longer writes and reads a whole section where

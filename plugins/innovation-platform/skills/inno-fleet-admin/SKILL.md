@@ -177,14 +177,14 @@ replace the whole roster the platform is then reading from Okta with one row
 and leave every other admin without standing. The refusal's message says
 which fix applies to this instance; read it rather than guessing:
 
-- **With an Okta token**: run the import below, dry run first, then
-  `apply: true`, which copies every admin in the group into the list in one
-  write. The two tools work from then on.
-- **With no Okta token**: the next admin check seeds the empty list once from
-  the manifest's `identity.initialAdmins`. If that list is empty, an operator
-  names the first admins there and redeploys. Once seeded, editing it changes
-  nothing, and the message names the database repair in the operator guide
-  ("Recovering admin access").
+- **With an identity provider lookup**: run the import below, dry run first,
+  then `apply: true`, which copies every admin in the group into the list in
+  one write. The two tools work from then on.
+- **With no identity provider lookup**: the next admin check seeds the empty
+  list once from the manifest's `identity.initialAdmins`. If that list is
+  empty, an operator names the first admins there and redeploys. Once
+  seeded, editing it changes nothing, and the message names the database
+  repair in the operator guide ("Recovering admin access").
 
 Never fill an empty list on an instance with an Okta token by adding one row
 by hand: that ends the Okta fallback at once, and every other admin the group
@@ -295,17 +295,17 @@ undoing the transfer, and the answer then says so:
 They keep their panel and browser app sessions until `revoke_sessions` ends
 them (below).
 
-**A transfer to the owner's own address** re-points
-an app whose owner's address has passed to another person (the admins'
-`identity_reassigned` notification names such an app, **Fleet-wide reads**).
-With an Okta token the platform asks Okta who holds the address now, and the
+**A transfer to the owner's own address** re-points an app whose owner's
+address has passed to another person (the admins' `identity_reassigned`
+notification names such an app, **Fleet-wide reads**). With an identity
+provider lookup the platform asks Okta who holds the address now, and the
 description lists the outcomes; when Okta has no user for the address at
 all, the answer's `WARNING:` says so, and the mistyped-address repair below
-does not apply, since the address is the owner's own. With no Okta token,
-such a transfer while the owner's row is pinned is refused `upstream_error`
-and changes nothing; the hand-off that works there, which the
-`identity_reassigned` entry and `grant_access` name, is `transfer_app` to
-another address, `revoke_access` for the owner's address on it, and
+does not apply, since the address is the owner's own. With no identity
+provider lookup, such a transfer while the owner's row is pinned is refused
+`upstream_error` and changes nothing; the hand-off that works there, which
+the `identity_reassigned` entry and `grant_access` name, is `transfer_app`
+to another address, `revoke_access` for the owner's address on it, and
 `transfer_app` back to the owner's address, whose new row is pinned at its
 next sign-in (the other address stays a member until `revoke_access` removes
 it). Confirm with the admin first: it takes the app from the account that
@@ -321,15 +321,15 @@ What to do with its refusals and answers:
   counts unless the app is stopped. Its message normally names the remedy,
   raising the recipient's `apps.max_active` at user scope with
   `set_config`. Do NOT offer to stop the recipient's apps for them.
-- **A recipient Okta does not know** is not refused. With an Okta token the
-  address is looked up read-only, and the transfer still lands, with a
-  `WARNING:` that Okta has no user for it; with none, nothing is looked up
-  and no warning comes. If the address is mistyped, transfer the app again
-  to the right one, then run `revoke_access` on the mistyped address, which
-  that second transfer leaves on the member list as the previous owner; if
-  their account is still being created, they can reach the app once it
-  exists. If Okta cannot be asked, the answer says the address was not
-  checked.
+- **A recipient Okta does not know** is not refused. With an identity
+  provider lookup the address is looked up read-only, and the transfer still
+  lands, with a `WARNING:` that Okta has no user for it; with none, nothing
+  is looked up and no warning comes. If the address is mistyped, transfer
+  the app again to the right one, then run `revoke_access` on the mistyped
+  address, which that second transfer leaves on the member list as the
+  previous owner; if their account is still being created, they can reach
+  the app once it exists. If Okta cannot be asked, the answer says the
+  address was not checked.
 - `app_busy`: retry once after a moment, never in a loop.
 - `link_transfer_blocked`. Data links are same-owner only, so a transfer has
   to revoke every link that touches the app. While any of those links still
@@ -735,18 +735,17 @@ serves. The panel's Platform screen is the same act on a visual surface.
     instance whose apps were registered under the old names. The entry names
     the keys and both ways out, which **`accept_naming_change()`** above
     explains: revert the manifest, or move every app by hand and then accept.
-  - `identity_reassigned`: an address that owns an
-    app, or is a platform admin, now signs in as a different account than
-    the one it was pinned to, and that account is refused. There is one
-    entry for each app
-    the address owns, and one for its admin row. To give an app to the
-    address's new holder, `transfer_app` it to that same address (**A
-    transfer to the owner's own address** above; with no Okta token the
-    entry names the hand-off through another address instead); to make them
-    an admin, run `revoke_admin`, then `grant_admin`, for the address.
-    Neither happens by itself, and until then the account it was pinned to
-    keeps the app or the standing under any address it signs in with, so
-    confirm with the admin who should have it first.
+  - `identity_reassigned`: an address that owns an app, or is a platform
+    admin, now signs in as a different account than the one it was pinned
+    to, and that account is refused. There is one entry for each app the
+    address owns, and one for its admin row. To give an app to the address's
+    new holder, `transfer_app` it to that same address (**A transfer to the
+    owner's own address** above; with no identity provider lookup the entry
+    names the hand-off through another address instead); to make them an
+    admin, run `revoke_admin`, then `grant_admin`, for the address. Neither
+    happens by itself, and until then the account it was pinned to keeps the
+    app or the standing under any address it signs in with, so confirm with
+    the admin who should have it first.
 
   Admins also get a copy of each `cross_owner_link_revoked` notice, and see
   each app's `host_upload_blocked` notice in the fleet feed (it goes to the

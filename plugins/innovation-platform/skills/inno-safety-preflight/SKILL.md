@@ -177,12 +177,12 @@ requirement, fix or guide the fix, re-check.
 Finally, call the `get_app_security` MCP tool and review the app's code
 against the sections that apply to it. Its closing **How to use this**
 section says which sections a given app may skip, and anything rendered in
-a browser keeps some of them, so no browser-facing app skips the review.
+a browser keeps some of them, so no browser app skips the review.
 CI's scanners catch injection patterns and known-vulnerable deps, but the
 highest-impact app bug, **authorization and IDOR** (its §1), is invisible to
 them; for any app with **per-user data, an admin surface, a state-changing
 write, or a call to a paid or external upstream**, verify its §1 to §5
-against the code, and for a browser-facing app (`container`, `function`)
+against the code, and for a browser app (`container`, `function`)
 with a state-changing request, its §12 (forged requests) too. Data or a
 role keyed on `X-Forwarded-User`, an email address that can pass to another
 person (the contract's R3), is the advice above, not a stop on its own:
