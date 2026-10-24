@@ -61,11 +61,13 @@ part of it that is authoritative for each rule.
 
 ## Refusals every tool shares
 
-Six refusals any of the platform's MCP tools can answer are named once, in
-the instructions the platform's MCP server sends when a client connects,
-rather than in each tool's description. Those instructions are the
-authoritative text, so read what each means there; this is what to do next
-when a tool answers one:
+The refusals the platform's MCP tools share are named once, in the
+instructions the platform's MCP server sends when a client connects, rather
+than in each tool's description: first those any tool can answer, then
+those the tools that change an app or reach its repository share (the
+instructions say which tools). Those instructions are the authoritative
+text, so read what each means there; this is what to do next when a tool
+answers one:
 
 - `account_inactive`: the account can no longer sign in. Relay the message,
   which tells the user to contact a platform admin and names the instance's
@@ -79,8 +81,22 @@ when a tool answers one:
 - `invalid_email`: the value is not an email address. Ask the user for the
   address again.
 - `upstream_error`: a service the platform calls failed, or the call failed
-  in a way the platform did not expect. Its message says what was running,
-  and one retry may succeed.
+  in a way the platform did not expect. Its message says what was running
+  and whether a retry may help: when it asks for one, retry once; when it
+  says a retry will not help, don't, and tell the user in plain words that
+  the platform could not do it (the error is in the platform's log, for a
+  platform admin).
+- `app_busy`: another change to the app is in flight. Retry once after a
+  moment, never in a loop.
+- `app_deploying`: a deploy of the app is in flight. Wait for it to finish,
+  then retry; if it does not clear, `inno-manage-app`'s **A deploy whose CI
+  run died** says what holds the app.
+- `github_app_not_configured`, `github_app_key_invalid` or
+  `installation_token_failed`: a fault on the platform's side in reaching
+  the app's repository through the platform GitHub App, which only a
+  platform admin can fix. Change nothing in the repository and don't retry
+  in a loop; tell the user plainly, and send the request where
+  `inno-manage-app`'s **Asking a platform admin** says.
 
 ## Deployment types: `container` (below), `function`, `mcp-function`, `mcp-container`
 

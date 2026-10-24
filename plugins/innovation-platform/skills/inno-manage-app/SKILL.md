@@ -110,12 +110,15 @@ for YOUR reasoning, not for recitation.
 
 ## Answers with one remedy everywhere
 
-Each tool's description names the refusals it can answer. Two recur across
-this skill, and their remedy is the same on every tool:
+Each refusal a tool can answer is named in its description or, when many
+tools share it, in the instructions the platform's MCP server sends when a
+client connects (`app_busy`, `app_deploying` and the GitHub App faults among
+them; `inno-platform-conventions`' **Refusals every tool shares** says what
+to do for each). Two recur across this skill, and their remedy is the same
+on every tool:
 
-- **`app_busy`**: another change to the app (or, where the description says
-  so, to an app linked to it) is in flight. Retry **once** after a moment,
-  never in a loop.
+- **`app_busy`**: another change to the app (or to an app linked to it) is
+  in flight. Retry **once** after a moment, never in a loop.
 - **`app_deploying`**: a deploy is in flight. Wait for it to finish, then
   retry: a deploy whose CI run fails releases the app at once, so the
   refusal normally clears as the run ends, green or red. If it does not
@@ -933,12 +936,12 @@ platform admin, never an owner on someone else's behalf; and
 owner that app's. "Platform admins" are the platform's own admin list, which
 `list_admins` (admin-only) shows; the admin-only tools are in
 `inno-fleet-admin`. **Each tool's description states who is notified and
-the refusals it can answer, and most state their scope rule**: when a user
-asks who may call a tool or who gets told about an action, read the
-description rather than this skill, since it is generated from the platform's
-own source. The refusals every tool shares are in the server's note instead,
-and `inno-platform-conventions`' **Refusals every tool shares** section
-explains them.
+the refusals particular to it, and most state their scope rule**: when a
+user asks who may call a tool or who gets told about an action, read the
+description rather than this skill, since it is generated from the
+platform's own source. The refusals many tools share are in the server's
+note instead, and `inno-platform-conventions`' **Refusals every tool
+shares** section explains them.
 
 If you're unsure whether the signed-in user owns an app, call `app_status`
 first: its `forbidden` vs. success response is itself the authorization
