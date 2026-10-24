@@ -8,6 +8,16 @@
       "1.2",
       "1.3",
       "2",
+      "R1",
+      "R2",
+      "R3",
+      "R4",
+      "R5",
+      "R6",
+      "R7",
+      "R8",
+      "R9",
+      "R10",
       "2.1",
       "2.2",
       "2.3",
@@ -22,10 +32,10 @@
   "served": {
     "docs/APP-ACCESSIBILITY.md": "db05be7ad23b1d327c9e9f802b3ca788ce6895c59d252648fb04cfd52ce63472",
     "docs/APP-CONTRACT-HISTORY.md": "658c5ee95ef707df2560f14263a7cb472ac8f5da1ebd0392762bbb3c775991fa",
-    "docs/APP-CONTRACT.md": "641b78f8d5ffe50c04709f7932c115401390bb03aa5f47c3889922a3721ccf1c",
+    "docs/APP-CONTRACT.md": "63781c228e7da01fdfe49b80322169928f3207d36740dc84c2abc9cba744f687",
     "docs/APP-SECURITY.md": "87e0f8c37a4e23626de9d8434c6ec261cb7d44d1e53a44de85bd25acdce54ad6",
     "docs/GUARDRAILS.md": "15314e2ccc34080ac7c11a0f94a4b1c104de2af6ea54b4387004cf3e8aa2b8ac",
-    "docs/PLATFORM-DOCS.md": "4094c450994ae4785c7031387632d01b6aafb24a5ee1f280939b857cd477fe65"
+    "docs/PLATFORM-DOCS.md": "85f37f7d6408342efcb15fd70a02abcb2bc22a291c95551bffcce2d53fc0a955"
   },
   "tools": {
     "count": 54,
@@ -34,6 +44,7 @@
       {
         "name": "accept_naming_change",
         "readOnly": false,
+        "adminOnly": true,
         "args": [],
         "required": [],
         "inputRevision": "efddc7bd8bbcef73a14eb1ace1ffdaec81e518ef1e13c1e9271d0b8acb694a49"
@@ -41,6 +52,7 @@
       {
         "name": "app_status",
         "readOnly": true,
+        "adminOnly": false,
         "args": [
           "app"
         ],
@@ -53,6 +65,7 @@
       {
         "name": "check_name",
         "readOnly": true,
+        "adminOnly": false,
         "args": [
           "app"
         ],
@@ -64,6 +77,7 @@
       {
         "name": "claim_instance_objects",
         "readOnly": false,
+        "adminOnly": true,
         "args": [
           "apply",
           "include_admin_group"
@@ -74,6 +88,7 @@
       {
         "name": "create_support_bundle",
         "readOnly": false,
+        "adminOnly": false,
         "args": [
           "app",
           "description"
@@ -86,6 +101,7 @@
       {
         "name": "disconnect_user_connection",
         "readOnly": false,
+        "adminOnly": false,
         "args": [
           "app",
           "connection",
@@ -101,6 +117,7 @@
       {
         "name": "export_app_data",
         "readOnly": false,
+        "adminOnly": false,
         "args": [
           "app"
         ],
@@ -112,6 +129,7 @@
       {
         "name": "export_platform_backup",
         "readOnly": true,
+        "adminOnly": true,
         "args": [],
         "required": [],
         "inputRevision": "efddc7bd8bbcef73a14eb1ace1ffdaec81e518ef1e13c1e9271d0b8acb694a49"
@@ -119,6 +137,7 @@
       {
         "name": "get_app_accessibility",
         "readOnly": true,
+        "adminOnly": false,
         "args": [],
         "required": [],
         "inputRevision": "efddc7bd8bbcef73a14eb1ace1ffdaec81e518ef1e13c1e9271d0b8acb694a49"
@@ -126,6 +145,7 @@
       {
         "name": "get_app_contract",
         "readOnly": true,
+        "adminOnly": false,
         "args": [
           "history",
           "sections"
@@ -136,6 +156,7 @@
       {
         "name": "get_app_logs",
         "readOnly": true,
+        "adminOnly": false,
         "args": [
           "app",
           "level",
@@ -151,6 +172,7 @@
       {
         "name": "get_app_metrics",
         "readOnly": true,
+        "adminOnly": false,
         "args": [
           "app",
           "days",
@@ -164,6 +186,7 @@
       {
         "name": "get_app_security",
         "readOnly": true,
+        "adminOnly": false,
         "args": [],
         "required": [],
         "inputRevision": "efddc7bd8bbcef73a14eb1ace1ffdaec81e518ef1e13c1e9271d0b8acb694a49"
@@ -171,6 +194,7 @@
       {
         "name": "get_app_usage",
         "readOnly": true,
+        "adminOnly": false,
         "args": [
           "app",
           "days"
@@ -183,6 +207,7 @@
       {
         "name": "get_ci_status",
         "readOnly": true,
+        "adminOnly": false,
         "args": [
           "app",
           "run_id"
@@ -195,6 +220,7 @@
       {
         "name": "get_config",
         "readOnly": true,
+        "adminOnly": false,
         "args": [
           "app",
           "user"
@@ -205,6 +231,7 @@
       {
         "name": "get_guardrails",
         "readOnly": true,
+        "adminOnly": false,
         "args": [],
         "required": [],
         "inputRevision": "efddc7bd8bbcef73a14eb1ace1ffdaec81e518ef1e13c1e9271d0b8acb694a49"
@@ -212,6 +239,7 @@
       {
         "name": "get_platform_docs",
         "readOnly": true,
+        "adminOnly": false,
         "args": [],
         "required": [],
         "inputRevision": "efddc7bd8bbcef73a14eb1ace1ffdaec81e518ef1e13c1e9271d0b8acb694a49"
@@ -219,6 +247,7 @@
       {
         "name": "get_platform_logs",
         "readOnly": true,
+        "adminOnly": true,
         "args": [
           "app",
           "level",
@@ -232,6 +261,7 @@
       {
         "name": "get_platform_status",
         "readOnly": true,
+        "adminOnly": false,
         "args": [
           "plugin_version"
         ],
@@ -242,6 +272,7 @@
       {
         "name": "grant_access",
         "readOnly": false,
+        "adminOnly": false,
         "args": [
           "app",
           "email"
@@ -255,6 +286,7 @@
       {
         "name": "grant_admin",
         "readOnly": false,
+        "adminOnly": true,
         "args": [
           "email"
         ],
@@ -266,6 +298,7 @@
       {
         "name": "import_okta_memberships",
         "readOnly": false,
+        "adminOnly": true,
         "args": [
           "app",
           "apply"
@@ -277,6 +310,7 @@
       {
         "name": "link_app_data",
         "readOnly": false,
+        "adminOnly": false,
         "args": [
           "consumer",
           "source"
@@ -290,6 +324,7 @@
       {
         "name": "list_admins",
         "readOnly": true,
+        "adminOnly": true,
         "args": [],
         "required": [],
         "inputRevision": "efddc7bd8bbcef73a14eb1ace1ffdaec81e518ef1e13c1e9271d0b8acb694a49"
@@ -297,6 +332,7 @@
       {
         "name": "list_app_links",
         "readOnly": true,
+        "adminOnly": false,
         "args": [
           "app"
         ],
@@ -308,6 +344,7 @@
       {
         "name": "list_app_variables",
         "readOnly": true,
+        "adminOnly": false,
         "args": [
           "app"
         ],
@@ -319,6 +356,7 @@
       {
         "name": "list_apps",
         "readOnly": true,
+        "adminOnly": false,
         "args": [],
         "required": [],
         "inputRevision": "efddc7bd8bbcef73a14eb1ace1ffdaec81e518ef1e13c1e9271d0b8acb694a49"
@@ -326,6 +364,7 @@
       {
         "name": "list_connections",
         "readOnly": true,
+        "adminOnly": false,
         "args": [
           "app"
         ],
@@ -335,6 +374,7 @@
       {
         "name": "list_notifications",
         "readOnly": true,
+        "adminOnly": false,
         "args": [
           "app",
           "stage",
@@ -346,6 +386,7 @@
       {
         "name": "list_user_connections",
         "readOnly": true,
+        "adminOnly": false,
         "args": [
           "app",
           "connection",
@@ -357,6 +398,7 @@
       {
         "name": "list_users",
         "readOnly": true,
+        "adminOnly": true,
         "args": [],
         "required": [],
         "inputRevision": "efddc7bd8bbcef73a14eb1ace1ffdaec81e518ef1e13c1e9271d0b8acb694a49"
@@ -364,6 +406,7 @@
       {
         "name": "mark_all_notifications_read",
         "readOnly": false,
+        "adminOnly": false,
         "args": [],
         "required": [],
         "inputRevision": "efddc7bd8bbcef73a14eb1ace1ffdaec81e518ef1e13c1e9271d0b8acb694a49"
@@ -371,6 +414,7 @@
       {
         "name": "mark_notification_read",
         "readOnly": false,
+        "adminOnly": false,
         "args": [
           "id"
         ],
@@ -382,6 +426,7 @@
       {
         "name": "purge_app",
         "readOnly": false,
+        "adminOnly": true,
         "args": [
           "app"
         ],
@@ -393,6 +438,7 @@
       {
         "name": "query_audit",
         "readOnly": true,
+        "adminOnly": true,
         "args": [
           "action",
           "actor",
@@ -406,6 +452,7 @@
       {
         "name": "rebuild_app",
         "readOnly": false,
+        "adminOnly": true,
         "args": [
           "app"
         ],
@@ -417,6 +464,7 @@
       {
         "name": "register_app",
         "readOnly": false,
+        "adminOnly": false,
         "args": [
           "accept_guardrails",
           "app",
@@ -436,6 +484,7 @@
       {
         "name": "remove_app_connection",
         "readOnly": false,
+        "adminOnly": false,
         "args": [
           "app",
           "connection"
@@ -449,6 +498,7 @@
       {
         "name": "remove_app_variable",
         "readOnly": false,
+        "adminOnly": false,
         "args": [
           "app",
           "name"
@@ -462,6 +512,7 @@
       {
         "name": "remove_config",
         "readOnly": false,
+        "adminOnly": false,
         "args": [
           "key",
           "scope",
@@ -476,6 +527,7 @@
       {
         "name": "request_start",
         "readOnly": false,
+        "adminOnly": false,
         "args": [
           "app",
           "reason"
@@ -488,6 +540,7 @@
       {
         "name": "restart_app",
         "readOnly": false,
+        "adminOnly": false,
         "args": [
           "app"
         ],
@@ -499,6 +552,7 @@
       {
         "name": "revoke_access",
         "readOnly": false,
+        "adminOnly": false,
         "args": [
           "app",
           "email"
@@ -512,6 +566,7 @@
       {
         "name": "revoke_admin",
         "readOnly": false,
+        "adminOnly": true,
         "args": [
           "email"
         ],
@@ -523,6 +578,7 @@
       {
         "name": "revoke_sessions",
         "readOnly": false,
+        "adminOnly": true,
         "args": [
           "email"
         ],
@@ -534,6 +590,7 @@
       {
         "name": "set_app_access",
         "readOnly": false,
+        "adminOnly": false,
         "args": [
           "accept_guardrails",
           "app",
@@ -548,6 +605,7 @@
       {
         "name": "set_app_connection",
         "readOnly": false,
+        "adminOnly": false,
         "args": [
           "app",
           "client_id",
@@ -571,6 +629,7 @@
       {
         "name": "set_app_variable",
         "readOnly": false,
+        "adminOnly": false,
         "args": [
           "app",
           "name",
@@ -587,6 +646,7 @@
       {
         "name": "set_config",
         "readOnly": false,
+        "adminOnly": false,
         "args": [
           "key",
           "note",
@@ -604,6 +664,7 @@
       {
         "name": "start_app",
         "readOnly": false,
+        "adminOnly": false,
         "args": [
           "app"
         ],
@@ -615,6 +676,7 @@
       {
         "name": "stop_app",
         "readOnly": false,
+        "adminOnly": false,
         "args": [
           "app"
         ],
@@ -626,6 +688,7 @@
       {
         "name": "transfer_app",
         "readOnly": false,
+        "adminOnly": true,
         "args": [
           "accept_guardrails",
           "also",
@@ -642,6 +705,7 @@
       {
         "name": "unlink_app_data",
         "readOnly": false,
+        "adminOnly": false,
         "args": [
           "consumer",
           "source"
@@ -659,7 +723,7 @@
       "minVersion": "4.1.0"
     },
     "admin": {
-      "minVersion": "1.2.0"
+      "minVersion": "1.4.0"
     }
   },
   "behavior": {
@@ -670,7 +734,7 @@
     }
   },
   "pinned": {
-    "ref": "v0.17.6",
-    "commit": "b946771a3ad103f37ec906f14542a6fc279cb4c9"
+    "ref": "v01707",
+    "commit": "1a2cd65ec578daddb1a7d19443493d6d15ef01d4"
   }
 }
