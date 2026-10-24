@@ -110,17 +110,14 @@ for YOUR reasoning, not for recitation.
 
 ## Answers with one remedy everywhere
 
-Each tool's description names the refusals it can answer. Two recur across
-this skill, and their remedy is the same on every tool:
-
-- **`app_busy`**: another change to the app (or, where the description says
-  so, to an app linked to it) is in flight. Retry **once** after a moment,
-  never in a loop.
-- **`app_deploying`**: a deploy is in flight. Wait for it to finish, then
-  retry: a deploy whose CI run fails releases the app at once, so the
-  refusal normally clears as the run ends, green or red. If it does not
-  clear, **A deploy whose CI run died**, below, says what holds the app and
-  how to release it.
+Each refusal a tool can answer is named in its description or, when many
+tools share it, in the instructions the platform's MCP server sends when a
+client connects. What to do for each shared one, the same on every tool,
+has one home: `inno-platform-conventions`' **Refusals every tool shares**.
+Two of them recur across this skill, `app_busy` (another change to the app
+is in flight) and `app_deploying` (a deploy of it is in flight): follow
+that section for both. When `app_deploying` does not clear, **A deploy
+whose CI run died**, below, says what holds the app and how to release it.
 
 ## The lifecycle (know this before advising anyone)
 
@@ -259,7 +256,7 @@ These tools write the platform's **member list** for the app, its only store;
 nothing is written to Okta. So share and unshare with these tools, never by
 hand in Okta. Their descriptions say exactly what each writes and who is
 notified; `revoke_access`'s description and contract R3 (`get_app_contract`
-with `sections: ["2"]`) say when a change reaches a person. Quote the app's
+with `sections: ["R3"]`) say when a change reaches a person. Quote the app's
 hostname from the `URL:` line of `app_status` or from `register_app`'s
 answer, rather than building it.
 
@@ -758,8 +755,9 @@ user scope. So "stop emailing me about deploys but keep the purge warnings"
 is self-service. At `user` scope an omitted `scope_id` means your own
 account, and naming anyone else's is refused `forbidden`.
 
-- `note_too_long` (from the panel; over MCP the argument's own limit refuses
-  it): the note is over 200 characters. Shorten it and call again.
+- `text_too_long` (from the panel; over MCP the argument's own limit refuses
+  it first): the note is longer than its limit, which the message names
+  (200 characters). Shorten it and call again.
 - `invalid_value`: the message names the setting and the rule its value
   broke (`<key> must be ...`: a type, a grammar, or for a number the range
   it must fall in). Fix the named thing rather than guessing at the format.
@@ -932,12 +930,12 @@ platform admin, never an owner on someone else's behalf; and
 owner that app's. "Platform admins" are the platform's own admin list, which
 `list_admins` (admin-only) shows; the admin-only tools are in
 `inno-fleet-admin`. **Each tool's description states who is notified and
-the refusals it can answer, and most state their scope rule**: when a user
-asks who may call a tool or who gets told about an action, read the
-description rather than this skill, since it is generated from the platform's
-own source. The refusals every tool shares are in the server's note instead,
-and `inno-platform-conventions`' **Refusals every tool shares** section
-explains them.
+the refusals particular to it, and most state their scope rule**: when a
+user asks who may call a tool or who gets told about an action, read the
+description rather than this skill, since it is generated from the
+platform's own source. The refusals many tools share are in the server's
+note instead, and `inno-platform-conventions`' **Refusals every tool
+shares** section explains them.
 
 If you're unsure whether the signed-in user owns an app, call `app_status`
 first: its `forbidden` vs. success response is itself the authorization

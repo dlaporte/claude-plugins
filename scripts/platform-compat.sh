@@ -17,10 +17,15 @@
 # each tool whose outputRevision (its output schema, which only some tools
 # declare) came, changed or went, each tool whose readOnly flag changed
 # (tools.revision hashes it, so a flip alone moves the platform's
-# Compatibility: revision), and each value under contract, plugins and
-# behavior that changed (the contract's version and sections, the plugin
-# floors, the platform behaviors). A record from v0.17.0 on has no gateway
-# block, and none is compared. That list is the resync's to-do list.
+# Compatibility: revision), each tool whose adminOnly flag came, flipped or
+# went (from platform v0.17.7 a member's client lists no admin-only tool;
+# tools.revision does not hash this flag, so a flip alone leaves the
+# Compatibility: revision where it was, and the first pin past v0.17.6
+# prints one line per tool as the flag comes), and each value under
+# contract, plugins and behavior that changed (the contract's version and
+# sections, the plugin floors, the platform behaviors). A record from
+# v0.17.0 on has no gateway block, and none is compared. That list is the
+# resync's to-do list.
 set -euo pipefail
 
 if ! command -v jq >/dev/null; then
@@ -117,7 +122,12 @@ elif ! moved="$(jq -r -n --slurpfile old "$out" --slurpfile new "$tmp/pinned.jso
            # key reads as none.
            ($a.readOnly as $ar | $b.readOnly as $br
             | if $ar == $br then empty
-              else "  tool \($k): readOnly was \($ar | flag); now \($br | flag)" end)
+              else "  tool \($k): readOnly was \($ar | flag); now \($br | flag)" end),
+           # The same rule for adminOnly, which only a record from v0.17.7
+           # on carries.
+           ($a.adminOnly as $aa | $b.adminOnly as $ba
+            | if $aa == $ba then empty
+              else "  tool \($k): adminOnly was \($aa | flag); now \($ba | flag)" end)
        end),
     (all_keys($of; $nf) as $k
      | if ($of | has($k) | not) then "  \($k): new (\($nf[$k]))"

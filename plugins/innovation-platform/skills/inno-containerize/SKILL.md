@@ -45,10 +45,10 @@ its entry is `app/index.ts`, not a container image (see `get_app_contract`
 skill entirely.
 
 **Fetch the contract first:** call the `get_app_contract` MCP tool with
-`sections: ["2", "4.1"]` (add `"1.3"` for an mcp-container app). Section 2's
-R1, R2, R7 and R8 state exactly the rules this skill applies, §4.1 is the
-base-image policy, and the answer opens with the platform's current
-digest-pinned recommended base images.
+`sections: ["R1", "R2", "R7", "R8", "4.1"]` (add `"1.3"` for an
+mcp-container app). R1, R2, R7 and R8 state exactly the rules this skill
+applies, §4.1 is the base-image policy, and the answer opens with the
+platform's current digest-pinned recommended base images.
 
 The `container` CI job builds your Dockerfile with **no deploy credentials
 present** (an app author fully controls this build's inputs, and nothing of

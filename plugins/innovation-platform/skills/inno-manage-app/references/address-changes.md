@@ -5,18 +5,18 @@ different account than the one its grant is pinned to (`grant_access` on
 someone the member list already holds, a `link_containment` refusal or a
 grant on a linked source app, a narrowing of a source app, or a
 `member_reassigned` notification), when a grant's result says the row is
-pinned and the platform (with no Okta token) cannot ask whether the address
-has passed to someone else, or when a result names another address to revoke
-or the address a person's row is stored under. A grant is pinned to the
-identity provider account that holds its address; `grant_access`'s
-description says how, and where a sign-in is matched by its address
-instead.
+pinned and the platform (with no identity provider lookup) cannot ask
+whether the address has passed to someone else, or when a result names
+another address to revoke or the address a person's row is stored under. A
+grant is pinned to the identity provider account that holds its address;
+`grant_access`'s description says how, and where a sign-in is matched by its
+address instead.
 
 The grant stays with the account it is pinned to, and every sign-in carries
 the person's identity provider subject (the panel's, an MCP client's, and a
 browser app's, which is the platform's own), so the address's new holder is
 refused like anyone the app does not admit (contract R3, `get_app_contract`
-with `sections: ["2"]`).
+with `sections: ["R3"]`).
 
 **Sharing with the new holder.** Confirm with the owner first: the revoke
 also ends the access of the account the row was pinned to, which may be the
@@ -25,8 +25,8 @@ address too. Then run `revoke_access` and then `grant_access` for the
 address. The new grant is pinned to whoever holds the address now.
 
 **The owner's own address.** Only a platform admin moves the app to the
-address's new holder: `transfer_app` to that same address, or, on a
-platform with no Okta token, the hand-off through another address that
+address's new holder: `transfer_app` to that same address, or, on a platform
+with no identity provider lookup, the hand-off through another address that
 `grant_access`'s answer names. Offer to draft the request, as the skill's
 **Transferring an app: ask an admin** says.
 

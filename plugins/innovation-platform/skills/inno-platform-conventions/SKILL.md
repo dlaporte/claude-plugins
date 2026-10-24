@@ -52,7 +52,10 @@ and the stack policy), adding the section for the app's type (`1.1` for
 `function`, `1.1` and `1.2` for `mcp-function`, `1.2` and `1.3` for
 `mcp-container`)
 and `2.1`, `2.2` or `2.3` when the app reads another app's data through a
-link, uses a connection or reads platform variables. Every contract or
+link, uses a connection or reads platform variables. Where a skill reads one
+requirement it asks for it by its id (`sections: ["R3"]`); when the platform
+refuses an id with `bad_request` (a platform before v0.17.7), ask for
+`["2"]`, which holds every requirement. Every contract or
 section answer opens with the
 CURRENT digest-pinned recommended base images. The tool is the live source:
 never restate contract values from memory or hard-code a base-image digest.
@@ -61,11 +64,13 @@ part of it that is authoritative for each rule.
 
 ## Refusals every tool shares
 
-Six refusals any of the platform's MCP tools can answer are named once, in
-the instructions the platform's MCP server sends when a client connects,
-rather than in each tool's description. Those instructions are the
-authoritative text, so read what each means there; this is what to do next
-when a tool answers one:
+The refusals the platform's MCP tools share are named once, in the
+instructions the platform's MCP server sends when a client connects, rather
+than in each tool's description: first those any tool can answer, then
+those the tools that change an app or reach its repository share (the
+instructions say which tools). Those instructions are the authoritative
+text, so read what each means there; this is what to do next when a tool
+answers one:
 
 - `account_inactive`: the account can no longer sign in. Relay the message,
   which tells the user to contact a platform admin and names the instance's
@@ -79,8 +84,24 @@ when a tool answers one:
 - `invalid_email`: the value is not an email address. Ask the user for the
   address again.
 - `upstream_error`: a service the platform calls failed, or the call failed
-  in a way the platform did not expect. Its message says what was running,
-  and one retry may succeed.
+  in a way the platform did not expect. Its message says what was running
+  and whether a retry may help: when it asks for one, retry once; when it
+  says a retry will not help, don't, and tell the user in plain words that
+  the platform could not do it (the error is in the platform's log, for a
+  platform admin).
+- `app_busy`: another change to the app, or to an app linked to it, is in
+  flight. Retry **once** after a moment, never in a loop.
+- `app_deploying`: a deploy of the app is in flight. Wait for it to finish,
+  then retry: a deploy whose CI run fails releases the app at once, so the
+  refusal normally clears as the run ends, green or red. If it does not
+  clear, `inno-manage-app`'s **A deploy whose CI run died** says what holds
+  the app and how to release it.
+- `github_app_not_configured`, `github_app_key_invalid` or
+  `installation_token_failed`: a fault on the platform's side in reaching
+  the app's repository through the platform GitHub App, which only a
+  platform admin can fix. Change nothing in the repository and don't retry
+  in a loop; tell the user plainly, and send the request where
+  `inno-manage-app`'s **Asking a platform admin** says.
 
 ## Deployment types: `container` (below), `function`, `mcp-function`, `mcp-container`
 
@@ -113,7 +134,7 @@ in ways one contract section each states; read the one for the app's type:
 
 Identity (read the header, never build auth), ephemerality, the protected
 and injected files, and the safety-gate discipline below are **identical**
-across the types (the sign-out link applies to the browser-facing types
+across the types (the sign-out link applies to the browser app types
 only, wherever the app shows who is signed in). The
 rest of this skill's code examples are the container reference; translate
 them into the `fetch` handler for a function or mcp-function app.
@@ -203,7 +224,7 @@ engine. In the Python reference, `Jinja2Templates(directory="templates")`
 autoescapes by default: route all dynamic content through
 `templates.TemplateResponse(request, "page.html", {...})`.
 
-**Response headers.** A browser-facing app (`container`, `function`) should
+**Response headers.** A browser app (`container`, `function`) should
 send a baseline of security headers on its HTML responses (§3), set in one
 middleware in the app so they travel with the code through the gated
 deploy. `get_app_security` §9 is the one place that names each header and
@@ -229,7 +250,7 @@ home is `get_app_security` §3.
 
 ## Accessibility: native elements first
 
-Every browser-facing app (`container`, `function`; the two MCP types have no
+Every browser app (`container`, `function`; the two MCP types have no
 browser UI) should meet WCAG 2.2 Level AA (§3), and a school or unit with
 its own accessibility policy is governed by that policy. **Fetch the
 `get_app_accessibility` MCP tool before writing UI code**: it is the live
@@ -340,10 +361,11 @@ own message, and sends the body with its length. Neither applies to a function-s
 
 The front door decides who reaches the app, by its audience (members-only,
 internal or public), and tells an identity-aware app who the caller is, in
-the identity headers. R3 (`get_app_contract` §2) is the authoritative text
-for every header the front door owns and for the kinds of caller an app
-serves; this is how to apply it. Decide per request what each kind of
-caller may see and do, and never assume a caller is a member. **An
+the identity headers. R3 (`get_app_contract` with `sections: ["R3"]`) is
+the authoritative text for every header the front door owns and for the
+kinds of caller an app serves; this is how to apply it. Decide per request
+what each kind of caller may see and do, and never assume a caller is a
+member. **An
 anonymous app is never told who the caller is**, at any audience: its rule
 is R10, below (**An anonymous app: R10**), and the rest of this section's
 helper and header guidance is for identity-aware apps.
@@ -502,9 +524,11 @@ session: it never identifies anyone.
 ### An anonymous app: R10
 
 The contract's rule for an app registered `anonymous`, R10
-(`get_app_contract` with `sections: ["2"]`, the authoritative text), opens:
+(`get_app_contract` with `sections: ["R10"]`, the authoritative text), opens:
 
-> **R10: An anonymous app keeps nothing per person.** An app registered with
+> **R10: An anonymous app keeps nothing per person**
+>
+> An app registered with
 > `identity: "anonymous"` is never told who its caller is, at any audience
 > (R3): the four identity headers arrive present and empty on every request,
 > and no `X-Caller-Assertion` arrives, so it has no Connections (§2.2). Only an
@@ -607,7 +631,7 @@ than wiring this ad hoc. The rules the code must hold are §2.2 and
 
 ## Sign out: one link, no session code
 
-Whenever a browser-facing app shows who is signed in, it links to
+Whenever a browser app shows who is signed in, it links to
 `/_auth/signout` on its own host (R4; a footer is fine):
 
 ```html

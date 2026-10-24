@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Runs scripts/platform-compat.sh, from a copy of its own, on a platform
-# repository this script plants with a record at each of twelve tags, and
+# repository this script plants with a record at each of fifteen tags, and
 # fails unless what it prints as moved since the previous pin is exactly what
 # each pair of records calls for:
 #   - records with no outputRevision anywhere (the v0.16.16 shape) print what
@@ -18,6 +18,10 @@
 #   - a readOnly that flips prints its old and new value, after the tool's
 #     inputRevision line, an unchanged one (false included) prints nothing,
 #     and one the new entry lacks reads as none;
+#   - an adminOnly (platform v0.17.7 on) that comes, flips or goes prints its
+#     old and new value as readOnly does, after the tool's readOnly line: a
+#     record whose every tool gains it (the first resync past v0.17.6) prints
+#     one line per tool, an unchanged one (false included) prints nothing;
 #   - a value that moved under contract, plugins or behavior prints its old
 #     and new value, and a gateway block (which a record from v0.17.0 on no
 #     longer carries) is not compared: one that comes, moves or goes prints
@@ -69,6 +73,9 @@ tag behaved '.behavior = {"membershipAuthority":"okta"}'
 tag gated '.gateway = {"capability":0}'
 tag moved-facts '.contract.version = 2 | .plugins.app.minVersion = "1.1.0" | .behavior.membershipAuthority = "platform" | .gateway.capability = 1'
 tag ungated 'del(.gateway)'
+tag admin-flagged '.tools.list |= map(.adminOnly = (.name == "purge_app"))'
+tag admin-flipped 'set("purge_app"; .adminOnly = false) | set("get_app_logs"; .adminOnly = true | .readOnly = true | .inputRevision = "e4")'
+tag admin-unflagged 'set("purge_app"; del(.adminOnly))'
 
 fail=0
 n=0
@@ -136,6 +143,19 @@ expect "a record whose contract, plugin floor and behavior move, beside a gatewa
   "  contract.version: was 1; now 2" \
   '  plugins.app.minVersion: was "1.0.0"; now "1.1.0"'
 expect "a record whose gateway block goes" moved-facts ungated
+expect "a record whose every tool gains adminOnly" ungated admin-flagged \
+  "  tool check_name: adminOnly was none; now false" \
+  "  tool get_app_logs: adminOnly was none; now false" \
+  "  tool get_platform_status: adminOnly was none; now false" \
+  "  tool purge_app: adminOnly was none; now true"
+expect "a record whose tools flip adminOnly, one with its inputRevision and readOnly" admin-flagged admin-flipped \
+  "  tool get_app_logs: inputRevision moved (same args: app)" \
+  "  tool get_app_logs: readOnly was none; now true" \
+  "  tool get_app_logs: adminOnly was false; now true" \
+  "  tool purge_app: adminOnly was true; now false"
+expect "the same record twice, with an adminOnly that is false" admin-flipped admin-flipped
+expect "a record whose false adminOnly goes" admin-flipped admin-unflagged \
+  "  tool purge_app: adminOnly was false; now none"
 
 [ "$fail" -eq 0 ] || exit 1
-echo "test-platform-compat: OK ($n cases: a record with no outputRevision reads as before; an outputRevision that comes, moves or goes is listed, an unchanged one is not, and a null one reads as none; a retired tool prints only that it is gone; a readOnly that flips or goes is listed, an unchanged one is not; a contract, plugin floor or behavior value that moves is listed, and a gateway block is never compared)"
+echo "test-platform-compat: OK ($n cases: a record with no outputRevision reads as before; an outputRevision that comes, moves or goes is listed, an unchanged one is not, and a null one reads as none; a retired tool prints only that it is gone; a readOnly or adminOnly that comes, flips or goes is listed, an unchanged one is not; a contract, plugin floor or behavior value that moves is listed, and a gateway block is never compared)"

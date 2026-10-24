@@ -12,7 +12,7 @@ two apps joined by a data link.
 - **The site, an anonymous app.** It owns what is published and anything
   visitors submit, in its own database and files. It renders only what is
   meant for anyone, and stores submissions without ever showing them (the
-  contract's R10, `get_app_contract` with `sections: ["2"]`). It is the app
+  contract's R10, `get_app_contract` with `sections: ["R10"]`). It is the app
   that is widened to public.
 - **The editor, an identity-aware app**, members-only by default, linked to
   the site as its consumer (`link_app_data` with the editor as `consumer`

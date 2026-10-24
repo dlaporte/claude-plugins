@@ -339,15 +339,15 @@ Five answers are **not** bad arguments, so don't retry blindly:
   malformed. Relay the message to the user and stop: nothing you change in
   the arguments fixes it, and the person who can fix it is a platform admin,
   not them.
-- **A warning about `refresh: "rotating"`**: the call **succeeded**
+- **A `WARNING:` about `refresh: "rotating"`**: the call **succeeded**
   (rotating is supported). Relay the warning that concurrent refreshes for
   one user can race into a spurious disconnect; it is a flag, not a failure
   to retry.
-- **A `NOTE:` that users type their credentials at one site but stored
+- **A `WARNING:` that users type their credentials at one site but stored
   tokens are sent to another** (`oauth2_code`, when `token_endpoint` or
   `revocation_endpoint` is on a different domain from `authorize_endpoint`).
-  The call **succeeded**, and the note repeats on every later write of the
-  same configuration. Some real backends split this way (Google signs people
+  The call **succeeded**, and the warning repeats on every later write of
+  the same configuration. Some real backends split this way (Google signs people
   in at accounts.google.com and issues tokens at oauth2.googleapis.com), and
   it is also exactly what a configuration built to collect users' tokens
   looks like. Do not treat it as an error and do not quietly change
@@ -356,8 +356,8 @@ Five answers are **not** bad arguments, so don't retry blindly:
   against the backend's own documentation before anyone connects. On shared
   hosting and SaaS domains the platform compares the full hostname, so two
   instances of one vendor (`dev1.service-now.com` and `dev2.service-now.com`)
-  count as different sites and raise the note.
-- **A `Note:` that stored credentials were invalidated although no endpoint
+  count as different sites and raise the warning.
+- **A `NOTE:` that stored credentials were invalidated although no endpoint
   changed** ("the connection was changed by another call while this one
   ran, or credentials were left under its name"). The call **succeeded**.
   Either someone else changed this connection between your read and your

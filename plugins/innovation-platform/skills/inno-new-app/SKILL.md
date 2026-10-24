@@ -206,7 +206,7 @@ make, with your recommendation**:
   of app that can later be made public (a public site or tool, a public MCP
   server, or an internal app that must not know who answered, such as an
   unattributed staff survey). An anonymous app follows the contract's R10
-  (`get_app_contract` with `sections: ["2"]`): no accounts, no per-person
+  (`get_app_contract` with `sections: ["R10"]`): no accounts, no per-person
   views, and what a visitor submits is stored and never rendered. Like the
   type, identity is fixed when the app is created: a different identity is
   a new app. If the user wants a public site with an editing area, wants to
@@ -312,7 +312,7 @@ The written design covers, at minimum:
   to be widened to later, if any
 - **Access model**: who can see what, and who can edit, decided per request
   for each kind of caller contract R3 names (`get_app_contract`
-  with `sections: ["2"]`). For an identity-aware app a member is only one
+  with `sections: ["R3"]`). For an identity-aware app a member is only one
   of them: never design as if
   every caller is one, and give per-person data and roles only to a caller
   with an identity. The platform manages only membership:
@@ -326,7 +326,7 @@ The written design covers, at minimum:
   header rule is `inno-platform-conventions`' **Identity** section. For an
   anonymous app every caller is anonymous, at every audience: the design
   has no per-person data, roles or views at all (R10).
-- **Accessibility** (a browser-facing app): who will use it, the main flows
+- **Accessibility** (a browser app): who will use it, the main flows
   a person has to complete, and how each one works from the keyboard alone
   and with a screen reader. For an MCP app, say it does not apply.
 - **Deployment pattern and stack**
@@ -409,14 +409,28 @@ register_app({ app, repo, description, type, identity, members, accept_guardrail
   default, `"container"` when the description warranted it, `"mcp-function"` for
   an MCP server, `"mcp-container"` for an MCP server that needs the container
   shape. Omit for container. The type is fixed at registration and can't be
-  switched later (register a new app to change it).
+  switched later (register a new app to change it). Call 2 may leave `type`
+  and `description` out: the first call's are used (`register_app`'s
+  description says so), and a call 2 that names another keeps the first
+  call's, saying so on a `WARNING:` line for the type and a `NOTE:` line
+  for the description (a description call 1 left out takes call 2's). A
+  repeated call 1 changes either only while the platform still answers it
+  as call 1 (`Registration started`, with the install link), which is only
+  until the platform GitHub App covers the repo: from then on a repeat
+  checks the proof file (`repo_control_unproven`, changing nothing, while
+  it is missing) and, once it finds it, runs as call 2 and creates the app
+  with the first call's type, fixed for good. So settle the type
+  before call 1 when the App already covers the repo, and otherwise before
+  the user installs it (`get_platform_docs`' **What the tools do in
+  detail**, its Registration item, has the rule).
 - `identity`: from the design's identity question (§1b): `"anonymous"`
   when the app must not know who each caller is; omit it, or pass
   `"identity-aware"`, otherwise. The app's identity is set by the call
   that creates the app (call 2) and never changes: a call that resumes or
   repeats a registration keeps the identity the app already has, and call
-  2's answer names it on its `Identity:` line. So pass the same `type` and
-  `identity` on both calls, and check that line.
+  2's answer names it on its `Identity:` line. Unlike the type, call 1
+  does not record it, so pass the same `identity` on both calls, call 2
+  above all, and check that line.
 - `accept_guardrails: true`: required; you must have done the §1a review.
 - `members` is an optional list of Okta emails (at most 50). Each address is
   added to the app's member list at once, and is notified that the app was
@@ -424,9 +438,9 @@ register_app({ app, repo, description, type, identity, members, accept_guardrail
   settings) when the app's first deploy completes, once its address answers,
   not at registration; call 2's answer says so. Name only people who should
   hear about it when it goes live. An address Okta does not know is
-  still added but not notified, and call 2's answer names it under
-  `Warnings:`. Check its spelling with the user, and if it is mistyped,
-  remove it with `revoke_access` (`inno-manage-app`). An address the
+  still added but not notified, and call 2's answer names it on a
+  `WARNING:` line of its own. Check its spelling with the user, and if it
+  is mistyped, remove it with `revoke_access` (`inno-manage-app`). An address the
   platform could not check in Okta is added too, with its own warning. Each
   added address is pinned to an account as `grant_access` pins it
   (`inno-manage-app`), and the owner's own row to the account that registers
@@ -434,7 +448,7 @@ register_app({ app, repo, description, type, identity, members, accept_guardrail
   owner's row waits for that owner's first sign-in instead). A member whose
   address resolves to an account the list already holds under another
   address (such as the owner's own alias) gets no second row and is not
-  notified, and the answer names it among the warnings.
+  notified, and the answer names it on a `WARNING:` line too.
 
   On a platform that lists allowed email domains, an address outside them
   refuses the whole call with `email_domain_not_allowed` before anything is
@@ -512,7 +526,8 @@ response names a NEW proof path, and that new file is the one to commit.
 
 Once the proof file is pushed to the default branch AND the user confirms
 they've installed the App (or the App already covered the repo), call
-`register_app` **again with the same arguments**. This re-checks the proof file,
+`register_app` **again with the same arguments** (`type` and `description`
+may be left out, as above; `identity` may not). This re-checks the proof file,
 then finishes the job server-side: it prunes the template scaffold to the
 chosen type in a new commit on the repo's default branch (for an anonymous
 app, laying the template's anonymous layer for that type over the root in
@@ -701,7 +716,7 @@ a stateless FastMCP starter for `app/main.py`, plus its own `README.md`,
 (see the bullet below); `Dockerfile`, `lib/`, and `app/storage.py` stay as
 the container reference's. The platform owns a fixed set of other paths (a
 repo-root `src/`, the root build files, any wrangler config, and the rest
-contract R7 lists: `get_app_contract` with `sections: ["2"]`), and none of
+contract R7 lists: `get_app_contract` with `sections: ["R7"]`), and none of
 them may be in the repo: don't create any. `get_platform_docs`'
 **Environment & config integrity** section lists them too; the plugin's
 copy, with what to do when a migrated repo already carries one, is
@@ -733,7 +748,7 @@ bullets below, is the rule for this app: it reads no identity header and
 shows no sign-out link (it never shows who is signed in, so R4 asks for
 none); a container repo's storage client still carries the identity
 helper, which this app never calls; and it follows R10 (`get_app_contract`
-with `sections: ["2"]`), its cookie rule and the uploaded-file rule
+with `sections: ["R10"]`), its cookie rule and the uploaded-file rule
 (`inno-platform-conventions`' **An anonymous app: R10** and **Files someone
 uploaded**). Two older template copies show here:
 
@@ -849,7 +864,7 @@ handle no user first in each route that needs a person, read/write
   commit the updated `app/package-lock.json` in the same commit (see the
   function bullet above).
 
-**Browser-facing apps (`container`, `function`): accessible pages and
+**Browser apps (`container`, `function`): accessible pages and
 response headers from the first commit.** Scaffold every page with
 `<html lang>`, a real `<title>`, a visible label on each form control, and
 visible focus styles, and add one middleware that sets the response headers
@@ -862,7 +877,7 @@ take it from there, not from this list. The plugin's summary of both is
 headers** paragraph.
 
 **Container apps: the storage endpoints cap request bodies.** Contract R5
-(fetch `get_app_contract` with `sections: ["2"]`) gives the SQL body cap, the
+(fetch `get_app_contract` with `sections: ["R5"]`) gives the SQL body cap, the
 file `PUT` cap, and the refusal of a `PUT` with no `Content-Length`. So a
 route that writes in bulk sends batches, and an upload route checks the size
 itself, with its own message, and sends the body with its length. The codes

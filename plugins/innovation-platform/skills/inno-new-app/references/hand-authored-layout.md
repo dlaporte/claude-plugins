@@ -69,7 +69,7 @@ remove their identity reads as you build (`app/identity.ts` and its calls in
 a function-shaped repo, the storage helper's calls in a container one, a
 `/me` route, a sign-out footer, a `whoami` tool). A template with no
 `scaffold/anonymous/` predates anonymous apps: tell the user, and write the
-app to R10 (`get_app_contract` with `sections: ["2"]`) and
+app to R10 (`get_app_contract` with `sections: ["R10"]`) and
 `inno-platform-conventions`' **An anonymous app: R10**.
 
 Then go back to `inno-new-app` §4 and scaffold by the deployment type.
