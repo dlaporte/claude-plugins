@@ -48,8 +48,17 @@ found, because the platform did not list it for that caller, and nothing
 is done. The rest are shared tools that answer anyone in their own scope
 and give an admin the whole fleet: `list_apps`, the config tools,
 `list_notifications`, `mark_all_notifications_read`, `list_connections`
-and `list_user_connections`; their fleet forms still answer `forbidden` to
-anyone else. There is no local way around a `forbidden`, or around a tool
+and `list_user_connections`. To someone the platform does not see as an
+admin, some of them refuse their fleet form with `forbidden`
+(`list_connections` with no `app`, `list_user_connections` beyond your own
+or your app's, `get_config` with no arguments or for another person, and
+`set_config` or `remove_config` beyond your own Notifications settings),
+and the rest narrow to the caller's own scope with no error: `list_apps`
+lists only your own apps, `list_notifications` and
+`mark_all_notifications_read` only your own notices, and
+`get_platform_status` names no app behind its counts. So a fleet view that
+shows only your own apps means the platform does not see you as an admin
+right now. There is no local way around a `forbidden`, or around a tool
 that is not found, because authorization lives in the platform, not the
 client.
 The refusals every tool can answer are named once in the platform's MCP
@@ -101,10 +110,10 @@ through the one account-status answer every tool uses, held for
   the powers within that window, and reactivating the account restores them.
 - While Okta cannot be reached, admin powers fail closed: an admin whose
   status is unknown is not an admin for that call. An admin-only tool then
-  answers that the tool is not found (an error, not `forbidden`), and a
-  shared tool's fleet form (such as `list_connections` with no `app`)
-  answers `forbidden`; neither is a lost standing: retry later, and
-  reconnect once Okta answers again. A client that connects during an
+  answers that the tool is not found (an error, not `forbidden`), a shared
+  tool's fleet form answers `forbidden` or narrows to your own apps and
+  notices with no error (above), and none of it is a lost standing: retry
+  later, and reconnect once Okta answers again. A client that connects during an
   outage is given a member's tool list, with no admin-only tool in it, so
   reconnect then too.
 - The `Admin group:` line of `get_platform_status` names an Okta group that
