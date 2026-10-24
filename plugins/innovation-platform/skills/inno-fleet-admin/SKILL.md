@@ -186,9 +186,9 @@ which fix applies to this instance; read it rather than guessing:
   seeded, editing it changes nothing, and the message names the database
   repair in the operator guide ("Recovering admin access").
 
-Never fill an empty list on an instance with an Okta token by adding one row
-by hand: that ends the Okta fallback at once, and every other admin the group
-lists then needs `grant_admin`.
+Never fill an empty list on an instance with an identity provider lookup by
+adding one row by hand: that ends the Okta fallback at once, and every other
+admin the group lists then needs `grant_admin`.
 
 ## The admin-list import: `import_okta_memberships({ apply? })`
 

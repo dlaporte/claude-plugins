@@ -239,7 +239,8 @@ to see the right one; `inno-fleet-admin` says when, and says which tools
 are admin-only. The skills follow what else the release changed.
 `get_app_contract` serves one requirement by its id (`sections: ["R3"]`),
 so a skill that reads one requirement asks for that one alone, and
-`["2"]` still serves all ten. A write tool's answer puts each caveat to act
+`["2"]` still serves all ten; a platform before v0.17.7 refuses an id with
+`bad_request`, and the skills then ask for `["2"]`. A write tool's answer puts each caveat to act
 on in a `WARNING:` line of its own and each note in a `NOTE:` line, where
 `register_app` listed its caveats under `Warnings:` and `set_app_connection`
 wrote `Warning:` and `Note:` (its sign-in and token sites on different

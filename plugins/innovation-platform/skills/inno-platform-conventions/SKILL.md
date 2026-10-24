@@ -52,7 +52,10 @@ and the stack policy), adding the section for the app's type (`1.1` for
 `function`, `1.1` and `1.2` for `mcp-function`, `1.2` and `1.3` for
 `mcp-container`)
 and `2.1`, `2.2` or `2.3` when the app reads another app's data through a
-link, uses a connection or reads platform variables. Every contract or
+link, uses a connection or reads platform variables. Where a skill reads one
+requirement it asks for it by its id (`sections: ["R3"]`); when the platform
+refuses an id with `bad_request` (a platform before v0.17.7), ask for
+`["2"]`, which holds every requirement. Every contract or
 section answer opens with the
 CURRENT digest-pinned recommended base images. The tool is the live source:
 never restate contract values from memory or hard-code a base-image digest.
