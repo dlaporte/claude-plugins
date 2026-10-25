@@ -264,14 +264,20 @@ shows a page saying the app has not been deployed yet, and while the app is
 stopped a page saying it is stopped and its owner can start it again. The
 skills say what a visitor sees there: `inno-manage-app`'s `stop_app` and
 `start_app` (a start serves the app again within seconds), `inno-new-app`'s
-stop and its first-deploy URL, and `inno-ship`'s first-deploy hand-over,
+stop and its first-deploy URL, `inno-ship`'s first-deploy hand-over,
 which tells the user to reload after a minute if they see the not-deployed
-page. `inno-ship` still never looks the address up itself: the first
-deploy's switch from that page to the app leaves the name with no DNS
-record for a few seconds, and a lookup then can be cached as missing for
-minutes. `inno-fleet-admin` lists the admins' new `edge_mismatch` notice:
-an app's custom domain out of step with its status, which the hourly edge
-pass reports and never repairs, and the transition that brings it back.
+page, and its `container_rollout_failed` row, for an app none of whose
+deploys has finished. `inno-ship` still never looks the address up itself:
+the first deploy's switch from that page to the app leaves the name with no
+DNS record for a few seconds, and a lookup then can be cached as missing
+for minutes. `inno-fleet-admin` lists the admins' new `edge_mismatch`
+notice: an app's custom domain out of step with its status, which the
+hourly edge pass reports and never repairs, and the transition that brings
+it back (for a never-deployed app, its first deploy or `stop_app`). Its
+audit reference reads the edge pass's three rows, `app_edge_reconciled`,
+`app_edge_mismatch` and `edges_reconciled`, and the `placeholder` key that
+`app_created`, `app_stopped`, `app_started`, `deploy_completed` and
+`app_purged` carry when they hold or release an address.
 
 4.5.0 also corrects three sentences that platform v0.17.8, which released
 no app plugin, made false. `list_admins` prints where a list not read from

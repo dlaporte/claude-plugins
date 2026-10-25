@@ -755,11 +755,10 @@ serves. The panel's Platform screen is the same act on a visual surface.
     serving. The hourly edge pass reports it (once, and again after a week
     while it lasts) and never attaches or detaches a custom domain itself:
     only a transition brings the address back in step, and the entry names
-    the one for the app's status. For a stopped app, `start_app`, then
-    `stop_app` (the stop detaches the domain and holds the address); for a
-    never-deployed app, its first deploy, or `purge_app` (which takes a
-    stopped app only: **`purge_app`** above); for a serving app,
-    `rebuild_app`, whose deploy attaches the domain. Each changes someone's
+    the one for the app's status. A stop detaches the domain and holds the
+    address, and a deploy attaches the domain, so a stopped app takes
+    `start_app`, then `stop_app`; a never-deployed app, its first deploy or
+    `stop_app`; and a serving app, `rebuild_app`. Each changes someone's
     app, so confirm with its owner first.
 
   Admins also get a copy of each `cross_owner_link_revoked` notice, and see
