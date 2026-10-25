@@ -257,6 +257,46 @@ The v0.17.7 release does not raise the floor, which stays 4.1.0: 4.3.0
 quotes labels the platform no longer writes and reads a whole section where
 one requirement would do, which costs words without breaking a step.
 
+Plugin 4.5.0 follows platform v0.17.9, still contract 38. No tool takes new
+input and no tool's output moved. From v0.17.9 an app's address answers
+from registration until its purge: until its first deploy starts it shows
+a page saying the app has not been deployed yet (while that deploy runs, a
+visitor meets the app's sign-in, where it has one, and then a page saying
+the app is not available right now), and while the app is stopped a page
+saying it is stopped and its owner can start it again. The
+skills say what a visitor sees there: `inno-manage-app`'s `stop_app` and
+`start_app` (a start serves the app again within seconds), `inno-new-app`'s
+stop and its first-deploy URL, `inno-ship`'s first-deploy hand-over,
+which tells the user to reload after a minute if they see the not-deployed
+page, and its `container_rollout_failed` row, for an app none of whose
+deploys has finished. `inno-ship` still never looks the address up itself:
+the first deploy's switch from that page to the app leaves the name with no
+DNS record for a few seconds, and a lookup then can be cached as missing
+for minutes. `inno-fleet-admin` lists the admins' new `edge_mismatch`
+notice: an app's custom domain out of step with its status, which the
+hourly edge pass reports and never repairs, and the transition that brings
+it back (for a never-deployed app, its first deploy, or, for an app nobody
+will ship, `stop_app` then `purge_app`), with what each costs. Its
+audit reference reads the edge pass's three rows, `app_edge_reconciled`,
+`app_edge_mismatch` and `edges_reconciled`, and the `placeholder` key that
+`app_created`, `app_stopped`, `app_started`, `deploy_completed` and
+`app_purged` carry when they hold or release an address.
+
+4.5.0 also corrects three sentences that platform v0.17.8, which released
+no app plugin, made false. When `list_admins`' list is not simply what the
+platform's admin table held, a line of its own under the list says where it
+came from (the Okta admin group, or the manifest's
+`identity.initialAdmins`), and `inno-fleet-admin` no longer quotes the old
+words. A push builds and gates
+a container app's image but generates no SBOM and records no image id,
+which a release tag's run alone does; `inno-safety-preflight` and
+`inno-containerize` say so.
+
+The v0.17.9 release does not raise the floor, which stays 4.1.0: older
+skills describe a stopped app's address as detached, quote `list_admins`'
+old words and say a push builds the SBOM, none of which misleads a step a
+build depends on.
+
 ### House style
 
 Every skill in this plugin speaks to a broad, largely non-technical userbase,

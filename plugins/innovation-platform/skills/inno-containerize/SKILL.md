@@ -59,8 +59,8 @@ must pass before `deploy` will run. Only the Trivy scan can be turned off: an
 admin can set `safety.gate.trivy` off for an app (`get_config` says what that
 costs), and the job then skips the scan and prints a loud
 `SAFETY GATE DISABLED` warning instead. The other three checks always run.
-On a release tag's run the job uploads a CycloneDX SBOM of the built image
-whatever the gate's setting (a push builds it and uploads nothing), so
+On a release tag's run the job generates a CycloneDX SBOM of the built image
+and uploads it whatever the gate's setting (a push generates none), so
 turning the gate back on restores sweep coverage with no new deploy.
 
 After the smoke test the job also writes reports, which are not among those

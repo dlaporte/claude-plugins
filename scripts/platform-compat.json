@@ -35,7 +35,7 @@
     "docs/APP-CONTRACT.md": "63781c228e7da01fdfe49b80322169928f3207d36740dc84c2abc9cba744f687",
     "docs/APP-SECURITY.md": "87e0f8c37a4e23626de9d8434c6ec261cb7d44d1e53a44de85bd25acdce54ad6",
     "docs/GUARDRAILS.md": "15314e2ccc34080ac7c11a0f94a4b1c104de2af6ea54b4387004cf3e8aa2b8ac",
-    "docs/PLATFORM-DOCS.md": "85f37f7d6408342efcb15fd70a02abcb2bc22a291c95551bffcce2d53fc0a955"
+    "docs/PLATFORM-DOCS.md": "ebec91be5fec7b388e7c947825ff5bfce5e0e7d3bea3183d5398f64954fa71d7"
   },
   "tools": {
     "count": 54,
@@ -723,7 +723,7 @@
       "minVersion": "4.1.0"
     },
     "admin": {
-      "minVersion": "1.4.0"
+      "minVersion": "1.5.0"
     }
   },
   "behavior": {
@@ -734,7 +734,7 @@
     }
   },
   "pinned": {
-    "ref": "v0.17.7",
-    "commit": "44b692d4fa4d21a81015597965d051f344ebaff6"
+    "ref": "v0.17.9",
+    "commit": "e2d7149313ad99c9a14af011053b2c1c53cd5171"
   }
 }
