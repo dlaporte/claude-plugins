@@ -124,8 +124,8 @@ whatever its reason was, its earlier keys still inside the cut-down
   app's host, `denied` or `failed`), `orphans` and `busy` (app names),
   `left` (a count) and `denied`, true when Cloudflare refused the
   platform's token, which stops the run. A refusal of the run's first reads
-  writes the row with `denied` true and nothing else, every hour until the
-  token holds the grants the operator guide names.
+  writes the row with `denied` true and every other key empty, every hour
+  until the token holds the grants the operator guide names.
 - From platform v0.17.9 the transitions that hold or release an app's
   placeholder say so on their own rows: `app_created` and `app_stopped`
   carry `placeholder: "added"` when the hold added it, or

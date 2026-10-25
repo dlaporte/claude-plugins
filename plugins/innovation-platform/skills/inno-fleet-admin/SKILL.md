@@ -756,10 +756,20 @@ serves. The panel's Platform screen is the same act on a visual surface.
     while it lasts) and never attaches or detaches a custom domain itself:
     only a transition brings the address back in step, and the entry names
     the one for the app's status. A stop detaches the domain and holds the
-    address, and a deploy attaches the domain, so a stopped app takes
-    `start_app`, then `stop_app`; a never-deployed app, its first deploy or
-    `stop_app`; and a serving app, `rebuild_app`. Each changes someone's
-    app, so confirm with its owner first.
+    address, and a deploy attaches the domain. For a never-deployed app the
+    transition is its first deploy, or, for an app nobody will ship,
+    `stop_app` then `purge_app`, which deletes it. Prefer the first deploy:
+    a stop starts the app's purge countdown and refuses its first deploy
+    until a `start_app`, which then marks the app active with nothing
+    deployed, so its address answers that the app is not available. For a
+    stopped app it is `start_app`, then `stop_app`, and the app serves in
+    between (after a vulnerability stop, the vulnerable code); a pinned
+    app's stop answers `app_pinned` and leaves it serving, so unpin it
+    first (**`purge_app`** above says how). For a serving app it is
+    `rebuild_app`, which redeploys its live release. Confirm with the app's
+    owner first, saying what they agree to: the deletion of an app nobody
+    will ship, the minutes a stopped app serves again, or a rebuild of a
+    serving app.
 
   Admins also get a copy of each `cross_owner_link_revoked` notice, and see
   each app's `host_upload_blocked` notice in the fleet feed (it goes to the
