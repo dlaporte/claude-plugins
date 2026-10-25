@@ -121,9 +121,11 @@ rule.
    a platform admin raises their limit (`apps.max_active`, user scope). **Do
    NOT propose or offer to stop specific apps to make room**; that trade-off
    is the user's to initiate. If the user asks to stop one, `stop_app` it
-   only with their explicit confirmation by name (stopping detaches the app's
-   domain and starts its purge countdown). Otherwise stop here: an admin
-   raising the limit, or not building the app, are the remaining options.
+   only with their explicit confirmation by name (stopping takes the app
+   offline and starts its purge countdown; from platform v0.17.9 its address
+   then shows visitors a page saying it is stopped). Otherwise stop here:
+   an admin raising the limit, or not building the app, are the remaining
+   options.
 2. **Repo**: the `owner/repo` slug of the GitHub repo the user will create
    from the template (§2). The **owner is the user's** account or org, and the
    repo name is **their choice**: suggest the app name itself, but it
@@ -548,7 +550,9 @@ provisions the app, and binds the repo. It returns text beginning
   this from the response, never construct it** (the host and domain are
   the instance's). For an **mcp-function** or **mcp-container** app the
   response surfaces the **MCP endpoint** (`…/mcp`) instead; same rule: quote
-  it from the response. The URL 404s until the first successful `inno-ship`.
+  it from the response. Until the first successful `inno-ship` the address
+  serves no app: from platform v0.17.9 it shows a page saying the app has
+  not been deployed yet.
 - `Identity: <identity-aware or anonymous>`: the identity the app was
   created with, which never changes. If it is not the one the design chose,
   stop and tell the user before building: a different identity is a new

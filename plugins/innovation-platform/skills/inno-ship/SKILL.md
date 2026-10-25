@@ -373,16 +373,19 @@ authorization (consent + Okta) rather than a browser SSO redirect, and a
 public MCP app asks for none. Who may connect follows the app's audience,
 as above.
 
-**On a brand-new app's first-ever deploy, warn about the propagation window
-when you hand over the URL or endpoint; don't just paste a bare link.** The
-same DNS propagation window covered below (up to roughly a minute) applies
-to the *user's* first click, not just to an agent-run lookup. Say something
-like: "it can take up to a minute to resolve; if it doesn't load on the
-first try, wait a minute before retrying rather than refreshing or
-re-clicking repeatedly." Repeated clicks inside that window are exactly what
-get the negative (NXDOMAIN) result cached on the user's own machine for
-minutes, even after the app is actually live. This caveat doesn't apply to
-redeploys of an already-live app: the hostname already resolves.
+**On a brand-new app's first-ever deploy, say what the user may see at
+first when you hand over the URL or endpoint; don't just paste a bare
+link.** From platform v0.17.9 a registered app's address answers before its
+first deploy, with a page saying the app has not been deployed yet, and the
+first deploy switches it to the app within seconds. Say something like: "if
+it shows a page saying the app has not been deployed yet, or doesn't load
+on the first try, wait a minute and reload rather than refreshing or
+re-clicking repeatedly." Repeated reloads during the switch are what can
+get the address cached as missing on the user's own machine for minutes,
+even after the app is live (below). On a platform before v0.17.9 the
+address has no record at all until the first deploy and can take up to
+roughly a minute to resolve; the same words fit. This caveat doesn't apply
+to redeploys of an already-live app: its address already serves the app.
 
 Container-shape redeploys (`container`, `mcp-container`): a deploy starts a
 new container instance on the next request, so a fix takes effect with no
@@ -396,11 +399,16 @@ Never look up the app's hostname (the `App host pattern:` line of the status
 you read in the Version gate, with the app's name in place of `{app}`;
 `register_app` reports the real one) yourself, via `curl`, `dig`,
 `nslookup`, a browser navigation or the like, as a way to confirm the deploy
-worked, above all right after a brand-new app's first deploy. The DNS
-record for a freshly deployed hostname can take up to roughly a minute to
-propagate, and any command you run executes on the user's own machine,
-sharing their real network stack, not an isolated sandbox. A lookup that
-lands in that window gets a negative (NXDOMAIN or SERVFAIL) answer, which
+worked, above all right after a brand-new app's first deploy. From
+platform v0.17.9 the hostname has a DNS record from registration on (the
+platform's placeholder, which serves the not-deployed page), but the first
+deploy switches it to the app: the platform removes the placeholder record,
+then attaches the app's own domain, and for the seconds between the two the
+hostname has no record. (On an older platform it has none until the first
+deploy, and the new record can take up to roughly a minute to propagate.)
+Any command you run executes on the user's own machine, sharing their real
+network stack, not an isolated sandbox. A lookup that lands in that window
+gets a negative (NXDOMAIN or SERVFAIL) answer, which
 can be cached independently in several places (the user's router-level DNS
 resolver, such as AdGuard Home or Pi-hole, and their OS's local resolver
 cache, such as macOS `mDNSResponder`) for minutes. The app then looks broken

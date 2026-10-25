@@ -164,7 +164,9 @@ anything. If an app should genuinely never expire, that's the admin-set
 
 ## `start_app({ app })`: bring back a stopped app
 
-Its description says what a start does and who is notified. Its health is
+Its description says what a start does and who is notified: the app serves
+again within seconds, its address showing the app in place of the stopped
+page. Its health is
 checked again right after the start, as after a deploy, so `app_status`
 reads pending, then the probe's answer. A start needs no redeploy, with one
 exception: an app that was stopped when the platform
@@ -221,7 +223,9 @@ shows `safety.sweep_interval_hours`, which sets it.
 
 ## `stop_app({ app })`: destructive-ish, confirm first
 
-It stops the app serving and starts its purge countdown
+It stops the app serving (from platform v0.17.9 its address then shows
+visitors a page saying the app is stopped and its owner can start it again)
+and starts its purge countdown
 (`lifecycle.stop_purge_days`); `start_app` fully reverses it until that window
 closes. **Always confirm with the user by name before calling**, and tell them
 the purge date from the response.

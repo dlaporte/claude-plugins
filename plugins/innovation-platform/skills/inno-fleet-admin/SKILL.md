@@ -134,12 +134,15 @@ through the one account-status answer every tool uses, held for
 
 ## The admin list: `list_admins`, `grant_admin({ email })`, `revoke_admin({ email })`
 
-- `list_admins` reads the list. On an instance with an Okta token, while the
-  list is empty it reads the Okta admin group instead and says so ("read from
-  the Okta group ... because the platform's admin table is empty"): that line
-  means the import below has not run on this instance. An answer that the
-  roster "could not be read right now" is an outage, not an empty list: try
-  again shortly.
+- `list_admins` reads the list. When the list is not simply what the
+  platform's admin table held, a line of its own under it says where it
+  came from, and there are two: the Okta admin group, read instead while the
+  table is empty on an instance with an identity provider lookup, a line
+  that means the import below has not run on this instance; and the
+  manifest's `identity.initialAdmins`, which has just seeded the empty table
+  on an instance with none (**`admin_table_empty`**, below). An answer that
+  the roster "could not be read right now" is an outage, not an empty list:
+  try again shortly.
 - `grant_admin` adds the person to the list and `revoke_admin` removes them,
   and neither touches the Okta admin group. If that group lists someone you
   revoke, it still does: that gives no standing while the list holds anyone
@@ -746,6 +749,18 @@ serves. The panel's Platform screen is the same act on a visual surface.
     happens by itself, and until then the account it was pinned to keeps the
     app or the standing under any address it signs in with, so confirm with
     the admin who should have it first.
+  - `edge_mismatch` (from platform v0.17.9): an app's address is out of step
+    with its status: it still holds the platform's custom domain while the
+    app is stopped or has never deployed, or holds none while the app is
+    serving. The hourly edge pass reports it (once, and again after a week
+    while it lasts) and never attaches or detaches a custom domain itself:
+    only a transition brings the address back in step, and the entry names
+    the one for the app's status. For a stopped app, `start_app`, then
+    `stop_app` (the stop detaches the domain and holds the address); for a
+    never-deployed app, its first deploy, or `purge_app` (which takes a
+    stopped app only: **`purge_app`** above); for a serving app,
+    `rebuild_app`, whose deploy attaches the domain. Each changes someone's
+    app, so confirm with its owner first.
 
   Admins also get a copy of each `cross_owner_link_revoked` notice, and see
   each app's `host_upload_blocked` notice in the fleet feed (it goes to the
