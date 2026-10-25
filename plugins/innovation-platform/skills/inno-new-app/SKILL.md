@@ -550,9 +550,10 @@ provisions the app, and binds the repo. It returns text beginning
   this from the response, never construct it** (the host and domain are
   the instance's). For an **mcp-function** or **mcp-container** app the
   response surfaces the **MCP endpoint** (`…/mcp`) instead; same rule: quote
-  it from the response. Until the first successful `inno-ship` the address
-  serves no app: from platform v0.17.9 it shows a page saying the app has
-  not been deployed yet.
+  it from the response. Until the first `inno-ship` starts its deploy the
+  address serves no app: from platform v0.17.9 it shows a page saying the
+  app has not been deployed yet (while that deploy runs, a page saying the
+  app is not available right now).
 - `Identity: <identity-aware or anonymous>`: the identity the app was
   created with, which never changes. If it is not the one the design chose,
   stop and tell the user before building: a different identity is a new

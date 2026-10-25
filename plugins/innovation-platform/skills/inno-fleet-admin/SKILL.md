@@ -762,14 +762,22 @@ serves. The panel's Platform screen is the same act on a visual surface.
     a stop starts the app's purge countdown and refuses its first deploy
     until a `start_app`, which then marks the app active with nothing
     deployed, so its address answers that the app is not available. For a
-    stopped app it is `start_app`, then `stop_app`, and the app serves in
-    between (after a vulnerability stop, the vulnerable code); a pinned
-    app's stop answers `app_pinned` and leaves it serving, so unpin it
-    first (**`purge_app`** above says how). For a serving app it is
-    `rebuild_app`, which redeploys its live release. Confirm with the app's
-    owner first, saying what they agree to: the deletion of an app nobody
-    will ship, the minutes a stopped app serves again, or a rebuild of a
-    serving app.
+    stopped app, leaving it is usually better: the front door answers a
+    stopped app's address with the stopped page whichever way a request
+    arrives, so visitors see nothing wrong, and the mismatch costs only this
+    notice once a week, an `edges_reconciled` row each hour and one of the
+    edge pass's 25 apps a run, until the owner's own `start_app` or the
+    app's `purge_app`, which detaches the domain, ends it. To end it at once
+    it is `start_app`, then `stop_app`: the app serves in between (after a
+    vulnerability stop, the vulnerable code), and an admin's start counts as
+    the start after a finding, so the owner's own start to release the fix
+    is no longer free; a pinned app's stop answers `app_pinned` and leaves
+    it serving, so unpin it first (**`purge_app`** above says how) and pin
+    it again after the stop, or it counts down to its purge. For a serving
+    app it is `rebuild_app`, which redeploys its live release. Confirm with
+    the app's owner first, saying what they agree to: the deletion of an
+    app nobody will ship, the minutes a stopped app serves again and the
+    free start it spends, or a rebuild of a serving app.
 
   Admins also get a copy of each `cross_owner_link_revoked` notice, and see
   each app's `host_upload_blocked` notice in the fleet feed (it goes to the

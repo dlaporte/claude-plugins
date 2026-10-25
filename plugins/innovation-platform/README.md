@@ -259,9 +259,11 @@ one requirement would do, which costs words without breaking a step.
 
 Plugin 4.5.0 follows platform v0.17.9, still contract 38. No tool takes new
 input and no tool's output moved. From v0.17.9 an app's address answers
-from registration until its purge: until its first deploy completes it
-shows a page saying the app has not been deployed yet, and while the app is
-stopped a page saying it is stopped and its owner can start it again. The
+from registration until its purge: until its first deploy starts it shows
+a page saying the app has not been deployed yet (while that deploy runs, a
+visitor meets the app's sign-in, where it has one, and then a page saying
+the app is not available right now), and while the app is stopped a page
+saying it is stopped and its owner can start it again. The
 skills say what a visitor sees there: `inno-manage-app`'s `stop_app` and
 `start_app` (a start serves the app again within seconds), `inno-new-app`'s
 stop and its first-deploy URL, `inno-ship`'s first-deploy hand-over,

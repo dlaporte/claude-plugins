@@ -166,7 +166,8 @@ anything. If an app should genuinely never expire, that's the admin-set
 
 Its description says what a start does and who is notified: the app serves
 again within seconds, its address showing the app in place of the stopped
-page. Its health is
+page (an app that never deployed shows a page saying it is not available
+until its first deploy: `inno-ship`). Its health is
 checked again right after the start, as after a deploy, so `app_status`
 reads pending, then the probe's answer. A start needs no redeploy, with one
 exception: an app that was stopped when the platform

@@ -380,9 +380,11 @@ first deploy, with a page saying the app has not been deployed yet, and the
 first deploy switches it to the app within seconds. Say something like: "if
 it shows a page saying the app has not been deployed yet, or doesn't load
 on the first try, wait a minute and reload rather than refreshing or
-re-clicking repeatedly." Repeated reloads during the switch are what can
-get the address cached as missing on the user's own machine for minutes,
-even after the app is live (below). On a platform before v0.17.9 the
+re-clicking repeatedly." A first lookup of the address that lands in the
+seconds of the switch can get it cached as missing on the user's own
+machine for minutes, even after the app is live (below); a browser that
+already showed the not-deployed page keeps its answer through the switch.
+On a platform before v0.17.9 the
 address has no record at all until the first deploy and can take up to
 roughly a minute to resolve; the same words fit. This caveat doesn't apply
 to redeploys of an already-live app: its address already serves the app.
