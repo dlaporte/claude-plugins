@@ -937,7 +937,7 @@ identity-aware app, from §1b).
 
 If the app needs an app-level key or config value instead (one API key the
 whole app shares, a base URL), set it after registration with
-`set_app_variable`: it reaches the app as a plain environment variable.
+`set_app_variables`: it reaches the app as a plain environment variable.
 Never put it in the repo; gitleaks fails the build on the full history. A
 route that spends an app-level key needs the limits `get_app_security` §5
 sets, per client and globally.

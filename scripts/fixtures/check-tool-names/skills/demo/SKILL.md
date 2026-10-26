@@ -1,6 +1,6 @@
 ---
 name: demo
-description: A fixture for scripts/test-check-tool-names.sh, not a skill. It lists tools as skills do (register_app, app_status, set_app_variable/list_app_variables) and one misspelling joined by a slash (list_app_variables/set_app_variabl).
+description: A fixture for scripts/test-check-tool-names.sh, not a skill. It lists tools as skills do (register_app, app_status, set_app_variables/list_app_variables) and one misspelling joined by a slash (list_app_variables/set_app_variabl).
 ---
 
 # Lines that must FAIL (the test expects exactly these)
@@ -19,7 +19,7 @@ register_ap({ app, repo })
 # Lines that must PASS
 
 - Tools, bare and called: `app_status`, call `get_platform_status`, the
-  `get_app_logs` MCP tool, `stop_app({ app })`, `set_app_variable {app, name}`,
+  `get_app_logs` MCP tool, `stop_app({ app })`, `set_app_variables {app, variables}`,
   `get_config app=<name>`.
 - Arguments, fields, settings keys and codes: `accept_guardrails: true`,
   `accept_guardrails`, `include_admin_group`, `owner_not_revocable`,

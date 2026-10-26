@@ -1,6 +1,6 @@
 ---
 name: inno-manage-app
-description: Use to share, check on, start, stop, export, widen or narrow, or configure a deployed Innovation Platform app via the inno-platform MCP tools (grant_access, revoke_access, set_app_access, app_status, start_app, stop_app, restart_app, request_start, export_app_data, get_app_metrics, get_app_usage, get_app_logs, get_config, set_config for one's own notification settings, set_app_variable/list_app_variables/remove_app_variable, create_support_bundle). Use when the user wants to give someone access, widen an app to everyone who signs in or to the public (with its review), narrow it back, check deploy status, bring back a stopped app, restart a wedged app, read its logs, set an environment variable or API key for their app, download their app's data, shut one down, or ask to transfer it to someone else (only an admin can; this skill says how to ask). A platform admin's fleet work (the admin list, transfers, purges, sessions, naming, settings, audit) is inno-fleet-admin.
+description: Use to share, check on, start, stop, export, widen or narrow, or configure a deployed Innovation Platform app via the inno-platform MCP tools (grant_access, revoke_access, set_app_access, app_status, start_app, stop_app, restart_app, request_start, export_app_data, get_app_metrics, get_app_usage, get_app_logs, get_config, set_config for one's own notification settings, set_app_variables/list_app_variables/remove_app_variables, create_support_bundle). Use when the user wants to give someone access, widen an app to everyone who signs in or to the public (with its review), narrow it back, check deploy status, bring back a stopped app, restart a wedged app, read its logs, set an environment variable or API key for their app, download their app's data, shut one down, or ask to transfer it to someone else (only an admin can; this skill says how to ask). A platform admin's fleet work (the admin list, transfers, purges, sessions, naming, settings, audit) is inno-fleet-admin.
 ---
 
 # inno-manage-app
@@ -166,10 +166,14 @@ anything. If an app should genuinely never expire, that's the admin-set
 
 Its description says what a start does and who is notified: the app serves
 again within seconds, its address showing the app in place of the stopped
-page (an app that never deployed shows a page saying it is not available
-until its first deploy: `inno-ship`). Its health is
+page. Its health is
 checked again right after the start, as after a deploy, so `app_status`
-reads pending, then the probe's answer. A start needs no redeploy, with one
+reads pending, then the probe's answer. A start of an app that never
+completed a deploy returns it to not deployed instead: nothing is
+attached, its address now shows the page saying it has not been deployed
+yet, it uses no self-service start, and its first-deploy window starts
+again; relay the date the answer gives, by which a release (`inno-ship`)
+keeps the app. A start needs no redeploy, with one
 exception: an app that was stopped when the platform
 moved its apps into its app namespace (platform v0.17.0) has no script
 there, so starting it, when it has a released deployment, also dispatches a
@@ -183,11 +187,11 @@ so never quote one from memory: `get_config app=<name>` shows the app's own
 value, and while the app is stopped `app_status` shows how many of them are
 used. Admins are unlimited and don't consume the owner's allowance.
 
-An app with an open vulnerability finding is the exception, and
-`start_app`'s description states the rule: the first start after the
-finding uses no self-service start, even for an owner `app_status` shows
-with none left, and a later start before the finding clears counts as any
-start does. After a start the safety sweep holds off stopping the app
+Two starts use none, as `start_app`'s description states: the first start
+after a vulnerability finding, even for an owner `app_status` shows with
+none left (a later start before the finding clears counts as any start
+does), and a start of an app that never completed a deploy, which returns
+it to not deployed. After a start the safety sweep holds off stopping the app
 again for a while, so the fix has time to ship. The answer says when a
 start used none, and for an app the sweep can stop it gives the date and
 time before which the sweep does not stop it again: relay that as the time
@@ -196,7 +200,8 @@ Do not quote the window's length from memory: `get_config app=<name>`
 shows `safety.sweep_interval_hours`, which sets it.
 
 - **`start_limit_reached`**: the owner is out of starts (never the answer to
-  that first start after a vulnerability finding). Use
+  the first start after a vulnerability finding, or to a start of an app
+  that never completed a deploy). Use
   `request_start({ app, reason })` instead, which notifies every platform
   admin. Call it once: when a request is already waiting with the admins, the
   tool says so and sends no second notification. Relay that instead of asking
@@ -444,7 +449,7 @@ stale).
 at once: the run's last step asks the platform to, and its `App released`
 notice says the app is active again (or created, if it never completed a
 deploy), so every tool that refuses `app_deploying` (`stop_app`,
-`restart_app`, `set_app_variable`, `remove_app_variable`, and an admin's
+`restart_app`, `set_app_variables`, `remove_app_variables`, and an admin's
 `purge_app`) works again as soon as the run ends. The app's host stays
 attached and serves its last completed release, unless this deploy's
 finalize failed after its upload landed (a function app's script, or a
@@ -772,7 +777,7 @@ account, and naming anyone else's is refused `forbidden`.
 - `forbidden`: an owner may set only their own Notifications settings, at
   user scope; any other key, scope or person is an admin's to set.
 
-## Variables (`set_app_variable` / `list_app_variables` / `remove_app_variable`)
+## Variables (`set_app_variables` / `list_app_variables` / `remove_app_variables`)
 
 Per-app **environment variables**: the sanctioned home for an APP-level
 secret (one API key every user of the app shares) or plain config (a base
@@ -794,6 +799,14 @@ Things to relay to the user in plain terms:
   anywhere. Tell the user that before sending it, and never echo it back into
   the chat. Pass `secret: false` only for genuinely non-sensitive config the
   user wants readable later.
+- **Several at once.** `set_app_variables` takes a list
+  (`variables: [{ name, value, secret? }]`) and `remove_app_variables` a
+  list of `names`: gather every variable the user is setting or removing
+  and send them in one call, since on a container app each call starts one
+  new container instance, so three keys set in one call restart it once
+  where three calls restart it three times. A call with one bad item is
+  refused whole, naming the item, and stores or removes nothing: fix that
+  item and send the whole list again.
 - **A change lands right away.** On a container app the platform uploads the
   app's host again with it, so the app's next request starts a new container
   instance that has the change, and the instance from before keeps its old
@@ -808,21 +821,27 @@ Things to relay to the user in plain terms:
   `link_source_missing`. Nothing reaches the running app: unlink that link
   (`unlink_app_data`), or have the source's owner fix it, and the app's next
   deploy delivers the value.
-- `variables_invalid`: the message names the rule the name or value broke.
-  Fix that and call again.
-- `variables_limit_reached`: the app holds the most variables it may. Remove
-  one with `remove_app_variable` before setting another.
+- `variables_invalid`: the message names the rule its name or value broke,
+  or a name given twice, and, when the call names two or more variables,
+  the item. Fix that item and send the whole call again: nothing was
+  stored.
+- `variables_limit_reached`: the call would take the app past the most
+  variables it may hold. Remove some with `remove_app_variables`, or set
+  fewer, then call again.
 - `encryption_key_missing`, `encryption_key_invalid`, or on a container app
   `platform_key_missing`: an admin-side precondition, not an argument
   problem. Relay it and stop: only a platform admin can fix any of them
   (**Asking a platform admin**, above), and retrying will not help.
-- `link_invalid` or `link_source_missing` from `remove_app_variable`: one of
+- `link_invalid` or `link_source_missing` from `remove_app_variables`: one of
   the app's data links is no longer valid, and nothing was removed. Unlink it
   (`unlink_app_data`), or have the source's owner fix it, then remove again.
 - **A removal whose host upload failed** (on a container app, and the answer
   says so): the removal stands, but the running instance keeps the old value
   until it next restarts. Relay that and offer `restart_app`; the tool's
   description has the detail.
+- **A removal that stopped part-way** (the answer names what was removed
+  and what was not): the names it removed are gone; call
+  `remove_app_variables` again for the rest.
 - **"I set it and the app still reports it missing."** Check
   `list_app_variables`: a set name that looks like a typo of a declared name
   nobody has set carries a suggestion naming the declared one, and a hidden
@@ -832,7 +851,7 @@ Things to relay to the user in plain terms:
 - **A hidden variable that reads `needs a value`** was delivered to a script
   a platform release has since replaced (from platform v0.17.0, each secret
   set before it reads this way once), so nothing holds it now and it counts
-  as missing. The owner sets it again with `set_app_variable`; `app_status`
+  as missing. The owner sets it again with `set_app_variables`; `app_status`
   names every such variable until then (contract §2.3).
 - `app_status` names a REQUIRED declared variable that has no value, on its
   own line.
@@ -858,7 +877,9 @@ them:
 - `first_deploy_due`: a registered app has not completed its first deploy,
   and the entry gives the date and time it is deleted unless one completes
   first. To keep it, ship a release (`inno-ship`); if it is no longer
-  needed, nothing is required, and the repository is never touched.
+  needed, nothing is required, and the repository is never touched. A
+  start of a stopped app that never completed a deploy sends it too, with
+  the new date.
 - `access_changed`: the app's audience changed, and the entry says who
   changed it and why. Someone other than the owner widened or narrowed it,
   the hourly pass narrowed it (its setting no longer allows the audience,
@@ -918,9 +939,12 @@ them:
 The admin-only stages are `inno-fleet-admin`'s.
 `mark_notification_read` answers `notification_not_found` for an id that
 names no notification: list again for the right id.
-`mark_all_notifications_read` clears the caller's whole feed in one call,
-which is what a user asking to dismiss a backlog wants; called by an admin it
-marks everyone's.
+`mark_all_notifications_read` clears the caller's own feed in one call (its
+default scope, `mine`; an admin's includes the admins' shared notices),
+which is what a user asking to dismiss a backlog wants. Its
+`scope: "platform"` marks every notice on the platform read and cannot be
+undone: it is an admin's alone (`inno-fleet-admin`), never the answer to a
+backlog.
 
 ## Authorization summary
 
@@ -968,10 +992,11 @@ live app:
 
 `create_support_bundle({ app, description? })` builds a diagnostics zip
 behind an authenticated download link; its description lists what goes in it
-(no app data and no secrets). Use it when an app misbehaves; the user
-attaches the zip to a ticket in their organization's support system.
-`description` is optional plain text embedded for the support team: ask the
-owner before putting anything sensitive in it.
+(no app data and no secrets). Use it when an app misbehaves, and relay the
+answer's next step: the user sends the zip to a platform admin (the
+status's `Support:` line names where, when the platform sets one).
+`description` is optional plain text embedded for the platform admin who
+reads it: ask the owner before putting anything sensitive in it.
 
 - `bundle_limit_reached`: the app has hit its bundle cap for the window the
   description names. Every bundle covers the same recent window, so point the

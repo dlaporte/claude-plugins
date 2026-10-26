@@ -51,11 +51,11 @@ and give an admin the whole fleet: `list_apps`, the config tools,
 and `list_user_connections`. To someone the platform does not see as an
 admin, some of them refuse their fleet form with `forbidden`
 (`list_connections` with no `app`, `list_user_connections` beyond your own
-or your app's, `get_config` with no arguments or for another person, and
-`set_config` or `remove_config` beyond your own Notifications settings),
-and the rest narrow to the caller's own scope with no error: `list_apps`
-lists only your own apps, `list_notifications` and
-`mark_all_notifications_read` only your own notices, and
+or your app's, `get_config` with no arguments or for another person,
+`set_config` or `remove_config` beyond your own Notifications settings, and
+`mark_all_notifications_read` with `scope: "platform"`), and the rest
+narrow to the caller's own scope with no error: `list_apps` lists only your
+own apps, `list_notifications` only your own notices, and
 `get_platform_status` names no app behind its counts. So a fleet view that
 shows only your own apps means the platform does not see you as an admin
 right now. There is no local way around a `forbidden`, or around a tool
@@ -210,9 +210,6 @@ written. Its description says what it compares and how it reports.
   compared: one line says so, and it counts toward no parity, so a dry run
   reads `parity: clean` however far the group differs from the list.
   `grant_admin` and `revoke_admin` change the list from then on.
-- **Never pass `app`.** The argument is retired and refused `bad_request`,
-  and nothing is compared or written. An app's members change only through
-  `grant_access` and `revoke_access` (`inno-manage-app`).
 
 **Run it as a loop, never as one apply:**
 
@@ -760,8 +757,8 @@ serves. The panel's Platform screen is the same act on a visual surface.
     transition is its first deploy, or, for an app nobody will ship,
     `stop_app` then `purge_app`, which deletes it. Prefer the first deploy:
     a stop starts the app's purge countdown and refuses its first deploy
-    until a `start_app`, which then marks the app active with nothing
-    deployed, so its address answers that the app is not available. For a
+    until a `start_app`, which returns the app to not deployed with its
+    first-deploy window started again. For a
     stopped app, leaving it is usually better: the front door answers a
     stopped app's address with the stopped page whichever way a request
     arrives, so visitors see nothing wrong, and the mismatch costs only this
@@ -795,8 +792,10 @@ serves. The panel's Platform screen is the same act on a visual surface.
   their own `transferred` entry for each public app a transfer moved, which
   stays public.
 
-  `mark_all_notifications_read` called by an admin marks every unread
-  notification read, everyone's, not only the admin's own.
+  `mark_all_notifications_read` marks an admin's own notices and the
+  admins' shared ones by default (`scope: "mine"`); `scope: "platform"`
+  marks every unread notice on the platform, everyone's, which cannot be
+  undone, so pass it only when the admin asks for exactly that.
 
 ## Authorization summary
 

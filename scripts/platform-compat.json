@@ -32,14 +32,14 @@
   "served": {
     "docs/APP-ACCESSIBILITY.md": "db05be7ad23b1d327c9e9f802b3ca788ce6895c59d252648fb04cfd52ce63472",
     "docs/APP-CONTRACT-HISTORY.md": "658c5ee95ef707df2560f14263a7cb472ac8f5da1ebd0392762bbb3c775991fa",
-    "docs/APP-CONTRACT.md": "63781c228e7da01fdfe49b80322169928f3207d36740dc84c2abc9cba744f687",
+    "docs/APP-CONTRACT.md": "7d7c4740f94c55974a3514627bb8805eb84c4609ee18a2146b9d4124c09cccf3",
     "docs/APP-SECURITY.md": "87e0f8c37a4e23626de9d8434c6ec261cb7d44d1e53a44de85bd25acdce54ad6",
     "docs/GUARDRAILS.md": "15314e2ccc34080ac7c11a0f94a4b1c104de2af6ea54b4387004cf3e8aa2b8ac",
-    "docs/PLATFORM-DOCS.md": "ebec91be5fec7b388e7c947825ff5bfce5e0e7d3bea3183d5398f64954fa71d7"
+    "docs/PLATFORM-DOCS.md": "147687fe8b7548e518a5fba87c5cfd5c19abc3b6721eae4dc2786098598cd0e6"
   },
   "tools": {
     "count": 54,
-    "revision": "1e9dc5c92eae1e34579c5dfd8ace73757b37dd04dc842011443410cecb7eaa26",
+    "revision": "381bd7f71d768bfedb898176e2eaba7103cd18b0e3932023d665741feff9a6f2",
     "list": [
       {
         "name": "accept_naming_change",
@@ -300,11 +300,10 @@
         "readOnly": false,
         "adminOnly": true,
         "args": [
-          "app",
           "apply"
         ],
         "required": [],
-        "inputRevision": "6e2c3ad2f172192c52e15471de7a5d93f6459c48bb3d53d1d30097fa6dd795d9",
+        "inputRevision": "17f07bfeb73bcb831866b9fa4bed9539aa2b441efed84a90e18e80aecfb58e6d",
         "outputRevision": "71650bb883623098ef472f71cd745b1bba049d9a586413c775e0183d5aced07e"
       },
       {
@@ -407,9 +406,11 @@
         "name": "mark_all_notifications_read",
         "readOnly": false,
         "adminOnly": false,
-        "args": [],
+        "args": [
+          "scope"
+        ],
         "required": [],
-        "inputRevision": "efddc7bd8bbcef73a14eb1ace1ffdaec81e518ef1e13c1e9271d0b8acb694a49"
+        "inputRevision": "54ce6316ac274d9f226f40ba86090f36c3406c309446eb14563936b38f119461"
       },
       {
         "name": "mark_notification_read",
@@ -496,18 +497,18 @@
         "inputRevision": "172c5d11af0417106662d293b1cec5f1f356e0d57bc029c81d1ecf0fd713978d"
       },
       {
-        "name": "remove_app_variable",
+        "name": "remove_app_variables",
         "readOnly": false,
         "adminOnly": false,
         "args": [
           "app",
-          "name"
+          "names"
         ],
         "required": [
           "app",
-          "name"
+          "names"
         ],
-        "inputRevision": "9209d1f8b61768bf5cac639f6c6bc7e993d05bd674bf6f98a633eeb2828ddd70"
+        "inputRevision": "4c0bc1ca510c29e5b51f5a8572bd44c434db3994ae723d8b62eb9530606dfb31"
       },
       {
         "name": "remove_config",
@@ -627,21 +628,18 @@
         "inputRevision": "fd6b5b41e138c4976b94d3dfc821dd24257e724c2e0ef706c7b2f2f643517401"
       },
       {
-        "name": "set_app_variable",
+        "name": "set_app_variables",
         "readOnly": false,
         "adminOnly": false,
         "args": [
           "app",
-          "name",
-          "secret",
-          "value"
+          "variables"
         ],
         "required": [
           "app",
-          "name",
-          "value"
+          "variables"
         ],
-        "inputRevision": "1b3b90ce84805b3828a6f27cb0a01020c31a0e4566172b9fd9eb6b810753d692"
+        "inputRevision": "9c2e3d6cc844051dc2d459282fa3471a4c39d4cc1edf65eb43759f04ffc76967"
       },
       {
         "name": "set_config",
@@ -720,7 +718,7 @@
   },
   "plugins": {
     "app": {
-      "minVersion": "4.1.0"
+      "minVersion": "5.0.0"
     },
     "admin": {
       "minVersion": "1.5.0"
@@ -734,7 +732,7 @@
     }
   },
   "pinned": {
-    "ref": "v0.17.9",
-    "commit": "e2d7149313ad99c9a14af011053b2c1c53cd5171"
+    "ref": "v01711",
+    "commit": "5a5aab82664d02eaf372a5cca64b6994a00e9eca"
   }
 }
