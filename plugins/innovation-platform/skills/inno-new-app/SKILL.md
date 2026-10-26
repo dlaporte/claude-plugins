@@ -625,11 +625,14 @@ provisions the app, and binds the repo. It returns text beginning
     stop.
 - **`host_in_use`**: nothing was created. Choose another name, or have the
   record removed if it is unused.
-- **`host_check_failed`**: nothing was created, and this is not the user's to
-  fix: an operator must grant the platform's Cloudflare token Zone DNS read.
-- **`upstream_error`** (could not re-check the repository with GitHub): a
-  transient GitHub failure during call 2's re-check. Wait a moment and call
-  again with the same arguments.
+- **`host_check_failed`**: nothing was created. When the message says the
+  platform's own access to its DNS is missing, this is not the user's to
+  fix: tell them to ask a platform admin, whom the message names (with the
+  platform's support contact when it has one). When it says the read
+  failed, try again shortly.
+- **`upstream_error`** from call 2's re-check of the repository: read its
+  message and act on it as `inno-platform-conventions`' **Refusals every
+  tool shares** says.
 - **More than 50 `members`**: the tool's schema refuses the list before the
   tool runs, with an argument-validation error on `members`. Register with a
   shorter list and add the rest afterward with `grant_access`.

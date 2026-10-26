@@ -19,8 +19,8 @@ register_ap({ app, repo })
 # Lines that must PASS
 
 - Tools, bare and called: `app_status`, call `get_platform_status`, the
-  `get_app_logs` MCP tool, `stop_app({ app })`, `set_app_variables {app, variables}`,
-  `get_config app=<name>`.
+  `get_app_logs` MCP tool, `stop_app({ app })`,
+  `set_app_variables {app, variables}`, `get_config app=<name>`.
 - Arguments, fields, settings keys and codes: `accept_guardrails: true`,
   `accept_guardrails`, `include_admin_group`, `owner_not_revocable`,
   `admin_table_empty`, `safety.stop_pinned`, `start_limit_reached`.

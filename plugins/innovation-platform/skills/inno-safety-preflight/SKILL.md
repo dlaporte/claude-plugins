@@ -400,13 +400,12 @@ rule is the plugin README's **House style** section.
 | container failure | Dockerfile contract problem (the contract's R1), or the built image never answered `GET /healthz` with exactly 200 inside the smoke test's budget (R2 gives its clocks); hand off to `inno-containerize`, whose item 2 covers a non-root failure. |
 
 Diagnose privately (`get_ci_status`'s failed step and log lines for each
-failed job, its run link when a log is unavailable, or `gh run view <run-id>
---log-failed` if the user has `gh` signed in); don't paste raw logs at the
-user. After two failed
-fix attempts on the same gate, ask permission to create a
-`create_support_bundle` for the app and hand the user the download link and
-the answer's next step: send the zip to a platform admin. The caps and
-refusals are `inno-manage-app`'s
+failed job, its run link when a log is unavailable, or
+`gh run view <run-id> --log-failed` if the user has `gh` signed in); don't
+paste raw logs at the user. After two failed fix attempts on the same gate,
+ask permission to create a `create_support_bundle` for the app and hand the
+user the download link and the answer's next step: send the zip to a
+platform admin. The caps and refusals are `inno-manage-app`'s
 support-bundle section; the one to expect here is `bundle_limit_reached`,
 which is not a reason to retry: point the user at a bundle already created.
 

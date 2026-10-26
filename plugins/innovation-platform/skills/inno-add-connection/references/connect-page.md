@@ -46,9 +46,9 @@ and the fix is to copy it again.
   while the platform was checking or storing the credential, or HTTP 200
   when the backend's own sign-in sent back an error that passes in a
   minute; with HTTP 503, the platform's own sealing key was briefly
-  unreachable. Wait a minute and
-  start again from the chat; if a 502 keeps coming, the backend is the
-  place to look, and if a 503 does, a platform admin is.
+  unreachable. Wait a minute and start again from the chat; if a 502 keeps
+  coming, the backend is the place to look, and if a 503 does, a platform
+  admin is.
 
 **The person's own account or browser:**
 

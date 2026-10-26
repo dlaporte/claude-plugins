@@ -48,14 +48,13 @@ found, because the platform did not list it for that caller, and nothing
 is done. The rest are shared tools that answer anyone in their own scope
 and give an admin the whole fleet: `list_apps`, the config tools,
 `list_notifications`, `list_connections` and `list_user_connections`.
-`mark_all_notifications_read` is shared too, but an admin's call clears
-only their own notices by default (the admins' shared notices included);
-its `scope: "platform"` clears every notice on the platform, which cannot
-be undone. To someone the platform does not see as an
-admin, some of them refuse their fleet form with `forbidden`
-(`list_connections` with no `app`, `list_user_connections` beyond your own
-or your app's, `get_config` with no arguments or for another person,
-`set_config` or `remove_config` beyond your own Notifications settings, and
+`mark_all_notifications_read` is shared too, but its fleet form is a scope
+an admin passes, not its default (**Fleet-wide reads**, below, says what
+each scope clears). To someone the platform does not see as an admin, some
+of them refuse their fleet form with `forbidden` (`list_connections` with
+no `app`, `list_user_connections` beyond your own or your app's,
+`get_config` with no arguments or for another person, `set_config` or
+`remove_config` beyond your own Notifications settings, and
 `mark_all_notifications_read` with `scope: "platform"`), and the rest
 narrow to the caller's own scope with no error: `list_apps` lists only your
 own apps, `list_notifications` only your own notices, and
@@ -198,9 +197,8 @@ admin the group lists then needs `grant_admin`.
 
 ## The admin-list import: `import_okta_memberships({ apply? })`
 
-It fills an empty admin list from the Okta admin group and does nothing else:
-it reads Okta and never writes it, and no app's member list is compared or
-written. Its description says what it compares and how it reports.
+It fills an empty admin list from the Okta admin group and does nothing
+else. Its description says what it compares and how it reports.
 
 - **While the admin list is EMPTY** it compares the list with the group, and
   `apply: true` fills the list with the group's members who can sign in, in
@@ -749,35 +747,35 @@ serves. The panel's Platform screen is the same act on a visual surface.
     happens by itself, and until then the account it was pinned to keeps the
     app or the standing under any address it signs in with, so confirm with
     the admin who should have it first.
-  - `edge_mismatch` (from platform v0.17.9): an app's address is out of step
-    with its status: it still holds the platform's custom domain while the
-    app is stopped or has never deployed, or holds none while the app is
-    serving. The hourly edge pass reports it (once, and again after a week
-    while it lasts) and never attaches or detaches a custom domain itself:
-    only a transition brings the address back in step, and the entry names
-    the one for the app's status. A stop detaches the domain and holds the
-    address, and a deploy attaches the domain. For a never-deployed app the
-    transition is its first deploy, or, for an app nobody will ship,
-    `stop_app` then `purge_app`, which deletes it. Prefer the first deploy:
-    a stop starts the app's purge countdown and refuses its first deploy
-    until a `start_app`, which returns the app to not deployed with its
-    first-deploy window started again. For a
-    stopped app, leaving it is usually better: the front door answers a
-    stopped app's address with the stopped page whichever way a request
-    arrives, so visitors see nothing wrong, and the mismatch costs only this
-    notice once a week, an `edges_reconciled` row each hour and one of the
-    edge pass's 25 apps a run, until the owner's own `start_app` or the
-    app's `purge_app`, which detaches the domain, ends it. To end it at once
-    it is `start_app`, then `stop_app`: the app serves in between (after a
-    vulnerability stop, the vulnerable code), and an admin's start counts as
-    the start after a finding, so the owner's own start to release the fix
-    is no longer free; a pinned app's stop answers `app_pinned` and leaves
-    it serving, so unpin it first (**`purge_app`** above says how) and pin
-    it again after the stop, or it counts down to its purge. For a serving
-    app it is `rebuild_app`, which redeploys its live release. Confirm with
-    the app's owner first, saying what they agree to: the deletion of an
-    app nobody will ship, the minutes a stopped app serves again and the
-    free start it spends, or a rebuild of a serving app.
+  - `edge_mismatch` (from platform v0.17.9): an app's address is out of
+    step with its status: it still holds the platform's custom domain while
+    the app is stopped or has never deployed, or holds none while the app
+    is serving. The hourly edge pass reports it (once, and again after a
+    week while it lasts) and never attaches or detaches a custom domain
+    itself: only a transition brings the address back in step, and the
+    entry names the one for the app's status. A stop detaches the domain
+    and holds the address, and a deploy attaches the domain. For a
+    never-deployed app the transition is its first deploy, or, for an app
+    nobody will ship, `stop_app` then `purge_app`, which deletes it. Prefer
+    the first deploy: a stop starts the app's purge countdown and refuses
+    its first deploy until a `start_app`, which returns the app to not
+    deployed with its first-deploy window started again. For a stopped app,
+    leaving it is usually better: the front door answers a stopped app's
+    address with the stopped page whichever way a request arrives, so
+    visitors see nothing wrong, and the mismatch costs only this notice
+    once a week, an `edges_reconciled` row each hour and one of the edge
+    pass's 25 apps a run, until the owner's own `start_app` or the app's
+    `purge_app`, which detaches the domain, ends it. To end it at once it
+    is `start_app`, then `stop_app`: the app serves in between (after a
+    vulnerability stop, the vulnerable code), and an admin's start counts
+    as the start after a finding, so the owner's own start to release the
+    fix is no longer free; a pinned app's stop answers `app_pinned` and
+    leaves it serving, so unpin it first (**`purge_app`** above says how)
+    and pin it again after the stop, or it counts down to its purge. For a
+    serving app it is `rebuild_app`, which redeploys its live release.
+    Confirm with the app's owner first, saying what they agree to: the
+    deletion of an app nobody will ship, the minutes a stopped app serves
+    again and the free start it spends, or a rebuild of a serving app.
 
   Admins also get a copy of each `cross_owner_link_revoked` notice, and see
   each app's `host_upload_blocked` notice in the fleet feed (it goes to the

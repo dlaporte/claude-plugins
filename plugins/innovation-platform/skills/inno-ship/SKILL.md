@@ -215,7 +215,7 @@ and ask first, whether or not the row below says so.
 | `sast` | a semgrep OWASP finding anywhere the gate scans, which is the whole repository and not just `app/` (the scope is `inno-platform-conventions`' **Rendering** section; the log names the file). A `secrets: inherit` line in `.github/workflows/deploy.yml` (older template copies carry one) is a blocking finding too | `inno-platform-conventions` (escaping, SQL); for `secrets: inherit`, tell the user and, with their okay, delete the line (the platform workflow needs no caller secrets) |
 | `deps` | a CVE in `app/requirements.txt` or a production npm dependency (what the audit covers is the contract's R8) | bump the pinned dep |
 | `dep-age` | a pinned dep is **too new** for the platform's release-age cooldown (`safety.min_release_age_days`; `get_config app=<name>` gives the value in force and its meaning), or `app/package.json` ships with no committed, parseable `app/package-lock.json` so there is nothing to date | **not** a version bump: bumping to the newest release makes it worse. Wait out the cooldown, pin an older vetted version, commit `app/package-lock.json`, or ask a platform admin for an app-scope `safety.min_release_age_days: 0` |
-| `container` | Trivy CVE, a `USER` the non-root gate refuses (the forms it accepts are the contract's R1; `inno-containerize` item 2 applies them), missing `EXPOSE 8080`, or the image never answered `GET /healthz`; a failure titled `Trivy` (`trivy exited <n> without a verdict`) is the scanner's, not a finding: re-run the workflow, and if it repeats ask a platform admin; one titled `Docker build` is the image build: fix the Dockerfile or the files it copies | `inno-containerize` |
+| `container` | Trivy CVE, a `USER` the non-root gate refuses (the forms it accepts are the contract's R1; `inno-containerize` item 2 applies them), missing `EXPOSE 8080`, or the image never answered `GET /healthz`; a failure titled `Trivy` (`trivy exited <n> without a verdict`) is the scanner's, not a finding; one titled `Docker build` is the image build | `inno-containerize`; for `Trivy`, re-run the workflow, and if it repeats ask a platform admin; for `Docker build`, fix the Dockerfile or the files it copies |
 | `container` fails with `Accessibility check failed` (only when the app's `safety.a11y.mode` is `enforce`) | the accessibility report found something that blocks in `enforce` mode: an unwaived critical or serious violation, or a landing page `/` (or every page) the app left unscannable. Exactly what blocks, and what only warns, is the `enforce` row of the mode table `get_app_accessibility` serves | read what the report marks as blocking (`inno-safety-preflight` §1c) and fix it, push, confirm the gates are green, then cut the next patch tag. A failing `/` has to render in CI, where there is no stored data, as a real page (an empty state, not an error or a redirect off the app): `app/inno-a11y.json` adds pages that render without stored data, but it never stands in for `/`. A rule that is wrong for this app: name its rule id and have the user ask a platform admin for a time-limited waiver, `safety.ignore.a11y.<rule-id>` with an expiry date as its value |
 | `scaffold-check` fails with `Nothing deployed` (a release tag's run only) | `app/.needs-build`, the untouched scaffold's marker, is still in the repository, so the tag deploys nothing. On a push it is not a failure: the job skips `deploy` quietly while the marker exists (see §0) | build the app and delete the marker once `app/` holds real code (§0), push, confirm the gates are green, then cut the next patch tag |
 | `deploy` fails with `app_stopped`, or a container app's `container` job fails at `SBOM upload failed` naming it | the app was stopped by the lifecycle (or deliberately), and **stopped apps cannot be deployed**. Only a release tag's run fails this way (a container app's at its `container` job's SBOM upload, before `deploy` runs); a push to the default branch still runs every gate green on a stopped app, so a clean preflight is not evidence that the app can deploy | `inno-manage-app`: `start_app` first, then cut the next patch tag |
@@ -303,13 +303,12 @@ that ships a version the author never chose.
 If the same gate still fails after **two** genuine root-cause fix attempts,
 stop retrying. Summarize plainly, then **ask permission** to create a
 diagnostics **support bundle** via the **`create_support_bundle`** MCP tool
-(`app`, plus a plain-language `description`). Give the user the download link
-it returns and relay the answer's next step: send the zip to a platform
-admin (the status's `Support:` line names where, when the platform sets
-one).
-The caps and refusals are `inno-manage-app`'s support-bundle section; the one
-to expect here is `bundle_limit_reached`, and the answer to it is to send
-the most recent existing bundle rather than retrying.
+(`app`, plus a plain-language `description`). Give the user the download
+link it returns and relay the answer's next step: send the zip to a
+platform admin (the status's `Support:` line names where, when the platform
+sets one). The caps and refusals are `inno-manage-app`'s support-bundle
+section; the one to expect here is `bundle_limit_reached`, and the answer
+to it is to send the most recent existing bundle rather than retrying.
 
 ## 4. On success: provenance, then the live URL
 

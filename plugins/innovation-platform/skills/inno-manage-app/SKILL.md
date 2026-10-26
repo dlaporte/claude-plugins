@@ -166,24 +166,23 @@ anything. If an app should genuinely never expire, that's the admin-set
 
 Its description says what a start does and who is notified: the app serves
 again within seconds, its address showing the app in place of the stopped
-page. Its health is
-checked again right after the start, as after a deploy, so `app_status`
-reads pending, then the probe's answer. A start of an app that never
-completed a deploy returns it to not deployed instead: nothing is
-attached, its address now shows the page saying it has not been deployed
+page. Its health is checked again right after the start, as after a deploy,
+so `app_status` reads pending, then the probe's answer. A start of an app
+that never completed a deploy returns it to not deployed instead: nothing
+is attached, its address now shows the page saying it has not been deployed
 yet, it uses no self-service start, and its first-deploy window starts
 again; relay the date the answer gives, by which a release (`inno-ship`)
-keeps the app. A pinned app's answer gives none: it is not removed while
-it waits for its first deploy. A start needs no redeploy, with one
-exception: an app that was stopped when the platform
-moved its apps into its app namespace (platform v0.17.0) has no script
-there, so starting it, when it has a released deployment, also dispatches a
-rebuild of its live release tag, and it serves once that rebuild deploys
-(`get_ci_status` watches it). The answer says when that happened; relay it.
-When it says the rebuild could not be dispatched, the app is started but
-does not serve yet: a platform admin's `rebuild_app`, or the owner's next
-release tag, deploys it. Owners have a limited number of self-service starts per app, over
-the app's whole lifetime; each platform sets that number as `start.self_max`,
+keeps the app. A pinned app's answer gives none: it is not removed while it
+waits for its first deploy. A start needs no redeploy, with one exception:
+an app that was stopped when the platform moved its apps into its app
+namespace (platform v0.17.0) has no script there, so starting it, when it
+has a released deployment, also dispatches a rebuild of its live release
+tag, and it serves once that rebuild deploys (`get_ci_status` watches it).
+The answer says when that happened; relay it. When it says the rebuild
+could not be dispatched, the app is started but does not serve yet: a
+platform admin's `rebuild_app`, or the owner's next release tag, deploys
+it. Owners have a limited number of self-service starts per app, over the
+app's whole lifetime; each platform sets that number as `start.self_max`,
 so never quote one from memory: `get_config app=<name>` shows the app's own
 value, and while the app is stopped `app_status` shows how many of them are
 used. Admins are unlimited and don't consume the owner's allowance.
@@ -192,21 +191,20 @@ Two starts use none, as `start_app`'s description states: the first start
 after a vulnerability finding, even for an owner `app_status` shows with
 none left (a later start before the finding clears counts as any start
 does), and a start of an app that never completed a deploy, which returns
-it to not deployed. After a start the safety sweep holds off stopping the app
-again for a while, so the fix has time to ship. The answer says when a
+it to not deployed. After a start the safety sweep holds off stopping the
+app again for a while, so the fix has time to ship. The answer says when a
 start used none, and for an app the sweep can stop it gives the date and
 time before which the sweep does not stop it again: relay that as the time
 by which a fix that passes the safety gates must be released (`inno-ship`).
-Do not quote the window's length from memory: `get_config app=<name>`
-shows `safety.sweep_interval_hours`, which sets it.
+Do not quote the window's length from memory: `get_config app=<name>` shows
+`safety.sweep_interval_hours`, which sets it.
 
-- **`start_limit_reached`**: the owner is out of starts (never the answer to
-  the first start after a vulnerability finding, or to a start of an app
-  that never completed a deploy). Use
-  `request_start({ app, reason })` instead, which notifies every platform
-  admin. Call it once: when a request is already waiting with the admins, the
-  tool says so and sends no second notification. Relay that instead of asking
-  again.
+- **`start_limit_reached`**: the owner is out of starts (never the answer
+  to the first start after a vulnerability finding, or to a start of an app
+  that never completed a deploy). Use `request_start({ app, reason })`
+  instead, which notifies every platform admin. Call it once: when a
+  request is already waiting with the admins, the tool says so and sends no
+  second notification. Relay that instead of asking again.
 - **`app_limit_reached`**: starting would put the owner over their active-app
   limit (the message carries the numbers). Report it factually and name the
   remedies: the owner stops one of their own apps when THEY choose to, or a
@@ -263,13 +261,14 @@ different name. An admin's immediate `purge_app` is `inno-fleet-admin`'s.
 
 ## `grant_access({ app, email })` / `revoke_access({ app, email })`
 
-These tools write the platform's **member list** for the app, its only store;
-nothing is written to Okta. So share and unshare with these tools, never by
-hand in Okta. Their descriptions say exactly what each writes and who is
-notified; `revoke_access`'s description and contract R3 (`get_app_contract`
-with `sections: ["R3"]`) say when a change reaches a person. Quote the app's
-hostname from the `URL:` line of `app_status` or from `register_app`'s
-answer, rather than building it.
+These tools write the platform's **member list** for the app, its only
+store, and the platform decides from that list and the app's audience who
+may reach the app, on every request. So share and unshare with these tools,
+never by hand in Okta. Their descriptions say exactly what each writes and
+who is notified; `revoke_access`'s description and contract R3
+(`get_app_contract` with `sections: ["R3"]`) say when a change reaches a
+person. Quote the app's hostname from the `URL:` line of `app_status` or
+from `register_app`'s answer, rather than building it.
 
 **What admits a person** is the app's audience (`set_app_access`, below),
 on every type, MCP (`mcp-function`, `mcp-container`) and browser
@@ -817,15 +816,15 @@ Things to relay to the user in plain terms:
   delivery mechanism, not a malfunction: say so before setting one on a live
   container app, since requests in flight on the old instance drop.
 - **Stored, but the push was refused.** On a container app one of whose data
-  links no longer holds, the answer's `Delivery:` line says the value was
+  links no longer holds, the answer's `Delivery:` line says the values were
   stored and the push refused, naming `link_invalid` or
   `link_source_missing`. Nothing reaches the running app: unlink that link
   (`unlink_app_data`), or have the source's owner fix it, and the app's next
-  deploy delivers the value.
+  deploy delivers the values.
 - `variables_invalid`: the message names the rule its name or value broke,
   or a name given twice, and, when the call names two or more variables,
   the item. Fix that item and send the whole call again: nothing was
-  stored.
+  stored or removed.
 - `variables_limit_reached`: the call would take the app past the most
   variables it may hold. Remove some with `remove_app_variables`, or set
   fewer, then call again.
@@ -837,12 +836,15 @@ Things to relay to the user in plain terms:
   the app's data links is no longer valid, and nothing was removed. Unlink it
   (`unlink_app_data`), or have the source's owner fix it, then remove again.
 - **A removal whose host upload failed** (on a container app, and the answer
-  says so): the removal stands, but the running instance keeps the old value
-  until it next restarts. Relay that and offer `restart_app`; the tool's
-  description has the detail.
+  says so): the removal stands, but the running instance keeps the old
+  values until it next restarts. Relay that and offer `restart_app`; the
+  tool's description has the detail.
 - **A removal that stopped part-way** (the answer names what was removed
   and what was not): the names it removed are gone; call
-  `remove_app_variables` again for the rest.
+  `remove_app_variables` again for the rest. On a container app the answer
+  adds that its host was not uploaded again, so the running instance keeps
+  the old values until it next restarts: relay that too and offer
+  `restart_app`.
 - **"I set it and the app still reports it missing."** Check
   `list_app_variables`: a set name that looks like a typo of a declared name
   nobody has set carries a suggestion naming the declared one, and a hidden
@@ -949,20 +951,18 @@ backlog.
 
 ## Authorization summary
 
-Most per-app tools in this skill are for the app's owner or a platform admin.
-The exceptions: starts are limited for owners and not for admins, and an
-owner out of starts asks with `request_start` (the owner or an admin may call
-it); `set_config` writes are admin-only except a user's own Notifications
-settings; notifications are scoped to the caller (an admin sees every
-notice and may mark any one read, and an admin's
-`mark_all_notifications_read` clears their own notices by default, the
-admins' shared notices included, while `scope: "platform"` clears every
-notice on the platform, which cannot be undone);
-`disconnect_user_connection` is for the user themselves or a
-platform admin, never an owner on someone else's behalf; and
-`list_user_connections` lets anyone read their own sessions, and an app's
-owner that app's. "Platform admins" are the platform's own admin list, which
-`list_admins` (admin-only) shows; the admin-only tools are in
+Most per-app tools in this skill are for the app's owner or a platform
+admin. The exceptions: starts are limited for owners and not for admins,
+and an owner out of starts asks with `request_start` (the owner or an admin
+may call it); `set_config` writes are admin-only except a user's own
+Notifications settings; notifications are scoped to the caller (an admin
+sees every notice and may mark any one read; what
+`mark_all_notifications_read` clears, for an admin and anyone else, is in
+**Notifications**, above); `disconnect_user_connection` is for the user
+themselves or a platform admin, never an owner on someone else's behalf;
+and `list_user_connections` lets anyone read their own sessions, and an
+app's owner that app's. "Platform admins" are the platform's own admin
+list, which `list_admins` (admin-only) shows; the admin-only tools are in
 `inno-fleet-admin`. **Each tool's description states who is notified and
 the refusals particular to it, and most state their scope rule**: when a
 user asks who may call a tool or who gets told about an action, read the
