@@ -20,11 +20,12 @@ the import changes the admin list (an import row carries `detail.source`
   `note`. The target is the app's name or the user's address, or the
   platform for platform scope, so filtering by an app finds its settings.
 - `notification_read_all`: an admin cleared notifications beyond their own
-  feed. Over MCP (`mark_all_notifications_read`) it is `scope: "all_users"`,
-  and `count` is every notification it marked read, everyone's. The panel's
-  own-feed button writes `scope: "own"` only when it cleared the admins'
-  shared notices too, and then `count` is those shared notices alone, not
-  the admin's own. `notification_read` (`id`, `owner_email`) is an admin
+  feed. With `mark_all_notifications_read`'s `scope: "platform"` it is
+  `scope: "all_users"`, and `count` is every notification it marked read,
+  everyone's. The tool's default scope (`mine`) and the panel's own-feed
+  button write `scope: "own"` only when they cleared the admins' shared
+  notices too, and then `count` is those shared notices alone, not the
+  admin's own. `notification_read` (`id`, `owner_email`) is an admin
   clearing one notice not addressed to them alone: someone else's, or one
   of the admins' shared notices.
 

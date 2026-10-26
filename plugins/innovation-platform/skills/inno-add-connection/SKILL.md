@@ -96,7 +96,7 @@ Check all four before doing anything else:
   every user of your app would use the exact same key or token to reach the
   backend (one shared service account), that's **not** a Connection. It's a
   plain app secret, which belongs in the app's **Variables**
-  (`inno-manage-app`'s `set_app_variable`, or the Variables tab on the app's
+  (`inno-manage-app`'s `set_app_variables`, or the Variables tab on the app's
   page; the app reads it as an ordinary environment variable), and a route
   that spends it needs the limits `get_app_security` §5 sets, per client
   and globally. Point the user there and stop here.

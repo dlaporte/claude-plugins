@@ -31,12 +31,24 @@ and the fix is to copy it again.
   it with `list_connections`, and have the app's owner write it again with
   `set_app_connection` (step 4's approval rules apply); if it still fails, a
   platform admin looks at it.
+- **"<backend> refused the connection"** (HTTP 502, or 200 when it came
+  back from the backend's own sign-in; the backend's name is in the title).
+  The backend answered the platform's connection request with an answer a
+  retry cannot change (an HTTP 3xx, as a backend behind a sign-in gate
+  gives, or a 4xx other than 408, 425 and 429, or an OAuth error that is
+  not a transient one), and the page names it. Nothing on the person's side
+  fixes it: have the app's owner read the connection with
+  `list_connections` and write it again with `set_app_connection` (step 4's
+  approval rules apply).
 - **"Connecting failed"** ("Try again from your chat in a minute"). With
-  HTTP 502, the backend's own sign-in or token address failed while the
-  platform was checking or storing the credential; with HTTP 503, the
-  platform's own sealing key was briefly unreachable. Wait a minute and
-  start again from the chat; if a 502 keeps coming, the backend is the
-  place to look, and if a 503 does, a platform admin is.
+  HTTP 502, the backend's own sign-in or token address failed in a way a
+  retry can help (a 5xx, a 408, a 425 or a 429, a timeout, or no answer)
+  while the platform was checking or storing the credential, or HTTP 200
+  when the backend's own sign-in sent back an error that passes in a
+  minute; with HTTP 503, the platform's own sealing key was briefly
+  unreachable. Wait a minute and start again from the chat; if a 502 keeps
+  coming, the backend is the place to look, and if a 503 does, a platform
+  admin is.
 
 **The person's own account or browser:**
 
@@ -61,9 +73,12 @@ and the fix is to copy it again.
   backend login was completed in a different browser, or a different browser
   profile, from the one that opened the connect link. Open the connect link
   again and finish the whole sign-in in that same browser.
-- **"Connection declined"** (`oauth2_code` only). The person, or the
-  backend, declined on the backend's own sign-in page. Start again from the
-  chat if that was not meant.
+- **"Connection cancelled"** (`oauth2_code` only). The sign-in on the
+  backend's own page was cancelled, by the person or by the backend
+  refusing them. Start again from the chat if that was not meant. When the
+  backend refused the app's own request there instead, the page is
+  **"<backend> refused the connection"** (above), which the app's owner
+  fixes.
 - **"Link already used"** (`oauth2_code` only). The backend sent the person
   back with a link that was already used or has expired. Start again from
   the chat.

@@ -86,9 +86,10 @@ answers one:
 - `upstream_error`: a service the platform calls failed, or the call failed
   in a way the platform did not expect. Its message says what was running
   and whether a retry may help: when it asks for one, retry once; when it
-  says a retry will not help, don't, and tell the user in plain words that
-  the platform could not do it (the error is in the platform's log, for a
-  platform admin).
+  says a retry will not help, don't: relay its sentence, which says whom to
+  tell (a platform admin, through the platform's support contact when it
+  names one) and what to tell them (the time it happened and what was
+  running).
 - `app_busy`: another change to the app, or to an app linked to it, is in
   flight. Retry **once** after a moment, never in a loop.
 - `app_deploying`: a deploy of the app is in flight. Wait for it to finish,
@@ -568,14 +569,14 @@ none). R10 goes on to every app's cookies (above), where the promise ends
 ## Configuration & secrets (Variables)
 
 App-level values (one API key the whole app shares, a base URL, a feature
-flag) are **Variables**: set once with `set_app_variable` (or the app
+flag) are **Variables**: set once with `set_app_variables` (or the app
 page's Variables tab), delivered to your running code as ordinary
 environment variables. Read them the normal way for your shape:
 `os.environ["MY_KEY"]` / `process.env.MY_KEY` in a container app,
 `env.MY_KEY` off the fetch handler's `env` in a function-shape worker.
 Never commit them (`gitleaks` fails the build on the full history) and
 never build a settings page to collect them. Names, secrecy and timing are
-§2.3's and `set_app_variable`'s description to state; the one that touches
+§2.3's and `set_app_variables`' description to state; the one that touches
 code is that on a container app a change starts a new container instance
 on the next request, as every platform release does too (§2.3, R6), so the
 app must come up clean on any request. A route that spends an app-level key
@@ -671,7 +672,7 @@ app's Worker, and a container app's host is the platform's own (R7, and
 `get_platform_docs`'
 **Environment & config integrity**). No wrangler config may live in your
 repo (below), and `ENVIRONMENT` is a reserved Variable name that
-`set_app_variable` refuses. For local dev, pass mock identity headers
+`set_app_variables` refuses. For local dev, pass mock identity headers
 straight to the locally run container, and try each kind of caller R3
 names; never add an "auth disabled in dev" code path. An anonymous app
 tries the last one alone, since every request it gets looks like that:
@@ -750,7 +751,7 @@ no version of these files that belongs in your repo.
   can put one: a link may name only a file inside your repository.
 
 Keep secrets and local env out of the repo entirely: an app-level key or
-config value belongs in a **Variable** (`set_app_variable`, or the app
+config value belongs in a **Variable** (`set_app_variables`, or the app
 page's Variables tab), delivered to your code as a real environment
 variable.
 

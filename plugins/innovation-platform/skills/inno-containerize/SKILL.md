@@ -157,7 +157,7 @@ the recommendations are simply known-good.
 
 **Runtime config never lives in the image.** App-level values (API keys,
 base URLs) arrive as real environment variables from the platform's
-Variables facility (`set_app_variable` / the app page's Variables tab).
+Variables facility (`set_app_variables` / the app page's Variables tab).
 Never `ENV`/`ARG` a secret into the committed Dockerfile: the image is
 built in CI from the repo, so a baked-in value is a committed one, and
 gitleaks fails the build.

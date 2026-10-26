@@ -401,8 +401,9 @@ register_app({ app, repo, description, type, identity, members, accept_guardrail
 ```
 
 - `app`: the app name from §1 (drives the hostname). The wire parameter is
-  `app`; no tool names the target app `name` (the variable tools use `name`
-  for the *variable's* name).
+  `app`; no tool names the target app `name` (a variable's name is `name`
+  inside `set_app_variables`' `variables`, and `remove_app_variables` takes
+  `names`).
 - `repo`: the `owner/repo` slug from §2 (a **slug, not a URL**). `app` and
   `repo` are the only two the schema requires; everything below is optional to
   the schema, though the handler still refuses the call without
@@ -625,11 +626,14 @@ provisions the app, and binds the repo. It returns text beginning
     stop.
 - **`host_in_use`**: nothing was created. Choose another name, or have the
   record removed if it is unused.
-- **`host_check_failed`**: nothing was created, and this is not the user's to
-  fix: an operator must grant the platform's Cloudflare token Zone DNS read.
-- **`upstream_error`** (could not re-check the repository with GitHub): a
-  transient GitHub failure during call 2's re-check. Wait a moment and call
-  again with the same arguments.
+- **`host_check_failed`**: nothing was created. When the message says the
+  platform's own access to its DNS is missing, this is not the user's to
+  fix: tell them to ask a platform admin, whom the message names (with the
+  platform's support contact when it has one). When it says the read
+  failed, try again shortly.
+- **`upstream_error`** from call 2's re-check of the repository: read its
+  message and act on it as `inno-platform-conventions`' **Refusals every
+  tool shares** says.
 - **More than 50 `members`**: the tool's schema refuses the list before the
   tool runs, with an argument-validation error on `members`. Register with a
   shorter list and add the rest afterward with `grant_access`.
@@ -937,7 +941,7 @@ identity-aware app, from §1b).
 
 If the app needs an app-level key or config value instead (one API key the
 whole app shares, a base URL), set it after registration with
-`set_app_variable`: it reaches the app as a plain environment variable.
+`set_app_variables`: it reaches the app as a plain environment variable.
 Never put it in the repo; gitleaks fails the build on the full history. A
 route that spends an app-level key needs the limits `get_app_security` §5
 sets, per client and globally.

@@ -209,12 +209,12 @@ order:
    The `sast` gate honors neither (R8), so whatever they hid becomes a
    finding: list those findings and plan to fix them.
 
-   Inventory every value the app reads from its environment or a `.env` file:
-   each becomes an app **Variable** (`set_app_variable`) after registration,
-   delivered back to the code as a real env var; nothing stays in the repo.
-   Consider also declaring them in `app/inno-variables.json` so the
-   platform's Variables tab and `app_status` can tell the owner what's
-   still unset.
+   Inventory every value the app reads from its environment or a `.env`
+   file: each becomes an app **Variable** (`set_app_variables`, all of them
+   in one call) after registration, delivered back to the code as a real
+   env var; nothing stays in the repo. Consider also declaring them in
+   `app/inno-variables.json` so the platform's Variables tab and
+   `app_status` can tell the owner what's still unset.
 6. **What does not carry over**: custom domains, background jobs/cron, and any
    always-on/websocket assumptions.
 7. **Proposed app name.** The name rules, every `check_name` answer and the
@@ -454,7 +454,7 @@ restore point is.
      section. Move code out of a repo-root `src/` (for example to `app/src/`,
      updating the Dockerfile's `COPY` paths) rather than deleting it, and get
      the user's okay before touching anything that could be theirs. The `.env`
-     values move to app **Variables** (`set_app_variable`); the code keeps
+     values move to app **Variables** (`set_app_variables`); the code keeps
      reading the same environment names, so this is usually a zero-code
      change.
    - Delete `app/.needs-build` if the repo carries one (CI skips deploys while

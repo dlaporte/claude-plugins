@@ -297,6 +297,27 @@ skills describe a stopped app's address as detached, quote `list_admins`'
 old words and say a push builds the SBOM, none of which misleads a step a
 build depends on.
 
+Plugin 5.0.0 follows platform v0.17.11, still contract 38. Four tools take
+new input, so reconnect after that upgrade too. The two variable tools
+take lists under new names: `set_app_variables` takes
+`variables: [{ name, value, secret? }]` and sets them in one call, so a
+container app starts one new container instance for all of them, and
+`remove_app_variables` takes `names`; each refuses a call with one bad
+item whole, naming the item when the call names two or more, and stores or
+removes nothing. `mark_all_notifications_read` takes `scope`: `mine`, the
+default, marks the caller's own notices (an admin's include the admins'
+shared ones), and `platform`, a platform admin's alone, marks every notice
+on the platform. `import_okta_memberships` takes `apply` alone. The skills
+follow, and say what platform v0.17.10 changed: a start of an app that
+never completed a deploy returns it to not deployed with its first-deploy
+window started again and uses no self-service start; an answer a retry
+will not help says whom to tell; a support bundle goes to a platform
+admin; a connect page answers a backend's redirect with
+`<backend> refused the connection`; and `inno-ship` reads the `Trivy`,
+`Docker build` and `Dependency install` failure titles. The v0.17.11
+release raises the floor to 5.0.0, so the platform tells every 4.x build
+to update, and its skills stop at their Version gate until it does.
+
 ### House style
 
 Every skill in this plugin speaks to a broad, largely non-technical userbase,
