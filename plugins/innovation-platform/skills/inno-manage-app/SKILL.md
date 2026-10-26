@@ -173,7 +173,8 @@ completed a deploy returns it to not deployed instead: nothing is
 attached, its address now shows the page saying it has not been deployed
 yet, it uses no self-service start, and its first-deploy window starts
 again; relay the date the answer gives, by which a release (`inno-ship`)
-keeps the app. A start needs no redeploy, with one
+keeps the app. A pinned app's answer gives none: it is not removed while
+it waits for its first deploy. A start needs no redeploy, with one
 exception: an app that was stopped when the platform
 moved its apps into its app namespace (platform v0.17.0) has no script
 there, so starting it, when it has a released deployment, also dispatches a
@@ -879,7 +880,7 @@ them:
   first. To keep it, ship a release (`inno-ship`); if it is no longer
   needed, nothing is required, and the repository is never touched. A
   start of a stopped app that never completed a deploy sends it too, with
-  the new date.
+  the new date, or, for a pinned app, with none: it is not removed.
 - `access_changed`: the app's audience changed, and the entry says who
   changed it and why. Someone other than the owner widened or narrowed it,
   the hourly pass narrowed it (its setting no longer allows the audience,
@@ -952,8 +953,12 @@ Most per-app tools in this skill are for the app's owner or a platform admin.
 The exceptions: starts are limited for owners and not for admins, and an
 owner out of starts asks with `request_start` (the owner or an admin may call
 it); `set_config` writes are admin-only except a user's own Notifications
-settings; notifications are scoped to the caller (an admin sees and marks
-everyone's); `disconnect_user_connection` is for the user themselves or a
+settings; notifications are scoped to the caller (an admin sees every
+notice and may mark any one read, and an admin's
+`mark_all_notifications_read` clears their own notices by default, the
+admins' shared notices included, while `scope: "platform"` clears every
+notice on the platform, which cannot be undone);
+`disconnect_user_connection` is for the user themselves or a
 platform admin, never an owner on someone else's behalf; and
 `list_user_connections` lets anyone read their own sessions, and an app's
 owner that app's. "Platform admins" are the platform's own admin list, which

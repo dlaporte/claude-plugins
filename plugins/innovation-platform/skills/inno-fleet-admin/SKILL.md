@@ -47,8 +47,11 @@ outage) is not answered `forbidden`: the call answers that the tool is not
 found, because the platform did not list it for that caller, and nothing
 is done. The rest are shared tools that answer anyone in their own scope
 and give an admin the whole fleet: `list_apps`, the config tools,
-`list_notifications`, `mark_all_notifications_read`, `list_connections`
-and `list_user_connections`. To someone the platform does not see as an
+`list_notifications`, `list_connections` and `list_user_connections`.
+`mark_all_notifications_read` is shared too, but an admin's call clears
+only their own notices by default (the admins' shared notices included);
+its `scope: "platform"` clears every notice on the platform, which cannot
+be undone. To someone the platform does not see as an
 admin, some of them refuse their fleet form with `forbidden`
 (`list_connections` with no `app`, `list_user_connections` beyond your own
 or your app's, `get_config` with no arguments or for another person,
