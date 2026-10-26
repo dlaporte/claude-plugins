@@ -837,8 +837,9 @@ Things to relay to the user in plain terms:
   (`unlink_app_data`), or have the source's owner fix it, then remove again.
 - **A removal whose host upload failed** (on a container app, and the answer
   says so): the removal stands, but the running instance keeps the old
-  values until it next restarts. Relay that and offer `restart_app`; the
-  tool's description has the detail.
+  values until it next restarts. Relay that and offer `restart_app`;
+  `get_platform_docs`' **What the tools do in detail**, its Variables and
+  Connections item, has the detail.
 - **A removal that stopped part-way** (the answer names what was removed
   and what was not): the names it removed are gone; call
   `remove_app_variables` again for the rest. On a container app the answer

@@ -401,8 +401,9 @@ register_app({ app, repo, description, type, identity, members, accept_guardrail
 ```
 
 - `app`: the app name from §1 (drives the hostname). The wire parameter is
-  `app`; no tool names the target app `name` (the variable tools use `name`
-  for the *variable's* name).
+  `app`; no tool names the target app `name` (a variable's name is `name`
+  inside `set_app_variables`' `variables`, and `remove_app_variables` takes
+  `names`).
 - `repo`: the `owner/repo` slug from §2 (a **slug, not a URL**). `app` and
   `repo` are the only two the schema requires; everything below is optional to
   the schema, though the handler still refuses the call without
