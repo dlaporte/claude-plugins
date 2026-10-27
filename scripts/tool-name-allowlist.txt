@@ -15,7 +15,7 @@ export_in_progress        # export_app_data refusal
 link_containment          # link_app_data / grant_access / transfer_app refusal; set_app_access names it inside widening_requirements
 link_invalid              # restart_app / remove_app_variables refusal
 link_not_found            # unlink_app_data refusal
-link_rebuild_pending      # the notification kind before 5.1.0 (the README's history)
+link_rebuild_pending      # the notification kind before 5.1.0, kept for the README's history paragraphs and inno-manage-app's note on older notices
 link_revoked              # a linked read's failure, and from 5.1.0 the notification kind
 link_severed              # notification kind
 link_source_missing       # a consumer's deploy refusal

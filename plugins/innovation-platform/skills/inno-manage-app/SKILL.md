@@ -917,7 +917,9 @@ them:
   gone; a container-shaped app's within about a minute, since those reads
   then answer `link_revoked`): so a rebuild is not the end of it. Remove that code, or
   link the data again with `link_app_data` where the rules allow, as the
-  entry says.
+  entry says. Notices sent before platform v0.17.12 are stored under
+  `link_rebuild_pending`, so a `stage` filter of `link_revoked` does not
+  find them: filter by app instead.
 - `cross_owner_link_revoked`: a function-shaped app another account owns read
   this app's data through a link that was revoked, and the entry says what
   the platform did to remove its binding (**Data links across owners**,

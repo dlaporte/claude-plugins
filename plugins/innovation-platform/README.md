@@ -321,11 +321,15 @@ to update, and its skills stop at their Version gate until it does.
 Plugin 5.1.0 follows platform v0.17.12, still contract 38, with no tool's
 input or output changed, so no reconnect is needed. The
 `link_rebuild_pending` notice is now `link_revoked`, its email setting
-`notify.email.link_revoked`. The skills say what `host_check_failed` asks
+`notify.email.link_revoked`; notices sent before keep the old stage, which
+`inno-manage-app` says. The skills say what `host_check_failed` asks
 of an owner (a retry when the read failed, a platform admin when the token
 lacks access), that a release restarts a container only when it moves the
 host build, and point at one home for a never-deployed app's start and a
-registration's deadline. The floor stays 5.0.0.
+registration's deadline. `inno-ship`'s deploy-failure rows read the run's
+new annotation form: the code and the message separated by "; ", and a
+local `deploy-bundle` refusal starting "deploy-bundle failed: ". The floor
+stays 5.0.0.
 
 ### House style
 
