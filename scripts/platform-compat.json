@@ -732,7 +732,7 @@
     }
   },
   "pinned": {
-    "ref": "v01712",
-    "commit": "52ace5ccd288755b1ae74b3454d203b204d11e12"
+    "ref": "v0.17.12",
+    "commit": "2ca18a4244716be4abd99a449b20b1540ecbe480"
   }
 }
