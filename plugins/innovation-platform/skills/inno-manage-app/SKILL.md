@@ -219,7 +219,7 @@ Do not quote the window's length from memory: `get_config app=<name>` shows
 - **`host_check_failed`** (the same instances): read its message. When it
   says the Cloudflare read failed, start again shortly; when it says the
   platform's token needs DNS read, report it to a platform admin, whom the
-  message names.
+  message names (with the platform's support contact when it has one).
 - **`app_not_stopped`**: another change moved the app out of stopped and back
   before this call could tell. Call `app_status` to see where the app is now.
 - **`app_unlinked`**: the platform's GitHub App is no longer installed on the

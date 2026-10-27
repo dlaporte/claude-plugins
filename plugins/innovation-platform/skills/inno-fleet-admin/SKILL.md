@@ -726,9 +726,11 @@ serves. The panel's Platform screen is the same act on a visual surface.
   - `start_requested`: an owner asked for a start. An admin's `start_app` is
     unlimited and does not use the owner's allowance.
   - `drift_detected`, about the platform rather than one app:
-    `plugin.min_version` is above the newest published plugin, so no user
-    can satisfy it, and the entry names the fix (lower it, or publish a
-    plugin release that meets it).
+    `plugin.min_version` is above the newest plugin this platform release
+    serves (the newest published one of its major), so no user can satisfy
+    it, and the entry names the fix: lower it, publish a plugin release of
+    that major that meets it, or, for a floor of a later major, upgrade the
+    platform.
   - `connection_sink_new_host`: a connection was pointed at a credential
     destination no connection on the platform was using. Check that the host
     belongs to the backend the connection claims to be.

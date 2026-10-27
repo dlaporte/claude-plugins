@@ -326,10 +326,10 @@ input or output changed, so no reconnect is needed. The
 of an owner (a retry when the read failed, a platform admin when the token
 lacks access), that a release restarts a container only when it moves the
 host build, and point at one home for a never-deployed app's start and a
-registration's deadline. `inno-ship`'s deploy-failure rows read the run's
-new annotation form: the code and the message separated by "; ", and a
-local `deploy-bundle` refusal starting "deploy-bundle failed: ". The floor
-stays 5.0.0.
+registration's deadline. `inno-ship`'s bundle rows read the bundle's
+annotation, which now separates the code and the message with "; " as the
+token's and finalize's do, and a local `deploy-bundle` refusal starting
+"deploy-bundle failed: ". The floor stays 5.0.0.
 
 ### House style
 
