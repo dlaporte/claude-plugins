@@ -32,10 +32,10 @@
   "served": {
     "docs/APP-ACCESSIBILITY.md": "db05be7ad23b1d327c9e9f802b3ca788ce6895c59d252648fb04cfd52ce63472",
     "docs/APP-CONTRACT-HISTORY.md": "658c5ee95ef707df2560f14263a7cb472ac8f5da1ebd0392762bbb3c775991fa",
-    "docs/APP-CONTRACT.md": "7d7c4740f94c55974a3514627bb8805eb84c4609ee18a2146b9d4124c09cccf3",
+    "docs/APP-CONTRACT.md": "10b1a42e492ea1e94730457c582e579beab22cb739e09d215b54d1ad7ebc9693",
     "docs/APP-SECURITY.md": "87e0f8c37a4e23626de9d8434c6ec261cb7d44d1e53a44de85bd25acdce54ad6",
     "docs/GUARDRAILS.md": "15314e2ccc34080ac7c11a0f94a4b1c104de2af6ea54b4387004cf3e8aa2b8ac",
-    "docs/PLATFORM-DOCS.md": "147687fe8b7548e518a5fba87c5cfd5c19abc3b6721eae4dc2786098598cd0e6"
+    "docs/PLATFORM-DOCS.md": "80f31e18817ee208d9c918831ee152900f1ca462242e85e8e96dd38150ea3cf5"
   },
   "tools": {
     "count": 54,
@@ -732,7 +732,7 @@
     }
   },
   "pinned": {
-    "ref": "v0.17.11",
-    "commit": "8f30e3956fb9c6d20be4e4b1b1c2e3032a9b1c03"
+    "ref": "v01712",
+    "commit": "52ace5ccd288755b1ae74b3454d203b204d11e12"
   }
 }

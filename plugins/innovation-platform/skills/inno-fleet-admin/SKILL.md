@@ -350,7 +350,7 @@ What to do with its refusals and answers:
   revokes those links and rebuilds each affected function-shaped consumer;
   a container-shaped consumer is not rebuilt, since its host refuses the
   revoked link live. Each consumer's owner is also notified
-  (`link_rebuild_pending`). Say before the yes who keeps access, and for
+  (`link_revoked`). Say before the yes who keeps access, and for
   how long: a container-shaped consumer is cut off within 60 seconds by
   its host's live link check (its reads of
   the database and the files then fail `link_revoked`), but a

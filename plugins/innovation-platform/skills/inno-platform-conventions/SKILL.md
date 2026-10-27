@@ -578,9 +578,10 @@ Never commit them (`gitleaks` fails the build on the full history) and
 never build a settings page to collect them. Names, secrecy and timing are
 §2.3's and `set_app_variables`' description to state; the one that touches
 code is that on a container app a change starts a new container instance
-on the next request, as every platform release does too (§2.3, R6), so the
-app must come up clean on any request. A route that spends an app-level key
-needs the limits `get_app_security` §5 sets, per client and globally.
+on the next request, as a platform release that moves the host build does
+too (§2.3), so the app must come up clean on any request. A route that
+spends an app-level key needs the limits `get_app_security` §5 sets, per
+client and globally.
 
 An app may describe the variables it reads in `app/inno-variables.json`;
 §2.3's **Declaring what an app wants** is the format and its rules. Write
