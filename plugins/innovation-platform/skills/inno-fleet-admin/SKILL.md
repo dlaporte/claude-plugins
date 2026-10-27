@@ -663,7 +663,7 @@ owner uses (`get_config app=` and `get_config user=`) are in
   active-app cap), `lifecycle.pinned`, the `lifecycle.*_days` idle windows,
   `start.self_max`, `access.allow_internal`, `access.allow_public`,
   `anomaly.usage_enabled` and `container.sleep_after`. The audience keys
-  are **Audiences**, below.
+  are **Audiences**, above.
 - **Sign-in lifetimes**, `auth.app_session_hours` and
   `auth.session_idle_hours` (platform scope): how
   long a browser sign-in lasts and how long it may sit unused, each

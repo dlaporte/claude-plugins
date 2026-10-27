@@ -107,10 +107,10 @@ declarations; the reason shows in one of two places:
 - a file the platform refuses: on the `deploy-complete:` line in this
   run's log;
 - a file that is not valid JSON, cannot be read, or is over 32 KB, which
-  never reaches the platform: a `::warning title=Declared variables::`
-  annotation naming the reason. The `deploy-complete:` line still appears,
-  just with no `variables_refused` field on it, so look for the warning
-  annotation, not for a missing line.
+  never reaches the platform: a `Declared variables` warning annotation
+  (on `app/inno-variables.json`) naming the reason. The `deploy-complete:`
+  line still appears, just with no `variables_refused` field on it, so look
+  for the warning annotation, not for a missing line.
 
 For every name marked `required: true`, call `list_app_variables` (or read
 `app_status`, which names an unset required one on its own line) and tell
