@@ -190,8 +190,8 @@ used. Admins are unlimited and don't consume the owner's allowance.
 Two starts use none, as `start_app`'s description states: the first start
 after a vulnerability finding, even for an owner `app_status` shows with
 none left (a later start before the finding clears counts as any start
-does), and a start of an app that never completed a deploy, which returns
-it to not deployed. After a start the safety sweep holds off stopping the
+does), and a start of an app that never completed a deploy (this section's
+first paragraph). After a start the safety sweep holds off stopping the
 app again for a while, so the fix has time to ship. The answer says when a
 start used none, and for an app the sweep can stop it gives the date and
 time before which the sweep does not stop it again: relay that as the time
@@ -213,10 +213,13 @@ Do not quote the window's length from memory: `get_config app=<name>` shows
   propose or offer to stop specific apps to make room on a start**: that
   trade-off (taking down something running) is the user's to initiate,
   unprompted.
-- **`host_in_use`** and **`host_check_failed`** (an instance with an empty
-  host prefix, where apps sit at `{name}.{domain}`): neither is the owner's to
-  fix from here. Report it to a platform admin (**Asking a platform admin**,
-  above).
+- **`host_in_use`** (an instance with an empty host prefix, where apps sit
+  at `{name}.{domain}`): not the owner's to fix from here. Report it to a
+  platform admin (**Asking a platform admin**, above).
+- **`host_check_failed`** (the same instances): read its message. When it
+  says the Cloudflare read failed, start again shortly; when it says the
+  platform's token needs DNS read, report it to a platform admin, whom the
+  message names (with the platform's support contact when it has one).
 - **`app_not_stopped`**: another change moved the app out of stopped and back
   before this call could tell. Call `app_status` to see where the app is now.
 - **`app_unlinked`**: the platform's GitHub App is no longer installed on the
@@ -872,7 +875,7 @@ history in one go.
 
 Stages worth acting on when one appears: `first_deploy_due`,
 `respin_failed`, `auto_restarted`, `auto_restart_failed`, `link_severed`,
-`link_rebuild_pending`, `degraded`, `usage_anomaly`, `quota_horizon`,
+`link_revoked`, `degraded`, `usage_anomaly`, `quota_horizon`,
 `connection_expired`, `connection_locked`, `unlinked` / `relinked`,
 `transferred`, `access_changed`, `shared`, `exported`, `member_reassigned`,
 `cross_owner_link_revoked`, `host_upload_blocked`. What to do on eight of
@@ -889,7 +892,7 @@ them:
   the hourly pass narrowed it (its setting no longer allows the audience,
   or, for a public app, its owner can no longer sign in), or a source it
   reads was narrowed and narrowed it too: then the entry says why, its
-  `link_rebuild_pending` entry says whether the platform rebuilds it or the
+  `link_revoked` entry says whether the platform rebuilds it or the
   owner redeploys, and the owner widens it again, with the review, once that
   rebuild or redeploy has landed (**Narrowing**, above).
 - `member_reassigned`: an address with access now signs in as a different
@@ -905,7 +908,7 @@ them:
   that server), the fix that lasts; reconnecting the backend does not fix
   it for good (`inno-add-connection` says why). It comes at most once a day per app,
   under its own email setting, `notify.email.connection_locked`.
-- `link_rebuild_pending`: a data link this app used was revoked. The entry
+- `link_revoked`: a data link this app used was revoked. The entry
   says whether a rebuild was dispatched, whether the owner has to redeploy
   (for an owner that is `inno-ship`), or, for a stopped app, that the platform
   rebuilds it after it next starts. For an app that has deployed, it also
@@ -914,7 +917,9 @@ them:
   gone; a container-shaped app's within about a minute, since those reads
   then answer `link_revoked`): so a rebuild is not the end of it. Remove that code, or
   link the data again with `link_app_data` where the rules allow, as the
-  entry says.
+  entry says. Notices sent before platform v0.17.12 are stored under
+  `link_rebuild_pending`, so a `stage` filter of `link_revoked` does not
+  find them: filter by app instead.
 - `cross_owner_link_revoked`: a function-shaped app another account owns read
   this app's data through a link that was revoked, and the entry says what
   the platform did to remove its binding (**Data links across owners**,

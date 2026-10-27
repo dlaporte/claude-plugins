@@ -350,7 +350,7 @@ What to do with its refusals and answers:
   revokes those links and rebuilds each affected function-shaped consumer;
   a container-shaped consumer is not rebuilt, since its host refuses the
   revoked link live. Each consumer's owner is also notified
-  (`link_rebuild_pending`). Say before the yes who keeps access, and for
+  (`link_revoked`). Say before the yes who keeps access, and for
   how long: a container-shaped consumer is cut off within 60 seconds by
   its host's live link check (its reads of
   the database and the files then fail `link_revoked`), but a
@@ -663,7 +663,7 @@ owner uses (`get_config app=` and `get_config user=`) are in
   active-app cap), `lifecycle.pinned`, the `lifecycle.*_days` idle windows,
   `start.self_max`, `access.allow_internal`, `access.allow_public`,
   `anomaly.usage_enabled` and `container.sleep_after`. The audience keys
-  are **Audiences**, below.
+  are **Audiences**, above.
 - **Sign-in lifetimes**, `auth.app_session_hours` and
   `auth.session_idle_hours` (platform scope): how
   long a browser sign-in lasts and how long it may sit unused, each
@@ -726,9 +726,11 @@ serves. The panel's Platform screen is the same act on a visual surface.
   - `start_requested`: an owner asked for a start. An admin's `start_app` is
     unlimited and does not use the owner's allowance.
   - `drift_detected`, about the platform rather than one app:
-    `plugin.min_version` is above the newest published plugin, so no user
-    can satisfy it, and the entry names the fix (lower it, or publish a
-    plugin release that meets it).
+    `plugin.min_version` is above the newest plugin this platform release
+    serves (the newest published one of its major), so no user can satisfy
+    it, and the entry names the fix: lower it, publish a plugin release of
+    that major that meets it, or, for a floor of a later major, upgrade the
+    platform.
   - `connection_sink_new_host`: a connection was pointed at a credential
     destination no connection on the platform was using. Check that the host
     belongs to the backend the connection claims to be.

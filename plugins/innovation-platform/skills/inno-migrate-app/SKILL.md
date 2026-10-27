@@ -492,17 +492,10 @@ after pushing, map the failing job through `inno-ship`'s table. If the user
 abandons the migration after registering, point at `inno-manage-app` (`stop_app`)
 so the app winds down; uninstalling the GitHub App also unlinks and stops it.
 
-Tell the user the deadline too, as `inno-new-app` §5 does, with the date
-and time quoted from call 2's answer (`Deploy it by <date> <time> UTC` on
-its first line), never worked out from memory: an app whose first deploy has not completed by
-then is deleted (the repository is never touched), a reminder
-(`first_deploy_due`) comes the number of days before it that the answer
-gives, and its name is then free again at once, unless another app still
-holds a deployed data link to it. When the answer gives no date (a pinned
-app, or a repeat of a registration already provisioned), read the deadline
-from `app_status`'s `Lifecycle:` line; only that line says an app is
-pinned. So a migration that will take longer than that
-needs its first release before the date, or a fresh registration after it.
+Tell the user the deadline too, exactly as `inno-new-app` §5 does: its
+date and time from call 2's answer, its reminder, and where a pinned app's
+is read. A migration that will take longer than that needs its first
+release before the date, or a fresh registration after it.
 When the registration named members, say they are told when the app first
 deploys, not now. Point the user at the platform's user guide too: the
 `Panel URL:` address with `/guide` after it, readable by anyone signed in to
