@@ -10,15 +10,16 @@ the image, maps NUL bytes before reading, and hands the name to `awk` through
 the environment. Both `awk` compares append `""` to force a STRING compare,
 exactly as the workflow does, because awk compares numerically when both sides
 look numeric and a name like `1e3` would otherwise match a passwd name `1000`.
-It has no comments and no `!` outside single quotes, so it
-pastes cleanly into bash, zsh, or an interactive zsh, and it runs inside
-parentheses, so a stop ends the block and never the shell it was pasted into.
-Everything after the
-`EXPOSE` check is the `/healthz` smoke gate, and it waits the way CI does:
+It has no comments and no `!` outside single quotes, so it pastes cleanly
+into bash, zsh, or an interactive zsh, and it runs inside parentheses, so a
+stop ends the block and never the shell it was pasted into. Everything after
+the `EXPOSE` check is the `/healthz` smoke gate, and it waits the way CI does:
 up to 18 tries 5 seconds apart, each with a 4 second timeout, stopping early
-if the container exits, and it tests for **exactly 200**, because `curl -f`
-would accept a 204 or a 301 that CI refuses. So an app that is still booting
-is not a `FAIL`; a `FAIL` prints the container's logs.
+if the container exits (an app that crashes on boot reports that it exited,
+even when it stops before its port can be read), and it tests for **exactly
+200**, because `curl -f` would accept a 204 or a 301 that CI refuses. So an
+app that is still booting is not a `FAIL`; a `FAIL` prints the container's
+logs.
 
 The block owns what it creates, because a developer's machine is shared with
 other work in a way a CI runner is not. Each run builds its own image tag and
@@ -28,15 +29,17 @@ including after a Ctrl-C, removes only those containers and that tag: it never
 removes a container by a name some earlier run or another tool may hold. The
 smoke container's port 8080 is published on a free loopback port that Docker
 picks, read back with `docker port`, so another service already answering on
-8080 cannot pass the check for it. A failed `docker build`, `docker create` or
-`docker start` stops the block with a `FAIL:` line saying which, before
-anything reads or runs a stale image; fix that and run the block again.
+8080 cannot pass the check for it. A failed `docker build`, or a smoke
+container that cannot be created or started, stops the block with a `FAIL:`
+line saying which, before anything reads or runs a stale image; fix that and
+run the block again. A user probe that cannot be created is read as an image
+with no readable `/etc/passwd`, as CI reads it.
 
 ```bash
 (
 run="app-under-test-$(date +%Y%m%d%H%M%S)-$$"; img="${run}:local"; built=""; probe=""; cid=""
 trap '[ -n "$probe" ] && docker rm -f "$probe" >/dev/null 2>&1; [ -n "$cid" ] && docker rm -f "$cid" >/dev/null 2>&1; [ -n "$built" ] && docker rmi "$img" >/dev/null 2>&1' EXIT
-trap 'exit 130' INT TERM HUP
+trap 'exit 130' INT; trap 'exit 143' TERM; trap 'exit 129' HUP
 docker build -t "$img" . || { echo "FAIL: docker build failed, so nothing was checked"; exit 1; }
 built=1
 user="$(docker inspect --format='{{.Config.User}}' "$img" | tr '\000' '\001')"
@@ -50,9 +53,11 @@ if [ -z "$why" ]; then
         -*|*[^ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789._-]*)
           why="is neither a plain uid nor a portable user name" ;;
         *)
-          probe="$(docker create --name "$run-uidprobe" "$img")" || { echo "FAIL: docker create failed, so the user could not be resolved"; exit 1; }
-          pw="$(docker cp "$probe":/etc/passwd - 2>/dev/null | tar -xO 2>/dev/null | tr '\000' '\001')"
-          docker rm -f "$probe" >/dev/null 2>&1; probe=""
+          pw=""; probe="$(docker create --name "$run-uidprobe" "$img" 2>/dev/null)"
+          if [ -n "$probe" ]; then
+            pw="$(docker cp "$probe":/etc/passwd - 2>/dev/null | tar -xO 2>/dev/null | tr '\000' '\001')"
+            docker rm -f "$probe" >/dev/null 2>&1; probe=""
+          fi
           if [ -z "$pw" ]; then
             why="cannot be resolved: the image has no readable /etc/passwd"
           else
@@ -79,11 +84,16 @@ if [ -z "$why" ] && [ -z "$n" ]; then why="resolves to uid 0"; fi
 if [ -z "$why" ] && { [ "${#n}" -gt 10 ] || [ "$n" -gt 2147483647 ]; }; then why="resolves to a uid above 2147483647"; fi
 shown="$(printf '%s' "$user" | LC_ALL=C tr -c ' -~' '?')"
 if [ -z "$why" ]; then echo "OK: User='$shown' runs as uid $n"; else echo "FAIL: User='$shown' $why"; fi
-docker inspect --format='{{json .Config.ExposedPorts}}' "$img" | grep '8080/tcp'
+docker inspect --format='{{json .Config.ExposedPorts}}' "$img" | grep '8080/tcp' || true
 cid="$(docker create -p 127.0.0.1::8080 --name "$run-run" "$img")" || { echo "FAIL: docker create failed for the smoke container"; exit 1; }
 docker start "$cid" >/dev/null || { echo "FAIL: the smoke container did not start"; exit 1; }
 addr="$(docker port "$cid" 8080/tcp | head -n 1)"
-[ -n "$addr" ] || { echo "FAIL: the smoke container has no published port for 8080"; exit 1; }
+if [ -z "$addr" ]; then
+  running="$(docker inspect -f '{{.State.Running}}' "$cid" 2>/dev/null || echo false)"
+  if [ "$running" = true ]; then echo "FAIL: the smoke container has no published port for 8080"
+  else echo "FAIL: the container exited before /healthz answered 200, last status: none"; fi
+  docker logs "$cid"; exit 1
+fi
 ok=""; last=""; exited=""
 for i in $(seq 1 18); do
   last="$(curl -s -o /dev/null -w '%{http_code}' --max-time 4 "http://$addr/healthz" || true)"

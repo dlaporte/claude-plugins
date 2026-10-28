@@ -338,9 +338,10 @@ builds its own image tag and names its containers after it, removes only those
 (after a Ctrl-C too) and never a container some other run or tool named,
 publishes the smoke container on a free loopback port instead of the host's
 8080, so another local service cannot pass the check for it, and stops with a
-`FAIL:` line when `docker build`, `docker create` or `docker start` fails
-rather than checking a stale image. The non-root user check decides exactly as
-before. The floor stays 5.0.0.
+`FAIL:` line when the build fails or the smoke container cannot be created or
+started, rather than checking a stale image. An app that crashes on boot still
+reports that it exited, with its logs. The non-root user check decides exactly
+as before. The floor stays 5.0.0.
 
 ### House style
 
