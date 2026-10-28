@@ -331,6 +331,17 @@ annotation, which now separates the code and the message with "; " as the
 token's and finalize's do, and a local `deploy-bundle` refusal starting
 "deploy-bundle failed: ". The floor stays 5.0.0.
 
+Plugin 5.1.1 is a fix within `inno-containerize`, still against platform
+v0.17.12 and contract 38, with no tool's input or output changed. The local
+sanity check in `references/local-check.md` now owns what it creates: each run
+builds its own image tag and names its containers after it, removes only those
+(after a Ctrl-C too) and never a container some other run or tool named,
+publishes the smoke container on a free loopback port instead of the host's
+8080, so another local service cannot pass the check for it, and stops with a
+`FAIL:` line when `docker build`, `docker create` or `docker start` fails
+rather than checking a stale image. The non-root user check decides exactly as
+before. The floor stays 5.0.0.
+
 ### House style
 
 Every skill in this plugin speaks to a broad, largely non-technical userbase,

@@ -214,6 +214,9 @@ decides the non-root rule exactly the way the CI gate does (item 2), checks
 `EXPOSE 8080`, and runs the `/healthz` smoke gate with CI's clocks (item 4),
 printing one `OK:` or `FAIL:` line for the user and for `/healthz`; the
 `EXPOSE` check prints the `8080/tcp` entry, or nothing when it is missing.
+A failed build or container start stops it with a `FAIL:` line, it probes a
+free loopback port rather than 8080 on the host, and it removes only the
+containers and the image tag it created.
 
 That block scans nothing. The image CVE scan is the `container` job's alone:
 do not run an image scanner locally, because `inno-safety-preflight`'s house
