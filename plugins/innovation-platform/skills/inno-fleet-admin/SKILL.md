@@ -1,6 +1,6 @@
 ---
 name: inno-fleet-admin
-description: "Use when a platform admin manages the Innovation Platform fleet through the inno-platform MCP tools: the admin list (list_admins, grant_admin, revoke_admin), the Okta import (import_okta_memberships, which only fills an empty admin list), ownership transfers (transfer_app, a linked pair or a public app included), allowing public apps and narrowing one in an emergency (set_config, set_app_access), immediate purges (purge_app), rebuilds (rebuild_app), ending someone's panel and browser app sessions (revoke_sessions), the instance's Okta admin group and naming (claim_instance_objects, accept_naming_change), platform settings (get_config, set_config, remove_config), and the fleet-wide reads (list_apps, list_users, query_audit, get_platform_logs, export_platform_backup). Use when an admin wants to add or remove an admin, fill or check the admin list, reassign an app, allow an owner or an app to go public, take a public app down fast, delete an app now, offboard someone, change a setting or a safety waiver, read the audit log or every app's logs, or take a registry snapshot. An owner's work on their own app is inno-manage-app."
+description: "Use when a platform admin manages the Innovation Platform fleet through the inno-platform MCP tools: the admin list (list_admins, grant_admin, revoke_admin), the admin-group import (import_admin_group, which only fills an empty admin list), ownership transfers (transfer_app, a linked pair or a public app included), allowing public apps and narrowing one in an emergency (set_config, set_app_access), immediate purges (purge_app), rebuilds (rebuild_app), ending someone's panel and browser app sessions (revoke_sessions), the instance's naming (accept_naming_change), platform settings (get_config, set_config, remove_config), and the fleet-wide reads (list_apps, list_users, query_audit, get_platform_logs, export_platform_backup). Use when an admin wants to add or remove an admin, fill or check the admin list, reassign an app, allow an owner or an app to go public, take a public app down fast, delete an app now, offboard someone, change a setting or a safety waiver, read the audit log or every app's logs, or take a registry snapshot. An owner's work on their own app is inno-manage-app."
 ---
 
 # inno-fleet-admin
@@ -37,13 +37,13 @@ Carry on.
 
 This skill covers two kinds of tool. Most are admin-only: the admin list
 and the import, `transfer_app`, `purge_app`, `rebuild_app`,
-`revoke_sessions`, `claim_instance_objects`, `accept_naming_change`,
-`list_users`, `query_audit`, `get_platform_logs` and
-`export_platform_backup`. A platform admin's MCP client lists them and a
-member's client lists none (the platform's MCP server note says so). A
-call to one by someone the platform does not see as an admin at that
-moment (from a list read before their standing changed, or during an Okta
-outage) is not answered `forbidden`: the call answers that the tool is not
+`revoke_sessions`, `accept_naming_change`, `list_users`, `query_audit`,
+`get_platform_logs` and `export_platform_backup`. A platform admin's MCP
+client lists them and a member's client lists none (the platform's MCP
+server note says so). A call to one by someone the platform does not see as
+an admin at that moment (from a list read before their standing changed, or
+while the identity provider's directory cannot be reached) is not answered
+`forbidden`: the call answers that the tool is not
 found, because the platform did not list it for that caller, and nothing
 is done. The rest are shared tools that answer anyone in their own scope
 and give an admin the whole fleet: `list_apps`, the config tools,
@@ -76,8 +76,8 @@ standing was revoked keeps them listed until they reconnect, each call
 answering that the tool is not found. When an admin runs this skill and
 those tools are missing, or a call to one answers that the tool is not
 found, have them reconnect first; if it persists, the platform does not
-see them as an admin right now (not on the list, or Okta cannot be
-reached: below), and another admin checks `list_admins`.
+see them as an admin right now (not on the list, or the directory cannot
+be reached: below), and another admin checks `list_admins`.
 
 An admin's work on one app (sharing it, starting or stopping it, its logs,
 metrics, variables and support bundles) is `inno-manage-app`, and so are two
@@ -96,37 +96,51 @@ undone. Say what will change and for whom, and get an explicit yes.
 **Every tool's own description is the authority** on what it does, its
 refusals, its notifications and who may call it. The platform serves the
 descriptions of its own release, and several are built from this instance's
-configuration (whether it has an Okta token, its allowed email domains, and
-its admin group's name). This skill gives the decisions, the order of work
-and the remedies; read a description for what a tool or a refusal means.
+configuration (its identity provider's name, whether it has a directory, its
+allowed email domains, and its admin group's name). This skill gives the
+decisions, the order of work and the remedies; read a description for what a
+tool or a refusal means.
 When this skill and a description differ, the description wins.
 
 ## Who is a platform admin
 
+People sign in through the instance's identity provider, which the
+`Identity provider:` line of `get_platform_status` names, with the
+directory the platform reads accounts from: `directory okta`, or `directory
+none`. When that line goes on to say what the platform loses with no
+directory (for `none`, and for a directory named but not set up), this
+skill calls the instance one **with no directory**; otherwise it has **a
+directory**. Name the identity provider to the user as that line does,
+never by a product name it does not use.
+
 The platform's own admin list decides, and `list_admins` shows it. An admin
-is someone on that list whose Okta account can still sign in, checked
-through the one account-status answer every tool uses, held for
+is someone on that list whose account can still sign in, checked through
+the one account-status answer every tool uses, held for
 `auth.status_check_minutes`. So:
 
-- An admin Okta reports suspended or deprovisioned keeps their row but loses
-  the powers within that window, and reactivating the account restores them.
-- While Okta cannot be reached, admin powers fail closed: an admin whose
-  status is unknown is not an admin for that call. An admin-only tool then
-  answers that the tool is not found (an error, not `forbidden`), a shared
-  tool's fleet form answers `forbidden` or narrows to your own apps and
-  notices with no error (above), and none of it is a lost standing: retry
-  later, and reconnect once Okta answers again. A client that connects during an
-  outage is given a member's tool list, with no admin-only tool in it, so
-  reconnect then too.
-- The `Admin group:` line of `get_platform_status` names an Okta group that
-  does not follow the list: `grant_admin` and `revoke_admin` change only the
-  list, so read who the admins are with `list_admins`. The platform reads
+- An admin the directory reports suspended or deprovisioned keeps their row
+  but loses the powers within that window, and reactivating the account
+  restores them. With no directory the platform cannot learn of a
+  suspension, so an admin keeps the powers until removed with
+  `revoke_admin`.
+- While the directory cannot be reached, admin powers fail closed: an admin
+  whose status is unknown is not an admin for that call. An admin-only tool
+  then answers that the tool is not found (an error, not `forbidden`), a
+  shared tool's fleet form answers `forbidden` or narrows to your own apps
+  and notices with no error (above), and none of it is a lost standing:
+  retry later, and reconnect once the directory answers again. A client
+  that connects during an outage is given a member's tool list, with no
+  admin-only tool in it, so reconnect then too.
+- The `Admin group:` line of `get_platform_status` names a group at the
+  identity provider that does not follow the list: `grant_admin` and
+  `revoke_admin` change only the list, so read who the admins are with
+  `list_admins`. The platform reads
   the group for admin standing only while its own list is empty: then the
   group IS the roster, and both tools refuse `admin_table_empty` (below).
   Once the list holds anyone, adding someone to that group by hand does not
   make them an admin, and removing someone from it by hand does not end their
-  standing: use `grant_admin` or `revoke_admin`, or suspend the account in
-  Okta.
+  standing: use `grant_admin` or `revoke_admin`, or suspend the account at
+  the identity provider. With no directory the group is never read.
 - Each admin row is pinned to the identity provider
   account that holds its address (`grant_admin`'s description says when, and
   where the pin applies), so an address that passes to another person does
@@ -138,17 +152,18 @@ through the one account-status answer every tool uses, held for
 
 - `list_admins` reads the list. When the list is not simply what the
   platform's admin table held, a line of its own under it says where it
-  came from, and there are two: the Okta admin group, read instead while the
-  table is empty on an instance with an identity provider lookup, a line
-  that means the import below has not run on this instance; and the
+  came from, and there are two: the admin group at the identity provider,
+  read instead while the table is empty on an instance with a directory, a
+  line that means the import below has not run on this instance; and the
   manifest's `identity.initialAdmins`, which has just seeded the empty table
   on an instance with none (**`admin_table_empty`**, below). An answer that
   the roster "could not be read right now" is an outage, not an empty list:
   try again shortly.
 - `grant_admin` adds the person to the list and `revoke_admin` removes them,
-  and neither touches the Okta admin group. If that group lists someone you
-  revoke, it still does: that gives no standing while the list holds anyone
-  (above), and only a change in Okta by hand takes them out of that group.
+  and neither touches the admin group at the identity provider. If that
+  group lists someone you revoke, it still does: that gives no standing
+  while the list holds anyone (above), and only a change at the identity
+  provider by hand takes them out of that group.
   Confirm the person by name before either. Tell the person that their
   client's tool list changes only when they reconnect (**The admin-only
   tools come with the connection**, above).
@@ -159,14 +174,15 @@ through the one account-status answer every tool uses, held for
     No tool or setting overrides the list: it is the instance manifest's
     `identity.allowedEmailDomains`, which the operator changes by editing the
     manifest and redeploying.
-  - `okta_user_not_found`, on an instance with an Okta token, for an address
-    Okta does not know, or whose every account is suspended or deprovisioned
-    ("No Okta account that can still sign in holds <address>."): the person
-    needs an account first.
+  - `directory_account_not_found`, on an instance with a directory, for an
+    address the directory does not know, or whose every account is
+    suspended or deprovisioned ("No <identity provider> account that can
+    still sign in holds <address>.", naming the identity provider): the
+    person needs an account first. With no directory, nothing is looked up.
   - `admin_table_empty`: below.
 - What to do when `revoke_admin` refuses. It never checks the allowed email
-  domains or asks Okta, so an admin outside the domains, or one Okta no
-  longer knows, can always be removed:
+  domains or asks the directory, so an admin outside the domains, or one the
+  directory no longer knows, can always be removed:
   - `self_admin_change` (naming yourself): another admin must do it. It
     compares accounts, so your own row under another address is refused too.
   - `last_admin`: the removal would leave the platform with no admin, and
@@ -178,35 +194,39 @@ through the one account-status answer every tool uses, held for
 ### `admin_table_empty`
 
 Both writers refuse while the admin list is empty, because a write would
-replace the whole roster the platform is then reading from Okta with one row
-and leave every other admin without standing. The refusal's message says
+replace the whole roster the platform is then reading from the directory
+with one row and leave every other admin without standing. The refusal's
+message says
 which fix applies to this instance; read it rather than guessing:
 
-- **With an identity provider lookup**: run the import below, dry run first,
+- **With a directory**: run the import below, dry run first,
   then `apply: true`, which copies every admin in the group into the list in
   one write. The two tools work from then on.
-- **With no identity provider lookup**: the next admin check seeds the empty
+- **With no directory**: the next admin check seeds the empty
   list once from the manifest's `identity.initialAdmins`. If that list is
   empty, an operator names the first admins there and redeploys. Once
   seeded, editing it changes nothing, and the message names the database
   repair in the operator guide ("Recovering admin access").
 
-Never fill an empty list on an instance with an identity provider lookup by
-adding one row by hand: that ends the Okta fallback at once, and every other
-admin the group lists then needs `grant_admin`.
+Never fill an empty list on an instance with a directory by adding one row
+by hand: that ends the admin group's fallback at once, and every other admin
+the group lists then needs `grant_admin`.
 
-## The admin-list import: `import_okta_memberships({ apply? })`
+## The admin-list import: `import_admin_group({ apply? })`
 
-It fills an empty admin list from the Okta admin group and does nothing
-else. Its description says what it compares and how it reports.
+It fills an empty admin list from the admin group at the identity provider
+and does nothing else. Its description says what it compares and how it
+reports. With no directory there is no group to read: it refuses
+`directory_unavailable`, and the manifest's `identity.initialAdmins` seeds
+the empty list instead (**`admin_table_empty`**, above).
 
 - **While the admin list is EMPTY** it compares the list with the group, and
   `apply: true` fills the list with the group's members who can sign in, in
-  one write, all or none. A member Okta reports suspended or deprovisioned is
-  listed as skipped, never added. An admin-group read that does not list you
-  (by your Okta user ID when your sign-in carried one) stops the fill, and a
-  group marked for another instance, gone from Okta, or failing to read is
-  reported and nothing is written.
+  one write, all or none. A member the directory reports suspended or
+  deprovisioned is listed as skipped, never added. An admin-group read that
+  does not list you (by your account's ID when your sign-in carried one)
+  stops the fill, and a group that is gone from the identity provider, or
+  fails to read, is reported and nothing is written.
 - **Once the list holds anyone** it decides, and the group is not read or
   compared: one line says so, and it counts toward no parity, so a dry run
   reads `parity: clean` however far the group differs from the list.
@@ -298,12 +318,12 @@ them (below).
 
 **A transfer to the owner's own address** re-points an app whose owner's
 address has passed to another person (the admins' `identity_reassigned`
-notification names such an app, **Fleet-wide reads**). With an identity
-provider lookup the platform asks Okta who holds the address now, and the
-description lists the outcomes; when Okta has no user for the address at
-all, the answer's `WARNING:` says so, and the mistyped-address repair below
-does not apply, since the address is the owner's own. With no identity
-provider lookup, such a transfer while the owner's row is pinned is refused
+notification names such an app, **Fleet-wide reads**). With a directory
+the platform asks it who holds the address now, and the description lists
+the outcomes; when the directory has no user for the address at all, the
+answer's `WARNING:` says so, and the mistyped-address repair below does not
+apply, since the address is the owner's own. With no directory, such a
+transfer while the owner's row is pinned is refused
 `upstream_error` and changes nothing; the hand-off that works there, which
 the `identity_reassigned` entry and `grant_access` name, is `transfer_app`
 to another address, `revoke_access` for the owner's address on it, and
@@ -322,15 +342,16 @@ What to do with its refusals and answers:
   counts unless the app is stopped. Its message normally names the remedy,
   raising the recipient's `apps.max_active` at user scope with
   `set_config`. Do NOT offer to stop the recipient's apps for them.
-- **A recipient Okta does not know** is not refused. With an identity
-  provider lookup the address is looked up read-only, and the transfer still
-  lands, with a `WARNING:` that Okta has no user for it; with none, nothing
+- **A recipient the directory does not know** is not refused. With a
+  directory the address is looked up read-only, and the transfer still
+  lands, with a `WARNING:` that the identity provider has no account for it;
+  with none, nothing
   is looked up and no warning comes. If the address is mistyped, transfer
   the app again to the right one, then run `revoke_access` on the mistyped
   address, which that second transfer leaves on the member list as the
   previous owner; if their account is still being created, they can reach
-  the app once it exists. If Okta cannot be asked, the answer says the
-  address was not checked.
+  the app once it exists. If the directory cannot be asked, the answer says
+  the address was not checked.
 - `app_busy`: retry once after a moment, never in a loop.
 - `link_transfer_blocked`. Data links are same-owner only, so a transfer has
   to revoke every link that touches the app. While any of those links still
@@ -402,12 +423,17 @@ domains (above), keeps their sessions until this ends them.
 
 **A full offboarding** uses three levers, each with its own reach:
 
-1. **Suspend or deactivate the account in Okta.** Their calls to the
-   platform's own tools are then refused `account_inactive` within
-   `auth.status_check_minutes`, while Okta can be reached. The same check
-   ends their MCP access to every app, their access to every browser app
-   (whose front door asks the platform at every request), and their admin
-   standing, if they had one.
+1. **Suspend or deactivate the account at the identity provider.** With a
+   directory, their calls to the platform's own tools are then refused
+   `account_inactive` within `auth.status_check_minutes`, while the
+   directory can be reached. The same check ends their MCP access to every
+   app, their access to every browser app (whose front door asks the
+   platform at every request), and their admin standing, if they had one.
+   With no directory the platform cannot learn of the suspension: the
+   person keeps access until their sessions and MCP grants end, at most the
+   lengths the `Identity provider:` line names, which `set_config` shortens.
+   There the next two levers, and `revoke_admin` for an admin, are what end
+   it sooner.
 2. **`revoke_sessions`** ends their panel and browser app sessions now.
 3. **`revoke_access` on each app they are a member of** removes them from
    its member list and deletes their stored connections there
@@ -436,7 +462,7 @@ linked editor in `also`), where it stays public, or, once the pass has
 narrowed it, where its new owner widens it again through the review;
 narrow it now with `set_app_access`; or stop it and then purge it
 (`purge_app` takes a stopped app only; a pinned app is unpinned before the
-stop, below). On an instance with no Okta token
+stop, below). On an instance with no directory
 the owner check never fires, so narrow or transfer each one by hand.
 
 ## `purge_app({ app })`: delete an app now
@@ -463,7 +489,7 @@ Before calling it:
   first; an admin's `purge_app` does not, and it fails any export still in
   flight. If the data might be wanted, run `export_app_data`, wait for the
   owner's ready notice (or the app's Data exports card on the panel), then
-  purge. Its member list goes too, and no Okta import can rebuild it: only
+  purge. Its member list goes too, and no import can rebuild it: only
   the nightly database dumps and any `export_platform_backup` snapshot hold
   it. This bullet is the plugin's one home for that rule.
 - **Name the consumers.** It revokes every data link touching the app, in
@@ -493,16 +519,13 @@ What to do with its refusals and answers:
   Until then the app's record is kept; after the image budget its data is
   kept too, but its container and Worker may already be gone, and after the
   files budget its database may already be deleted.
-- **Okta groups left in place.** Only the Okta groups and rule an earlier
-  release recorded for the app are deleted, by id (an app registered from
-  platform v0.16.5, or an MCP app from v0.16.4, records none), and the
-  `app_purged` audit row's `idp_skipped` detail lists any it left: a group
-  another instance marked, a recorded open group whose open rule the record
-  never named, or a recorded open rule that does not assign to this app's
-  own open group alone. No app admits by them. The operator guide's "Leftover
-  app groups and rules" (`docs/OPERATIONS.md` in the platform's repository,
-  its Teardown section; no tool serves it) says how to tell whether one is
-  this instance's before removing it.
+- **Nothing at the identity provider is deleted.** From platform v0.17.23
+  a purge makes no call to the identity provider. A group or rule an earlier
+  release made for an app (an app registered before platform v0.16.5, or an
+  MCP app before v0.16.4) stays there after the purge, and no app admits by
+  it. The operator removes one by hand: the operator guide's "Leftover app
+  groups and rules" (`docs/OPERATIONS.md` in the platform's repository; no
+  tool serves it) says how to tell whether one is this instance's.
 
 ## `rebuild_app({ app })`: rebuild the released code
 
@@ -545,25 +568,6 @@ cannot be recalled, so confirm first.
 - `github_app_not_configured`, `github_app_key_invalid` or
   `installation_token_failed`: a platform-side GitHub App fault, fixed on the
   platform's side rather than the app's.
-
-## `claim_instance_objects({ apply?, include_admin_group? })`: mark this instance's admin group
-
-Only needed where several platform instances share one Okta org. It lists
-the platform admin group with its ownership marker, and nothing else, and
-marks it only when told to; its description says why.
-
-- **Dry run first, always.** The default (`apply` false) lists and changes
-  nothing. Show the admin the answer. An unmarked admin group reads
-  "unmarked, marked only with include_admin_group: true".
-- **Leave `include_admin_group` off unless the admin says otherwise.** With
-  `apply: true` and `include_admin_group: true` it marks an unmarked admin
-  group, and on a shared Okta org another instance that still reads that
-  group for its admins is then left with no admins (the description says
-  which). Ask the admin to confirm before setting it.
-- Relay any line that reports the group too long to mark or an Okta failure.
-- Sharing one Okta org between instances, and moving each to its own admin
-  group, is the operator guide's "Instances sharing an IdP" section
-  (`docs/OPERATIONS.md` in the platform's repository; no tool serves it).
 
 ## `accept_naming_change()`: acknowledge a deliberate rename
 
@@ -743,7 +747,7 @@ serves. The panel's Platform screen is the same act on a visual surface.
     to, and that account is refused. There is one entry for each app the
     address owns, and one for its admin row. To give an app to the address's
     new holder, `transfer_app` it to that same address (**A transfer to the
-    owner's own address** above; with no identity provider lookup the entry
+    owner's own address** above; with no directory the entry
     names the hand-off through another address instead); to make them an
     admin, run `revoke_admin`, then `grant_admin`, for the address. Neither
     happens by itself, and until then the account it was pinned to keeps the
@@ -809,12 +813,12 @@ shared tools below them are listed for everyone.
 | Tool | Who can call it |
 |---|---|
 | `list_admins` / `grant_admin` / `revoke_admin` | platform admins (`revoke_admin` never on yourself) |
-| `import_okta_memberships` | platform admins |
+| `import_admin_group` | platform admins |
 | `transfer_app` | platform admins only (owners ask an admin; `also` moves a linked set, and a public app needs `accept_guardrails`) |
 | `purge_app` | platform admins only |
 | `rebuild_app` | platform admins only (owners redeploy by tagging their own repo) |
 | `revoke_sessions` | platform admins only |
-| `claim_instance_objects` / `accept_naming_change` | platform admins only |
+| `accept_naming_change` | platform admins only |
 | `list_users` / `query_audit` / `get_platform_logs` / `export_platform_backup` | platform admins only |
 | `get_config` with no arguments / `set_config` / `remove_config` | platform admins; any user may set their own Notifications settings at their own user scope |
 | `list_apps` | any signed-in user; an admin sees every app |

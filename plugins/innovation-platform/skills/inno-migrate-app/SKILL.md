@@ -49,7 +49,8 @@ names, install the platform GitHub App on the repo, and `register_app` again. If
 assess it, then adapt it in place before shipping.
 
 Requires the `inno-platform` MCP server (ships with this plugin). The first tool
-call triggers an Okta browser login: expected, not an error.
+call triggers a browser sign-in through your organization's identity
+provider: expected, not an error.
 
 **Asking a platform admin.** Where this skill sends the user to a platform
 admin (a guardrails exception, a higher app limit, a fix on the platform's
@@ -224,7 +225,8 @@ order:
    does drive the app's hostname, so choose it for the hostname rather than
    carrying the repo name across. Quote the exact URL from `register_app`'s
    response; never construct it.
-   Also ask who else needs access: optional Okta emails feed `register_app`'s
+   Also ask who else needs access: optional email addresses they sign in
+   with feed `register_app`'s
    `members` and can be added later via `inno-manage-app`.
 8. **Accessibility** (an app with browser pages; an MCP server or an API-only
    app has none, so say it does not apply): who uses it, the main flows a

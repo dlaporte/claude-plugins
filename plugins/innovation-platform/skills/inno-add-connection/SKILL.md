@@ -45,8 +45,8 @@ figuring out how the backend signs people in, setting the Connection up, and
 wiring the app's code to use it.
 
 Requires the `inno-platform` MCP server (ships with this plugin's `.mcp.json`).
-If this is the first call against it this session, expect a browser Okta
-login; that's expected, not an error.
+If this is the first call against it this session, expect a browser sign-in
+through your organization's identity provider; that's expected, not an error.
 
 **Read the contract's Connections section before you start:** call
 `get_app_contract` with `sections: ["2.2"]`. §2.2 is the

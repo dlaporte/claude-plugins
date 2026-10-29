@@ -22,8 +22,9 @@ claude plugin install innovation-platform@davidlaporte --config platform_url=<yo
 ```
 
 Note: the first MCP tool call from an installed plugin opens a browser
-window for a login (Okta for `innovation-platform`, ServiceNow OAuth for
-`servicenow`). That's expected; every call runs as you.
+window for a login (your organization's identity provider for
+`innovation-platform`, ServiceNow OAuth for `servicenow`). That's expected;
+every call runs as you.
 
 ## Plugins in this marketplace
 
