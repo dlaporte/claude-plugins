@@ -366,12 +366,24 @@ the report did not run, or `safety.a11y.mode` is `off`, say that instead of
 quoting zeros.
 
 For an **mcp-function** or **mcp-container** app, report the **MCP endpoint** (`…/mcp`, as returned by
-`app_status` / `register_app`) instead of a browser URL, and tell the user to
-add it as an MCP server in their client (Claude Code, claude.ai): on a
-members-only or internal app the first connection runs an OAuth
-authorization (consent + Okta) rather than a browser SSO redirect, and a
-public MCP app asks for none. Who may connect follows the app's audience,
-as above.
+`app_status` / `register_app`) instead of a browser URL, and give the user
+the steps for the client they use, with the endpoint filled in:
+
+- **Claude Desktop or claude.ai:** open **Settings**, then **Connectors**,
+  and choose **Add custom connector**. Give it the app's name and paste the
+  endpoint as its URL, then **Add**, then **Connect**. In a chat, turn the
+  connector on from the tools menu under the message box before asking for
+  it.
+- **Claude Code:** run `claude mcp add --transport http <app name> <endpoint>`,
+  then restart the session (or run `/mcp` and authenticate it, then restart:
+  a client lists a server's tools when its session starts).
+
+On a members-only or internal app the first connection opens a browser
+window: the platform's sign-in, then a consent page naming the app. Tell the
+user to click **Approve once** and wait: a second click on the same page
+shows "Consent page not valid" even though the first one worked, and the
+connector is then connected all the same. A public MCP app asks for no
+sign-in. Who may connect follows the app's audience, as above.
 
 **On a brand-new app's first-ever deploy, say what the user may see at
 first when you hand over the URL or endpoint; don't just paste a bare

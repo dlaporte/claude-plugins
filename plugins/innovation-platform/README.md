@@ -66,6 +66,33 @@ MCP client enumerates tools at startup, so `inno-platform`'s tools stay
 uncallable even after `claude mcp list` shows it `✔ Connected`. Restart the
 session once authorization completes; only then are the tools callable.
 
+### Using the platform from Claude Desktop or claude.ai
+
+Desktop's chat and claude.ai do not run Claude Code plugins, so there the
+platform is added as a connector instead, and its tools come without this
+plugin's skills:
+
+1. Open **Settings**, then **Connectors**, and choose **Add custom
+   connector**.
+2. Name it after your platform and paste the platform's MCP address as its
+   URL (the same address as `platform_url` above, ending in `/mcp`; the
+   panel's Connect Claude Code card shows it), then **Add**, then
+   **Connect**.
+3. Sign in in the browser window that opens, then click **Approve once** on
+   the consent page and wait. A second click shows "Consent page not valid"
+   even though the first one worked.
+4. In a chat, turn the connector on from the tools menu under the message
+   box.
+
+Chat suits checking on and managing apps: their status, logs, sharing,
+starting and stopping. Building an app needs the skills and a local folder
+with git, so do that in Claude Code (Desktop's Code tab is Claude Code, and
+uses this plugin as installed above).
+
+An app that is itself an MCP server is added the same way, with the app's
+own `/mcp` endpoint as the URL; `inno-ship` gives the steps when it ships
+one.
+
 ### Keeping the plugin current
 
 Every skill opens by passing this plugin's `version` to `get_platform_status`,
@@ -370,7 +397,9 @@ everyone who signs in or for the public, `inno-new-app` now reads
 `access.allow_internal` or `access.allow_public` for the user during design
 (`get_config user=`) and says up front whether a platform admin has to allow
 it, instead of the user learning so at the widening review after the app is
-built. The floor stays 5.0.0.
+built. `inno-ship` gives the steps to add a shipped MCP app as a connector in
+Claude Desktop or claude.ai, and in Claude Code, and this README says how to
+add the platform itself to Desktop or claude.ai. The floor stays 5.0.0.
 
 ### House style
 
