@@ -294,6 +294,30 @@ which audience the app is meant for in the end, so the design serves it
 (an anonymous app is reviewed as public from the start, `inno-safety-preflight`),
 and say plainly that it starts members-only.
 
+**When the answer is internal or public, check now whether it is allowed.**
+Whether an app may be widened is a platform setting a platform admin
+controls: `access.allow_internal` (on by default) and `access.allow_public`
+(off by default), each settable for the whole platform, for one owner, or
+for one app. Before you design further, call `get_config user=<the user's
+own sign-in address>` (ask for it if you do not know it) and read the
+target's line, `access.allow_public = <value> [<where it came from>]` (or
+`access.allow_internal`):
+
+- **Allowed** (`true`): say so, and carry on; widening still happens after
+  the app is built and checked.
+- **Not allowed** (`false`): tell the user now, in plain words, that a
+  platform admin has to allow it before the app can be widened, and that the
+  admin can allow it for this one app once it is registered, or for all of
+  the user's apps now. Offer to draft that request (`inno-manage-app`'s
+  **Asking a platform admin**). The app can still be designed, registered
+  and built while the request is pending; it simply stays members-only until
+  the admin allows it. Never suggest working around it by granting access to
+  everyone by hand.
+
+An app-scope value set after registration wins over what you read here, so
+this is an early warning, not the final answer: `inno-manage-app`'s widening
+review reads the app's own value when the time comes.
+
 ### Present the design, THEN ask for approval
 
 The user deserves to see what they're approving. **Write the full design into
