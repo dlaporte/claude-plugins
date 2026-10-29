@@ -191,9 +191,9 @@ is how to choose and fill it.
   tokens as they expire.
   - `token_endpoint` is the URL the pair is POSTed to. Leave `client_auth` at
     its default unless the backend's docs say otherwise; with `"basic"`, a
-    pair holding characters beyond ASCII letters and digits can be refused
-    `invalid_client` (`references/discovery.md`, the note below its table,
-    says why and that `"post"` is the remedy).
+    pair holding characters beyond ASCII letters, digits and `*-._` can be
+    refused `invalid_client` (`references/discovery.md`, the note below its
+    table, says why and that `"post"` is the remedy).
   - `help_text` is **strongly recommended** for the same reason as
     `secret_form`'s: it is the only instruction shown above the two paste
     boxes.
@@ -209,9 +209,9 @@ is how to choose and fill it.
   discovery found, or from the backend's own developer docs;
   `references/discovery.md` maps each discovery field to its config field.
   - `client_auth`: **omit it entirely** for a public (secret-less) client.
-    With `"basic"`, a pair holding characters beyond ASCII letters and
-    digits can be refused `invalid_client` (`references/discovery.md`, the
-    note below its table, says why and that `"post"` is the remedy).
+    With `"basic"`, a pair holding characters beyond ASCII letters, digits
+    and `*-._` can be refused `invalid_client` (`references/discovery.md`,
+    the note below its table, says why and that `"post"` is the remedy).
   - `pkce`: **omit it.** PKCE is on unless you pass an explicit `false`, and
     `false` is a real downgrade, since PKCE is what binds an authorization
     code to the client that asked for it. Set it only after a connect

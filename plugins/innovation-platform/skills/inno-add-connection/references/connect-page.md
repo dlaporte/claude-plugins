@@ -21,14 +21,12 @@ rewrites the connection with `client_auth: "post"`).
   identity; a connection left on an app that cannot fetch one is removed
   with `remove_app_connection`), then `list_connections` for the app (does
   that connection name exist, and is it enabled), then whether the person
-  may use the app. On a
-  members-only app that means its member list (`grant_access` if they are
-  not on it); an internal app admits everyone who signs in, so there the
-  cause is one of the others. The same page also answers for a public app,
-  which takes no Connections, and when the platform could not check the
-  person's access just then (its identity provider or its database did not
-  answer), so one more try a little later is worth it. Never tell the user
-  the backend is down.
+  may use the app. On a members-only app that means its member list
+  (`grant_access` if they are not on it); an internal app admits everyone
+  who signs in, so there the cause is one of the others. The same page also
+  answers when the platform could not check the person's access just then
+  (its identity provider or its database did not answer), so one more try a
+  little later is worth it. Never tell the user the backend is down.
 - **"Connections unavailable"** (HTTP 503, "Connections is not enabled on
   this platform"). The platform's own Connections setup is missing. Nothing
   in the app or the connection fixes it: a platform admin does.

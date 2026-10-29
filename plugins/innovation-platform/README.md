@@ -348,18 +348,18 @@ or output changed, so no reconnect is needed. Its fixes are wording within
 the existing workflows. `inno-add-connection` names the new
 `app_type_unsupported` refusal (an identity-aware app of any type but
 `mcp-container` takes no Connection, and one left on it can still be listed
-and removed), and the connect page's "Not available" counts that cause and
-checks `app_status` first. `inno-new-app` and `inno-migrate-app` say that
-`register_app` echoes `connections` as a reminder only for such an app,
-answering any other type that it takes none. A `client_auth: "basic"` pair
-holding characters beyond ASCII letters and digits can be refused
-`invalid_client`, with `"post"` the remedy, and a "Connecting failed" 502
-that repeats points at the backend's token endpoint. The health re-check
-after a deploy, start or restart is said to run only when
-`health.probe_enabled` is on for the app. `inno-safety-preflight` names a
-crashed accessibility scanner, and the MCP client's "No access" page's next
-step, restarting the app's connection, is in `inno-manage-app`. The floor
-stays 5.0.0.
+and removed), and the check order for the connect page's "Not available"
+counts that cause and starts with `app_status`. `inno-new-app` and
+`inno-migrate-app` say that `register_app` echoes `connections` as a
+reminder only for such an app, answering any other type that it takes none.
+A `client_auth: "basic"` pair holding characters beyond ASCII letters,
+digits and `*-._` can be refused `invalid_client`, with `"post"` the remedy,
+and a "Connecting failed" 502 that repeats points at the backend's token
+endpoint. The health re-check after a deploy, start or restart is said to
+run only when `health.probe_enabled` is on for the app.
+`inno-safety-preflight` names a crashed accessibility scanner, and the MCP
+client's "No access" page's next step, restarting the app's connection, is
+in `inno-manage-app`. The floor stays 5.0.0.
 
 ### House style
 

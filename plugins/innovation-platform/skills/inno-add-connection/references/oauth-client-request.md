@@ -53,8 +53,9 @@ use the backend admin's OIDC vocabulary and must be mapped back:
   `client_secret_basic` → `"basic"`, `client_secret_post` → `"post"`, and
   `none` / public client → **omit `client_auth`** (register no secret).
   With `"basic"`, a client id or secret holding characters beyond ASCII
-  letters and digits can be refused `invalid_client`; `discovery.md`, the
-  note below its table, says why and that `"post"` is the remedy.
+  letters, digits and `*-._` can be refused `invalid_client`;
+  `discovery.md`, the note below its table, says why and that `"post"` is
+  the remedy.
 - the **scopes** go in the **top-level `scopes` arg** of `set_app_connection`
   (a `string[]`), not inside `config`.
 
