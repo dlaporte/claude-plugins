@@ -73,12 +73,13 @@ platform is added as a connector instead, and its tools come without this
 plugin's skills:
 
 1. Open **Settings**, then **Connectors**, and choose **Add custom
-   connector**.
+   connector** (on a Team or Enterprise plan an organization owner may have
+   to add it first).
 2. Name it after your platform and paste the platform's MCP address as its
    URL (the same address as `platform_url` above, ending in `/mcp`; the
    panel's Connect Claude Code card shows it), then **Add**, then
    **Connect**.
-3. Sign in in the browser window that opens, then click **Approve once** on
+3. Sign in in the browser window that opens, then click **Approve** once on
    the consent page and wait. A second click shows "Consent page not valid"
    even though the first one worked.
 4. In a chat, turn the connector on from the tools menu under the message
@@ -86,8 +87,8 @@ plugin's skills:
 
 Chat suits checking on and managing apps: their status, logs, sharing,
 starting and stopping. Building an app needs the skills and a local folder
-with git, so do that in Claude Code (Desktop's Code tab is Claude Code, and
-uses this plugin as installed above).
+with git, so do that in Claude Code (Desktop's Code tab runs Claude Code:
+install this plugin for it as above).
 
 An app that is itself an MCP server is added the same way, with the app's
 own `/mcp` endpoint as the URL; `inno-ship` gives the steps when it ships

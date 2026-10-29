@@ -380,7 +380,7 @@ the steps for the client they use, with the endpoint filled in:
 
 On a members-only or internal app the first connection opens a browser
 window: the platform's sign-in, then a consent page naming the app. Tell the
-user to click **Approve once** and wait: a second click on the same page
+user to click **Approve** once and wait: a second click on the same page
 shows "Consent page not valid" even though the first one worked, and the
 connector is then connected all the same. A public MCP app asks for no
 sign-in. Who may connect follows the app's audience, as above.
