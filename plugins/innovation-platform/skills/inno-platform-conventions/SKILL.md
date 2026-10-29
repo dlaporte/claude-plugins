@@ -606,7 +606,8 @@ secret, a **Variable** (above), not a Connection; if the backend tells your
 users apart, it's a Connection.
 
 Connections are reachable from **`mcp-container`** apps only in v1; the
-other three types can't consume one yet. They are for **identity-aware**
+other three types can't consume one yet, and `set_app_connection` refuses
+them with `app_type_unsupported`. They are for **identity-aware**
 apps only: an anonymous app is never told who its caller is, so no user of
 it can hold one, and `set_app_connection` refuses it with `app_anonymous`
 (§2.2). Setting one up (discovering how

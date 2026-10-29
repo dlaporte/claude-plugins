@@ -114,8 +114,11 @@ base to the digest `get_app_contract` serves.
      all, and it dumps the container logs and fails the job, which fails
      `deploy`.
    - **The runtime health probe.** It binds to the same endpoint after every
-     deploy: immediately on each green one, then on the configured interval
-     (`health.probe_interval_hours`, which `get_config app=<name>` shows). It
+     deploy, when probes run for the app (`health.probe_enabled`, which
+     `get_config app=<name>` shows): immediately on each green one, then on
+     the configured interval (`health.probe_interval_hours`, which
+     `get_config app=<name>` shows too). With probes off, no probe follows a
+     deploy, restart or start, and `app_status` keeps the last verdict. It
      presents one platform credential on every app, which the front door
      recognizes and strips, so the app receives the probe with no
      `Authorization` header and with empty identity headers (R2): that is

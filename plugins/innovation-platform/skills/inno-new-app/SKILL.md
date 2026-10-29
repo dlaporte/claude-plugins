@@ -460,8 +460,11 @@ register_app({ app, repo, description, type, identity, members, accept_guardrail
   tell them).
 - `connections`: optional list of names, when §1 step 5 flagged a per-user
   backend. Pass what you plan to set up; it **creates nothing** (only
-  `set_app_connection` can) and is echoed back in the response as a reminder
-  to configure each one. A badly-shaped name is noted in the response and
+  `set_app_connection` can) and, for an identity-aware `mcp-container`, is
+  echoed back in the response as a reminder to configure each one; any other
+  type's answer says the app takes no Connections (`set_app_connection`
+  refuses it `app_type_unsupported`), the sign that the type is wrong for a
+  per-user backend (§1b's `mcp-function` constraint). A badly-shaped name is noted in the response and
   never fails the registration. The schema bounds the list (at most 16
   names, each at most 64 characters); add any beyond that afterwards with
   `set_app_connection`. An anonymous app takes none: a call with

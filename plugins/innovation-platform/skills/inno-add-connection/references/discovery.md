@@ -33,10 +33,20 @@ gives you most of the `oauth2_code` config directly:
 | `authorization_endpoint` | `config.authorize_endpoint` | copy as-is |
 | `token_endpoint` | `config.token_endpoint` | copy as-is. If its domain differs from `authorization_endpoint`'s (Google, for example, signs in at accounts.google.com and issues tokens at oauth2.googleapis.com), that can be genuine, but `set_app_connection` will answer with a `WARNING:` that tokens go to a different site than the login page (the same applies to `revocation_endpoint`). Before provisioning, confirm both addresses in the backend's own developer documentation, not only in this document, and tell the user about the split in plain terms. |
 | `revocation_endpoint` | `config.revocation_endpoint` | copy as-is; **omit if the document doesn't advertise one**. Setting it lets a disconnect from the user's own account page revoke their token at the backend rather than only forgetting it platform-side. The `disconnect_user_connection` MCP tool is local only and never revokes upstream. |
-| `token_endpoint_auth_methods_supported` | `config.client_auth` | this is an **enum, not a copy**: `client_secret_basic` → `"basic"`, `client_secret_post` → `"post"`. If the only method is `none` (public client, PKCE-only), **omit `client_auth` entirely** and register the client without a secret. If both basic and post are offered, prefer `"basic"`. |
+| `token_endpoint_auth_methods_supported` | `config.client_auth` | this is an **enum, not a copy**: `client_secret_basic` → `"basic"`, `client_secret_post` → `"post"`. If the only method is `none` (public client, PKCE-only), **omit `client_auth` entirely** and register the client without a secret. If both basic and post are offered, prefer `"basic"`, and read the note below this table on how `"basic"` encodes the pair. |
 | `code_challenge_methods_supported` includes `S256` | `config.pkce` | **Omit the key.** PKCE is ON by default; only an explicit `false` disables it, and the platform warns when you do. Do NOT set `false` just because the discovery document is silent: many providers support PKCE without advertising it, and the flow degrades loudly at connect time if one genuinely can't. Set `false` only after a connect attempt actually fails on `code_challenge`. |
 | `scopes_supported` | the **top-level `scopes` arg** of `set_app_connection` (a `string[]`), *not* `config` | pick the minimal set the app actually needs, not the whole list. Passing `scopes` as a top-level arg is the canonical place; it takes precedence over any `config.scopes` at connect time. |
 | `grant_types_supported` includes `refresh_token` | `config.refresh` | this is an **enum, not a boolean**: set `"static"` (the safe default: most providers return the same refresh token each time), or `"rotating"` **only if** the backend's own docs say it issues a fresh refresh token on every refresh. If `refresh_token` is **absent** from `grant_types_supported`, set `"none"`. |
+
+With `"basic"` the platform form-encodes the client id and secret before
+base64 (RFC 6749 section 2.3.1), so a pair holding any character beyond
+ASCII letters, digits and `*-._` reaches the token endpoint
+percent-encoded, and a backend that does not decode it refuses with
+`invalid_client`: on `oauth2_code` the person sees `<backend> refused the
+connection` naming `invalid_client`; on `oauth2_client_creds` the form keeps
+saying the pair was rejected though it was copied correctly. The remedy is
+to rewrite the connection with `client_auth: "post"` through
+`set_app_connection`.
 
 One reading of this document changes the strategy outright:
 `grant_types_supported` of **only** `["client_credentials"]`, with no

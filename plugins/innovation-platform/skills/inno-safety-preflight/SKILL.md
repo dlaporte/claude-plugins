@@ -265,9 +265,12 @@ step is green, so neither `get_ci_status`'s job conclusions nor `gh run view
   report, beginning `a11y:` and `dockerfile-report:`.
 
 There is no report when the `container` job failed before its reports ran
-(at its smoke test, or at the image scan that follows it), or when the
+(at its smoke test, or at the image scan that follows it), when the
 app's `safety.a11y.mode` is `off` (the run warns
-`Accessibility check off` instead). `Accessibility scan did not run` means
+`Accessibility check off` instead), or when the scanner itself crashed (the
+run warns `Accessibility scan crashed`, then `Accessibility scanner error`,
+both platform-side and never blocking: re-run the job, and tell a platform
+admin if it repeats). `Accessibility scan did not run` means
 no page was scanned, which is never a clean result; read the reason it
 gives. Which reasons are the platform's (they never block) and which are the
 app's (they block only in `enforce` mode, where the job also fails with

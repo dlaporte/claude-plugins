@@ -9,7 +9,11 @@ keeps asking them to approve it again, or never reaches the approval page.
   with that account, and offers to sign out to use another. The fix is the
   owner's `grant_access`, or widening the app to internal with
   `set_app_access` after the widening review (the skill's `set_app_access`
-  section).
+  section). The page's next step, after signing out, is to restart the
+  app's connection in the MCP client and sign in with the account it is
+  shared with (in Claude Code, `/mcp`, then Reconnect): an MCP client signs
+  in again only when its connection restarts, so after the owner's
+  `grant_access` the person restarts it the same way.
 - **A public MCP app takes no authorization.** An anonymous app widened to
   public answers at its MCP address with no sign-in and no token, and the
   platform issues no token for it, so an authorization started for it is

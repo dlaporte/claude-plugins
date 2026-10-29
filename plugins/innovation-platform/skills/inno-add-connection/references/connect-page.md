@@ -5,16 +5,23 @@ after opening a connect link. The connect link opens a platform page, and
 each failure it can show has one meaning. Read the page title the user
 reports before changing anything. A pasted token or client pair the backend
 rejects is not one of these: the form comes back with a sentence saying so,
-and the fix is to copy it again.
+and the fix is to copy it again, unless the connection uses
+`client_auth: "basic"` and the pair holds characters beyond ASCII letters,
+digits and `*-._` (`discovery.md`, the note below its table: the owner
+rewrites the connection with `client_auth: "post"`).
 
 **Not the person's own doing:**
 
 - **"Not available"** ("That connection is not available to you"). One
-  answer, on purpose, for several causes: the app name is wrong, the
-  connection name is wrong, the connection is paused (`disabled`), or the
-  person may not use the app. The page will not say which. Check in this
-  order: `list_connections` for the app (does that connection name exist,
-  and is it enabled), then whether the person may use the app. On a
+  answer, on purpose, for several causes: the app name is wrong, the app
+  cannot fetch a Connection (it is anonymous, or of any type but
+  `mcp-container`), the connection name is wrong, the connection is paused
+  (`disabled`), or the person may not use the app. The page will not say
+  which. Check in this order: `app_status` for the app (its type and
+  identity; a connection left on an app that cannot fetch one is removed
+  with `remove_app_connection`), then `list_connections` for the app (does
+  that connection name exist, and is it enabled), then whether the person
+  may use the app. On a
   members-only app that means its member list (`grant_access` if they are
   not on it); an internal app admits everyone who signs in, so there the
   cause is one of the others. The same page also answers for a public app,
@@ -42,13 +49,17 @@ and the fix is to copy it again.
   approval rules apply).
 - **"Connecting failed"** ("Try again from your chat in a minute"). With
   HTTP 502, the backend's own sign-in or token address failed in a way a
-  retry can help (a 5xx, a 408, a 425 or a 429, a timeout, or no answer)
-  while the platform was checking or storing the credential, or HTTP 200
+  retry can help (a 5xx, a 408, a 425 or a 429, a timeout, or no answer),
+  or with an answer the platform could not read (a token answer that is not
+  the JSON a token endpoint returns), while the platform was checking or
+  storing the credential, or HTTP 200
   when the backend's own sign-in sent back an error that passes in a
   minute; with HTTP 503, the platform's own sealing key was briefly
   unreachable. Wait a minute and start again from the chat; if a 502 keeps
   coming, the backend is the place to look, and if a 503 does, a platform
-  admin is.
+  admin is. An unreadable answer comes back the same on every try, so a 502
+  that repeats points at the backend's token endpoint or the connection's
+  `token_endpoint` (read it with `list_connections`), not at the person.
 
 **The person's own account or browser:**
 
