@@ -103,7 +103,8 @@ Check all four before doing anything else:
 - **The app is `mcp-container`.** Only container-shaped MCP apps can reach the
   platform's Connections seam in v1 (§2.2's **Availability** says why). If the
   app is `function`, `mcp-function`, or plain `container`, say plainly that
-  this app type can't consume a Connection yet, and stop; don't half-wire it.
+  this app type can't consume a Connection yet, and stop; don't half-wire it
+  (`set_app_connection` refuses it with `app_type_unsupported`).
   (If you're not sure of the app's type, check `app_status` or ask the user.
   A `container` app that only serves a browser UI, with no MCP endpoint, is
   also out of scope today.)
@@ -189,7 +190,10 @@ is how to choose and fill it.
   token before saving (a bad pair is rejected on the spot) and fetches fresh
   tokens as they expire.
   - `token_endpoint` is the URL the pair is POSTed to. Leave `client_auth` at
-    its default unless the backend's docs say otherwise.
+    its default unless the backend's docs say otherwise; with `"basic"`, a
+    pair holding characters beyond ASCII letters, digits and `*-._` can be
+    refused `invalid_client` (`references/discovery.md`, the note below its
+    table, says why and that `"post"` is the remedy).
   - `help_text` is **strongly recommended** for the same reason as
     `secret_form`'s: it is the only instruction shown above the two paste
     boxes.
@@ -205,6 +209,9 @@ is how to choose and fill it.
   discovery found, or from the backend's own developer docs;
   `references/discovery.md` maps each discovery field to its config field.
   - `client_auth`: **omit it entirely** for a public (secret-less) client.
+    With `"basic"`, a pair holding characters beyond ASCII letters, digits
+    and `*-._` can be refused `invalid_client` (`references/discovery.md`,
+    the note below its table, says why and that `"post"` is the remedy).
   - `pkce`: **omit it.** PKCE is on unless you pass an explicit `false`, and
     `false` is a real downgrade, since PKCE is what binds an authorization
     code to the client that asked for it. Set it only after a connect
@@ -330,10 +337,16 @@ can remain), so a retry repeats the whole of it. An
 this connection or its pause, is in flight: retry once after a moment,
 never in a loop.
 
-Five answers are **not** bad arguments, so don't retry blindly:
+Six answers are **not** bad arguments, so don't retry blindly:
 
 - **`app_anonymous`**: the app is anonymous, and an anonymous app has no
   Connections (step 1). Stop, and say so plainly.
+- **`app_type_unsupported`**: the app is identity-aware but not an
+  `mcp-container` (it is `function`, `mcp-function` or `container`), the one
+  type that can fetch a Connection (step 1). Stop, and say so plainly; a
+  connection already on such an app can still be listed and removed
+  (`list_connections`, `remove_app_connection`), and removing it is the
+  cleanup.
 - **`encryption_key_missing` or `encryption_key_invalid`**: passing a
   `client_secret` needs the platform's encryption key, and it is unset or
   malformed. Relay the message to the user and stop: nothing you change in

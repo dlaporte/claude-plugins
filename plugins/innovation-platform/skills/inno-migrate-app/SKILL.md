@@ -332,8 +332,13 @@ restore point is.
    (`inno-new-app` §3's `type` bullet has the rule). Pass `connections`
    only if step 2's assessment found per-user backend auth to replace: a list of
    the names you plan to set up. It creates nothing (only `set_app_connection`
-   can); the response echoes it back as a reminder to configure each one. An
-   anonymous app takes none (`app_anonymous`). The
+   can); for an identity-aware `mcp-container` the response echoes it back as
+   a reminder to configure each one, and any other type's answer says the app
+   takes no Connections (`set_app_connection` refuses it
+   `app_type_unsupported`), the sign that the type is wrong for a per-user
+   backend. A migrated app whose per-user backend auth must stay needs the
+   `mcp-container` type, settled before call 1 (`inno-add-connection` step
+   1). An anonymous app takes none (`app_anonymous`). The
    repo already exists, so ignore the response's "create it first from the
    platform template" note.
 

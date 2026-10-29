@@ -429,9 +429,12 @@ answering yet: <what the probe saw>, checked again within the hour)`,
 followed by `; last recorded: <status>` when an earlier probe recorded one.
 The probe a deploy fires never judges a failure: it defers every unhealthy
 result to an hourly pass and notifies no one, while a healthy answer is
-recorded at once. The rule and its clocks are the contract's R2
-(`get_app_contract` with `sections: ["R2"]`), and `inno-containerize` item 4
-is the plugin's home for them. What that means for you:
+recorded at once. All of this holds only when probes run for the app
+(`health.probe_enabled`, which `get_config app=<name>` shows): with them
+off, no probe follows a deploy or a restart, no pending line appears, and
+`app_status` keeps the last verdict. The rule and its clocks are the
+contract's R2 (`get_app_contract` with `sections: ["R2"]`), and
+`inno-containerize` item 4 is the plugin's home for them. What that means for you:
 
 - The last-recorded status is from before this deploy and says nothing
   about it. On a brand-new app a pending line is normal while a container

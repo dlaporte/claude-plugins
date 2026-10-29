@@ -167,7 +167,9 @@ anything. If an app should genuinely never expire, that's the admin-set
 Its description says what a start does and who is notified: the app serves
 again within seconds, its address showing the app in place of the stopped
 page. Its health is checked again right after the start, as after a deploy,
-so `app_status` reads pending, then the probe's answer. A start of an app
+so `app_status` reads pending, then the probe's answer, when probes run for
+the app (`health.probe_enabled`; with them off, `app_status` keeps the last
+verdict: `inno-containerize` item 4). A start of an app
 that never completed a deploy returns it to not deployed instead: nothing
 is attached, its address now shows the page saying it has not been deployed
 yet, it uses no self-service start, and its first-deploy window starts
@@ -501,7 +503,9 @@ On a `container` or `mcp-container` app it starts a new generation of the
 app's container: the app's next request starts a new container instance on
 its current image and variables, and the previous one stops from the new
 host's first request on, or within about six minutes whatever the traffic;
-its description says the rest. For a running app (active or warned) it
+its description says the rest. For a running app (active or warned) whose
+probes run (`health.probe_enabled`; with them off, `app_status` keeps the
+last verdict: `inno-containerize` item 4) it
 re-checks the app's health right after, as a deploy does: `app_status` and
 the panel read pending, then the probe's answer, within about a minute. So
 read `app_status` a minute after a restart to tell whether it fixed the
