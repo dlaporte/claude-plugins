@@ -76,8 +76,8 @@ exists, and skills added since your build are simply missing. The same line
 advises, without blocking, when a newer version than yours is available.
 Either way the fix is the commands on the status's `Update commands:` line
 that `get_platform_status` serves. The panel's Connect Claude Code card shows
-the marketplace add, install, `mcp add` and configure commands, but not the
-update commands. Update the marketplace, update the plugin, and restart Claude
+the marketplace add, install and configure commands, but not the update
+commands. Update the marketplace, update the plugin, and restart Claude
 Code.
 
 An installed plugin is cached per version, so
@@ -360,6 +360,10 @@ run only when `health.probe_enabled` is on for the app.
 `inno-safety-preflight` names a crashed accessibility scanner, and the MCP
 client's "No access" page's next step, restarting the app's connection, is
 in `inno-manage-app`. The floor stays 5.0.0.
+
+Plugin 5.1.3 follows platform v0.17.21, whose Connect Claude Code card offers
+the plugin alone: this README no longer lists a bare `mcp add` among the
+card's commands. No skill or tool changed; the floor stays 5.0.0.
 
 ### House style
 
