@@ -365,6 +365,13 @@ Plugin 5.1.3 follows platform v0.17.21, whose Connect Claude Code card offers
 the plugin alone: this README no longer lists a bare `mcp add` among the
 card's commands. No skill or tool changed; the floor stays 5.0.0.
 
+Plugin 5.2.0 follows platform v0.17.22. When the user means a new app for
+everyone who signs in or for the public, `inno-new-app` now reads
+`access.allow_internal` or `access.allow_public` for the user during design
+(`get_config user=`) and says up front whether a platform admin has to allow
+it, instead of the user learning so at the widening review after the app is
+built. The floor stays 5.0.0.
+
 ### House style
 
 Every skill in this plugin speaks to a broad, largely non-technical userbase,
