@@ -110,8 +110,10 @@ directory the platform reads accounts from: `directory okta`, or `directory
 none`. When that line goes on to say what the platform loses with no
 directory (for `none`, and for a directory named but not set up), this
 skill calls the instance one **with no directory**; otherwise it has **a
-directory**. Name the identity provider to the user as that line does,
-never by a product name it does not use.
+directory** (the platform's own answers may call a directory "an identity
+provider lookup"). When you need to name the identity provider, use that
+line's name, never another product's; until the user shows fluency, "your
+organization's sign-in" is enough.
 
 The platform's own admin list decides, and `list_admins` shows it. An admin
 is someone on that list whose account can still sign in, checked through
@@ -122,7 +124,8 @@ the one account-status answer every tool uses, held for
   but loses the powers within that window, and reactivating the account
   restores them. With no directory the platform cannot learn of a
   suspension, so an admin keeps the powers until removed with
-  `revoke_admin`.
+  `revoke_admin`, or until their sessions and grants end (the lengths the
+  `Identity provider:` line names).
 - While the directory cannot be reached, admin powers fail closed: an admin
   whose status is unknown is not an admin for that call. An admin-only tool
   then answers that the tool is not found (an error, not `forbidden`), a
@@ -237,7 +240,13 @@ the empty list instead (**`admin_table_empty`**, above).
 1. **Dry run** (the default). It reports who the admin list lacks, and its
    last line is the run's parity.
 2. **Read it with the admin.** Say why each line that was not compared was
-   skipped before going on.
+   skipped before going on. Check that the group on the status's `Admin
+   group:` line is this instance's own: never import an admin group another
+   instance on the same identity provider also reads, since each instance
+   uses its own admin group name (the operator guide's "Instances sharing an
+   identity provider", `docs/OPERATIONS.md` §6.3.1 in the platform's
+   repository; no tool serves it). If another instance reads the same group,
+   stop and tell the operator.
 3. **Apply** (`apply: true`), after an explicit yes. It answers
    `Applied: N added` and then `writes: clean` or `writes: N failed`, never
    parity, and `writes: clean` is counted from its own writes, not read
@@ -524,8 +533,9 @@ What to do with its refusals and answers:
   release made for an app (an app registered before platform v0.16.5, or an
   MCP app before v0.16.4) stays there after the purge, and no app admits by
   it. The operator removes one by hand: the operator guide's "Leftover app
-  groups and rules" (`docs/OPERATIONS.md` in the platform's repository; no
-  tool serves it) says how to tell whether one is this instance's.
+  groups and rules" (`docs/OPERATIONS.md` in the platform's repository, its
+  Teardown section; no tool serves it) says how to tell whether one is this
+  instance's.
 
 ## `rebuild_app({ app })`: rebuild the released code
 
