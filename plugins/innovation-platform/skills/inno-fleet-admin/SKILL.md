@@ -110,8 +110,8 @@ directory the platform reads accounts from: `directory okta`, or `directory
 none`. When that line goes on to say what the platform loses with no
 directory (for `none`, and for a directory named but not set up), this
 skill calls the instance one **with no directory**; otherwise it has **a
-directory** (the platform's own answers may call a directory "an identity
-provider lookup"). When you need to name the identity provider, use that
+directory**, the word the platform's own answers use too. When you need to
+name the identity provider, use that
 line's name, never another product's; until the user shows fluency, "your
 organization's sign-in" is enough.
 
