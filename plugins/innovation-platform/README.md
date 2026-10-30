@@ -432,6 +432,14 @@ repo's files before reading them, so reading the reference code no longer
 names a file that is not there and shows the user a "Failed" step. No tool
 changed; the floor stays 6.0.0.
 
+Plugin 6.1.0 follows platform v0.17.24, contract 40. The platform's own
+answers and its contract documents now say "directory" for the identity
+provider's account lookup, as the skills already did, so `inno-fleet-admin`
+drops the note that bridged the two words. Sign-in now follows the
+provider's discovery document for how the platform authenticates at its token
+endpoint, and a directory named without its secret shows a red dot on the
+panel's Status card. No tool changed; the floor stays 6.0.0.
+
 ### House style
 
 Every skill in this plugin speaks to a broad, largely non-technical userbase,
