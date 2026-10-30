@@ -746,10 +746,18 @@ After call 2, the repo has been **pruned to the deployment type you chose**:
 the template carries every scaffold and the platform rewrote the repo at
 registration. No type ships `.github/workflows/deploy.yml`: you write it
 from call 2's snippet per §3. A
-**function** repo has the TS reference (`app/index.ts`),
-an **mcp-function** repo the MCP-server TS reference (also `app/index.ts`), and
+**function** repo has the TS reference (`app/index.ts` and the identity
+helper `app/identity.ts`, and no `app/package.json` until you add a
+dependency), an **mcp-function** repo the MCP-server TS reference (also
+`app/index.ts` and `app/identity.ts`, plus `app/package.json` and
+`app/package-lock.json`), and
 a **container** repo the Python/Starlette reference (`app/`, incl. `main.py`,
 `storage.py`, `templates/`, `requirements.txt`, plus `Dockerfile` and `lib/`).
+An app registered `anonymous` has no `app/identity.ts` in either function
+type. **List the files before you read them** (for example `git ls-files`)
+and read only the ones that are there: one command that names a file the
+type does not ship fails as a whole, and the user sees "Failed" on a step
+that went fine.
 An **mcp-container** repo ships **its own overlay** (`scaffold/mcp-container/`):
 a stateless FastMCP starter for `app/main.py`, plus its own `README.md`,
 `CLAUDE.md`, and `app/requirements.txt`, applied over the container root

@@ -425,6 +425,13 @@ named Okta. The v0.17.23 release raises the floor to
 at their Version gate until it does: update and reconnect once, as at
 5.0.0.
 
+Plugin 6.0.1 follows platform v0.17.23, still contract 39. `inno-new-app`
+names every file each type's scaffold ships (a `function` repo has no
+`app/package.json` until a dependency is added) and has the agent list the
+repo's files before reading them, so reading the reference code no longer
+names a file that is not there and shows the user a "Failed" step. No tool
+changed; the floor stays 6.0.0.
+
 ### House style
 
 Every skill in this plugin speaks to a broad, largely non-technical userbase,
