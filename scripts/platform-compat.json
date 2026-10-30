@@ -38,8 +38,8 @@
     "docs/PLATFORM-DOCS.md": "937f9b03e74ec56b9412dadec4c2dfa0a3bc97149201c4c64979bda094c87268"
   },
   "tools": {
-    "count": 54,
-    "revision": "381bd7f71d768bfedb898176e2eaba7103cd18b0e3932023d665741feff9a6f2",
+    "count": 53,
+    "revision": "4982f2c7b97de977c72560c93914dbb723eedcb3aa723f5dddacce40aa0c24bb",
     "list": [
       {
         "name": "accept_naming_change",
@@ -73,17 +73,6 @@
           "app"
         ],
         "inputRevision": "c6c59b7052bd6e5e515379f0ee5cdd5c0830d050632184170c4df16a65d1edff"
-      },
-      {
-        "name": "claim_instance_objects",
-        "readOnly": false,
-        "adminOnly": true,
-        "args": [
-          "apply",
-          "include_admin_group"
-        ],
-        "required": [],
-        "inputRevision": "f53409bb5511d5878f95192e52d4b6813d23c1b63083043c24151b1a6f730c00"
       },
       {
         "name": "create_support_bundle",
@@ -267,7 +256,7 @@
         ],
         "required": [],
         "inputRevision": "8f76013ebddc2b879c8fe537190d09af7df0c2fda4187fd4c065edab7b152cff",
-        "outputRevision": "ce0aa9d6eacba321de5089b2733a3825e313c7043247d63131b69cdd2de80dda"
+        "outputRevision": "4341882688915cc81370fb55b8e16e7b46756a7b11fb74854a9165b3bf1e9deb"
       },
       {
         "name": "grant_access",
@@ -296,7 +285,7 @@
         "inputRevision": "09a114eaed54059d449a719a175af973a3ff98afae77165cf27a752534d44c30"
       },
       {
-        "name": "import_okta_memberships",
+        "name": "import_admin_group",
         "readOnly": false,
         "adminOnly": true,
         "args": [
@@ -304,7 +293,7 @@
         ],
         "required": [],
         "inputRevision": "17f07bfeb73bcb831866b9fa4bed9539aa2b441efed84a90e18e80aecfb58e6d",
-        "outputRevision": "71650bb883623098ef472f71cd745b1bba049d9a586413c775e0183d5aced07e"
+        "outputRevision": "0bb76f2a2cdce8938ef3b79dd299ba6b0eab3948c908fcd3134ddb7d8f82d8d3"
       },
       {
         "name": "link_app_data",
@@ -718,10 +707,10 @@
   },
   "plugins": {
     "app": {
-      "minVersion": "5.0.0"
+      "minVersion": "6.0.0"
     },
     "admin": {
-      "minVersion": "1.5.0"
+      "minVersion": "1.7.0"
     }
   },
   "behavior": {
@@ -732,7 +721,7 @@
     }
   },
   "pinned": {
-    "ref": "v0.17.22",
-    "commit": "9698bc0f6bf18e0e3adb82bbeb0ddb7c4f36bf16"
+    "ref": "v0.17.23",
+    "commit": "fb37fc8e2afcc16561e5bdec332ec6eebc06002d"
   }
 }

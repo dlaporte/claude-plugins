@@ -40,8 +40,9 @@ plugin's `.mcp.json`). Every tool authorizes the caller server-side against
 the signed-in identity from the MCP OAuth session: **you can only manage
 apps you own, unless you are a platform admin.** The platform's own admin
 list decides who that is (`list_admins`, admin-only, shows it): once it
-holds anyone, adding or removing someone in the Okta group on the status's
-`Admin group:` line by hand changes nothing here. A `forbidden` error back
+holds anyone, adding or removing someone by hand in the identity provider's
+group on the status's `Admin group:` line changes nothing here. A `forbidden`
+error back
 from any of these tools means exactly that; don't retry it and don't try to
 work around it locally: there is no local escalation, because authorization
 lives in the platform, not the client. `forbidden` is one of the refusals
@@ -49,7 +50,7 @@ every tool can answer, named once in the platform's MCP server note;
 `inno-platform-conventions`' **Refusals every tool shares** section says what
 each means.
 
-A platform admin's work across the fleet (the admin list and the Okta import,
+A platform admin's work across the fleet (the admin list and its import,
 ownership transfers, purges, rebuilds, ending someone's panel and browser
 app sessions,
 naming, settings, the audit log and the platform's logs) is
@@ -94,7 +95,8 @@ their side.
 
 If the panel, a download link, or a Connections page answers
 `account_inactive` (HTTP 401, "This account can no longer sign in"), that
-person's Okta account is suspended or deprovisioned. The platform has ended
+person's account at the identity provider is suspended or deprovisioned. The
+platform has ended
 their session and nothing in this skill can undo it: the account itself has to
 be restored by a platform admin or the identity team. The same account check
 ends their access to every app, MCP and browser alike, and their platform
@@ -269,7 +271,8 @@ different name. An admin's immediate `purge_app` is `inno-fleet-admin`'s.
 These tools write the platform's **member list** for the app, its only
 store, and the platform decides from that list and the app's audience who
 may reach the app, on every request. So share and unshare with these tools,
-never by hand in Okta. Their descriptions say exactly what each writes and
+never by hand at the identity provider. Their descriptions say exactly what
+each writes and
 who is notified; `revoke_access`'s description and contract R3
 (`get_app_contract` with `sections: ["R3"]`) say when a change reaches a
 person. Quote the app's hostname from the `URL:` line of `app_status` or
@@ -338,8 +341,10 @@ must confirm.
   no tool can let it in: the list is the instance manifest's
   `identity.allowedEmailDomains`, which only the platform's operator can
   change, by editing the manifest and redeploying.
-- **An address Okta does not know is granted anyway**, with a `WARNING:` in
-  the result, where the platform can ask Okta. Relay the warning, and check
+- **An address the identity provider does not know is granted anyway**,
+  with a `WARNING:` in the result, where the platform has a directory to ask
+  (the `Identity provider:` line of `get_platform_status` says whether it
+  does). Relay the warning, and check
   the spelling with the user: if it is mistyped, `revoke_access` removes it;
   if the person's account is still being created, the grant applies once it
   exists.
@@ -416,7 +421,8 @@ sign-in` is not pinned to an account yet.
   person on each app it lists as reading the source's data, and redeploy
   each one it lists as revoked but still deployed (the owner's next release
   tag, `inno-ship`), or ask a platform admin to run `rebuild_app` for it
-  (**Asking a platform admin**, above). Never repair it by hand in Okta.
+  (**Asking a platform admin**, above). Never repair it by hand at the
+  identity provider.
   `list_app_links` enumerates the consumers at any time; the audit rows a
   cascade writes are `inno-fleet-admin`'s.
 

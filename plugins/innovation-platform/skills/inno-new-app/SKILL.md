@@ -40,8 +40,9 @@ repo **they own** from the platform template -> `register_app` (first call)
 -> commit the proof-of-control file it names + install the platform GitHub App
 -> `register_app` (second call) provisions + binds it -> pull + scaffold. Requires the
 `inno-platform` MCP server (ships with this plugin's `.mcp.json`) to be
-connected. The first call to any `inno-platform` tool triggers an Okta browser
-login. That's expected, not an error: wait for it to complete. **If the
+connected. The first call to any `inno-platform` tool triggers a browser
+sign-in through your organization's identity provider. That's expected, not an
+error: wait for it to complete. **If the
 connector wasn't already authorized when the session started, waiting isn't
 enough**: mid-session authorization alone does not expose the tools (the MCP
 client enumerates tools at startup); the user must authorize it AND you must
@@ -132,8 +133,9 @@ rule.
    is not required and can be anything. The repo may be public or private.
 3. **One-line purpose**: becomes the app's `description` (at most 500
    characters; the tool schema rejects a longer one).
-4. **Initial members' emails** (optional, can be empty): Okta emails to grant
-   access alongside the owner. The list can be added to later with the
+4. **Initial members' emails** (optional, can be empty): the addresses they
+   sign in with, to grant access alongside the owner. The list can be added to
+   later with the
    `inno-manage-app` skill's `grant_access`.
 5. **Does the app need to reach another service *as each person using it*?**
    Not the sign-in in front of the app (the platform runs that for free on a
@@ -459,16 +461,18 @@ register_app({ app, repo, description, type, identity, members, accept_guardrail
   does not record it, so pass the same `identity` on both calls, call 2
   above all, and check that line.
 - `accept_guardrails: true`: required; you must have done the §1a review.
-- `members` is an optional list of Okta emails (at most 50). Each address is
+- `members` is an optional list of the addresses people sign in with (at
+  most 50). Each address is
   added to the app's member list at once, and is notified that the app was
   shared with them (in-platform plus email per their own notification
   settings) when the app's first deploy completes, once its address answers,
   not at registration; call 2's answer says so. Name only people who should
-  hear about it when it goes live. An address Okta does not know is
-  still added but not notified, and call 2's answer names it on a
+  hear about it when it goes live. An address the identity provider does
+  not know is still added but not notified, and call 2's answer names it on a
   `WARNING:` line of its own. Check its spelling with the user, and if it
   is mistyped, remove it with `revoke_access` (`inno-manage-app`). An address the
-  platform could not check in Okta is added too, with its own warning. Each
+  platform could not check with the identity provider is added too, with its
+  own warning. Each
   added address is pinned to an account as `grant_access` pins it
   (`inno-manage-app`), and the owner's own row to the account that registers
   the app (when a platform admin resumes someone else's registration, the

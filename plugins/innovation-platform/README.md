@@ -55,11 +55,11 @@ claude plugin install innovation-platform@<marketplace> --config platform_url=ht
 the address is the only setting.
 
 The first tool call against the `inno-platform` MCP server (e.g. from the
-`inno-new-app` skill's `register_app`) opens a browser window for an **Okta
-login**.
+`inno-new-app` skill's `register_app`) opens a browser window to **sign in
+through your organization's identity provider**.
 This is expected: the MCP server authenticates you as yourself, so every
 action it takes (creating an app, granting access, stopping or starting one)
-is attributable to your real Okta identity, not a shared service credential.
+is attributable to your own sign-in, not a shared service credential.
 **If the connector was NOT already authorized when your Claude Code session
 started, authorizing it mid-session (e.g. via `/mcp`) is not enough**: the
 MCP client enumerates tools at startup, so `inno-platform`'s tools stay
@@ -313,7 +313,7 @@ audit reference reads the edge pass's three rows, `app_edge_reconciled`,
 4.5.0 also corrects three sentences that platform v0.17.8, which released
 no app plugin, made false. When `list_admins`' list is not simply what the
 platform's admin table held, a line of its own under the list says where it
-came from (the Okta admin group, or the manifest's
+came from (the identity provider's admin group, or the manifest's
 `identity.initialAdmins`), and `inno-fleet-admin` no longer quotes the old
 words. A push builds and gates
 a container app's image but generates no SBOM and records no image id,
@@ -335,7 +335,7 @@ item whole, naming the item when the call names two or more, and stores or
 removes nothing. `mark_all_notifications_read` takes `scope`: `mine`, the
 default, marks the caller's own notices (an admin's include the admins'
 shared ones), and `platform`, a platform admin's alone, marks every notice
-on the platform. `import_okta_memberships` takes `apply` alone. The skills
+on the platform. The admin-list import takes `apply` alone. The skills
 follow, and say what platform v0.17.10 changed: a start of an app that
 never completed a deploy returns it to not deployed with its first-deploy
 window started again and uses no self-service start; an answer a retry
@@ -402,13 +402,37 @@ built. `inno-ship` gives the steps to add a shipped MCP app as a connector in
 Claude Desktop or claude.ai, and in Claude Code, and this README says how to
 add the platform itself to Desktop or claude.ai. The floor stays 5.0.0.
 
+Plugin 6.0.0 follows platform v0.17.23, still contract 39. That release
+signs people in through any OpenID Connect identity provider and keeps Okta as
+the one directory it can read accounts from. The platform no longer serves
+the admin group's marking tool (claim_instance_objects), so it lists 53
+tools, and the admin-list import is now `import_admin_group`
+(import_okta_memberships before), whose `counts.okta_failed` is
+`counts.directory_failed`; `grant_admin`'s `okta_user_not_found` is
+`directory_account_not_found`, and `list_admins`' `okta_fallback` source is
+`directory_fallback`. `get_platform_status` gains an `Identity provider:`
+line, and an `identity` object in its typed output, naming the provider by
+the instance's display name and saying whether the instance has a
+directory; with none, the line says what the platform cannot learn and
+which settings shorten it. The skills follow: `inno-fleet-admin` names
+`import_admin_group` and `directory_account_not_found`, drops the marking
+tool's section, says what an instance with no directory does at each step
+(the import refuses `directory_unavailable`, an offboarding relies on
+`revoke_sessions` and `revoke_access`, and a purge deletes nothing at the
+identity provider), and every skill names the identity provider where it
+named Okta. The v0.17.23 release raises the floor to
+6.0.0, so the platform tells every 5.x build to update, and its skills stop
+at their Version gate until it does: update and reconnect once, as at
+5.0.0.
+
 ### House style
 
 Every skill in this plugin speaks to a broad, largely non-technical userbase,
 so the sentences you say back to a user use plain terms: "access", "a
 database", "file storage", "your app's address", "sign-in". Do **not** name
-specific technologies or providers (Cloudflare, D1, R2, Okta, Workers,
-wrangler, Trivy) unless the user has expressed technical ability or asks
+specific technologies or providers (Cloudflare, D1, R2, Workers, wrangler,
+Trivy, or the product behind the instance's sign-in) unless the user has
+expressed technical ability or asks
 questions that reveal it. The precision in the skills is for your own
 reasoning, your commits and your tool calls, not for recitation. Each skill
 that speaks to the user states this in one line and points here.
@@ -469,12 +493,12 @@ produce is a Dockerfile and app code rather than sentences a user reads.
   keeping its own list.
 - **`skills/inno-fleet-admin`**: for platform admins only, the actions that
   reach across the fleet: the admin roster (`list_admins`, `grant_admin`,
-  `revoke_admin`), filling an empty admin list from the Okta admin group
-  (`import_okta_memberships`, its only job),
+  `revoke_admin`), filling an empty admin list from the identity provider's
+  admin group (`import_admin_group`, its only job),
   reassigning an app's owner, purging an app, rebuilding an app's released
   code at its live tag (`rebuild_app`), ending one person's panel and browser
-  app sessions everywhere, marking the instance's Okta admin group,
-  accepting a naming change, platform configuration, and the fleet-wide
+  app sessions everywhere, accepting a naming change, platform configuration,
+  and the fleet-wide
   reads (every app, every user, the audit log, the platform's logs and its
   backup). An owner manages their own apps with `inno-manage-app`.
 
