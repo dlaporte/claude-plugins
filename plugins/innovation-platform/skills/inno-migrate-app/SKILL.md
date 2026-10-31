@@ -35,6 +35,11 @@ Before anything else in this skill, do these six steps in order.
 
 Carry on.
 
+**Starting from a Claude artifact?** When what the user has is an artifact
+made in claude.ai or Claude Desktop (a React or HTML page, not a repository),
+use the `inno-convert-artifact` skill instead: it builds the artifact as a
+function app with a browser interface and keeps its saved data.
+
 An existing repo now deploys **in place**. You register the user's **own** repo
 with the `register_app` MCP tool and make that same repo satisfy the platform
 contract: there is no porting into a freshly provisioned repo and

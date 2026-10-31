@@ -35,6 +35,11 @@ Before anything else in this skill, do these six steps in order.
 
 Carry on.
 
+**Starting from a Claude artifact?** When what the user has is an artifact
+made in claude.ai or Claude Desktop (a React or HTML page, not a repository),
+use the `inno-convert-artifact` skill instead: it builds the artifact as a
+function app with a browser interface and keeps its saved data.
+
 Creates a new Innovation Platform app end to end: intake -> the user creates a
 repo **they own** from the platform template -> `register_app` (first call)
 -> commit the proof-of-control file it names + install the platform GitHub App

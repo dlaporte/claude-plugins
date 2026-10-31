@@ -4,9 +4,10 @@ Claude Code plugin for your organization's Innovation Platform. It works with
 any instance: every instance-specific value (hostnames, group names, the
 template repo, the CI workflow, the Connections callback) is read from the
 platform's `get_platform_status` tool, never written into a skill. Bundles the
-`inno-platform` MCP server and nine skills: eight walk Claude through the
-whole app lifecycle (create or migrate existing code, write, containerize,
-connect to a per-user backend, gate-check, ship, and manage), and one serves
+`inno-platform` MCP server and ten skills: nine walk Claude through the
+whole app lifecycle (create, migrate existing code or convert a Claude
+artifact, write, containerize, connect to a per-user backend, gate-check,
+ship, and manage), and one serves
 the platform's admins. Apps deploy as
 one of four **types**, all behind the platform's front door, which signs
 people in and decides who reaches each app: a **container** (any stack, a
@@ -470,6 +471,11 @@ produce is a Dockerfile and app code rather than sentences a user reads.
   GitHub App -> `register_app` (second call) -> pull -> scaffold.
 - **`skills/inno-migrate-app`**: assess an existing repo (read-only), then
   register and adapt it **in place**, keeping its stack where the gates allow.
+- **`skills/inno-convert-artifact`**: turn a Claude artifact (React or HTML)
+  into a function app whose browser interface the platform's CI builds from
+  `app/ui/`, with the artifact's `window.storage` kept in the app's own
+  database, then register, preflight and ship it. Needs a platform whose
+  contract section 1.1 has the Browser interface bullet.
 - **`skills/inno-platform-conventions`**: stack policy (Python/Starlette is
   the tested stack; any stack meeting the contract is fine), escaping,
   the storage client/endpoints, identity (the kinds of caller the
