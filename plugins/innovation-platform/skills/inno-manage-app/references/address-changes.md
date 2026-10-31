@@ -5,9 +5,11 @@ different account than the one its grant is pinned to (`grant_access` on
 someone the member list already holds, a `link_containment` refusal or a
 grant on a linked source app, a narrowing of a source app, or a
 `member_reassigned` notification), when a grant's result says the row is
-pinned and the platform (with no directory to read accounts from, as the
-`Identity provider:` line of `get_platform_status` says) cannot ask
-whether the address has passed to someone else, or when a result names
+pinned and the address may have passed to someone else since (the platform
+cannot tell in jit mode, nor in scim mode until a sign-in has pinned an
+active account the identity provider pushed for the address; the
+`Identity provider:` line of `get_platform_status` names the mode), or when
+a result names
 another address to revoke or the address a person's row is stored under. A
 grant is pinned to the identity provider account that holds its address;
 `grant_access`'s description says how, and where a sign-in is matched by its
@@ -26,9 +28,8 @@ address too. Then run `revoke_access` and then `grant_access` for the
 address. The new grant is pinned to whoever holds the address now.
 
 **The owner's own address.** Only a platform admin moves the app to the
-address's new holder: `transfer_app` to that same address, or, on a platform
-with no directory, the hand-off through another address that
-`grant_access`'s answer names. Offer to draft the request, as the skill's
+address's new holder: `transfer_app` to that same address, in either
+membership mode. Offer to draft the request, as the skill's
 **Transferring an app: ask an admin** says.
 
 **A linked source app.** A link, a grant and a narrowing compare people,

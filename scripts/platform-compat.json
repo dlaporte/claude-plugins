@@ -1,7 +1,7 @@
 {
   "format": 1,
   "contract": {
-    "version": 40,
+    "version": 41,
     "sections": [
       "1",
       "1.1",
@@ -31,15 +31,15 @@
   },
   "served": {
     "docs/APP-ACCESSIBILITY.md": "db05be7ad23b1d327c9e9f802b3ca788ce6895c59d252648fb04cfd52ce63472",
-    "docs/APP-CONTRACT-HISTORY.md": "6ea9fcb5efc1a85fd12356ebf5b8893d6c319e4a941d8e1e1015bbb1b237523a",
-    "docs/APP-CONTRACT.md": "6dde523808aee64f1b6d4d7448c4076f9d880381369523b2bbdc79c7ad53c2b7",
+    "docs/APP-CONTRACT-HISTORY.md": "5d72e6920203d79db72ac90e9acd82f46cd17809b73ce54f9634918ae3f2c768",
+    "docs/APP-CONTRACT.md": "001b6a32592936a47d50cb7baa1ba5a1f3123f580832f546e8f7525344193e0c",
     "docs/APP-SECURITY.md": "a6a1dcc60a57c3f6e4895345072d229e27a13c220d38d48d34344956c97486ea",
     "docs/GUARDRAILS.md": "15314e2ccc34080ac7c11a0f94a4b1c104de2af6ea54b4387004cf3e8aa2b8ac",
-    "docs/PLATFORM-DOCS.md": "7996f8912ea42cb466ddbb63f6eace1b6cd225fe75d4a2c710044dfd1ebc9c17"
+    "docs/PLATFORM-DOCS.md": "246ae0d47f322468ab27472aa03ce4c0cc059c878ea3423c47ac31c28dc72382"
   },
   "tools": {
-    "count": 53,
-    "revision": "4982f2c7b97de977c72560c93914dbb723eedcb3aa723f5dddacce40aa0c24bb",
+    "count": 55,
+    "revision": "19a7d2b040dfa11e3bd42e88e7f70d71164479567286d68d732831cc28b44f2f",
     "list": [
       {
         "name": "accept_naming_change",
@@ -73,6 +73,14 @@
           "app"
         ],
         "inputRevision": "c6c59b7052bd6e5e515379f0ee5cdd5c0830d050632184170c4df16a65d1edff"
+      },
+      {
+        "name": "create_scim_token",
+        "readOnly": false,
+        "adminOnly": true,
+        "args": [],
+        "required": [],
+        "inputRevision": "efddc7bd8bbcef73a14eb1ace1ffdaec81e518ef1e13c1e9271d0b8acb694a49"
       },
       {
         "name": "create_support_bundle",
@@ -256,7 +264,16 @@
         ],
         "required": [],
         "inputRevision": "8f76013ebddc2b879c8fe537190d09af7df0c2fda4187fd4c065edab7b152cff",
-        "outputRevision": "4341882688915cc81370fb55b8e16e7b46756a7b11fb74854a9165b3bf1e9deb"
+        "outputRevision": "e913d595e2cf7dbc0e607fe228da1d99909f1b966eb482591198b357d05358bf"
+      },
+      {
+        "name": "get_provisioning",
+        "readOnly": true,
+        "adminOnly": true,
+        "args": [],
+        "required": [],
+        "inputRevision": "efddc7bd8bbcef73a14eb1ace1ffdaec81e518ef1e13c1e9271d0b8acb694a49",
+        "outputRevision": "514e73949bd19e87ef53b6f6354c0c679b0ce4afb18c6f0e889bc1b2ecc7825b"
       },
       {
         "name": "grant_access",
@@ -283,17 +300,6 @@
           "email"
         ],
         "inputRevision": "09a114eaed54059d449a719a175af973a3ff98afae77165cf27a752534d44c30"
-      },
-      {
-        "name": "import_admin_group",
-        "readOnly": false,
-        "adminOnly": true,
-        "args": [
-          "apply"
-        ],
-        "required": [],
-        "inputRevision": "17f07bfeb73bcb831866b9fa4bed9539aa2b441efed84a90e18e80aecfb58e6d",
-        "outputRevision": "0bb76f2a2cdce8938ef3b79dd299ba6b0eab3948c908fcd3134ddb7d8f82d8d3"
       },
       {
         "name": "link_app_data",
@@ -437,7 +443,7 @@
           "surface"
         ],
         "required": [],
-        "inputRevision": "b3c156081eec9296bfabceddde0394f7d1b44ab810ae49c97722aba0fbf5d576"
+        "inputRevision": "986e653f4dac216fd8cc57c9da03bb0758dee5728105fabaf12070dad45e48b2"
       },
       {
         "name": "rebuild_app",
@@ -566,6 +572,18 @@
         "inputRevision": "09a114eaed54059d449a719a175af973a3ff98afae77165cf27a752534d44c30"
       },
       {
+        "name": "revoke_scim_token",
+        "readOnly": false,
+        "adminOnly": true,
+        "args": [
+          "id"
+        ],
+        "required": [
+          "id"
+        ],
+        "inputRevision": "3797626bd17e346de1adbbe242cd2c4e41a5956ccf7424c65cf45e2bbef10c81"
+      },
+      {
         "name": "revoke_sessions",
         "readOnly": false,
         "adminOnly": true,
@@ -635,6 +653,7 @@
         "readOnly": false,
         "adminOnly": false,
         "args": [
+          "confirm",
           "key",
           "note",
           "scope",
@@ -646,7 +665,7 @@
           "scope",
           "value"
         ],
-        "inputRevision": "cec00a2ce688fe511756d98704f2aa228b0934fc54f64f06844dd66b512d5538"
+        "inputRevision": "6189b16cb0c7d7d7b55197483ce83ecd3f50d99618b16705ee7dfdeeb041fded"
       },
       {
         "name": "start_app",
@@ -707,10 +726,10 @@
   },
   "plugins": {
     "app": {
-      "minVersion": "6.0.0"
+      "minVersion": "7.0.0"
     },
     "admin": {
-      "minVersion": "1.7.0"
+      "minVersion": "1.9.0"
     }
   },
   "behavior": {
@@ -721,7 +740,7 @@
     }
   },
   "pinned": {
-    "ref": "v0.17.24",
-    "commit": "c29047f783690008d714781dae6c6ac24e76363e"
+    "ref": "v01800",
+    "commit": "68530ad3c1e566d19cff1a4ea6ff167478422fb2"
   }
 }
