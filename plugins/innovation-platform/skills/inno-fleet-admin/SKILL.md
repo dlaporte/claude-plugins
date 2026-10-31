@@ -118,7 +118,7 @@ instance's **membership mode**, the platform setting `auth.provisioning`
   that bound how long such a person keeps access.
 - `membership scim`: the identity provider pushes its accounts to the
   platform over SCIM, and only an active pushed account may sign in, beside
-  the break-glass addresses (**The break-glass**, below). The line counts
+  the break-glass addresses (`references/custody.md`). The line counts
   the accounts pushed by state and gives the last push.
 
 When you need to name the identity provider, use that line's name, never
@@ -134,7 +134,7 @@ the one account-status answer every tool uses, held for
 - In scim mode, an admin whose pushed account the identity provider
   deactivates or deletes keeps their row but loses the powers within that
   window, and reactivating the account restores them; an
-  `identity.initialAdmins` address is the exception (**The break-glass**).
+  `identity.initialAdmins` address is the exception (`references/custody.md`).
   In jit mode the platform cannot learn of a suspension, so an admin keeps
   the powers until removed with `revoke_admin`, or until their sessions and
   grants end (the lengths the `Identity provider:` line names).
@@ -228,15 +228,17 @@ which no tool lists.
   whoever holds it can deactivate every pushed account, which in scim mode
   blocks everyone but the break-glass addresses. At most two are live at
   once, so a token rotates with no gap: create the new one, have the admin
-  paste it into the provider in place of the old one, read
-  `get_provisioning` until the new token's last use moves (a push with it
-  landed), then revoke the old one. A third create is refused
+  paste it into the provider in place of the old one, and once they have
+  saved it there (the provider's connection test or its next push uses it),
+  read `get_provisioning` once and check that the new token's last use
+  moved, which proves a request with it reached the platform, then revoke
+  the old one. A third create is refused
   `scim_token_limit`: revoke one first.
   - **Prefer the panel for a new token.** The Identity tab's Create token
     shows it once, in the admin's own browser. `create_scim_token` returns
     it once in this conversation instead, which puts it in the session's
-    transcript: call it only when the admin asks for it here, after saying
-    so. Relay the token exactly once, with the base URL, for the admin to
+    transcript: call it only when the admin asks for it here, after telling
+    them it lands in this conversation's transcript. Relay the token exactly once, with the base URL, for the admin to
     paste at once; never repeat it, and never write it to a file, a commit,
     a note, a support bundle or a later message, nor ask for it back. A
     token that was not copied cannot be shown again: create another and
@@ -257,10 +259,11 @@ which no tool lists.
      block (each one with no active pushed account), naming them, how many
      apps they own, which move into custody, and whether an admin who can
      sign in remains; it warns when it would block more than a third of
-     the people who signed in. Read it with the admin person by person:
-     anyone it names who should keep access is settled at the identity
-     provider (assigned to its provisioning app, and pushed) before the
-     switch.
+     the people who signed in. Read it with the admin person by person (it
+     names at most 50; past 50, the Identity tab's pushed accounts list the
+     rest): anyone it names who should keep access is settled at the
+     identity provider (assigned to its provisioning app, and pushed) before
+     the switch.
   2. **The confirmed switch**, after an explicit yes: `set_config` again
      with `confirm` set to the blocked count the preview reported. A count
      that has moved since answers `preview_stale` with a fresh preview: read
@@ -285,51 +288,9 @@ which no tool lists.
   the people they are held for at the next hourly pass. A switch to the mode
   already set answers that it is already set.
 
-### Custody: a deactivated owner's apps
-
-In scim mode, when the identity provider deactivates or deletes a pushed
-account, and for each person the switch blocks, the platform at once ends
-that person's panel and browser app sessions, refuses their MCP tokens at
-the next check, and moves every app they own, as one set, into
-**custody**: the owner becomes the custodian, the first address in
-`identity.initialAdmins`. Each app keeps running, with its audience (a
-public app stays public), its data links, its member list, its deploy state
-and its idle clock. A delete also removes the person's stored connection
-credentials. The admins are told once per person (`account_deactivated`),
-naming the apps moved and any left for the hourly pass, which moves those.
-While an app is in custody the custodian is its owner (`app_status` and
-`list_apps` name them), and the hourly audience pass judges it for the
-person it is held for.
-
-The apps come back by themselves. When the account is reactivated or pushed
-again, or at the sign-in that pins it, each app returns to the person it is
-held for, its owner row as it was, and its owner is told (`transferred`);
-the admins once (`account_reactivated`). Linked apps return together. The
-person's sessions do not come back: they sign in again. In jit mode the
-hourly pass returns every app in custody, which is how a switch back to jit
-unwinds it. Two cases are the admin's:
-
-- **A transfer ends custody.** `transfer_app` of an app in custody clears
-  its custody mark, so it does not return. Decide with the admin whether the
-  person is gone for good before transferring one to a new owner.
-- **An app that cannot find its way back** (it is held for an account that
-  no member row of the app names any more) stays in custody until an admin
-  moves it with `transfer_app`.
-
-### The break-glass
-
-Every address in the manifest's `identity.initialAdmins` can sign in in
-scim mode whatever the identity provider pushed, so a misconfigured provider
-or a stolen SCIM token can never lock the instance's first admins out, and a
-switch's preview never counts one. Admin standing still needs the address's
-row in the admin list: the list seeds only an empty table, so such an
-address whose row was revoked signs in but is not an admin until
-`grant_admin` writes the row again. A push that deactivates or deletes such
-an address changes nothing but the record (`account_blocked` with
-`exempt: true`) and the admins' `account_deactivated` notice: its sessions
-stay and its apps do not move. To offboard one, an operator removes it from
-`identity.initialAdmins` in the manifest and deploys; no push and no tool
-changes that list.
+**Custody and the break-glass**: when a deactivated owner's apps, their
+return, or a deactivated `identity.initialAdmins` address comes up, load
+`references/custody.md`.
 
 ## `transfer_app({ app, new_owner_email, force?, also?, accept_guardrails? })`: reassign ownership
 
@@ -510,12 +471,12 @@ domains (above), keeps their sessions until this ends them.
 1. **Deactivate the account at the identity provider.** In scim mode the
    provider pushes the change and the platform acts on it at once: their
    panel and browser app sessions end, their apps move into custody
-   (**Custody**, above), and the account check refuses their calls to the
+   (`references/custody.md`), and the account check refuses their calls to the
    platform's own tools (`account_inactive`), their MCP access to every
    app, their access to every browser app (whose front door asks the
    platform at every request) and their admin standing, if they had one,
    within `auth.status_check_minutes`. A break-glass address is the
-   exception (**The break-glass**). In jit mode the platform cannot learn
+   exception (`references/custody.md`). In jit mode the platform cannot learn
    of the deactivation: the
    person keeps access until their sessions and MCP grants end, at most the
    lengths the `Identity provider:` line names, which `set_config` shortens.
@@ -855,10 +816,11 @@ serves. The panel's Platform screen is the same act on a visual surface.
     account for the new holder, pinned to them at their next sign-in.
   - `account_deactivated` (scim mode): the identity provider deactivated or
     deleted an account, and the entry names the apps moved into custody and
-    any left for the hourly pass (**Custody**, above); for a break-glass
-    address it says that nothing moved and how to offboard it (**The
-    break-glass**, above). The hourly pass sends one too for apps it moved
-    that a push could not.
+    any left for the hourly pass; for a break-glass address it says that
+    nothing moved and how to offboard it (both in `references/custody.md`).
+    The hourly pass sends one too for apps it moved that a push could not.
+    A switch to scim sends none: it tells the admins once, with
+    `provisioning_changed`.
   - `account_reactivated`: the apps custody held for a person returned to
     them, after a reactivation, a new push, the sign-in that pinned their
     account or the hourly pass (which in jit mode returns every app custody
@@ -934,7 +896,7 @@ shared tools below them are listed for everyone.
 | `revoke_sessions` | platform admins only |
 | `accept_naming_change` | platform admins only |
 | `list_users` / `query_audit` / `get_platform_logs` / `export_platform_backup` | platform admins only |
-| `get_config` with no arguments / `set_config` / `remove_config` | platform admins (`auth.provisioning` only through the previewed switch); any user may set their own Notifications settings at their own user scope |
+| `get_config` with no arguments / `set_config` / `remove_config` | platform admins (`auth.provisioning` only through the switch, previewed for scim); any user may set their own Notifications settings at their own user scope |
 | `list_apps` | any signed-in user; an admin sees every app |
 | `list_connections` without `app` / `list_user_connections` beyond your own or your app's | platform admins only |
 | `start_app` / `restart_app` / `revoke_access` and the other per-app tools | the app's owner, or platform admins (`inno-manage-app`) |

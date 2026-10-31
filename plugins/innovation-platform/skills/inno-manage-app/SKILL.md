@@ -101,7 +101,8 @@ lets sign in is a member, and the platform never learns that an account was
 deactivated there: that person keeps what they had until their sessions and
 grants end, and only a platform admin can end it sooner. In `membership
 scim` the identity provider also tells the platform who belongs, and a
-deactivation reaches the platform at once:
+deactivation reaches the platform as soon as the identity provider pushes
+it (some providers push as changes happen, others on a schedule):
 
 - If the panel, a download link, or a Connections page answers
   `account_inactive` (HTTP 401, "This account can no longer sign in"), the
@@ -115,8 +116,8 @@ deactivation reaches the platform at once:
   admin's `get_config` catalog lists), plus the front door's cache
   (contract R3); and an admin whose account is deactivated loses admin
   standing.
-- **The apps that person owns move into a platform admin's custody** at
-  once: the admin becomes their owner (`app_status` names them), and each
+- **The apps that person owns move into a platform admin's custody** as
+  soon as that push arrives: the admin becomes their owner (`app_status` names them), and each
   app keeps running, with its audience, its member list, its data links and
   its data, so the people it was shared with keep their access. Meanwhile
   only a platform admin can manage it. When the account is reactivated, the
