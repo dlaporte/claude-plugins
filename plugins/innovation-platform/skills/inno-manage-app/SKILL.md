@@ -39,9 +39,9 @@ All operations here call tools on the `inno-platform` MCP server (see the
 plugin's `.mcp.json`). Every tool authorizes the caller server-side against
 the signed-in identity from the MCP OAuth session: **you can only manage
 apps you own, unless you are a platform admin.** The platform's own admin
-list decides who that is (`list_admins`, admin-only, shows it): once it
-holds anyone, adding or removing someone by hand in the identity provider's
-group on the status's `Admin group:` line changes nothing here. A `forbidden`
+list decides who that is (`list_admins`, admin-only, shows it): no group at
+the identity provider makes anyone an admin, the one on the status's
+`Admin group:` line included. A `forbidden`
 error back
 from any of these tools means exactly that; don't retry it and don't try to
 work around it locally: there is no local escalation, because authorization
@@ -50,7 +50,8 @@ every tool can answer, named once in the platform's MCP server note;
 `inno-platform-conventions`' **Refusals every tool shares** section says what
 each means.
 
-A platform admin's work across the fleet (the admin list and its import,
+A platform admin's work across the fleet (the admin list, the membership
+mode and SCIM provisioning, the apps in custody,
 ownership transfers, purges, rebuilds, ending someone's panel and browser
 app sessions,
 naming, settings, the audit log and the platform's logs) is
@@ -93,17 +94,37 @@ own values and readable by anyone signed in to the platform (it is not
 public): point a member or an owner there for how the platform works from
 their side.
 
-If the panel, a download link, or a Connections page answers
-`account_inactive` (HTTP 401, "This account can no longer sign in"), that
-person's account at the identity provider is suspended or deprovisioned. The
-platform has ended
-their session and nothing in this skill can undo it: the account itself has to
-be restored by a platform admin or the identity team. The same account check
-ends their access to every app, MCP and browser alike, and their platform
-tool calls, within the window `auth.status_check_minutes` sets (a
-platform-scope setting, which only an admin's `get_config` catalog lists),
-plus the front door's cache (contract R3); and an admin whose account is
-suspended loses admin standing.
+**When an account is deactivated.** The platform runs in one of two
+membership modes, which the `Identity provider:` line of the status you read
+in the Version gate names. In `membership jit` anyone the identity provider
+lets sign in is a member, and the platform never learns that an account was
+deactivated there: that person keeps what they had until their sessions and
+grants end, and only a platform admin can end it sooner. In `membership
+scim` the identity provider also tells the platform who belongs, and a
+deactivation reaches the platform at once:
+
+- If the panel, a download link, or a Connections page answers
+  `account_inactive` (HTTP 401, "This account can no longer sign in"), the
+  identity provider deactivated or deleted that person's account, or never
+  told the platform about it. The platform has ended their sessions and
+  nothing in this skill can undo it: the account has to be reactivated, or
+  provisioned, at the identity provider, by the identity team or a platform
+  admin. The same account check ends their access to every app, MCP and
+  browser alike, and their platform tool calls, within the window
+  `auth.status_check_minutes` sets (a platform-scope setting, which only an
+  admin's `get_config` catalog lists), plus the front door's cache
+  (contract R3); and an admin whose account is deactivated loses admin
+  standing.
+- **The apps that person owns move into a platform admin's custody** at
+  once: the admin becomes their owner (`app_status` names them), and each
+  app keeps running, with its audience, its member list, its data links and
+  its data, so the people it was shared with keep their access. Meanwhile
+  only a platform admin can manage it. When the account is reactivated, the
+  person signs in again and each app comes back to them, with a
+  `transferred` notice saying it returned. A platform admin may instead
+  transfer an app to a new owner for good, and then it does not come back.
+  When a member asks why an app's owner changed to an admin, this is
+  usually why; the admin side is `inno-fleet-admin`'s.
 
 **Speak the user's language.** Plain terms with the user, no provider or
 product names unless they have shown technical fluency. The full rule is the
@@ -341,10 +362,12 @@ must confirm.
   no tool can let it in: the list is the instance manifest's
   `identity.allowedEmailDomains`, which only the platform's operator can
   change, by editing the manifest and redeploying.
-- **An address the identity provider does not know is granted anyway**,
-  with a `WARNING:` in the result, where the platform has a directory to ask
-  (the `Identity provider:` line of `get_platform_status` says whether it
-  does). Relay the warning, and check
+- **An address with no account is granted anyway.** In scim mode the
+  platform checks the address against the accounts the identity provider
+  pushed, and a grant to one with no active account carries a `WARNING:` in
+  the result; in jit mode nothing is checked and no warning comes (the
+  `Identity provider:` line of `get_platform_status` names the mode). Relay
+  the warning, and check
   the spelling with the user: if it is mistyped, `revoke_access` removes it;
   if the person's account is still being created, the grant applies once it
   exists.
@@ -888,7 +911,7 @@ Stages worth acting on when one appears: `first_deploy_due`,
 `link_revoked`, `degraded`, `usage_anomaly`, `quota_horizon`,
 `connection_expired`, `connection_locked`, `unlinked` / `relinked`,
 `transferred`, `access_changed`, `shared`, `exported`, `member_reassigned`,
-`cross_owner_link_revoked`, `host_upload_blocked`. What to do on eight of
+`cross_owner_link_revoked`, `host_upload_blocked`. What to do on nine of
 them:
 
 - `first_deploy_due`: a registered app has not completed its first deploy,
@@ -908,6 +931,12 @@ them:
 - `member_reassigned`: an address with access now signs in as a different
   account than the one its access is pinned to. The entry names the address
   and the re-share: `references/address-changes.md`.
+- `transferred`: the app's owner changed, and the entry says how: a
+  platform admin transferred it to or from the reader, or it came back from
+  a platform admin's custody once its owner's account could sign in again
+  (**When an account is deactivated**, above). An app that came back kept
+  running while it was away, with its audience and its data links; nothing
+  needs redoing.
 - `connection_expired`: a person's stored credential for one of the app's
   backends was removed (it expired or was revoked, could not be opened,
   their encryption key was reset, or the connection's endpoints changed),
