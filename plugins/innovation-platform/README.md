@@ -441,6 +441,34 @@ provider's discovery document for how the platform authenticates at its token
 endpoint, and a directory named without its secret shows a red dot on the
 panel's Status card. No tool changed; the floor stays 6.0.0.
 
+Plugin 7.0.0 follows platform v0.18.0, contract 41, which learns who may
+sign in from the identity provider over SCIM 2.0 and retires the directory.
+The platform setting `auth.provisioning` is the membership mode: `jit`, the
+default, where anyone the identity provider lets sign in is a member, or
+`scim`, where only an active account the provider pushed may sign in, beside
+every `identity.initialAdmins` address, the break-glass. In scim mode a
+deactivation ends the person's sessions and moves the apps they own into the
+custody of the first `identity.initialAdmins` address, and they return when
+the account is active again. The platform lists 55 tools:
+`create_scim_token`, `revoke_scim_token` and `get_provisioning` are new and
+admin-only, and the admin-list import, `import_admin_group`, is gone, since
+`identity.initialAdmins` seeds an empty admin list on every instance.
+`set_config` takes `confirm`, the blocked count that the preview of a switch
+to scim reported (its refusals are `preview_required`, `preview_stale`,
+`initial_admins_required` and `no_pushes_yet`); `query_audit`'s `surface`
+takes `scim`; `grant_admin` looks nobody up, so `directory_account_not_found`
+is gone; and `get_platform_status`' `identity` output names the mode, the
+pushed account counts and the last push in place of the directory, so
+reconnect after that upgrade. `inno-fleet-admin` follows with the mode, the
+tokens (a new one best made on the panel's Identity tab, which keeps it out
+of the conversation), the previewed switch, custody and the break-glass, and
+drops the import; `inno-manage-app` says what a deactivation does to a
+person's access and to the apps they own in each mode; and its grant
+warning, like `inno-new-app`'s, comes only where the platform checks
+addresses. The v0.18.0 release raises the floor to 7.0.0, so the platform
+tells every 6.x build to update, and its skills stop at their Version gate
+until it does.
+
 ### House style
 
 Every skill in this plugin speaks to a broad, largely non-technical userbase,
@@ -514,8 +542,9 @@ produce is a Dockerfile and app code rather than sentences a user reads.
   keeping its own list.
 - **`skills/inno-fleet-admin`**: for platform admins only, the actions that
   reach across the fleet: the admin roster (`list_admins`, `grant_admin`,
-  `revoke_admin`), filling an empty admin list from the identity provider's
-  admin group (`import_admin_group`, its only job),
+  `revoke_admin`), the membership mode and SCIM provisioning
+  (`get_provisioning`, `create_scim_token`, `revoke_scim_token`, and the
+  previewed switch), a deactivated owner's apps in custody,
   reassigning an app's owner, purging an app, rebuilding an app's released
   code at its live tag (`rebuild_app`), ending one person's panel and browser
   app sessions everywhere, accepting a naming change, platform configuration,

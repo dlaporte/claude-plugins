@@ -472,11 +472,13 @@ register_app({ app, repo, description, type, identity, members, accept_guardrail
   shared with them (in-platform plus email per their own notification
   settings) when the app's first deploy completes, once its address answers,
   not at registration; call 2's answer says so. Name only people who should
-  hear about it when it goes live. An address the identity provider does
-  not know is still added but not notified, and call 2's answer names it on a
+  hear about it when it goes live. Where the platform checks addresses (in
+  scim mode, against the accounts the identity provider pushed; in jit mode
+  nothing is checked), an address with no account is still added but not
+  notified, and call 2's answer names it on a
   `WARNING:` line of its own. Check its spelling with the user, and if it
   is mistyped, remove it with `revoke_access` (`inno-manage-app`). An address the
-  platform could not check with the identity provider is added too, with its
+  platform could not check is added too, with its
   own warning. Each
   added address is pinned to an account as `grant_access` pins it
   (`inno-manage-app`), and the owner's own row to the account that registers
