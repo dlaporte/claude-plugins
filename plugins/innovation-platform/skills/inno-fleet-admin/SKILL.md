@@ -167,10 +167,14 @@ the one account-status answer every tool uses, held for
   read right now" is an outage, not an empty list: try again shortly.
 - `grant_admin` adds the person to the list and `revoke_admin` removes them,
   and neither touches any group at the identity provider.
-  Confirm the person by name before either. `grant_admin` looks nobody up,
-  so nothing tells you whether the address has an account: spell it back to
-  the admin, since its description says the row is pinned to whoever next
-  signs in with it. Tell the person that their
+  Confirm the person by name before either, and spell the address back to
+  the admin: the row follows the identity provider account that holds the
+  address (`get_platform_docs` says when it pins). In scim mode
+  `grant_admin` checks the address, read-only, against the accounts the
+  identity provider pushed, and the grant still lands, with a `WARNING:`
+  when no active pushed account holds it: relay it, and if the address is
+  mistyped, run `revoke_admin` on it. In jit mode nothing is checked and no
+  warning comes. Tell the person that their
   client's tool list changes only when they reconnect (**The admin-only
   tools come with the connection**, above).
 - What to do when `grant_admin` refuses:

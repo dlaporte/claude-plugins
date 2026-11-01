@@ -6,9 +6,10 @@ someone the member list already holds, a `link_containment` refusal or a
 grant on a linked source app, a narrowing of a source app, or a
 `member_reassigned` notification), when a grant's result says the row is
 pinned and the address may have passed to someone else since (the platform
-cannot tell in jit mode, nor in scim mode until a sign-in has pinned an
-active account the identity provider pushed for the address; the
-`Identity provider:` line of `get_platform_status` names the mode), or when
+cannot tell in jit mode, nor in scim mode until the holder of an active
+account the identity provider pushed for the address has signed in at the
+address; the `Identity provider:` line of `get_platform_status` names the
+mode), or when
 a result names
 another address to revoke or the address a person's row is stored under. A
 grant is pinned to the identity provider account that holds its address;
