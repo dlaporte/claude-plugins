@@ -260,8 +260,9 @@ which no tool lists.
      `set_config` of `auth.provisioning` to `scim` at platform scope with no
      `confirm` answers `preview_required` with it. It counts the accounts
      pushed and the people who signed in, how many of those the switch would
-     block (each one with no active pushed account), naming them, how many
-     apps they own, which move into custody, and whether an admin who can
+     block (each one with no active pushed account, and each app owner who
+     never signed in, which it counts as `blocked_never_signed_in`), naming
+     them, how many apps they own, which move into custody, and whether an admin who can
      sign in remains; it warns when it would block more than a third of
      the people who signed in. Read it with the admin person by person (it
      names at most 50; past 50, the Identity tab's pushed accounts list the
@@ -278,9 +279,13 @@ which no tool lists.
   `identity.initialAdmins` is empty (its first address holds the apps in
   custody, so an operator names the first admins and deploys first), and
   `no_pushes_yet` before the identity provider has pushed any account.
-  The answer names whom it blocked and the apps it moved into custody; a
-  person whose block failed is named too, and the account check refuses
-  them all the same while the next hourly pass moves their apps. Every
+  The answer names whom it blocked and the apps it moved into custody. The
+  switch blocks people under a budget of 600 statements: past it the answer
+  says how many it blocked now, and that the rest are refused at their next
+  status check and their apps move at the next hourly pass. A person whose
+  block failed is named too, and the account check refuses them all the same
+  while the next hourly pass moves their apps. Of two switches sent at once,
+  the second answers that the mode is already set. Every
   other account reaches the new mode as its held status answer ends
   (`auth.status_check_minutes`). The admins are told
   (`provisioning_changed`).
@@ -490,7 +495,8 @@ domains (above), keeps their sessions until this ends them.
 3. **`revoke_access` on each app they are a member of** removes them from
    its member list and deletes their stored connections there
    (`inno-manage-app` has its rules). It refuses `owner_not_revocable` on an
-   app they own: transfer it first, or stop it. A grant pinned to their
+   app they own, and on an app in custody that is held for them: transfer it
+   first, or stop it. A grant pinned to their
    account does not pass with their address to its next holder, but one
    still waiting for its first sign-in would: one more reason to revoke.
    To find every app they are a member of, take `export_platform_backup`

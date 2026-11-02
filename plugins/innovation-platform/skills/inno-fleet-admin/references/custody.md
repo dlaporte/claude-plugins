@@ -2,8 +2,8 @@
 
 Used from `inno-fleet-admin` when a deactivated owner's apps, their return,
 or an `identity.initialAdmins` address the identity provider deactivated
-comes up: what custody does, how the apps come back, the two cases that are
-an admin's, and what the break-glass addresses keep. All of it is scim
+comes up: what custody does, how the apps come back, the cases that are an
+admin's, and what the break-glass addresses keep. All of it is scim
 mode's (`inno-fleet-admin`'s **Membership mode and SCIM provisioning** says
 how to tell which mode runs), except the hourly return in jit mode.
 
@@ -12,9 +12,11 @@ how to tell which mode runs), except the hourly return in jit mode.
 In scim mode, when the identity provider pushes a deactivation or a delete
 of an account, and for each person the switch to scim blocks, the platform
 at once ends that person's panel and browser app sessions, refuses their MCP
-tokens at the next check, and moves every app they own, as one set, into
-**custody**: the owner becomes the custodian, the first address in
-`identity.initialAdmins`. Each app keeps running, with its audience (a
+tokens at the next check, and moves every app they own into **custody**: the
+owner becomes the custodian, the first address in `identity.initialAdmins`.
+The moves go a group of linked apps at a time, so no move splits a live data
+link, and each starts only while a budget of 600 statements lasts: what a
+request cannot finish, the next hourly pass does. Each app keeps running, with its audience (a
 public app stays public), its data links, its member list, its deploy state
 and its idle clock. A delete also removes the person's stored connection
 credentials. A push tells the admins once per person
@@ -23,19 +25,36 @@ pass, which moves those; the switch tells them once, with
 `provisioning_changed`, in place of a notice per person.
 While an app is in custody the custodian is its owner (`app_status` and
 `list_apps` name them), and the hourly audience pass judges it for the
-person it is held for.
+person it is held for. An app is in custody while it carries the custody
+mark, whoever owns it. The custodian's own member row on it lasts exactly as
+long as custody, and a grant the custodian held before custody stays.
+
+**Custody follows `identity.initialAdmins`.** The hourly pass hands any held
+app that the first address in `identity.initialAdmins` does not own to that
+address, so changing the list's first address strands nothing. The app keeps
+its mark and still returns to the person it is held for, and the admins are
+told once per pass (`provisioning_changed`). A mark left by an older build is
+held and returned the same way.
 
 The apps come back by themselves. When the account is reactivated or pushed
 again, or at the sign-in that pins it, each app returns to the person it is
 held for, its owner row as it was, and its owner is told (`transferred`);
-the admins once (`account_reactivated`). Linked apps return together. The
-person's sessions do not come back: they sign in again. In jit mode the
-hourly pass returns every app in custody, which is how a switch back to jit
-unwinds it. Two cases are the admin's:
+the admins once (`account_reactivated`). Linked apps return together. A
+return inside a request runs under the same budget of 600 statements, and
+the apps it leaves go back at the next hourly pass, which the admins' notice
+names. The person's sessions do not come back: they sign in again. In jit
+mode the hourly pass returns every app in custody, which is how a switch
+back to jit unwinds it. Three cases are the admin's:
 
 - **A transfer ends custody.** `transfer_app` of an app in custody clears
-  its custody mark, so it does not return. Decide with the admin whether the
-  person is gone for good before transferring one to a new owner.
+  its custody mark and the custodian's custody member row, so it does not
+  return. Decide with the admin whether the person is gone for good before
+  transferring one to a new owner.
+- **`revoke_access` will not remove the person an app is held for.** It
+  refuses them `owner_not_revocable`, as it refuses an owner, and its link
+  cascade leaves a linked app held for that person as it is, with a warning
+  line naming it. A platform admin's `transfer_app` comes first, or
+  `stop_app`.
 - **An app that cannot find its way back** (it is held for an account that
   no member row of the app names any more) stays in custody until an admin
   moves it with `transfer_app`.
