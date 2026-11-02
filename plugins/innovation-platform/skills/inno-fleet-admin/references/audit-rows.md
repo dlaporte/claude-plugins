@@ -203,12 +203,11 @@ whatever its reason was, its earlier keys still inside the cut-down
 - `account_blocked` (scim mode): an account the identity provider
   deactivated or deleted, or a person the switch to scim blocked. The actor
   is the push's `scim:<token id>` or the switching admin, the target the
-  address. `detail.kind` is `deactivated` or `deleted`, or, from platform
+  address. `detail.kind` is `deactivated` or `deleted`, or
   `conflict` (from platform v0.18.1; they signed in at an address whose
   account is pinned to another subject) or `not_pushed` (the provider pushed
   no account for them), both only for a person the switch blocked, with
-  `revoked` and
-  `watermarks` (the sessions it ended) and `apps_moved` and `not_moved`
+  `revoked` and `watermarks` (the sessions it ended) and `apps_moved` and `not_moved`
   (the apps it moved into custody, and those it left for the hourly pass);
   a delete adds `credentials_deleted` and `wraps_deleted`, or
   `credentials_left: true` when they could not be deleted. A break-glass
