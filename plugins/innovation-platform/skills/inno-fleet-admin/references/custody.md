@@ -57,7 +57,9 @@ back to jit unwinds it. Three cases are the admin's:
   `stop_app`.
 - **An app that cannot find its way back** (it is held for an account that
   no member row of the app names any more) stays in custody until an admin
-  moves it with `transfer_app`.
+  moves it with `transfer_app`. `revoke_access` no longer removes that row,
+  so the hourly warning the platform logs for it is a backstop for a row
+  removed before v0.18.1.
 
 ## The break-glass
 

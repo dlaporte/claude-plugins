@@ -836,7 +836,10 @@ serves. The panel's Platform screen is the same act on a visual surface.
     account or the hourly pass (which in jit mode returns every app custody
     holds). Each app's owner gets a `transferred` notice too.
   - `provisioning_changed`: an admin switched the membership mode; a switch
-    to scim names whom it blocked and the apps it moved into custody.
+    to scim names whom it blocked and the apps it moved into custody. From
+    platform v0.18.1 the hourly pass sends it too, once per pass that handed
+    a held app to the first `identity.initialAdmins` address, naming the
+    apps it moved: they return to the person they are held for, as before.
   - `edge_mismatch` (from platform v0.17.9): an app's address is out of
     step with its status: it still holds the platform's custom domain while
     the app is stopped or has never deployed, or holds none while the app
