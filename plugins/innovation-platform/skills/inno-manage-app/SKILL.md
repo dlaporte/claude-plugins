@@ -405,8 +405,9 @@ sign-in` is not pinned to an account yet.
 **`revoke_access` refusals and outcomes:**
 
 - `owner_not_revocable`: the address is the app's current owner, whose access
-  comes from owning it. A platform admin's `transfer_app` comes first
-  (**Transferring an app: ask an admin**), or `stop_app`.
+  comes from owning it, or the person an app in custody is held for. A
+  platform admin's `transfer_app` comes first (**Transferring an app: ask an
+  admin**), or `stop_app`.
 - **Read the result text, not just the absence of an error, before telling
   anyone the person is off.** It says when the member list did not hold the
   address (a mistyped revoke leaves the member it was meant for in place, so

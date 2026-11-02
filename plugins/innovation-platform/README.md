@@ -469,6 +469,18 @@ addresses. The v0.18.0 release raises the floor to 7.0.0, so the platform
 tells every 6.x build to update, and its skills stop at their Version gate
 until it does.
 
+Plugin 7.0.1 follows platform v0.18.1, contract 42. Custody follows
+`identity.initialAdmins`: the hourly pass hands any held app to the first
+address, which keeps the mark, so a change to the list strands nothing, and a
+held app goes back to its person when their account can sign in again. The
+custodian's member row lasts exactly as long as custody. `revoke_access`
+refuses the person an app in custody is held for, with
+`owner_not_revocable`, as it refuses an owner. The switch to scim counts app
+owners who never signed in (`blocked_never_signed_in`), blocks people under a
+budget of 600 statements and leaves the rest to their next status check and
+the next hourly pass. `inno-fleet-admin` and `inno-manage-app` say so. No
+tool changed; the floor stays 7.0.0.
+
 ### House style
 
 Every skill in this plugin speaks to a broad, largely non-technical userbase,
