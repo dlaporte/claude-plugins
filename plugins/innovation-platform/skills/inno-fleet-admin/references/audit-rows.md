@@ -203,7 +203,10 @@ whatever its reason was, its earlier keys still inside the cut-down
 - `account_blocked` (scim mode): an account the identity provider
   deactivated or deleted, or a person the switch to scim blocked. The actor
   is the push's `scim:<token id>` or the switching admin, the target the
-  address. `detail.kind` is `deactivated` or `deleted`, with `revoked` and
+  address. `detail.kind` is `deactivated` or `deleted`, or, from platform
+  v0.18.1 and only for a person the switch blocked, `conflict` (they signed
+  in at an address whose account is pinned to another subject) or
+  `not_pushed` (the provider pushed no account for them), with `revoked` and
   `watermarks` (the sessions it ended) and `apps_moved` and `not_moved`
   (the apps it moved into custody, and those it left for the hourly pass);
   a delete adds `credentials_deleted` and `wraps_deleted`, or
@@ -212,15 +215,21 @@ whatever its reason was, its earlier keys still inside the cut-down
   ended or moved.
 - `provisioning_switched`: the membership mode switched, by `set_config`,
   `remove_config` or the panel's Identity tab; target `platform`,
-  `detail.from` and `detail.to`. A switch to scim adds `blocked`,
-  `apps_moved` and `failed` (how many people's block failed; the hourly pass
-  moves their apps). The setting's own `config_set` or `config_removed` row
+  `detail.from` and `detail.to`, and from platform v0.18.1 `note`, the
+  `set_config` note or null. A switch to scim adds `blocked` (the people the
+  preview counted), `blocked_now` (the people the switch reached under its
+  budget, a block that failed included), `left` (the people past the budget,
+  refused at their next status check, whose apps move at the next hourly
+  pass), `apps_moved` and `failed` (how many people's block failed; the
+  hourly pass moves their apps). The setting's own `config_set` or `config_removed` row
   is written beside it.
 - `app_transferred` with `detail.reason` `custody` (the move into custody)
-  or `custody_return` (the return), and `custody_of`, the owner row the app
-  is held for. The actor is the push's `scim:<token id>`, the switching
-  admin, or `custody` for the hourly pass's custody sweep and for the return
-  at the sign-in that pins a pushed account.
+  or `custody_return` (the return), or, from platform v0.18.1,
+  `custody_handover` (the hourly pass handed a held app to the current first
+  `identity.initialAdmins` address, and the app keeps its mark), and
+  `custody_of`, the owner row the app is held for. The actor is the push's `scim:<token id>`, the switching
+  admin, or `custody` for the hourly pass's custody sweep (the return and
+  the handover) and for the return at the sign-in that pins a pushed account.
 
 ## Sign-ins, container hosts and function deploys (from platform v0.17.0)
 
