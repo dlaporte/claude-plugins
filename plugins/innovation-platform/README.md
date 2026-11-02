@@ -485,7 +485,7 @@ Plugin 7.0.2 follows platform v0.18.2, contract 42. A login the identity
 provider reuses gets a fresh account, and the earlier holder's apps stay in
 custody; a person assigned again is matched by `externalId`. The switch's
 count (`blocked_never_signed_in`) now covers owners whose address has passed
-to someone else, and a block by subject leaves the address's panel sessions
+to someone else, and a push's block and the switch leave the address's panel sessions
 alone. A provisioning app that sends its token as the whole header takes
 `Bearer <token>`, and its group import stays off. `inno-fleet-admin` says so.
 No tool changed; the floor stays 7.0.0.

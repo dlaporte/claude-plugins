@@ -66,13 +66,14 @@ gives a login to someone new, the new holder gets a fresh account, and the
 earlier holder's account stays deactivated and pinned to them, so the apps
 held for them stay in custody and the new holder is not blocked. A person
 removed from the provider's app and assigned again is matched by their
-`externalId`, and their old account is revived (`account_updated` with
+`externalId`, and their old account, deactivated after they had signed in, is revived
+(`account_updated` with
 `revived: true`). A provider that sends no `externalId` cannot be matched
 this way, which is a known limit: such a person gets a fresh account, and in
 scim mode stays blocked until an admin steps in.
 
-**Blocking by subject** (from platform v0.18.2). When a push, the hourly
-pass or the switch blocks a person whose address now belongs to someone
+**Blocking by subject** (from platform v0.18.2). When a push or the
+switch blocks a person whose address now belongs to someone
 else, it ends that person's sessions through their subject and leaves the
 address's panel sessions alone, since they are the new holder's. The audit
 row carries `panel_sessions_kept: true`.

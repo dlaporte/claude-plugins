@@ -200,7 +200,8 @@ whatever its reason was, its earlier keys still inside the cut-down
   (`user_name`, `email`, `external_id`, `display_name`, `active`), and an
   update `changed`, each field that moved as `{ from, to }`. A push that
   changes nothing writes none, and no row holds a token. From platform
-  v0.18.2 an update that revived a person's old account (the provider
+  v0.18.2 an update that revived a person's old account (deactivated after they
+  had signed in; the provider
   assigned them again and matched their `externalId`) also carries
   `revived: true`.
 - `account_blocked` (scim mode): an account the identity provider
