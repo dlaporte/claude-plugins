@@ -237,7 +237,10 @@ which no tool lists.
   read `get_provisioning` once and check that the new token's last use
   moved, which proves a request with it reached the platform, then revoke
   the old one. A third create is refused
-  `scim_token_limit`: revoke one first.
+  `scim_token_limit`: revoke one first. A provisioning app that sends its
+  token field as the whole Authorization header takes the token as
+  `Bearer <token>` (Okta's SCIM 2.0 Test App (Header Auth) is one). Leave
+  that app's group import off: `/Groups` answers 501.
   - **Prefer the panel for a new token.** The Identity tab's Create token
     shows it once, in the admin's own browser. `create_scim_token` returns
     it once in this conversation instead, which puts it in the session's
@@ -260,8 +263,10 @@ which no tool lists.
      `set_config` of `auth.provisioning` to `scim` at platform scope with no
      `confirm` answers `preview_required` with it. It counts the accounts
      pushed and the people who signed in, how many of those the switch would
-     block (each one with no active pushed account, and each app owner who
-     never signed in, which it counts as `blocked_never_signed_in`), naming
+     block (each one with no active pushed account, and each app owner not
+     signed in at their address, which it counts as
+     `blocked_never_signed_in`: one who never signed in, or whose address
+     has since passed to someone else), naming
      them, how many apps they own, which move into custody, and whether an admin who can
      sign in remains; it warns when it would block more than a third of
      the people who signed in. Read it with the admin person by person (it
@@ -283,6 +288,10 @@ which no tool lists.
   switch blocks people under a budget of 600 statements: past it the answer
   says how many it blocked now, and that the rest are refused at their next
   status check and their apps move at the next hourly pass. A person whose
+  address now belongs to someone else is blocked through their own subject
+  alone: their sessions end, and the address's panel sessions, which are the
+  new holder's now, are left alone (the audit row says
+  `panel_sessions_kept`). A person whose
   block failed is named too, and the account check refuses them all the same
   while the next hourly pass moves their apps. Of two switches sent at once,
   the second answers that the mode is already set. Every
@@ -824,6 +833,9 @@ serves. The panel's Platform screen is the same act on a visual surface.
     provider, as the entry says: once the earlier account's change (its new
     address, or its deletion) reaches the platform, the provider pushes an
     account for the new holder, pinned to them at their next sign-in.
+    From platform v0.18.2 a login the provider reuses gets a fresh account
+    for the new holder: the earlier holder's account stays deactivated and
+    pinned to them, and the apps held for them stay in custody.
   - `account_deactivated` (scim mode): the identity provider deactivated or
     deleted an account, and the entry names the apps moved into custody and
     any left for the hourly pass; for a break-glass address it says that

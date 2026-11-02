@@ -199,7 +199,10 @@ whatever its reason was, its earlier keys still inside the cut-down
   is the pushed account's id; a create also carries what was pushed
   (`user_name`, `email`, `external_id`, `display_name`, `active`), and an
   update `changed`, each field that moved as `{ from, to }`. A push that
-  changes nothing writes none, and no row holds a token.
+  changes nothing writes none, and no row holds a token. From platform
+  v0.18.2 an update that revived a person's old account (the provider
+  assigned them again and matched their `externalId`) also carries
+  `revived: true`.
 - `account_blocked` (scim mode): an account the identity provider
   deactivated or deleted, or a person the switch to scim blocked. The actor
   is the push's `scim:<token id>` or the switching admin, the target the
@@ -210,7 +213,10 @@ whatever its reason was, its earlier keys still inside the cut-down
   `revoked` and `watermarks` (the sessions it ended) and `apps_moved` and `not_moved`
   (the apps it moved into custody, and those it left for the hourly pass);
   a delete adds `credentials_deleted` and `wraps_deleted`, or
-  `credentials_left: true` when they could not be deleted. A break-glass
+  `credentials_left: true` when they could not be deleted. From platform
+  v0.18.2 a block of a person whose address now belongs to someone else
+  ends their sessions through their subject only and carries
+  `panel_sessions_kept: true`. A break-glass
   address's row is `{ target_email, kind, exempt: true }` alone: nothing was
   ended or moved.
 - `provisioning_switched`: the membership mode switched, by `set_config`,
