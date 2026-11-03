@@ -21,7 +21,15 @@ rows from before platform v0.17.23, whose tool that release retired; and:
 
 - `sessions_revoked` (`revoke_sessions`): `target_email`, `revoked` (how
   many panel sessions it ended) and `watermarks` (how many of the address's
-  identity provider accounts it ended browser app sessions for).
+  identity provider accounts it ended browser app sessions for). From
+  platform v0.18.2 a re-add's revive that cleared an account's pin writes
+  one too, for the person the account was pinned to (actor the push's
+  `scim:<token id>`, surface `scim`): `account`, `sub`, `revoked: null`,
+  `panel_sessions_kept: true` (the address's panel sessions are left, since
+  someone else may sign in there now), `watermarks` (0 means the watermark
+  could not be written), `grants_revoked` (how many of that person's MCP
+  grants it revoked) and `grants_left: true` when they could not all be
+  revoked.
 - `config_set` and `config_removed` (`set_config`, `remove_config`, and the
   panel's Configuration tab): `key`, `scope` and, for a set, `value` and
   `note`. The target is the app's name or the user's address, or the
@@ -199,7 +207,12 @@ whatever its reason was, its earlier keys still inside the cut-down
   is the pushed account's id; a create also carries what was pushed
   (`user_name`, `email`, `external_id`, `display_name`, `active`), and an
   update `changed`, each field that moved as `{ from, to }`. A push that
-  changes nothing writes none, and no row holds a token.
+  changes nothing writes none, and no row holds a token. From platform
+  v0.18.2 an update that revived a person's old account (deactivated after they
+  had signed in; the provider
+  assigned them again and matched their `externalId`) also carries
+  `revived: true` and `unpinned: true`: the account comes back unpinned,
+  and the next sign-in at its address pins it again.
 - `account_blocked` (scim mode): an account the identity provider
   deactivated or deleted, or a person the switch to scim blocked. The actor
   is the push's `scim:<token id>` or the switching admin, the target the
@@ -210,7 +223,10 @@ whatever its reason was, its earlier keys still inside the cut-down
   `revoked` and `watermarks` (the sessions it ended) and `apps_moved` and `not_moved`
   (the apps it moved into custody, and those it left for the hourly pass);
   a delete adds `credentials_deleted` and `wraps_deleted`, or
-  `credentials_left: true` when they could not be deleted. A break-glass
+  `credentials_left: true` when they could not be deleted. From platform
+  v0.18.2 a block of a person whose address now belongs to someone else
+  ends their sessions through their subject only and carries
+  `panel_sessions_kept: true`. A break-glass
   address's row is `{ target_email, kind, exempt: true }` alone: nothing was
   ended or moved.
 - `provisioning_switched`: the membership mode switched, by `set_config`,

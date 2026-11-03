@@ -61,6 +61,33 @@ back to jit unwinds it. Three cases are the admin's:
   so the hourly warning the platform logs for it is a backstop for a row
   removed before v0.18.1.
 
+**A reused login** (from platform v0.18.2). When the identity provider
+gives a login to someone new, the new holder gets a fresh account, and the
+earlier holder's account stays deactivated and pinned to them, so the apps
+held for them stay in custody and the new holder is not blocked. A person
+removed from the provider's app and assigned again is matched by their
+`externalId`, and their old account, deactivated after they had signed in,
+is revived unpinned (`account_updated` with `revived: true` and
+`unpinned: true`). The revive also ends that earlier person's sessions
+and revokes every MCP grant they held (`sessions_revoked`), so a re-added
+person signs in again and reconnects their MCP clients once. The apps held
+for them return when they next sign in, since that sign-in pins the account
+to them again; only a sign-in pins, never a push. On a provider whose `externalId` names a login rather than a
+person, someone new may be matched instead: their sign-in pins the account
+to them, and the earlier holder's apps stay in custody, held for that
+earlier holder. A provider that sends no `externalId` cannot be matched
+this way, which is a known limit: such a person gets a fresh account, and in
+scim mode stays blocked until an admin steps in. When someone new signs in
+at the address of a held app's person, the custodian's notice
+(`member_reassigned`) names the remedy: `transfer_app` of the app to the
+address, to hand it to the address's new holder instead.
+
+**Blocking by subject** (from platform v0.18.2). When a push or the
+switch blocks a person whose address now belongs to someone
+else, it ends that person's sessions through their subject and leaves the
+address's panel sessions alone, since they are the new holder's. The audit
+row carries `panel_sessions_kept: true`.
+
 ## The break-glass
 
 Every address in the manifest's `identity.initialAdmins` can sign in in
