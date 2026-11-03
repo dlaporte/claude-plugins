@@ -66,9 +66,16 @@ gives a login to someone new, the new holder gets a fresh account, and the
 earlier holder's account stays deactivated and pinned to them, so the apps
 held for them stay in custody and the new holder is not blocked. A person
 removed from the provider's app and assigned again is matched by their
-`externalId`, and their old account, deactivated after they had signed in, is revived
-(`account_updated` with
-`revived: true`). A provider that sends no `externalId` cannot be matched
+`externalId`, and their old account, deactivated after they had signed in,
+is revived unpinned (`account_updated` with `revived: true` and
+`unpinned: true`). The revive also ends that earlier person's sessions
+and revokes every MCP grant they held (`sessions_revoked`), so a re-added
+person signs in again and reconnects their MCP clients once. The apps held
+for them return when they next sign in, since that sign-in pins the account
+to them again; only a sign-in pins, never a push. On a provider whose `externalId` names a login rather than a
+person, someone new may be matched instead: their sign-in pins the account
+to them, and the earlier holder's apps stay in custody, held for that
+earlier holder. A provider that sends no `externalId` cannot be matched
 this way, which is a known limit: such a person gets a fresh account, and in
 scim mode stays blocked until an admin steps in. When someone new signs in
 at the address of a held app's person, the custodian's notice
