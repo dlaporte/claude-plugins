@@ -39,9 +39,7 @@ All operations here call tools on the `inno-platform` MCP server (see the
 plugin's `.mcp.json`). Every tool authorizes the caller server-side against
 the signed-in identity from the MCP OAuth session: **you can only manage
 apps you own, unless you are a platform admin.** The platform's own admin
-list decides who that is (`list_admins`, admin-only, shows it): no group at
-the identity provider makes anyone an admin, the one on the status's
-`Admin group:` line included. A `forbidden`
+list decides who that is (`list_admins`, admin-only, shows it). A `forbidden`
 error back
 from any of these tools means exactly that; don't retry it and don't try to
 work around it locally: there is no local escalation, because authorization

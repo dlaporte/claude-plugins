@@ -64,8 +64,9 @@ rewrites the connection with `client_auth: "post"`).
 - **"Too many requests"** (HTTP 429, `Retry-After: 60`). The connect pages
   share a budget of 60 requests a minute per person with the platform
   panel's live reads. Wait a minute, then start again from the chat.
-- **"Account inactive"** (HTTP 401). The person's account at the identity
-  provider is suspended or deprovisioned. Nothing about the connection can fix
+- **"Account inactive"** (HTTP 401). The platform's account check refuses
+  the person: in scim mode their pushed account is inactive or deleted, or
+  was never pushed. Nothing about the connection can fix
   that.
 - **"Your encryption key isn't reachable from here"**. The person's stored
   connections are sealed to them personally, and this browser session
