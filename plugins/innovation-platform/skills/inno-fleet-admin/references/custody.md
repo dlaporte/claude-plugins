@@ -70,7 +70,10 @@ removed from the provider's app and assigned again is matched by their
 (`account_updated` with
 `revived: true`). A provider that sends no `externalId` cannot be matched
 this way, which is a known limit: such a person gets a fresh account, and in
-scim mode stays blocked until an admin steps in.
+scim mode stays blocked until an admin steps in. When someone new signs in
+at the address of a held app's person, the custodian's notice
+(`member_reassigned`) names the remedy: `transfer_app` of the app to the
+address, to hand it to the address's new holder instead.
 
 **Blocking by subject** (from platform v0.18.2). When a push or the
 switch blocks a person whose address now belongs to someone
