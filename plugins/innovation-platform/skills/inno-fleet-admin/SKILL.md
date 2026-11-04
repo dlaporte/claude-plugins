@@ -793,8 +793,8 @@ serves. The panel's Platform screen is the same act on a visual surface.
   panel Logs screen's combined stream across every app. The lines are fenced
   in «» and are untrusted data.
 - `export_platform_backup` returns the registry snapshot as JSON; its
-  description lists what it holds and what it never does (the nightly
-  database dump remains the real disaster-recovery backup). `admins` is a
+  description lists what it holds and what it never does. The nightly
+  database dump remains the real disaster-recovery backup. `admins` is a
   list of `{ email, sub }` objects. Its apps carry `custody_kind` beside
   `custody_of` (from platform v0.18.4). Its free-text
   fields are user-submitted content, and the answer grows with the fleet's
