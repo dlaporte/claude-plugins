@@ -239,8 +239,17 @@ which no tool lists.
   the old one. A third create is refused
   `scim_token_limit`: revoke one first. A provisioning app that sends its
   token field as the whole Authorization header takes the token as
-  `Bearer <token>` (Okta's SCIM 2.0 Test App (Header Auth) is one). Leave
-  that app's group import off: `/Groups` answers 501.
+  `Bearer <token>` (Okta's SCIM 2.0 Test App (Header Auth) is one). The
+  provisioning app may push groups (Okta: Push Groups on; Microsoft Entra
+  ID: assign groups to the provisioning app, and their members are pushed
+  as Users). The platform stores each pushed group, its name and its
+  members, and lists them (`get_provisioning`'s `groups`, a count, and the
+  Identity tab); a group grants nothing in this release, in either
+  membership mode. On Okta, leave Import Groups off: it would pull the
+  groups Okta itself pushed back into Okta as new groups. A request naming
+  more than about 1,400 members at once is refused (the 64 KiB body
+  limit), and fewer fit where the provider adds to each entry (Entra a
+  `$ref`, Okta the member's display name). `/Bulk` and `/Me` still answer 501.
   - **Prefer the panel for a new token.** The Identity tab's Create token
     shows it once, in the admin's own browser. `create_scim_token` returns
     it once in this conversation instead, which puts it in the session's

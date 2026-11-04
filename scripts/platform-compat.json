@@ -39,7 +39,7 @@
   },
   "tools": {
     "count": 55,
-    "revision": "673092930c28cd6f2e57b7f1c180c55404a81093a85d775d3eb6e0267e8452f6",
+    "revision": "6d113acc4201135d747da34cfc4a1a4b25cb87a67cf91accfb4beb360f43cdc7",
     "list": [
       {
         "name": "accept_naming_change",
@@ -273,7 +273,7 @@
         "args": [],
         "required": [],
         "inputRevision": "efddc7bd8bbcef73a14eb1ace1ffdaec81e518ef1e13c1e9271d0b8acb694a49",
-        "outputRevision": "577e7f6fdaa61a04921fd8b9dc9d67d644501b08d5e0bad340c8272e35acf8fb"
+        "outputRevision": "4ea4f698b422ad66e4898e1cb2eb7d4cd1f0ab9e6815a70cf104f7f69108f794"
       },
       {
         "name": "grant_access",
@@ -745,7 +745,7 @@
     }
   },
   "pinned": {
-    "ref": "v0.18.5",
-    "commit": "55062891d7ac5da08a0ececed164133ed8f3df49"
+    "ref": "v0.18.7",
+    "commit": "ff7b748b1f9a3b3a19649a5abaf125faf547ace1"
   }
 }

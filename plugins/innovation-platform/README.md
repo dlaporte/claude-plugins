@@ -517,6 +517,13 @@ the owner has been told, and not to retry), and the owner gets a
 checks the starter's build tool pins against the pinned record. No tool
 changed; the floor stays 7.0.0.
 
+Plugin 7.2.1 follows platform v0.18.7. The receiver now stores and lists the
+groups an identity provider pushes (`get_provisioning`'s `groups` count and
+the Identity tab); a group grants nothing yet. `inno-fleet-admin` says what to
+turn on in Okta and Microsoft Entra ID, to leave Okta's Import Groups off, and
+that `/Bulk` and `/Me` still answer 501. No tool changed; the floor stays
+7.0.0.
+
 ### House style
 
 Every skill in this plugin speaks to a broad, largely non-technical userbase,
