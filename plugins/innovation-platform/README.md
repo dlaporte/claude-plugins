@@ -490,6 +490,14 @@ alone. A provisioning app that sends its token as the whole header takes
 `Bearer <token>`, and its group import stays off. `inno-fleet-admin` says so.
 No tool changed; the floor stays 7.0.0.
 
+Plugin 7.0.3 follows platform v0.18.3, contract 43. `inno-convert-artifact`
+deletes `app/.needs-build` once the artifact is in, so its preflight runs the
+interface build. `inno-manage-app` no longer mentions the status's `Admin
+group:` line, which the platform stopped serving, and the connect page's
+"Account inactive" is worded for the mode (scim mode refuses an inactive,
+deleted or never-pushed account; jit mode refuses none for status). No tool
+changed; the floor stays 7.0.0.
+
 ### House style
 
 Every skill in this plugin speaks to a broad, largely non-technical userbase,

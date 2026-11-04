@@ -182,14 +182,18 @@ In the repository:
    shape (`get`, `set`, `delete`, `list`, with `true` last for shared). If the
    artifact relied on a storage behavior the reference marks as unverified,
    test that path in step 7.
-6. **Dependencies.** Add each library from step 3 to `dependencies` in
+6. **Delete the scaffold marker.** `rm -f app/.needs-build`, as `inno-new-app`
+   section 4 says: with the marker in place CI skips the interface build and
+   `inno-ship` refuses to deploy, so step 9's preflight would prove nothing
+   about the build.
+7. **Dependencies.** Add each library from step 3 to `dependencies` in
    `app/package.json` at its pinned version (the interface's packages are
    audited like the Worker's, so never under `devDependencies`), then run
    `npm install` in `app/` and commit `app/package-lock.json`. Prefer
    versions that have been out a few weeks: when the platform sets a
    release-age cooldown, a version newer than it fails that gate, which
    names the package.
-7. **`CLAUDE.md`.** Keep every section the scaffold's `CLAUDE.md` has (CI
+8. **`CLAUDE.md`.** Keep every section the scaffold's `CLAUDE.md` has (CI
    checks its headers) and add a short section after the first, naming this
    as a converted Claude artifact, the `app/ui/` layout, `npm run dev`, the
    personal and shared storage, and that the repository is now the source of
