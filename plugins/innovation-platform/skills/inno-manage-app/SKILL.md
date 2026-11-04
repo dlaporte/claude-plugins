@@ -102,9 +102,10 @@ scim` the identity provider also tells the platform who belongs, and a
 deactivation reaches the platform as soon as the identity provider pushes
 it (some providers push as changes happen, others on a schedule):
 
-- If the panel, a download link, or a Connections page answers
-  `account_inactive` (HTTP 401, "This account can no longer sign in"), the
-  identity provider deactivated or deleted that person's account, or never
+- If a download link, a Connections page or the panel's sign-in shows the
+  "Sign-in refused" page (HTTP 403, "This account can no longer sign in."),
+  or a panel request or a platform tool answers `account_inactive` (HTTP
+  401), the identity provider deactivated or deleted that person's account, or never
   told the platform about it. The platform has ended their sessions and
   nothing in this skill can undo it: the account has to be reactivated, or
   provisioned, at the identity provider, by the identity team or a platform

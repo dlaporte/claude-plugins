@@ -120,7 +120,9 @@ whatever its reason was, its earlier keys still inside the cut-down
 - `access_enforcement_stalled` (`pass`, `skips`) marks an app the hourly
   access or containment pass skipped three runs in a row because another
   change to it, or to an app linked to it, was in flight, then every 24th
-  run after that while it lasts.
+  run after that while it lasts. From platform v0.18.4 `pass` may be
+  `custody` (actor `custody`): the hourly custody sweep found the app's
+  lease held three runs in a row; the move waits for the next pass.
 - From platform v0.17.9 the hourly edge pass (actor `edge-reconcile`,
   surface `lifecycle`) keeps each app's placeholder, the DNS record and
   route that make a stopped or never-deployed app's address show the
@@ -222,7 +224,8 @@ whatever its reason was, its earlier keys still inside the cut-down
   no account for them), both only for a person the switch blocked, with
   `revoked` and `watermarks` (the sessions it ended) and `apps_moved` and `not_moved`
   (the apps it moved into custody, and those it left for the hourly pass);
-  a delete adds `credentials_deleted` and `wraps_deleted`, or
+  a delete adds `credentials_deleted`, `wraps_deleted` and (from platform
+  v0.18.4) `keys_deleted`, all by the person's subject, or
   `credentials_left: true` when they could not be deleted. From platform
   v0.18.2 a block of a person whose address now belongs to someone else
   ends their sessions through their subject only and carries
@@ -236,14 +239,24 @@ whatever its reason was, its earlier keys still inside the cut-down
   preview counted), `blocked_now` (the people the switch reached under its
   budget, a block that failed included), `left` (the people past the budget,
   refused at their next status check, whose apps move at the next hourly
-  pass), `apps_moved` and `failed` (how many people's block failed; the
+  pass), `apps_moved_count` (a number; the per-person `apps_moved` list is
+  `account_blocked`'s) and `failed` (how many people's block failed; the
   hourly pass moves their apps). The setting's own `config_set` or `config_removed` row
   is written beside it.
+- `custody_move_failed` (from platform v0.18.4): a move into or out of
+  custody failed, one row per app of the set. Target the app; `detail` has
+  `to`, `reason`, `error` (the failure, bounded to 300 characters) and, for a
+  linked set, `moved_with`. The apps stay where they were, unless `error`
+  says the outcome is unknown, and the next hourly pass moves them. The
+  admins' notice says "its `custody_move_failed` audit row says why".
 - `app_transferred` with `detail.reason` `custody` (the move into custody)
   or `custody_return` (the return), or, from platform v0.18.1,
   `custody_handover` (the hourly pass handed a held app to the current first
   `identity.initialAdmins` address, and the app keeps its mark), and
-  `custody_of`, the owner row the app is held for. The actor is the push's `scim:<token id>`, the switching
+  `custody_of`, the owner row the app is held for, and (from platform
+  v0.18.4) `custody_kind`, the mark's kind (`email` or `sub`). A transfer
+  (`reason: transfer`) of an app in custody adds `custody_ended_for` (the
+  mark it held) and `custody_kind`; a transfer outside custody adds neither. The actor is the push's `scim:<token id>`, the switching
   admin, or `custody` for the hourly pass's custody sweep (the return and
   the handover) and for the return at the sign-in that pins a pushed account.
 

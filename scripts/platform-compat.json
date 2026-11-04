@@ -35,11 +35,11 @@
     "docs/APP-CONTRACT.md": "e0242fd02d9d1a23cf2189d7c7ff36232240739e7287661c161143c68708c862",
     "docs/APP-SECURITY.md": "a6a1dcc60a57c3f6e4895345072d229e27a13c220d38d48d34344956c97486ea",
     "docs/GUARDRAILS.md": "15314e2ccc34080ac7c11a0f94a4b1c104de2af6ea54b4387004cf3e8aa2b8ac",
-    "docs/PLATFORM-DOCS.md": "c501266a6b3619688f8f80ef426c6f2069228f0ad6a942c7a921124f3db58ceb"
+    "docs/PLATFORM-DOCS.md": "ff3fc7ee4923923a2c4ab369a3ad4351bb01e5f2b8e2c6c05da9d1f2ce4a0744"
   },
   "tools": {
     "count": 55,
-    "revision": "fcc30a3b2d264032daaf8b6fcd28f318425ab552290e5dc34dee5fe39e546d33",
+    "revision": "673092930c28cd6f2e57b7f1c180c55404a81093a85d775d3eb6e0267e8452f6",
     "list": [
       {
         "name": "accept_naming_change",
@@ -60,7 +60,7 @@
           "app"
         ],
         "inputRevision": "c6c59b7052bd6e5e515379f0ee5cdd5c0830d050632184170c4df16a65d1edff",
-        "outputRevision": "dc4d62886188f20618acd8672da45805030e0655e378397e9146940c2f8f9de0"
+        "outputRevision": "18f6b9a04450f7e4467cb427edc7c75e91340b4ed242894ce0c7c84eeced0a61"
       },
       {
         "name": "check_name",
@@ -740,7 +740,7 @@
     }
   },
   "pinned": {
-    "ref": "v0.18.3",
-    "commit": "337da8ce82b5525552e4043b29f1467cb15901cb"
+    "ref": "v0.18.4",
+    "commit": "7fe3ed32a704e4473c168a69ea7c38d1cfe07452"
   }
 }
