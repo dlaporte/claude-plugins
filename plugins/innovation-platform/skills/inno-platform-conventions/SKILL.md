@@ -630,7 +630,9 @@ than wiring this ad hoc. The rules the code must hold are §2.2 and
   `ConnectionLocked` (a subclass of `NotConnected`, so catch it first), tell
   them to **re-authorize this MCP client** (in Claude: `/mcp`, then
   re-authenticate that server), never to reconnect the backend, which
-  loops.
+  loops. On a `ConnectionsError` whose code is `connections_upstream_refused`,
+  tell them the backend refused the app's connection settings and that its
+  owner has been told, and do not retry.
 
 ## Sign out: one link, no session code
 

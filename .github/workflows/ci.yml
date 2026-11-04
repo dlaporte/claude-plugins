@@ -284,6 +284,19 @@ jobs:
           set -euo pipefail
           bash scripts/check-contract-sections.sh plugins/innovation-platform
 
+      # The starter's build tool pins (esbuild, wrangler, the Tailwind CLI)
+      # are the pinned release's behavior.buildTools. The check first proves
+      # itself on records and starters it plants.
+      - name: The build-tools check catches what its fixture plants
+        run: |
+          set -euo pipefail
+          bash scripts/test-check-build-tools.sh
+
+      - name: The starter's build tools are the pinned release's
+        run: |
+          set -euo pipefail
+          bash scripts/check-build-tools.sh
+
       # The floor check first proves it compares versions as numbers (2.10.0
       # is above 2.9.0) on records and manifests it plants.
       - name: The floor check catches what its fixture plants

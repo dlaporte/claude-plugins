@@ -1,7 +1,7 @@
 {
   "format": 1,
   "contract": {
-    "version": 43,
+    "version": 44,
     "sections": [
       "1",
       "1.1",
@@ -31,8 +31,8 @@
   },
   "served": {
     "docs/APP-ACCESSIBILITY.md": "db05be7ad23b1d327c9e9f802b3ca788ce6895c59d252648fb04cfd52ce63472",
-    "docs/APP-CONTRACT-HISTORY.md": "1651a4eda753470a6da19740a74de39b70abe87b788555bda182998150fd466f",
-    "docs/APP-CONTRACT.md": "e0242fd02d9d1a23cf2189d7c7ff36232240739e7287661c161143c68708c862",
+    "docs/APP-CONTRACT-HISTORY.md": "56982429503709f8a9befcca4851c7db76129464c6377730db9800a3c9cf84ed",
+    "docs/APP-CONTRACT.md": "91e5a068fa6c43a68caf9322348cead980c6440b7b0a686ad8a7653f6d18cfb8",
     "docs/APP-SECURITY.md": "a6a1dcc60a57c3f6e4895345072d229e27a13c220d38d48d34344956c97486ea",
     "docs/GUARDRAILS.md": "15314e2ccc34080ac7c11a0f94a4b1c104de2af6ea54b4387004cf3e8aa2b8ac",
     "docs/PLATFORM-DOCS.md": "ff3fc7ee4923923a2c4ab369a3ad4351bb01e5f2b8e2c6c05da9d1f2ce4a0744"
@@ -737,10 +737,15 @@
       "probeTimeoutMs": 45000,
       "retryPauseMs": 5000,
       "recentDeployMs": 600000
+    },
+    "buildTools": {
+      "@tailwindcss/cli": "4.3.3",
+      "esbuild": "0.28.1",
+      "wrangler": "4.148.0"
     }
   },
   "pinned": {
-    "ref": "v0.18.4",
-    "commit": "7fe3ed32a704e4473c168a69ea7c38d1cfe07452"
+    "ref": "v01850",
+    "commit": "459f644b68961a51eda8e5fec5588d0a9089566e"
   }
 }

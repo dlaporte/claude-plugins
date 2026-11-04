@@ -557,6 +557,16 @@ Rules that hold regardless of language:
   - **`502 connections_upstream_error`**: the backend's own token endpoint
     failed while the platform was renewing the credential. The backend's
     outage, not the user's connection: retry later.
+  - **`502 connections_upstream_refused`**: the backend refused the
+    platform's renewal of the credential in a way no retry fixes: it refused
+    this app's registered client or its request (an expired or rotated client
+    secret, a disabled client, a withdrawn scope), not the user's own
+    credential, which the platform keeps. Tell the user the backend refused
+    the app's connection settings and that the app's owner has been told (the
+    platform sends the owner a `connection_refused` notice, once a day per
+    connection); do not retry, and do not send them to `connect_url`. The
+    owner's fix is the connection's settings: register the client again with
+    `set_app_connection`.
   - **`429 rate_limited`** (with `Retry-After: 60`): the seam's abuse brake.
     Wait the `Retry-After` interval, then retry. If a tool trips this in
     normal use, it is calling the seam for every backend request: reuse the
