@@ -509,6 +509,14 @@ switch's `apps_moved_count`). The connect pages' "Account inactive" is now the
 the account signed in, never another account's at the address. No tool
 changed; the floor stays 7.0.0.
 
+Plugin 7.2.0 follows platform v0.18.5, contract 44. A backend's permanent
+refusal of the app's own client now answers `502 connections_upstream_refused`
+(`inno-add-connection` and `inno-platform-conventions` say to tell the user
+the owner has been told, and not to retry), and the owner gets a
+`connection_refused` notice (`inno-manage-app`). `scripts/check-build-tools.sh`
+checks the starter's build tool pins against the pinned record. No tool
+changed; the floor stays 7.0.0.
+
 ### House style
 
 Every skill in this plugin speaks to a broad, largely non-technical userbase,

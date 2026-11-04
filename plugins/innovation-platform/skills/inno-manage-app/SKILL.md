@@ -910,9 +910,10 @@ history in one go.
 Stages worth acting on when one appears: `first_deploy_due`,
 `respin_failed`, `auto_restarted`, `auto_restart_failed`, `link_severed`,
 `link_revoked`, `degraded`, `usage_anomaly`, `quota_horizon`,
-`connection_expired`, `connection_locked`, `unlinked` / `relinked`,
+`connection_expired`, `connection_locked`, `connection_refused`, `unlinked` /
+`relinked`,
 `transferred`, `access_changed`, `shared`, `exported`, `member_reassigned`,
-`cross_owner_link_revoked`, `host_upload_blocked`. What to do on nine of
+`cross_owner_link_revoked`, `host_upload_blocked`. What to do on ten of
 them:
 
 - `first_deploy_due`: a registered app has not completed its first deploy,
@@ -951,6 +952,14 @@ them:
   that server), the fix that lasts; reconnecting the backend does not fix
   it for good (`inno-add-connection` says why). It comes at most once a day per app,
   under its own email setting, `notify.email.connection_locked`.
+- `connection_refused`: a backend refused to renew a person's stored
+  credential for one of the app's connections in a way no retry fixes. It
+  refused the app's registered client or its request (an expired or rotated
+  client secret, a disabled client, a withdrawn scope), not the person's
+  credential, which the platform keeps. The owner fixes the connection's
+  settings (`set_app_connection` or the app's Connections tab); the people
+  need do nothing. It comes at most once a day per connection, under its own
+  email setting, `notify.email.connection_refused`.
 - `link_revoked`: a data link this app used was revoked. The entry
   says whether a rebuild was dispatched, whether the owner has to redeploy
   (for an owner that is `inno-ship`), or, for a stopped app, that the platform
