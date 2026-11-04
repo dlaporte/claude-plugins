@@ -505,7 +505,8 @@ domains (above), keeps their sessions until this ends them.
    its member list and deletes their stored connections there
    (`inno-manage-app` has its rules). It refuses `owner_not_revocable` on an
    app they own, and on an app in custody that is held for them: transfer it
-   first, or stop it. A grant pinned to their
+   first (read its `app_status` `Custody:` line, since a transfer ends
+   custody for good), or stop it. A grant pinned to their
    account does not pass with their address to its next holder, but one
    still waiting for its first sign-in would: one more reason to revoke.
    To find every app they are a member of, take `export_platform_backup`
@@ -794,7 +795,8 @@ serves. The panel's Platform screen is the same act on a visual surface.
 - `export_platform_backup` returns the registry snapshot as JSON; its
   description lists what it holds and what it never does (the nightly
   database dump remains the real disaster-recovery backup). `admins` is a
-  list of `{ email, sub }` objects. Its free-text
+  list of `{ email, sub }` objects. Its apps carry `custody_kind` beside
+  `custody_of` (from platform v0.18.4). Its free-text
   fields are user-submitted content, and the answer grows with the fleet's
   member count.
 - `list_connections` without `app`, and `list_user_connections` with no

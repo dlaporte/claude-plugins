@@ -498,6 +498,17 @@ group:` line, which the platform stopped serving, and the connect page's
 deleted or never-pushed account; jit mode refuses none for status). No tool
 changed; the floor stays 7.0.0.
 
+Plugin 7.1.0 follows platform v0.18.4, contract 43. Custody is visible to the
+reads: `app_status` has a `Custody:` line and a `custody` field, `list_apps`
+marks `[IN CUSTODY]`, and a transfer of a held app says it ended custody
+(`inno-fleet-admin` reads `app_status` first, and its audit and custody
+references name `custody_kind`, `custody_ended_for`, `custody_move_failed`,
+the custody pass's `access_enforcement_stalled`, `keys_deleted` and the
+switch's `apps_moved_count`). The connect pages' "Account inactive" is now the
+"Sign-in refused" page (HTTP 403), and Start fresh removes the connections of
+the account signed in, never another account's at the address. No tool
+changed; the floor stays 7.0.0.
+
 ### House style
 
 Every skill in this plugin speaks to a broad, largely non-technical userbase,

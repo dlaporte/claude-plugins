@@ -19,14 +19,21 @@ link, and each starts only while a budget of 600 statements lasts: what a
 request cannot finish, the next hourly pass does. Each app keeps running, with its audience (a
 public app stays public), its data links, its member list, its deploy state
 and its idle clock. A delete also removes the person's stored connection
-credentials. A push tells the admins once per person
+credentials, their key wraps and their key (from platform v0.18.4, by
+subject: the person's own, never a later holder's of the address). A push tells the admins once per person
 (`account_deactivated`), naming the apps moved and any left for the hourly
 pass, which moves those; the switch tells them once, with
 `provisioning_changed`, in place of a notice per person.
 While an app is in custody the custodian is its owner (`app_status` and
 `list_apps` name them), and the hourly audience pass judges it for the
 person it is held for. An app is in custody while it carries the custody
-mark, whoever owns it. The custodian's own member row on it lasts exactly as
+mark, whoever owns it. From platform v0.18.4 custody is visible: `app_status`
+has a `Custody:` line and a `custody` field (`held_for`, the address it
+returns to, null when no member row names one; `pending`, true while the
+person has no pinned account), and `list_apps` marks the app `[IN CUSTODY]`.
+The mark has a kind (`custody_kind`: `email` or `sub`, null only for a mark an
+older build wrote), which `export_platform_backup` carries beside
+`custody_of`. The custodian's own member row on it lasts exactly as
 long as custody, and a grant the custodian held before custody stays.
 
 **Custody follows `identity.initialAdmins`.** The hourly pass hands any held
@@ -48,8 +55,12 @@ back to jit unwinds it. Three cases are the admin's:
 
 - **A transfer ends custody.** `transfer_app` of an app in custody clears
   its custody mark and the custodian's custody member row, so it does not
-  return. Decide with the admin whether the person is gone for good before
-  transferring one to a new owner.
+  return. From platform v0.18.4 its answer says so ("It was held in custody
+  for <address>: this transfer ended that custody") and its `app_transferred`
+  row carries `custody_ended_for` and `custody_kind`. Read `app_status` first:
+  its `Custody:` line names the person the app is held for. Decide with the
+  admin whether that person is gone for good before transferring one to a new
+  owner.
 - **`revoke_access` will not remove the person an app is held for.** It
   refuses them `owner_not_revocable`, as it refuses an owner, and its link
   cascade leaves a linked app held for that person as it is, with a warning

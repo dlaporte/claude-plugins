@@ -64,7 +64,7 @@ rewrites the connection with `client_auth: "post"`).
 - **"Too many requests"** (HTTP 429, `Retry-After: 60`). The connect pages
   share a budget of 60 requests a minute per person with the platform
   panel's live reads. Wait a minute, then start again from the chat.
-- **"Account inactive"** (HTTP 401). The platform's account check refuses
+- **"Sign-in refused"** (HTTP 403). The platform's account check refuses
   the person: in scim mode their pushed account is inactive or deleted, or
   was never pushed. Nothing about the connection can fix
   that.
@@ -73,8 +73,9 @@ rewrites the connection with `client_auth: "post"`).
   cannot unlock them. The page gives two ways out: use the app once from
   the chat (or the device where they last connected) and retry the link
   within the minutes it names, which loses nothing; or **Start fresh**,
-  which removes every backend connection stored under their address, so
-  they reconnect each one. Let them choose. When the page is reached on the
+  which removes every backend connection stored for the account they are
+  signed in as (from platform v0.18.4; never another account's at the same
+  address), so they reconnect each one. Let them choose. When the page is reached on the
   way back from a backend's sign-in, it offers no **Start fresh**, only a
   link to sign in and retry the connection.
 
