@@ -28,7 +28,8 @@ A link never widens who reaches the source's data (contract §2.1's nested
 containment): a consumer may read a source only when everyone who reaches
 the consumer reaches the source. Everyone reaches a public site, so any
 editor may read it; while the site is still members-only, every member of
-the editor must be on the site's list.
+the editor must reach the site too: on its list or in its identity provider
+group.
 
 ## The order, by case
 

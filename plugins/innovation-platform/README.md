@@ -702,3 +702,11 @@ about 1,400), a listed page of groups with their members carries at most about
 (`identity_conflict`, `still_member_through_group`) name a group that still
 admits the new account. `inno-fleet-admin` and `inno-manage-app` say so. No
 tool changed; the floor stays 7.0.0.
+
+Plugin 7.3.2 follows platform v0.18.10 and contract 46. `inno-new-app` and
+`inno-ship` now say a members-only app admits its identity provider group too,
+beside its member list, as `inno-manage-app` already did, and `inno-new-app`'s
+two-app pattern says an editor's members may reach a members-only site through
+its group. `inno-platform-conventions` no longer names a platform admin group
+among what `X-Forwarded-Groups` never carries. No tool changed in behavior
+(three tool descriptions are reworded); the floor stays 7.0.0.

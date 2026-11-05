@@ -338,11 +338,13 @@ Shipped v<X.Y.Z>: <the app URL, as reported by app_status / register_app>
 and say who can reach it and what it is told, from the `Audience:` and
 `Identity:` lines of `app_status`:
 
-- **members-only** (where every app starts): only the owner plus anyone
-  granted access via `inno-manage-app`'s `grant_access` can reach it. On a
-  browser app the platform signs each person in on their first visit (what
-  they see is `get_platform_docs`' **Signing in and out: what people see**),
-  and anyone else who signs in sees a plain "No access" page.
+- **members-only** (where every app starts): the owner, anyone granted
+  access via `inno-manage-app`'s `grant_access`, and the live members of its
+  identity provider group (`<prefix><app>-users`, when the provider pushes
+  one) can reach it. On a browser app the platform signs each person in on
+  their first visit (what they see is `get_platform_docs`' **Signing in and
+  out: what people see**), and anyone else who signs in sees a plain "No
+  access" page.
 - **internal**: everyone who signs in can reach it, members or not.
 - **public**: anyone on the internet can reach it, with no sign-in.
 
