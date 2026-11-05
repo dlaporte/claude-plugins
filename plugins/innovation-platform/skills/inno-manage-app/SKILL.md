@@ -407,11 +407,12 @@ every one), so a mistyped revoke is caught before it leaves the person in:
 pass `revoke_access` the address as that list shows it. Each member in the
 typed list carries a `way_in`: the row's source (`grant`, `transfer`,
 `custody`, or `owner` for a former owner's own row, which keeps that source
-after `transfer_app`) or `group`, for a person who reaches the app through
-its identity provider group. A person with both ways in is listed once for
-each. The `Group:` line names the group as the identity provider pushed it,
-its live member count and that only the identity provider changes it, then
-its first 50 members and how many more it holds (the typed list carries at
+once someone else owns the app, after `transfer_app` or a move into
+custody) or `group`, for a person who reaches the app through its identity
+provider group. A person with both ways in is listed once for each. The
+`Group:` line names the group as the identity provider pushed it, its live
+member count and that only the identity provider changes it, then its
+first 50 members and how many more it holds (the typed list carries at
 most 100 of the group's members). Only a row can be revoked, never a
 `group` entry. A row shown as `<newer address> (shared as <address>)` was
 shared as the second address, the one to pass (the typed `email`). A row
