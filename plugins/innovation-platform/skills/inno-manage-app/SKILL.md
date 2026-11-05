@@ -114,7 +114,8 @@ it (some providers push as changes happen, others on a schedule):
   admin. The same account check ends their access to every app, MCP and
   browser alike, and their platform tool calls, as follows. In scim mode a
   deactivation ends their panel and browser app sessions at once; their MCP
-  tokens stop within the window `auth.status_check_minutes` sets (a
+  tokens and platform tool calls stop within the window
+  `auth.status_check_minutes` sets (default 1 minute; a
   platform-scope setting, which only an admin's `get_config` catalog lists),
   plus the front door's introspection cache (contract R3); and a browser
   app's front door holds an answer for at most 10 seconds. An admin whose

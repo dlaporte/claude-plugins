@@ -716,9 +716,10 @@ now reads a header-delivery credential's `header` as well as `access_token`,
 leaves `refresh` at its default, prefers the default `client_auth`, and says
 what the "Start this connection again" page and the `401 unauthorized` and
 `400 bad_request` seam answers mean. `inno-ship` and `inno-safety-preflight`
-route a scanner's own fault apart from a finding, name the
-`deploy_denied:workflow` refusal as the author's to fix, and gain rows for the
-browser interface build, a `deploy-token` timeout and a failed image push;
+route a scanner's own fault apart from a finding and name the
+`deploy_denied:workflow` refusal as the author's to fix; `inno-ship` also gains
+rows for the browser interface build, a `deploy-token` timeout and a failed
+image push;
 `inno-containerize` gains two probe-clock clauses. `inno-manage-app` and
 `inno-fleet-admin` point at the one-click redeploy of a recent release from the
 panel and say that a suspended person keeps their stored credentials while a

@@ -157,8 +157,8 @@ the one account-status answer every tool uses, held for
   v0.18.8: an instance's `validate` refuses it and says to delete the key.
   An admin group at the identity provider, if one still exists, changes no
   one's standing in either direction.
-- Each admin row is pinned to the identity provider
-  account that holds its address (pinned, as a grant is, to the account that holds the address: at grant
+- Each admin row is pinned, as a grant is, to the identity provider
+  account that holds its address (at grant
   time when the platform can resolve the address to one account that has
   signed in at it, in scim mode, else at the address's first sign-in), so an address that passes to another person does
   not take the standing with it. The admins get an `identity_reassigned`

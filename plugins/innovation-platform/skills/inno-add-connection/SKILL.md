@@ -521,7 +521,7 @@ Rules that hold regardless of language:
 - On success you get back a live credential for *that* user (an
   `access_token`, or a ready-made `header` to send as given: which one
   depends on the connection's delivery, so branch on `header` first) plus an
-  `expires_at`: `expires_at` can be missing or null (always for a pasted `secret_form` token, and for a backend token with no stated lifetime and nothing to renew it): treat that as unknown, not as never expiring. Use it for the backend call you're about to make, and never
+  `expires_at`, which can be missing or null (always for a pasted `secret_form` token, and for a backend token with no stated lifetime and nothing to renew it): treat that as unknown, not as never expiring. Use it for the backend call you're about to make, and never
   write it to disk, a database row, or a log line. Keeping it in memory
   between calls is `get_app_security` §8's rule, which says how a cache must
   be keyed: one MCP container serves every user of the app from one

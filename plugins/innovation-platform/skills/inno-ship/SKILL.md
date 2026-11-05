@@ -197,12 +197,7 @@ If you poll `get_ci_status` instead, poll at the cadence `inno-manage-app`'s
 The user is not necessarily a developer. **Do not paste raw CI logs, stack
 traces, or job internals into the conversation.** The same goes for
 technology names: say "the security check", "the database", "file storage",
-per the plugin README's **House style** section. **The re-run rule, for every failure below:**
-a re-run of the deploy job alone reuses that run's artifacts (a container
-deploy's scanned image, a function app's bundle; kept for one day) and the
-record the platform staged for that run, so it works within a day of the run
-for either shape; after that only a re-run of the whole run (`gh run rerun
-<run-id>`, without `--job`) rebuilds them. Read the failure yourself
+per the plugin README's **House style** section. Read the failure yourself
 with `get_ci_status`, which names each failed job's failed step and the last
 lines of its log, fenced as untrusted data (or with `gh run view <run-id>
 --log-failed` when the user has `gh` signed in), but keep that output to
@@ -210,6 +205,14 @@ yourself. To
 the user, one plain sentence: "The security check found an out-of-date
 dependency; I'm updating it and re-shipping." Fix the **root cause**, push,
 and cut the next patch tag (a tag is immutable: never force-move one).
+
+**The re-run rule, for every failure below:** a re-run of the deploy job
+alone reuses that run's artifacts (a container deploy's scanned image, a
+function app's bundle; kept for one day) and the record the platform staged
+for that run, so it works within a day of the run for either shape; after
+that only a re-run of the whole run (`gh run rerun <run-id>`, without
+`--job`) rebuilds them.
+
 The exception: before any fix that moves, deletes or replaces the user's
 files, or edits anything under `.github/workflows/`, show the user the change
 and ask first, whether or not the row below says so.
