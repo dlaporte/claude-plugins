@@ -533,8 +533,8 @@ domains (above), keeps their sessions until this ends them.
    (`inno-manage-app` has its rules). It cannot end a way in through an
    app's identity provider group: that ends when the identity provider
    removes them from the group, or in scim mode deactivates the account
-   (lever 1). The answer names an app where a group still admits them. It refuses `owner_not_revocable` on an
-   app they own, and on an app in custody that is held for them: transfer it
+   (lever 1). The answer names an app where a group still admits them. It
+   refuses `owner_not_revocable` on an app they own, and on an app in custody that is held for them: transfer it
    first (read its `app_status` `Custody:` line, since a transfer ends
    custody for good), or stop it. A grant pinned to their
    account does not pass with their address to its next holder, but one

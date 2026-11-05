@@ -294,8 +294,8 @@ decides who may reach the app from that list, the app's identity provider
 group (`<prefix><app>-users`, pushed by the provider, read-only on the
 platform) and the app's audience, on every request. So share and unshare
 with these tools, never by hand at the identity provider; a group is the
-identity provider admin's to change, and the platform never changes one. Their descriptions say exactly what
-each writes and
+identity provider admin's to change, and the platform never changes one.
+Their descriptions say exactly what each writes and
 who is notified; `revoke_access`'s description and contract R3
 (`get_app_contract` with `sections: ["R3"]`) say when a change reaches a
 person. Quote the app's hostname from the `URL:` line of `app_status` or
@@ -410,8 +410,8 @@ typed list carries a `way_in`: the row's source (`grant`, `transfer`,
 identity provider group. A person with both ways in is listed once for
 each. The `Group:` line names the group as the identity provider pushed it,
 its live member count and that only the identity provider changes it, then
-as many of its members as the typed list holds (at most 100); only a
-`grant` or other row can be revoked. A row shown as
+as many of its members as the typed list holds (at most 100). Only a
+row can be revoked, never a `group` entry. A row shown as
 `<newer address> (shared as <address>)` was shared as the second address,
 the one to pass (the typed `email`). A row marked `waiting for a first
 sign-in` is not pinned to an account yet.
@@ -432,10 +432,16 @@ sign-in` is not pinned to an account yet.
   browser app's next access check, an MCP app's next token check), but it
   deletes no MCP grant record or stored connection credential the way
   `revoke_access` does; and a consumer app whose group still admits the
-  person keeps them in the cascade, which the result names in a `WARNING:`:
-  it reads this app's data through a link, and the platform's next hourly
-  containment check revokes the link unless the identity provider drops them
-  from that group first.
+  person keeps them in the cascade. For a members-only source the result
+  names such a consumer in a `WARNING:`: it still admits them through its
+  group and reads this app's data through a link, so they may still reach
+  the data there, and the next hourly containment check revokes the link
+  unless the identity provider removes them from that group first. From an
+  internal or public source there is no such promise, since the person
+  reaches the data by signing in anyway: a consumer whose member row of
+  theirs came out gets a plain `NOTE:` ("Also removed <email>'s member row
+  from "<consumer>", which still admits them through its identity provider
+  group "<group>"."), and one that held no row gets nothing.
 - `owner_not_revocable`: the address is the app's current owner, whose access
   comes from owning it, or the person an app in custody is held for. A
   platform admin's `transfer_app` comes first (**Transferring an app: ask an
@@ -609,9 +615,9 @@ An app's **audience** says who may reach it:
   about who calls.
 
 `app_status` and `list_apps` name each app's audience and identity. A change
-of audience never modifies the named member list or the group, so narrowing back to
-members-only restores exactly the access configured: say so when confirming
-either way. The tool's description says when a change takes effect and what
+of audience never modifies the named member list or the group, so
+narrowing back to members-only restores exactly the access configured: say
+so when confirming either way. The tool's description says when a change takes effect and what
 a narrowing does to data links.
 
 The panel narrows only. For a widening it names the audience the app would
