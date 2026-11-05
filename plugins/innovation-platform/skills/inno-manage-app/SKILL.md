@@ -944,11 +944,15 @@ Things to relay to the user in plain terms:
   variable reported `pending delivery` has not reached the deployed app yet
   (the next deploy delivers it with the app, so it is there from that
   deploy's first request).
-- **A hidden variable that reads `needs a value`** was delivered to a script
-  a platform release has since replaced (from platform v0.17.0, each secret
-  set before it reads this way once), so nothing holds it now and it counts
-  as missing. The owner sets it again with `set_app_variables`; `app_status`
-  names every such variable until then (contract §2.3).
+- **A hidden variable that reads `needs a value`** is a secret no deploy can
+  deliver, for one of two causes: it was delivered to an app's script before
+  the platform's one earlier move of every app onto a new script, and stayed
+  behind on the old one; or the platform still holds it, pending delivery,
+  sealed under an encryption key the platform no longer has (a never-deployed
+  app's secrets can meet this too). It holds no value and counts as missing.
+  The owner sets it again with `set_app_variables`, or, for the second cause,
+  the platform's operator puts the earlier key back; `app_status` names every
+  such variable until then (contract §2.3).
 - `app_status` names a REQUIRED declared variable that has no value, on its
   own line.
 
