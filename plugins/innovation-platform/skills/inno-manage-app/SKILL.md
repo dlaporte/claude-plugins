@@ -975,10 +975,16 @@ them:
   rebuild or redeploy has landed (**Narrowing**, above).
 - `member_reassigned`: an address with access now signs in as a different
   account than the one its access is pinned to. The entry names the address
-  and the re-share: `references/address-changes.md`. For an app held in
-  custody for the address's earlier holder, `revoke_access` refuses the
-  person it is held for, so the remedy is an admin's `transfer_app` of the
-  app to that address, which hands it to the address's new holder.
+  and the re-share: `references/address-changes.md`. From platform v0.18.9,
+  when the app's identity provider group still admits the new account, the
+  entry says so and names the group: a re-share (`revoke_access`, then
+  `grant_access`) then gives the new holder a way in that outlasts the group,
+  and removing them from the group at the identity provider ends theirs, on a
+  members-only app (on an internal app the audience still admits them). For an
+  app held in custody for the address's earlier holder, `revoke_access`
+  refuses the person it is held for, so the remedy is an admin's
+  `transfer_app` of the app to that address, which hands it to the address's
+  new holder.
 - `transferred`: the app's owner changed, and the entry says how: a
   platform admin transferred it to or from the reader, or it came back from
   a platform admin's custody once its owner's account could sign in again

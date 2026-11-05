@@ -694,3 +694,11 @@ and never reaches Cloudflare. In short: skills guide, CI
 validates, and the deploy broker enforces provenance, so only code that
 went through the platform's own CI can ever end up live at
 the app's own address (the platform reports the real hostname).
+
+Plugin 7.3.1 follows platform v0.18.9 and contract 46. A group request to the
+SCIM receiver may now be 1 MiB (about 23,300 members at once, where 64 KiB held
+about 1,400), a listed page of groups with their members carries at most about
+10,000 members, and the conflict notice (`member_reassigned`) and its audit row
+(`identity_conflict`, `still_member_through_group`) name a group that still
+admits the new account. `inno-fleet-admin` and `inno-manage-app` say so. No
+tool changed; the floor stays 7.0.0.

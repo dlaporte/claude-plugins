@@ -269,9 +269,12 @@ which no tool lists.
   roster: push an app's group to the provisioning app only once the app is
   registered. On Okta, leave Import Groups off: it would pull the groups Okta
   itself pushed back into Okta as new groups. A request naming more than
-  about 1,400 members at once is refused (the 64 KiB body limit), and fewer
-  fit where the provider adds to each entry (Entra a `$ref`, Okta the
-  member's display name). `/Bulk` and `/Me` still answer 501.
+  about 23,300 members at once is refused (the 1 MiB body limit for groups;
+  `/Users` keeps 64 KiB), and fewer fit where the provider adds to each entry
+  (Entra a `$ref`, Okta the member's display name). A listed page of groups
+  with their members carries at most about 10,000 members, every listed group
+  whole, so a provider pages by the `itemsPerPage` the answer gives. `/Bulk`
+  and `/Me` still answer 501.
   - **Prefer the panel for a new token.** The Identity tab's Create token
     shows it once, in the admin's own browser. `create_scim_token` returns
     it once in this conversation instead, which puts it in the session's
