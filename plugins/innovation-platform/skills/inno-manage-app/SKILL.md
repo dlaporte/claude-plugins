@@ -99,7 +99,7 @@ lets sign in is a member, and the platform never learns that an account was
 deactivated there: that person keeps what they had until their sessions and
 grants end, and only a platform admin can end it sooner (a delete the
 identity provider pushes over SCIM still ends their way in through an app's
-identity provider group, below, at the next decision). In `membership
+identity provider group, described below). In `membership
 scim` the identity provider also tells the platform who belongs, and a
 deactivation reaches the platform as soon as the identity provider pushes
 it (some providers push as changes happen, others on a schedule):
@@ -112,12 +112,15 @@ it (some providers push as changes happen, others on a schedule):
   nothing in this skill can undo it: the account has to be reactivated, or
   provisioned, at the identity provider, by the identity team or a platform
   admin. The same account check ends their access to every app, MCP and
-  browser alike, and their platform tool calls, within the window
-  `auth.status_check_minutes` sets (a platform-scope setting, which only an
-  admin's `get_config` catalog lists), plus the front door's cache
-  (contract R3, whose 60-second window counts from the moment the identity
-  provider's push arrives); and an admin whose account is deactivated loses admin
-  standing.
+  browser alike, and their platform tool calls, as follows. In scim mode a
+  deactivation ends their panel and browser app sessions at once; their MCP
+  tokens stop within the window `auth.status_check_minutes` sets (a
+  platform-scope setting, which only an admin's `get_config` catalog lists),
+  plus the front door's introspection cache (contract R3); and a browser
+  app's front door holds an answer for at most 10 seconds. An admin whose
+  account is deactivated loses admin standing. A person merely suspended
+  keeps their stored connection credentials, and a deleted account loses
+  them.
 - **The apps that person owns move into a platform admin's custody** as
   soon as that push arrives: the admin becomes their owner (`app_status` names them), and each
   app keeps running, with its audience, its member list, its data links and
@@ -625,9 +628,9 @@ An app's **audience** says who may reach it:
 `app_status` and `list_apps` name each app's audience and identity. A change
 of audience never modifies the named member list or the group, so
 narrowing back to members-only restores exactly the access configured: say
-so when confirming either way. The narrowing's answer names the named member list and the live members of
-the app's identity provider group (`<groupPrefix><app>-users`), since both
-still admit. The tool's description says when a change takes effect and what
+so when confirming either way. The narrowing's answer names the member list and the live members of the
+app's identity provider group (`<groupPrefix><app>-users`), since both still
+admit. The tool's description says when a change takes effect and what
 a narrowing does to data links.
 
 The panel narrows only. For a widening it names the audience the app would
@@ -1003,8 +1006,8 @@ them:
   error-budget burn (the last hour's failures against the availability
   target), and the post-deploy watch (failures since the latest deploy,
   against the rate before it). The stopgap is the panel's app page,
-  **Overview, then Releases**: any earlier release but the running one
-  redeploys with one click. It goes back through the full gates and deploys
+  **Overview, then Releases**: any recent release the Releases card
+  lists, but the running one, redeploys with one click while the app is live. It goes back through the full gates and deploys
   only if they pass today, it runs against the app's current data (an app
   that changed how it stores things may misbehave), and the next release tag
   supersedes it, since there is no pin to a version. Or fix forward with a
@@ -1012,9 +1015,7 @@ them:
   does it, and `rebuild_app` is the admin's.
 - `connection_expired`: a person's stored credential for one of the app's
   backends was removed (it expired or was revoked, could not be opened,
-  their encryption key was reset, or the connection's endpoints changed, or
-  the identity provider deleted their account, or they lost membership; a
-  person merely suspended there keeps their credentials),
+  their encryption key was reset, or the connection's endpoints changed),
   so they connect again from the link the app gives them.
 - `connection_locked`: the person's stored credential still exists, but
   their MCP client's authorization cannot open it. They re-authorize the

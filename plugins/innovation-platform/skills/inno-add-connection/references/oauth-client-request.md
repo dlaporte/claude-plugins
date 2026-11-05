@@ -30,8 +30,8 @@ Could you register a client with the following:
   `client_secret_basic`, `client_secret_post`, or "none / public client" if
   PKCE-only}
 - **Scopes requested:** {scopes: list the minimal set the integration needs}
-- **Refresh tokens:** {yes/no: say yes if the discovery document advertised
-  `refresh_token` support; and if yes, ask whether the backend **rotates** the
+- **Refresh tokens:** {yes/no: say yes unless renewal must not happen
+  (discovery documents often omit `refresh_token` from their grant types); and if yes, ask whether the backend **rotates** the
   refresh token on each use, which only decides whether `config.refresh` is
   `"rotating"`, the setting that adds the concurrent-renewal warning}
 

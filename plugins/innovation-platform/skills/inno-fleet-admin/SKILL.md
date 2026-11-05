@@ -158,9 +158,9 @@ the one account-status answer every tool uses, held for
   An admin group at the identity provider, if one still exists, changes no
   one's standing in either direction.
 - Each admin row is pinned to the identity provider
-  account that holds its address (`get_platform_docs`' **What the tools do in
-  detail**, its Sharing and audiences item, says when, and where the pin
-  applies), so an address that passes to another person does
+  account that holds its address (pinned, as a grant is, to the account that holds the address: at grant
+  time when the platform can resolve the address to one account that has
+  signed in at it, in scim mode, else at the address's first sign-in), so an address that passes to another person does
   not take the standing with it. The admins get an `identity_reassigned`
   notification (**Fleet-wide reads**), and the fix, if the new holder should
   be an admin, is `revoke_admin`, then `grant_admin`, for the address.

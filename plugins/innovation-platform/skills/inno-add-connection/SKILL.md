@@ -475,7 +475,7 @@ async def list_incidents(ctx: Context) -> dict:
                              "Try again later; you don't need to reconnect."}
         raise
     # cred is {"access_token": ...} or {"header": {"name": ..., "value": ...}},
-    # plus "expires_at", which is absent for a pasted secret_form token.
+    # plus "expires_at", which can be missing or null (see the rules below).
     # Which field arrives depends on the connection's delivery, not strategy.
     if cred.get("header"):
         auth = {cred["header"]["name"]: cred["header"]["value"]}
@@ -504,9 +504,11 @@ try {
   }
   throw e;
 }
-// cred has `access_token` or `header` ({ name, value }), and `expires_at`
-// only when the backend gave one. Send the header if present, else
-// `Authorization: Bearer ${cred.access_token}`.
+// cred has `access_token` or `header` ({ name, value }), plus `expires_at`,
+// which can be missing or null (see the rules below).
+const auth = cred.header
+  ? { [cred.header.name]: cred.header.value }
+  : { Authorization: `Bearer ${cred.access_token}` };
 ```
 
 Rules that hold regardless of language:
@@ -519,7 +521,7 @@ Rules that hold regardless of language:
 - On success you get back a live credential for *that* user (an
   `access_token`, or a ready-made `header` to send as given: which one
   depends on the connection's delivery, so branch on `header` first) plus an
-  `expires_at` that is absent for a pasted `secret_form` token. Use it for the backend call you're about to make, and never
+  `expires_at`: `expires_at` can be missing or null (always for a pasted `secret_form` token, and for a backend token with no stated lifetime and nothing to renew it): treat that as unknown, not as never expiring. Use it for the backend call you're about to make, and never
   write it to disk, a database row, or a log line. Keeping it in memory
   between calls is `get_app_security` §8's rule, which says how a cache must
   be keyed: one MCP container serves every user of the app from one
@@ -588,8 +590,10 @@ Rules that hold regardless of language:
     `X-Caller-Assertion` of the request you are serving now, not one kept
     from an earlier request, and check the connection name you passed
     against `list_connections`. A `401 connections_bad_assertion` can also
-    be the host's (one last uploaded before v0.17.4, or an assertion relayed
-    through another app's host): `restart_app` or the host wave fixes it.
+    be the host's: one the platform last uploaded before v0.17.4, which
+    `restart_app` or that release's host wave fixes. It is also the answer
+    to an assertion relayed through another app's host: an assertion is good
+    only on the app it was issued to, so never hand one on to another app.
   - **`401 unauthorized`**: the host holds a stale seam key, as after a
     key rotation. Nothing in the app's code fixes it: the owner runs
     `restart_app`, or waits for the host wave.

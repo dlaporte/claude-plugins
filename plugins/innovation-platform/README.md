@@ -715,12 +715,13 @@ Plugin 7.3.3 follows platform v0.18.11 and contract 47. `inno-add-connection`
 now reads a header-delivery credential's `header` as well as `access_token`,
 leaves `refresh` at its default, prefers the default `client_auth`, and says
 what the "Start this connection again" page and the `401 unauthorized` and
-`400 bad_request` seam answers mean. `inno-ship`, `inno-safety-preflight` and
-`inno-containerize` route a scanner's own fault apart from a finding, name the
+`400 bad_request` seam answers mean. `inno-ship` and `inno-safety-preflight`
+route a scanner's own fault apart from a finding, name the
 `deploy_denied:workflow` refusal as the author's to fix, and gain rows for the
-browser interface build, a `deploy-token` timeout and a failed image push.
-`inno-manage-app` and `inno-fleet-admin` point at the one-click redeploy of an
-earlier release from the panel, say that a suspended person keeps their stored
-credentials while a deleted one loses them, and say the contract's 60-second
-window counts from the identity provider's push. No tool changed in behavior;
-the floor stays 7.0.0.
+browser interface build, a `deploy-token` timeout and a failed image push;
+`inno-containerize` gains two probe-clock clauses. `inno-manage-app` and
+`inno-fleet-admin` point at the one-click redeploy of a recent release from the
+panel and say that a suspended person keeps their stored credentials while a
+deleted one loses them; `inno-manage-app` also says how long a deactivation
+takes to reach an app. No tool changed in behavior (two tool descriptions and
+two answers are reworded); the floor stays 7.0.0.
