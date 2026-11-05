@@ -1154,6 +1154,8 @@ the rules.
 If the user doesn't remember an app's exact name, call the read-only
 `list_apps` tool first. It lists the apps the caller owns, or every app on the
 platform when the caller is an admin. Each row carries the name, status, type
-label, audience and identity, owner, and address, plus the GitHub repo backing it and an `[UNLINKED]`
+label, audience and identity, owner, and address, plus the GitHub repo backing it an `[UNLINKED]`
 flag when the platform's GitHub App is no longer installed on that repo (the
-remedy is `start_app`'s `app_unlinked` above).
+remedy is `start_app`'s `app_unlinked` above), and an `[IN CUSTODY]` flag for
+an app held in custody (the owner shown is the custodian; `app_status` names
+whom it is held for).

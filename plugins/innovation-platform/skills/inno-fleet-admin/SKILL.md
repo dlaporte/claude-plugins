@@ -806,8 +806,10 @@ serves. The panel's Platform screen is the same act on a visual surface.
   also carries `health=` with its latest probe's result (`healthy`,
   `unhealthy`, or `unknown` when the probe could not complete or has not
   run yet); `[VULNERABLE]` marks an app with open safety findings,
-  whatever its status; and `[UNLINKED]` one whose repository the
-  platform's GitHub App is no longer installed on.
+  whatever its status; `[UNLINKED]` one whose repository the
+  platform's GitHub App is no longer installed on; and `[IN CUSTODY]` one held
+  in custody (the owner shown is the custodian; `app_status` names whom it is
+  held for).
 - `get_platform_status`, for an admin, names the apps behind its UNHEALTHY
   and VULNERABLE counts on an `Unhealthy apps:` and a `Vulnerable apps:`
   line, each only when its count is above zero and naming the first few
