@@ -524,6 +524,21 @@ turn on in Okta and Microsoft Entra ID, to leave Okta's Import Groups off, and
 that `/Bulk` and `/Me` still answer 501. No tool changed; the floor stays
 7.0.0.
 
+Plugin 7.3.0 follows platform v0.18.8 and contract 45. A group the identity
+provider pushes, named `<groupPrefix><app>-users`, now admits its members to
+that app beside its member list, in either membership mode, and never makes
+an admin: admin standing stays the platform's own list, and the manifest key
+`naming.adminGroup` is retired. `inno-manage-app` says that `revoke_access`
+removes only a member row and answers when a group still admits the person
+(changed only at the identity provider), that `grant_access` to a group
+member adds a second way in, and that `app_status` shows each member's way
+in (`way_in`, the `Group:` line). `inno-fleet-admin` says how to push the
+groups, to keep group prefixes distinct across instances sharing an identity
+provider, and that the SCIM token can admit a person to an app through its
+group but can never make an admin. No tool was added or removed: the
+descriptions of `app_status` and `revoke_access` moved, and `app_status`'
+output gained `way_in` on each member. The floor stays 7.0.0.
+
 ### House style
 
 Every skill in this plugin speaks to a broad, largely non-technical userbase,
