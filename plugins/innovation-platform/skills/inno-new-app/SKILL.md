@@ -294,13 +294,14 @@ make, with your recommendation**:
 **Who may reach the app, its audience, is not a registration choice.** Every
 new app starts **members-only**: the people on its member list (the owner and
 anyone granted access) and the live members of its identity provider group,
-`<prefix><app>-users`, when the provider pushes one over SCIM. Widening it later, to **internal** (everyone the identity
-provider signs in, members or not) or to **public** (anyone on the internet,
-with no sign-in, an anonymous app only), is `inno-manage-app`'s widening
-review, run once the app is built and checked, never at registration. Ask
-which audience the app is meant for in the end, so the design serves it
-(an anonymous app is reviewed as public from the start, `inno-safety-preflight`),
-and say plainly that it starts members-only.
+`<prefix><app>-users`, when the provider pushes one over SCIM. Widening it
+later, to **internal** (everyone the identity provider signs in, members or
+not) or to **public** (anyone on the internet, with no sign-in, an anonymous
+app only), is `inno-manage-app`'s widening review, run once the app is built
+and checked, never at registration. Ask which audience the app is meant for in
+the end, so the design serves it (an anonymous app is reviewed as public from
+the start, `inno-safety-preflight`), and say plainly that it starts
+members-only.
 
 **When the answer is internal or public, check now whether it is allowed.**
 Whether an app may be widened is a platform setting a platform admin

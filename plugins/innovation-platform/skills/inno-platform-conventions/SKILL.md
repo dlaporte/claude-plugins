@@ -440,8 +440,8 @@ that template has no such helper either, read an empty or missing
   a signed-in non-member of an internal app included, carries no group (R3's
   group rule). The group's name is in the `App groups:` line of the status
   you read in the Version gate, with the app's name in place of `{app}`. It
-  never carries the platform admin group, another app's groups, or any
-  other group, so use it only to tell a member from a signed-in non-member
+  never carries another app's groups or any other group the caller belongs
+  to, so use it only to tell a member from a signed-in non-member
   (the helper's `member` is that test); any finer role (an editor, a staff
   view, an in-app admin) needs your own role store keyed on
   `X-Forwarded-Subject`, and only for a caller who has one.
