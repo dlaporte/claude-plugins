@@ -116,7 +116,8 @@ instance's **membership mode**, the platform setting `auth.provisioning`
   a member. The platform cannot learn that an account was suspended or
   deleted there, and the line goes on to say so and to name the settings
   that bound how long such a person keeps access. A delete the provider
-  pushes still ends a way in through an app's group, and the line says so.
+  pushes over SCIM ends their way in through an app's group at the next
+  decision, and the line says so.
 - `membership scim`: the identity provider pushes its accounts to the
   platform over SCIM, and only an active pushed account may sign in, beside
   the break-glass addresses (`references/custody.md`). The line counts

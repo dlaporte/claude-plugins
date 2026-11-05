@@ -32,7 +32,7 @@ person it is held for. An app is in custody while it carries the custody
 mark, whoever owns it. From platform v0.18.4 custody is visible: `app_status`
 has a `Custody:` line and a `custody` field (`held_for`, the address it
 returns to, null when no member row names one; `pending`, true while the
-person has no pinned account), and `list_apps` marks the app `[IN CUSTODY]`.
+person has no pinned account), and `list_apps` marks the app `[IN CUSTODY]` (the owner shown is the custodian; `app_status` names whom it is held for).
 The mark has a kind (`custody_kind`: `email` or `sub`, null only for a mark an
 older build wrote), which `export_platform_backup` carries beside
 `custody_of`. The custodian's own member row on it lasts exactly as
