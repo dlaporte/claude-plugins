@@ -406,15 +406,16 @@ names the app's members, its owner aside (its typed `members` field holds
 every one), so a mistyped revoke is caught before it leaves the person in:
 pass `revoke_access` the address as that list shows it. Each member in the
 typed list carries a `way_in`: the row's source (`grant`, `transfer`,
-`custody`) or `group`, for a person who reaches the app through its
-identity provider group. A person with both ways in is listed once for
+`custody`, or `owner` for a former owner's own row, which keeps that source
+after `transfer_app`) or `group`, for a person who reaches the app through
+its identity provider group. A person with both ways in is listed once for
 each. The `Group:` line names the group as the identity provider pushed it,
 its live member count and that only the identity provider changes it, then
-as many of its members as the typed list holds (at most 100). Only a
-row can be revoked, never a `group` entry. A row shown as
-`<newer address> (shared as <address>)` was shared as the second address,
-the one to pass (the typed `email`). A row marked `waiting for a first
-sign-in` is not pinned to an account yet.
+its first 50 members and how many more it holds (the typed list carries at
+most 100 of the group's members). Only a row can be revoked, never a
+`group` entry. A row shown as `<newer address> (shared as <address>)` was
+shared as the second address, the one to pass (the typed `email`). A row
+marked `waiting for a first sign-in` is not pinned to an account yet.
 
 **`revoke_access` refusals and outcomes:**
 
@@ -435,7 +436,7 @@ sign-in` is not pinned to an account yet.
   person keeps them in the cascade. For a members-only source the result
   names such a consumer in a `WARNING:`: it still admits them through its
   group and reads this app's data through a link, so they may still reach
-  the data there, and the next hourly containment check revokes the link
+  the data there, and the next hourly containment pass revokes the link
   unless the identity provider removes them from that group first. From an
   internal or public source there is no such promise, since the person
   reaches the data by signing in anyway: a consumer whose member row of

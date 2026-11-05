@@ -263,11 +263,15 @@ which no tool lists.
   instance that holds the app. A group named for an app that does not exist
   does nothing until an app of that name is registered, and a purged app's
   group, which a purge never deletes, admits its members to any app later
-  registered under the name. On Okta, leave Import Groups off: it would pull the
-  groups Okta itself pushed back into Okta as new groups. A request naming
-  more than about 1,400 members at once is refused (the 64 KiB body
-  limit), and fewer fit where the provider adds to each entry (Entra a
-  `$ref`, Okta the member's display name). `/Bulk` and `/Me` still answer 501.
+  registered under the name. Anyone who signs in may register an app, and a
+  purged name is held for 7 days, so whoever registers a name a pushed group
+  matches admits that group's members and sees their addresses on the app's
+  roster: push an app's group to the provisioning app only once the app is
+  registered. On Okta, leave Import Groups off: it would pull the groups Okta
+  itself pushed back into Okta as new groups. A request naming more than
+  about 1,400 members at once is refused (the 64 KiB body limit), and fewer
+  fit where the provider adds to each entry (Entra a `$ref`, Okta the
+  member's display name). `/Bulk` and `/Me` still answer 501.
   - **Prefer the panel for a new token.** The Identity tab's Create token
     shows it once, in the admin's own browser. `create_scim_token` returns
     it once in this conversation instead, which puts it in the session's

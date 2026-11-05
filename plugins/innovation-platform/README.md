@@ -535,7 +535,9 @@ member adds a second way in, and that `app_status` shows each member's way
 in (`way_in`, the `Group:` line). `inno-fleet-admin` says how to push the
 groups, to keep group prefixes distinct across instances sharing an identity
 provider, and that the SCIM token can admit a person to an app through its
-group but can never make an admin. No tool changed; the floor stays 7.0.0.
+group but can never make an admin. No tool was added or removed: the
+descriptions of `app_status` and `revoke_access` moved, and `app_status`'
+output gained `way_in` on each member. The floor stays 7.0.0.
 
 ### House style
 
