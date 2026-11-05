@@ -273,7 +273,8 @@ which no tool lists.
   `/Users` keeps 64 KiB), and fewer fit where the provider adds to each entry
   (Entra a `$ref`, Okta the member's display name). A listed page of groups
   with their members carries at most about 10,000 members, every listed group
-  whole, so a provider pages by the `itemsPerPage` the answer gives. `/Bulk` and `/Me` still answer 501.
+  whole, so a provider pages by the `itemsPerPage` the answer gives. `/Bulk`
+  and `/Me` still answer 501.
   - **Prefer the panel for a new token.** The Identity tab's Create token
     shows it once, in the admin's own browser. `create_scim_token` returns
     it once in this conversation instead, which puts it in the session's
