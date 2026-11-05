@@ -197,7 +197,10 @@ whatever its reason was, its earlier keys still inside the cut-down
   in as an account other than the one its grants are pinned to, which those
   grants refuse (`apps`, `owner_of` and `admin` name them). From platform
   v0.18.0 it also carries `account: true` when the address's pushed account
-  is pinned to another account, which scim mode refuses at sign-in.
+  is pinned to another account, which scim mode refuses at sign-in. From
+  platform v0.18.9 it also carries `still_member_through_group`, the stored
+  names of the groups of the apps in `apps` that still admit the new account,
+  when there is one.
 
 ## Membership, SCIM and custody (from platform v0.18.0)
 
