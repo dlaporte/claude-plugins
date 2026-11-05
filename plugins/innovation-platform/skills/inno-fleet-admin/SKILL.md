@@ -147,11 +147,14 @@ the one account-status answer every tool uses, held for
   later, and reconnect once the status reads again. A client that connects
   during such an outage is given a member's tool list, with no admin-only
   tool in it, so reconnect then too.
-- No group at the identity provider makes anyone an admin. The `Admin
-  group:` line of `get_platform_status` names one that no release from
-  platform v0.18.0 reads: adding someone to it, or removing someone from
-  it, changes no one's standing. Use `grant_admin` or `revoke_admin`, or in
-  scim mode deactivate the account at the identity provider.
+- No group at the identity provider ever makes anyone an admin. Admin
+  standing is the platform's own admin list: `identity.initialAdmins` seeds
+  it, and `grant_admin` and `revoke_admin` change it (in scim mode,
+  deactivate the account at the identity provider to end an admin's
+  sign-in). The manifest key `naming.adminGroup` is retired from platform
+  v0.18.8: an instance's `validate` refuses it and says to delete the key.
+  An admin group at the identity provider, if one still exists, changes no
+  one's standing in either direction.
 - Each admin row is pinned to the identity provider
   account that holds its address (`grant_admin`'s description says when, and
   where the pin applies), so an address that passes to another person does
@@ -230,7 +233,9 @@ which no tool lists.
 - **The SCIM token** is what the identity provider's provisioning app sends
   with every push, and the most powerful credential the platform accepts:
   whoever holds it can deactivate every pushed account, which in scim mode
-  blocks everyone but the break-glass addresses. At most two are live at
+  blocks everyone but the break-glass addresses, and can admit a person the
+  identity provider signs in to any members-only app by pushing them into
+  its group. It can never make an admin. At most two are live at
   once, so a token rotates with no gap: create the new one, have the admin
   paste it into the provider in place of the old one, and once they have
   saved it there (the provider's connection test or its next push uses it),
@@ -244,8 +249,21 @@ which no tool lists.
   ID: assign groups to the provisioning app, and their members are pushed
   as Users). The platform stores each pushed group, its name and its
   members, and lists them (`get_provisioning`'s `groups`, a count, and the
-  Identity tab); a group grants nothing in this release, in either
-  membership mode. On Okta, leave Import Groups off: it would pull the
+  Identity tab). From platform v0.18.8 a pushed group named
+  `<groupPrefix><app>-users` (the manifest's `naming.groupPrefix`; the
+  name is matched ignoring ASCII case, nothing trimmed) admits its
+  members to that members-only app, beside the app's member list, in either
+  membership mode: push one to give a team an app, and see each member's
+  way in on the app's `app_status`, as `inno-manage-app` says. A group never
+  grants admin. The platform never changes a group: removing someone from
+  it at the identity provider ends that way in, and `revoke_access` cannot.
+  Instances that share an identity provider use distinct group prefixes, so
+  one instance's apps are not named by another's groups; where two already
+  share a prefix, push each app's group only to the provisioning app of the
+  instance that holds the app. A group named for an app that does not exist
+  does nothing until an app of that name is registered, and a purged app's
+  group, which a purge never deletes, admits its members to any app later
+  registered under the name. On Okta, leave Import Groups off: it would pull the
   groups Okta itself pushed back into Okta as new groups. A request naming
   more than about 1,400 members at once is refused (the 64 KiB body
   limit), and fewer fit where the provider adds to each entry (Entra a
@@ -512,7 +530,10 @@ domains (above), keeps their sessions until this ends them.
 2. **`revoke_sessions`** ends their panel and browser app sessions now.
 3. **`revoke_access` on each app they are a member of** removes them from
    its member list and deletes their stored connections there
-   (`inno-manage-app` has its rules). It refuses `owner_not_revocable` on an
+   (`inno-manage-app` has its rules). It cannot end a way in through an
+   app's identity provider group: that ends when the identity provider
+   removes them from the group, or in scim mode deactivates the account
+   (lever 1). The answer names an app where a group still admits them. It refuses `owner_not_revocable` on an
    app they own, and on an app in custody that is held for them: transfer it
    first (read its `app_status` `Custody:` line, since a transfer ends
    custody for good), or stop it. A grant pinned to their

@@ -289,10 +289,12 @@ different name. An admin's immediate `purge_app` is `inno-fleet-admin`'s.
 
 ## `grant_access({ app, email })` / `revoke_access({ app, email })`
 
-These tools write the platform's **member list** for the app, its only
-store, and the platform decides from that list and the app's audience who
-may reach the app, on every request. So share and unshare with these tools,
-never by hand at the identity provider. Their descriptions say exactly what
+These tools write the platform's **member list** for the app. The platform
+decides who may reach the app from that list, the app's identity provider
+group (`<prefix><app>-users`, pushed by the provider, read-only on the
+platform) and the app's audience, on every request. So share and unshare
+with these tools, never by hand at the identity provider; a group is the
+identity provider admin's to change, and the platform never changes one. Their descriptions say exactly what
 each writes and
 who is notified; `revoke_access`'s description and contract R3
 (`get_app_contract` with `sections: ["R3"]`) say when a change reaches a
@@ -302,7 +304,8 @@ from `register_app`'s answer, rather than building it.
 **What admits a person** is the app's audience (`set_app_access`, below),
 on every type, MCP (`mcp-function`, `mcp-container`) and browser
 (`container`, `function`) alike: a members-only app admits a person the
-member list holds and an internal app everyone the identity provider signs
+member list holds, or its identity provider group (below) holds, and an
+internal app everyone the identity provider signs
 in, the front door asking the platform at every request, and a public app
 admits anyone, with no sign-in and no question to the platform. A person a
 members-only browser app does not admit is refused when they sign in, on the
@@ -375,6 +378,11 @@ must confirm.
   says so. It is not an error: tell the user the person already had access,
   and relay anything the result adds about the address passing to someone
   else.
+- **A grant to someone the app's identity provider group already admits**
+  writes the row anyway, and the result carries a `NOTE:` naming the group
+  they already reach the app through. The row is a second way in: it stays
+  if the identity provider later removes them from the group. Relay the
+  note.
 - `link_containment`: this app still reads another app's data the person
   cannot see, through a live link or, for a `function` or `mcp-function`
   app, a revoked one whose binding is still deployed; the message names
@@ -396,13 +404,38 @@ must confirm.
 **Before a revoke, read the member list.** `app_status`'s `Members` line
 names the app's members, its owner aside (its typed `members` field holds
 every one), so a mistyped revoke is caught before it leaves the person in:
-pass `revoke_access` the address as that list shows it. A row shown as
+pass `revoke_access` the address as that list shows it. Each member in the
+typed list carries a `way_in`: the row's source (`grant`, `transfer`,
+`custody`) or `group`, for a person who reaches the app through its
+identity provider group. A person with both ways in is listed once for
+each. The `Group:` line names the group as the identity provider pushed it,
+its live member count and that only the identity provider changes it, then
+as many of its members as the typed list holds (at most 100); only a
+`grant` or other row can be revoked. A row shown as
 `<newer address> (shared as <address>)` was shared as the second address,
 the one to pass (the typed `email`). A row marked `waiting for a first
 sign-in` is not pinned to an account yet.
 
 **`revoke_access` refusals and outcomes:**
 
+- **`revoke_access` removes only a member row, never a group's way in.**
+  Two answers say so:
+  - A person the group admits and no row names: nothing is removed or
+    recorded, and the answer says they reach the app through the identity
+    provider group, which only the identity provider changes. To end their
+    access, the identity provider admin removes them from that group.
+  - A person with a row whom the group also admits: the row comes out, and
+    the answer says they still reach the app through the group, so their
+    access, MCP token grants, stored credentials and linked apps are
+    unchanged. Do not tell the owner the person is off.
+  A group's removal of a person ends their access at the next decision (a
+  browser app's next access check, an MCP app's next token check), but it
+  deletes no MCP grant record or stored connection credential the way
+  `revoke_access` does; and a consumer app whose group still admits the
+  person keeps them in the cascade, which the result names in a `WARNING:`:
+  it reads this app's data through a link, and the platform's next hourly
+  containment check revokes the link unless the identity provider drops them
+  from that group first.
 - `owner_not_revocable`: the address is the app's current owner, whose access
   comes from owning it, or the person an app in custody is held for. A
   platform admin's `transfer_app` comes first (**Transferring an app: ask an
@@ -566,7 +599,9 @@ tagging their own repo, which is `inno-ship`.
 An app's **audience** says who may reach it:
 
 - **members-only**: the people on its member list (the owner and everyone
-  granted access). Every app starts here.
+  granted access) and the members of its identity provider group,
+  `<prefix><app>-users`, when the provider pushes one. Every app starts
+  here.
 - **internal**: everyone the identity provider signs in, members or not.
 - **public**: anyone on the internet, with no sign-in. Only an
   **anonymous** app can be public: an app's identity is fixed at
@@ -574,7 +609,7 @@ An app's **audience** says who may reach it:
   about who calls.
 
 `app_status` and `list_apps` name each app's audience and identity. A change
-of audience never modifies the named member list, so narrowing back to
+of audience never modifies the named member list or the group, so narrowing back to
 members-only restores exactly the access configured: say so when confirming
 either way. The tool's description says when a change takes effect and what
 a narrowing does to data links.

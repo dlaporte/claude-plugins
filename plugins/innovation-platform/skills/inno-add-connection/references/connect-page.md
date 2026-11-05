@@ -21,8 +21,8 @@ rewrites the connection with `client_auth: "post"`).
   identity; a connection left on an app that cannot fetch one is removed
   with `remove_app_connection`), then `list_connections` for the app (does
   that connection name exist, and is it enabled), then whether the person
-  may use the app. On a members-only app that means its member list
-  (`grant_access` if they are not on it); an internal app admits everyone
+  may use the app. On a members-only app that means its member list or
+  its identity provider group (`grant_access` if they are in neither); an internal app admits everyone
   who signs in, so there the cause is one of the others. The same page also
   answers when the platform could not check the person's access just then
   (its identity provider or its database did not answer), so one more try a

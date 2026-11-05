@@ -434,7 +434,8 @@ that template has no such helper either, read an empty or missing
   rows once, since every identified request carries both headers: a
   migration in the app's own code, recommended and not required (§3).
 - **`X-Forwarded-Groups`** carries at most one group, this app's own
-  members group, and only when the caller is a member; every other request,
+  members group, and only when the caller is a member (on the member list or
+  in the app's identity provider group alike: a group member is a member); every other request,
   a signed-in non-member of an internal app included, carries no group (R3's
   group rule). The group's name is in the `App groups:` line of the status
   you read in the Version gate, with the app's name in place of `{app}`. It
