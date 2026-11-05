@@ -98,8 +98,8 @@ in the Version gate names. In `membership jit` anyone the identity provider
 lets sign in is a member, and the platform never learns that an account was
 deactivated there: that person keeps what they had until their sessions and
 grants end, and only a platform admin can end it sooner (a delete the
-identity provider pushes still ends a way in that person has through an
-app's identity provider group, below). In `membership
+identity provider pushes over SCIM still ends their way in through an app's
+identity provider group, below, at the next decision). In `membership
 scim` the identity provider also tells the platform who belongs, and a
 deactivation reaches the platform as soon as the identity provider pushes
 it (some providers push as changes happen, others on a schedule):
@@ -625,8 +625,9 @@ An app's **audience** says who may reach it:
 `app_status` and `list_apps` name each app's audience and identity. A change
 of audience never modifies the named member list or the group, so
 narrowing back to members-only restores exactly the access configured: say
-so when confirming either way. The narrowing's answer names the app's
-identity provider group beside its member list, since both still admit. The tool's description says when a change takes effect and what
+so when confirming either way. The narrowing's answer names the named member list and the live members of
+the app's identity provider group (`<groupPrefix><app>-users`), since both
+still admit. The tool's description says when a change takes effect and what
 a narrowing does to data links.
 
 The panel narrows only. For a widening it names the audience the app would
