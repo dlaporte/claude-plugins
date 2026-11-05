@@ -115,7 +115,8 @@ instance's **membership mode**, the platform setting `auth.provisioning`
   upgrade to platform v0.18.0: anyone the identity provider lets sign in is
   a member. The platform cannot learn that an account was suspended or
   deleted there, and the line goes on to say so and to name the settings
-  that bound how long such a person keeps access.
+  that bound how long such a person keeps access. A delete the provider
+  pushes still ends a way in through an app's group, and the line says so.
 - `membership scim`: the identity provider pushes its accounts to the
   platform over SCIM, and only an active pushed account may sign in, beside
   the break-glass addresses (`references/custody.md`). The line counts
@@ -156,8 +157,9 @@ the one account-status answer every tool uses, held for
   An admin group at the identity provider, if one still exists, changes no
   one's standing in either direction.
 - Each admin row is pinned to the identity provider
-  account that holds its address (`grant_admin`'s description says when, and
-  where the pin applies), so an address that passes to another person does
+  account that holds its address (`get_platform_docs`' **What the tools do in
+  detail**, its Sharing and audiences item, says when, and where the pin
+  applies), so an address that passes to another person does
   not take the standing with it. The admins get an `identity_reassigned`
   notification (**Fleet-wide reads**), and the fix, if the new holder should
   be an admin, is `revoke_admin`, then `grant_admin`, for the address.
@@ -637,7 +639,7 @@ Dispatches a rebuild of the app's already-released code at its live release
 tag: the full CI gates run and the app deploys only if they pass, with no
 new commit and no code change. It exists for what an owner cannot
 self-serve, such as redeploying a third-party-owned repo an admin cannot
-push a tag to. Owners never need it: they redeploy by tagging their own repo (`inno-ship`).
+push a tag to. Owners never need it: they redeploy by tagging their own repo (`inno-ship`), or redeploy an earlier release from the panel.
 The platform also rebuilds, on its own, a function-shaped consumer whose
 revoked data link it owes a rebuild: one another account owns
 (`inno-manage-app`'s **Data links across owners**), one a narrowing or a
@@ -956,7 +958,7 @@ shared tools below them are listed for everyone.
 | `get_provisioning` / `create_scim_token` / `revoke_scim_token` | platform admins only (prefer the panel's Identity tab for a new token) |
 | `transfer_app` | platform admins only (owners ask an admin; `also` moves a linked set, and a public app needs `accept_guardrails`) |
 | `purge_app` | platform admins only |
-| `rebuild_app` | platform admins only (owners redeploy by tagging their own repo) |
+| `rebuild_app` | platform admins only (owners redeploy by tagging their own repo, or redeploy an earlier release from the panel) |
 | `revoke_sessions` | platform admins only |
 | `accept_naming_change` | platform admins only |
 | `list_users` / `query_audit` / `get_platform_logs` / `export_platform_backup` | platform admins only |

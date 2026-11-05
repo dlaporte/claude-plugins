@@ -97,7 +97,9 @@ membership modes, which the `Identity provider:` line of the status you read
 in the Version gate names. In `membership jit` anyone the identity provider
 lets sign in is a member, and the platform never learns that an account was
 deactivated there: that person keeps what they had until their sessions and
-grants end, and only a platform admin can end it sooner. In `membership
+grants end, and only a platform admin can end it sooner (a delete the
+identity provider pushes still ends a way in that person has through an
+app's identity provider group, below). In `membership
 scim` the identity provider also tells the platform who belongs, and a
 deactivation reaches the platform as soon as the identity provider pushes
 it (some providers push as changes happen, others on a schedule):
@@ -113,7 +115,8 @@ it (some providers push as changes happen, others on a schedule):
   browser alike, and their platform tool calls, within the window
   `auth.status_check_minutes` sets (a platform-scope setting, which only an
   admin's `get_config` catalog lists), plus the front door's cache
-  (contract R3); and an admin whose account is deactivated loses admin
+  (contract R3, whose 60-second window counts from the moment the identity
+  provider's push arrives); and an admin whose account is deactivated loses admin
   standing.
 - **The apps that person owns move into a platform admin's custody** as
   soon as that push arrives: the admin becomes their owner (`app_status` names them), and each
@@ -534,7 +537,9 @@ what serves. Only a run that never reached that step (it was cancelled or
 timed out, or its runner died), or whose step warned `App not released`,
 holds the app `deploying` until a later deploy finishes or the lifecycle
 pass's recovery sweep reverts it, and until then those tools keep refusing.
-Each of their descriptions says when the sweep comes; the interval it counts
+The platform's server
+instructions, and the `app_deploying` message itself, say when the sweep
+comes (two run intervals, at least 2 hours); the interval it counts
 is the platform-scope `lifecycle.run_interval_hours`, which an owner's
 `get_config app=` does not list. While an app is deploying, `app_status`'s
 `Lifecycle:` line says when that deploy began and names its CI run, as its
@@ -600,7 +605,8 @@ is the ↻ icon next to the container name on the app's panel page.
 
 Its admin-only neighbor, `rebuild_app`, rebuilds an app's released code at
 its live tag (`inno-fleet-admin`). Owners never need it: they redeploy by
-tagging their own repo, which is `inno-ship`.
+tagging their own repo, which is `inno-ship`, or redeploy an earlier release
+from the panel (the `degraded` entry, under **Notifications**).
 
 ## `set_app_access({ app, audience, accept_guardrails? })`: who may reach the app
 
@@ -619,7 +625,8 @@ An app's **audience** says who may reach it:
 `app_status` and `list_apps` name each app's audience and identity. A change
 of audience never modifies the named member list or the group, so
 narrowing back to members-only restores exactly the access configured: say
-so when confirming either way. The tool's description says when a change takes effect and what
+so when confirming either way. The narrowing's answer names the app's
+identity provider group beside its member list, since both still admit. The tool's description says when a change takes effect and what
 a narrowing does to data links.
 
 The panel narrows only. For a widening it names the audience the app would
@@ -956,7 +963,7 @@ Stages worth acting on when one appears: `first_deploy_due`,
 `connection_expired`, `connection_locked`, `connection_refused`, `unlinked` /
 `relinked`,
 `transferred`, `access_changed`, `shared`, `exported`, `member_reassigned`,
-`cross_owner_link_revoked`, `host_upload_blocked`. What to do on ten of
+`cross_owner_link_revoked`, `host_upload_blocked`. What to do on eleven of
 them:
 
 - `first_deploy_due`: a registered app has not completed its first deploy,
@@ -991,9 +998,22 @@ them:
   (**When an account is deactivated**, above). An app that came back kept
   running while it was away, with its audience and its data links; nothing
   needs redoing.
+- `degraded`: the owner's app is failing requests. Two senders: the
+  error-budget burn (the last hour's failures against the availability
+  target), and the post-deploy watch (failures since the latest deploy,
+  against the rate before it). The stopgap is the panel's app page,
+  **Overview, then Releases**: any earlier release but the running one
+  redeploys with one click. It goes back through the full gates and deploys
+  only if they pass today, it runs against the app's current data (an app
+  that changed how it stores things may misbehave), and the next release tag
+  supersedes it, since there is no pin to a version. Or fix forward with a
+  new release (`inno-ship`). The redeploy is the panel's alone: no tool
+  does it, and `rebuild_app` is the admin's.
 - `connection_expired`: a person's stored credential for one of the app's
   backends was removed (it expired or was revoked, could not be opened,
-  their encryption key was reset, or the connection's endpoints changed),
+  their encryption key was reset, or the connection's endpoints changed, or
+  the identity provider deleted their account, or they lost membership; a
+  person merely suspended there keeps their credentials),
   so they connect again from the link the app gives them.
 - `connection_locked`: the person's stored credential still exists, but
   their MCP client's authorization cannot open it. They re-authorize the

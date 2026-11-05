@@ -18,7 +18,9 @@ The moves go a group of linked apps at a time, so no move splits a live data
 link, and each starts only while a budget of 600 statements lasts: what a
 request cannot finish, the next hourly pass does. Each app keeps running, with its audience (a
 public app stays public), its data links, its member list, its deploy state
-and its idle clock. A delete also removes the person's stored connection
+and its idle clock. A deactivation (a suspension) keeps the person's stored
+connection credentials, as custody does, and reactivating the account
+restores them; a delete also removes the person's stored connection
 credentials, their key wraps and their key (from platform v0.18.4, by
 subject: the person's own, never a later holder's of the address). A push tells the admins once per person
 (`account_deactivated`), naming the apps moved and any left for the hourly

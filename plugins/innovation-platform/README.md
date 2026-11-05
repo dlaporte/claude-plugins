@@ -710,3 +710,17 @@ two-app pattern says an editor's members may reach a members-only site through
 its group. `inno-platform-conventions` no longer names a platform admin group
 among what `X-Forwarded-Groups` never carries. No tool changed in behavior
 (three tool descriptions are reworded); the floor stays 7.0.0.
+
+Plugin 7.3.3 follows platform v0.18.11 and contract 47. `inno-add-connection`
+now reads a header-delivery credential's `header` as well as `access_token`,
+leaves `refresh` at its default, prefers the default `client_auth`, and says
+what the "Start this connection again" page and the `401 unauthorized` and
+`400 bad_request` seam answers mean. `inno-ship`, `inno-safety-preflight` and
+`inno-containerize` route a scanner's own fault apart from a finding, name the
+`deploy_denied:workflow` refusal as the author's to fix, and gain rows for the
+browser interface build, a `deploy-token` timeout and a failed image push.
+`inno-manage-app` and `inno-fleet-admin` point at the one-click redeploy of an
+earlier release from the panel, say that a suspended person keeps their stored
+credentials while a deleted one loses them, and say the contract's 60-second
+window counts from the identity provider's push. No tool changed in behavior;
+the floor stays 7.0.0.

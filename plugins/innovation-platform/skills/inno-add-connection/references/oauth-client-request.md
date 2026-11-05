@@ -32,8 +32,8 @@ Could you register a client with the following:
 - **Scopes requested:** {scopes: list the minimal set the integration needs}
 - **Refresh tokens:** {yes/no: say yes if the discovery document advertised
   `refresh_token` support; and if yes, ask whether the backend **rotates** the
-  refresh token on each use, since that decides `config.refresh`
-  (`"static"` vs `"rotating"`)}
+  refresh token on each use, which only decides whether `config.refresh` is
+  `"rotating"`, the setting that adds the concurrent-renewal warning}
 
 Please send back the **client ID** (and **client secret**, if one is issued),
 ideally via a secure or private channel rather than plain email, since the

@@ -82,6 +82,13 @@ rewrites the connection with `client_auth: "post"`).
 
 **The connect flow itself:**
 
+- **"Start this connection again"** (a 400; `secret_form` and
+  `oauth2_client_creds` meet it most). The connect form lasts 10 minutes and
+  is bound to the browser and account that opened it, so the page appears
+  when the form expired, or was opened in another browser or account.
+  Nothing the person entered was saved. Follow the page's Start again link
+  (or the chat's connect link) and paste the token or client pair within the
+  10 minutes.
 - **"Finish in the browser you started in"** (`oauth2_code` only). The
   backend login was completed in a different browser, or a different browser
   profile, from the one that opened the connect link. Open the connect link

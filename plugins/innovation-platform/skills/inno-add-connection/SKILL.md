@@ -474,9 +474,14 @@ async def list_incidents(ctx: Context) -> dict:
             return {"error": "Your CRM connection is paused right now. "
                              "Try again later; you don't need to reconnect."}
         raise
-    # cred is {"access_token": ..., "header": ..., "expires_at": ...}
-    token = cred["access_token"]
-    # ... make the backend call with `token`; keep it in memory only ...
+    # cred is {"access_token": ...} or {"header": {"name": ..., "value": ...}},
+    # plus "expires_at", which is absent for a pasted secret_form token.
+    # Which field arrives depends on the connection's delivery, not strategy.
+    if cred.get("header"):
+        auth = {cred["header"]["name"]: cred["header"]["value"]}
+    else:
+        auth = {"Authorization": f"Bearer {cred['access_token']}"}
+    # ... make the backend call with `auth` headers; keep it in memory only ...
 ```
 
 In a JS container, `connections.get(name, callerAssertion)` takes the
@@ -484,8 +489,9 @@ assertion you read off `request.headers` in your `POST /mcp` handler, and the
 same branches read:
 
 ```js
+let cred;
 try {
-  const cred = await connections.get("crm", callerAssertion);
+  cred = await connections.get("crm", callerAssertion);
 } catch (e) {
   if (e instanceof ConnectionLocked) {
     return "Re-authorize this connector (/mcp → re-authenticate) and try again.";
@@ -498,6 +504,9 @@ try {
   }
   throw e;
 }
+// cred has `access_token` or `header` ({ name, value }), and `expires_at`
+// only when the backend gave one. Send the header if present, else
+// `Authorization: Bearer ${cred.access_token}`.
 ```
 
 Rules that hold regardless of language:
@@ -508,8 +517,9 @@ Rules that hold regardless of language:
 - **Never persist or log the assertion itself.** Echo it onto the seam call
   and drop it (§2.2's **What the app MUST NOT do** says why).
 - On success you get back a live credential for *that* user (an
-  `access_token`, or a ready-made `header`, depending on strategy) plus an
-  `expires_at`. Use it for the backend call you're about to make, and never
+  `access_token`, or a ready-made `header` to send as given: which one
+  depends on the connection's delivery, so branch on `header` first) plus an
+  `expires_at` that is absent for a pasted `secret_form` token. Use it for the backend call you're about to make, and never
   write it to disk, a database row, or a log line. Keeping it in memory
   between calls is `get_app_security` §8's rule, which says how a cache must
   be keyed: one MCP container serves every user of the app from one
@@ -574,10 +584,17 @@ Rules that hold regardless of language:
     normal use, it is calling the seam for every backend request: reuse the
     credential as `get_app_security` §8 allows instead.
   - **`401 connections_bad_assertion`** and **`403
-    connections_not_declared`** are the **app's** to fix: echo the
+    connections_not_declared`** are usually the **app's** to fix: echo the
     `X-Caller-Assertion` of the request you are serving now, not one kept
     from an earlier request, and check the connection name you passed
-    against `list_connections`.
+    against `list_connections`. A `401 connections_bad_assertion` can also
+    be the host's (one last uploaded before v0.17.4, or an assertion relayed
+    through another app's host): `restart_app` or the host wave fixes it.
+  - **`401 unauthorized`**: the host holds a stale seam key, as after a
+    key rotation. Nothing in the app's code fixes it: the owner runs
+    `restart_app`, or waits for the host wave.
+  - **`400 bad_request`**: the assertion was not echoed. Send the
+    `X-Caller-Assertion` header on the seam call.
 - Add a small `whoami` or status tool so the user (and you, while testing)
   can confirm the Connection is live and see which backend identity it
   resolves to, without needing to exercise a real feature first.
