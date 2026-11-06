@@ -20,7 +20,9 @@
 #      against the DOM);
 #   5. runs scripts/starter-test/*.test.mjs with node's test runner, one file
 #      at a time: the storage route on workerd with a local D1, through the
-#      starter's own wrangler, and the local proxy, dev/serve.mjs.
+#      starter's own wrangler, and the local proxy, dev/serve.mjs. A test that
+#      holds the skill's guidance to the starter's behavior reads the skill
+#      the starter sits in (STARTER_SKILL_DIR, three levels above its app/).
 #
 # npm ci refuses a lock that no longer matches the starter's package.json, so
 # a starter pin that moves (scripts/check-build-tools.sh moves the build
@@ -54,6 +56,11 @@ for tool in jq node npm; do
 done
 if [ ! -f "$starter/package.json" ]; then
   echo "test-starter: $starter holds no package.json" >&2
+  exit 2
+fi
+skill="$(cd "$starter/../../.." && pwd)"
+if [ ! -f "$skill/SKILL.md" ]; then
+  echo "test-starter: $starter does not sit in a skill's assets/starter/app/ (no $skill/SKILL.md)" >&2
   exit 2
 fi
 
@@ -95,5 +102,6 @@ npx --no-install tsc -p suite/tsconfig.worker.json
 npx --no-install tsc -p suite/tsconfig.ui.json
 echo "test-starter: running the suite"
 export WRANGLER_SEND_METRICS=false
+export STARTER_SKILL_DIR="$skill"
 node --test --test-concurrency=1 suite/*.test.mjs
 echo "test-starter: OK"

@@ -3,6 +3,8 @@
 // single-writer shape as production D1, but it does not enforce production's
 // 2,000,000-byte limit on a value or a row.
 import assert from "node:assert/strict";
+import { readFileSync } from "node:fs";
+import { join } from "node:path";
 import { after, before, describe, test } from "node:test";
 import { answer, control, person, start, storage } from "./harness.mjs";
 
@@ -83,6 +85,23 @@ describe("the page's Content-Security-Policy", () => {
     const csp = page.headers.get("content-security-policy") ?? "";
     assert.match(csp, /(^|; )style-src 'self'(;|$)/);
     assert.doesNotMatch(csp, /unsafe-inline|style-src-attr|style-src-elem|unsafe-hashes/);
+  });
+
+  // That policy drops every literal style attribute, so the conversion
+  // guidance has to move them (R13). The skill is read from the tree the
+  // starter sits in (scripts/test-starter.sh sets STARTER_SKILL_DIR).
+  test("the skill's HTML conversion moves literal style attributes into classes (R13)", () => {
+    const skill = process.env.STARTER_SKILL_DIR;
+    assert.ok(skill, "STARTER_SKILL_DIR is not set");
+    const html = readFileSync(join(skill, "references/html-artifacts.md"), "utf8");
+    const inventory = readFileSync(join(skill, "SKILL.md"), "utf8").split("## 3. Take inventory")[1]?.split("\n## ")[0] ?? "";
+    assert.doesNotMatch(html, /markup and the CSS carry over unchanged/);
+    const step = html.split("**Inline styles.**")[1]?.split(/\n\d+\. \*\*/)[0] ?? "";
+    assert.ok(step, "html-artifacts.md has no Inline styles step");
+    for (const needle of ['style="..."', "artifact.css", 'setAttribute("style"', "el.style.cssText", "'unsafe-inline'"]) {
+      assert.ok(step.includes(needle), `the Inline styles step does not name ${needle}`);
+    }
+    assert.ok(inventory.includes('style="..."'), "SKILL.md's inventory does not list style attributes");
   });
 });
 
