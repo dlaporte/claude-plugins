@@ -43,8 +43,10 @@ plugins/
     .mcp.json
     skills/…/SKILL.md
   servicenow/                     same shape
-scripts/                          CI's checks, and the pinned list of the
-                                  platform's MCP tool names
+scripts/                          CI's checks, the pinned list of the
+                                  platform's MCP tool names, and the
+                                  inno-convert-artifact starter's runtime
+                                  suite (test-starter.sh, starter-test/)
 ```
 
 ## Versioning

@@ -1,7 +1,12 @@
 # Working in this repo
 
 Plugins for Claude Code, published through the `davidlaporte` marketplace.
-Everything here is markdown and JSON: there is no build and no runtime.
+Everything here is markdown and JSON except one executable asset: the
+`inno-convert-artifact` starter
+(`plugins/innovation-platform/skills/inno-convert-artifact/assets/starter/app/`),
+a Worker in TypeScript, a React interface and two Node scripts, which the
+skill copies into an app's own repository. The `starter` CI job builds and
+runs it (see "The starter" below); nothing else here is built or run.
 
 ## The one rule: change a plugin, bump its version
 
@@ -107,7 +112,9 @@ Refresh both files at every resync with the platform:
    platform's `docs/OPERATIONS.md` says which output changes are breaking).
 4. Run the `platform-compat` and `tool-names` jobs' steps, and the
    `instance-neutral` job's step for the vendored record, locally, then
-   commit both files with the skill changes that answer the list.
+   commit both files with the skill changes that answer the list. When the
+   build tools moved, the starter's pins move with them, and its suite's
+   lock must follow ("The starter" below).
 
 Never merge a pin that is not at a release tag. A branch commit can still
 move before the release, and CI does not check that the pinned ref is a tag.
@@ -119,3 +126,29 @@ of parentheses instead, as the platform's served documents do. The
 `no-dashes` CI job enforces it with `scripts/check-dashes.sh`, which reads all
 four by default. A pattern typed into grep may not match these characters, so
 check by bytes with that script.
+
+### The starter
+
+The `inno-convert-artifact` starter is code that ships: the skill copies its
+`app/` into the app's repository, and that copy is the app's code from then
+on, so a plugin release reaches only the conversions after it. A release
+that changes a starter file names the file in the plugin README's history
+paragraph, so anyone who converted earlier can copy it again.
+
+`scripts/test-starter.sh` (the `starter` CI job) copies the starter to a
+temporary directory, installs its dependencies from
+`scripts/starter-test/package-lock.json` with `npm ci`, builds its interface
+with its own `dev/build-ui.mjs`, type-checks the Worker and the interface,
+and runs `scripts/starter-test/*.test.mjs`: the storage route on workerd
+with a local D1, through the starter's own wrangler, and the local proxy,
+`dev/serve.mjs`. It needs no credential and no network beyond the npm
+registry. A change to the starter comes with a test that fails before it:
+`bash scripts/test-starter.sh <a copy of the old app/>` runs the suite
+against another copy.
+
+The starter ships no lock of its own (a conversion writes one), so the
+suite keeps one. `npm ci` refuses it once the starter's `package.json`
+moves; then run `bash scripts/test-starter.sh --relock` and commit the new
+lock. The suite's `identity.ts` is a copy of the platform scaffold's, which
+the starter imports; its header names the platform release it was copied
+at.
