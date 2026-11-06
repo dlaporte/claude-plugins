@@ -67,8 +67,14 @@ describe("the local proxy, dev/serve.mjs", () => {
     assert.deepEqual(JSON.parse(me.text), { email: DEV_USER });
   });
 
-  test("listens on the loopback address only, as wrangler dev behind it does (R03)", async () => {
+  test("listens on the loopback address only, as wrangler dev behind it does (R03)", async (t) => {
     const outside = Object.values(networkInterfaces()).flat().filter((a) => a && a.family === "IPv4" && !a.internal);
+    // A machine offline has nothing to try; CI always has an address, so there
+    // the test may not skip.
+    if (outside.length === 0 && !process.env.CI) {
+      t.skip("this machine has no address but loopback to try");
+      return;
+    }
     assert.ok(outside.length > 0, "this machine has no address but loopback to try");
     for (const { address } of outside) {
       for (const port of [PORT, 8788]) {
@@ -101,6 +107,36 @@ describe("the local proxy, dev/serve.mjs", () => {
       body: JSON.stringify({ op: "get", key: "rebound" }),
     });
     assert.equal(JSON.parse(get.text), null, "a refused request reached the app");
+  });
+
+  // wrangler dev passes the Host it was sent through to the Worker, and the
+  // Worker trusts X-Forwarded-*, so a page rebound to this machine could
+  // otherwise skip the proxy and name any identity it likes on port 8788.
+  test("refuses a request straight to wrangler dev's port under any other name, forged identity and all (R03)", async () => {
+    const forged = {
+      "content-type": "application/json",
+      "sec-fetch-site": "same-origin",
+      "x-forwarded-user": DEV_USER,
+      "x-forwarded-subject": `dev-${DEV_USER}`,
+    };
+    for (const host of ["evil.example:8788", `evil.example:${PORT}`, "127.0.0.1:8788", "localhost:8788"]) {
+      const set = await request("127.0.0.1", "/api/storage", {
+        port: 8788,
+        host,
+        method: "POST",
+        headers: forged,
+        body: JSON.stringify({ op: "set", key: "planted", value: "from a rebound page" }),
+      });
+      assert.equal(set.status, 403, `set on 8788 as ${host}: ${set.text.slice(0, 80)}`);
+      const me = await request("127.0.0.1", "/api/me", { port: 8788, host, headers: forged });
+      assert.equal(me.status, 403, `/api/me on 8788 as ${host}: ${me.text.slice(0, 80)}`);
+    }
+    const get = await request("127.0.0.1", "/api/storage", {
+      method: "POST",
+      headers: { "content-type": "application/json", "sec-fetch-site": "same-origin" },
+      body: JSON.stringify({ op: "get", key: "planted" }),
+    });
+    assert.equal(JSON.parse(get.text), null, "a request straight to 8788 wrote DEV_USER's data");
   });
 
   test("serves the storage route, as DEV_USER", async () => {

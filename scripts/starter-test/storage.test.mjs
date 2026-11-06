@@ -272,19 +272,35 @@ describe("the request's shape and size (R05)", () => {
     }
   });
 
-  // The limit is twice the value limit plus 200,000 bytes, 4,000,000. The
-  // over-limit bodies are sent inside one invocation (fault-entry.ts says why).
-  test("refuses a body over 4,000,000 bytes with 413, whether it declares its length or not", async () => {
+  // The limit is twice the value limit plus 200,000 bytes, 4,000,000. Each
+  // body is a get padded to its size, sent inside one invocation, declared and
+  // streamed (fault-entry.ts says why).
+  test("reads a body of exactly 4,000,000 bytes and refuses one byte more with 413, whether it declares its length or not", async () => {
+    const w = await start("suite/fault-entry.ts");
+    try {
+      assert.equal((await control(w, "/__stats")).maxBodyBytes, 4_000_000);
+      const at = await control(w, "/__body?bytes=4000000");
+      assert.deepEqual([at.declared.status, at.declared.body], [200, null], "declared, at the limit");
+      assert.deepEqual([at.streamed.status, at.streamed.body], [200, null], "streamed, at the limit");
+      const over = await control(w, "/__body?bytes=4000001");
+      const refused = { status: 413, body: { error: "body_too_large" }, appHeaders: "app" };
+      assert.deepEqual(over.declared, refused, "declared, one byte over");
+      const { contentLength, pulled, chunks, ...streamed } = over.streamed;
+      assert.deepEqual(streamed, refused, "streamed, one byte over");
+      assert.equal(contentLength, null, "the streamed body declared its length");
+    } finally {
+      await w.stop();
+    }
+  });
+
+  test("stops reading a streamed body at the limit, and runs no statement for one over it", async () => {
     const w = await start("suite/fault-entry.ts");
     try {
       // Twice the limit, so a reader that stopped at the limit leaves chunks unread.
-      const { declared, streamed } = await control(w, "/__oversize?bytes=8000000");
-      const refused = { status: 413, body: { error: "body_too_large" }, appHeaders: "app" };
-      assert.deepEqual(declared, refused);
-      const { contentLength, pulled, chunks, ...answer } = streamed;
-      assert.deepEqual(answer, refused);
-      assert.equal(contentLength, null, "the streamed body declared its length");
-      assert.ok(pulled < chunks, `read ${pulled} of ${chunks} chunks: reading did not stop at the limit`);
+      const { declared, streamed } = await control(w, "/__body?bytes=8000000");
+      assert.equal(declared.status, 413);
+      assert.equal(streamed.status, 413);
+      assert.ok(streamed.pulled < streamed.chunks, `read ${streamed.pulled} of ${streamed.chunks} chunks: reading did not stop at the limit`);
       assert.equal((await control(w, "/__stats")).statements, 0);
     } finally {
       await w.stop();

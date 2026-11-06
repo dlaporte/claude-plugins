@@ -758,10 +758,12 @@ a string answers `400 bad_prefix` instead of listing every key; a call is
 checked whole before any statement runs; the 1,000-key quota is checked inside
 the write, so concurrent new keys can no longer overshoot it; and a list
 prefix holding an emoji finds its keys. In `app/dev/serve.mjs`, `npm run dev`
-now answers this machine only, and only as `localhost:8787` or
-`127.0.0.1:8787`. The skill's HTML conversion also moves literal `style="..."`
-attributes into classes, since the page's policy drops them. Anyone who
-converted an artifact on plugin 6.2.0 to 7.3.3 should copy the new
-`app/storage.ts` and `app/dev/serve.mjs` from the starter into their
-repository: the table and its schema are unchanged, so saved data carries
-over. No platform tool changed in v0.18.12; the floor stays 7.0.0.
+now answers this machine only, and on both its ports (the proxy's 8787 and
+wrangler dev's 8788) only to the names `localhost:8787` and `127.0.0.1:8787`,
+so a web page that points its own name at this machine is refused. The skill's
+HTML conversion also moves literal `style="..."` attributes into classes,
+since the page's policy drops them. Anyone who converted an artifact on plugin
+6.2.0 to 7.3.3 should copy the new `app/storage.ts` and `app/dev/serve.mjs`
+from the starter into their repository: the table and its schema are
+unchanged, so saved data carries over. No platform tool changed in v0.18.12;
+the floor stays 7.0.0.

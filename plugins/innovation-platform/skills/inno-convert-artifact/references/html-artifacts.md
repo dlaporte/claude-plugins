@@ -62,6 +62,13 @@ over unchanged, and the scripts move.
    .card-warning { padding: 20px; color: #b00; }
    ```
 
+   Add the new classes at the end of `app/ui/artifact.css`. A `style`
+   attribute outranked every rule in the stylesheet, and a class does not:
+   where an existing rule with a more specific selector (`.list .card`, say)
+   sets the same property, give the new rule a selector at least as specific
+   (`.list .card-warning`), or the old rule wins and the element looks
+   different.
+
    A style a script sets goes through the element's `style` property, which
    the policy allows: `el.setAttribute("style", s)` becomes
    `el.style.cssText = s`, and a value worked out at run time is set as

@@ -3,7 +3,11 @@
 // few routes the tests use to set up and read the database. Everything else
 // is the real local D1. Only the suite starts it (harness.mjs); it never ships.
 import { currentUser } from "../identity";
-import { handleStorage } from "../storage";
+import * as storage from "../storage";
+
+// The starter's body limit, read by name so the suite still builds against a
+// starter that does not export it (7.3.3's): it is then null.
+const MAX_BODY_BYTES = (storage as unknown as Record<string, unknown>).MAX_BODY_BYTES ?? null;
 
 interface Env {
   DATA: D1Database;
@@ -54,7 +58,7 @@ function wrap(db: D1Database): D1Database {
 
 async function call(request: Request, env: Env): Promise<Response> {
   try {
-    return await handleStorage(request, { DATA: wrap(env.DATA) }, currentUser(request.headers), APP_HEADERS);
+    return await storage.handleStorage(request, { DATA: wrap(env.DATA) }, currentUser(request.headers), APP_HEADERS);
   } catch (e) {
     // What would reach the runtime as an unhandled exception, named so a
     // failing test shows it.
@@ -88,7 +92,7 @@ export default {
         fail = { prefix: q("sql"), remaining: Number(q("n") || 1) };
         return Response.json({ ok: true });
       case "/__stats":
-        return Response.json({ creates, statements });
+        return Response.json({ creates, statements, maxBodyBytes: MAX_BODY_BYTES });
       case "/__reset":
         creates = 0;
         statements = 0;
@@ -117,25 +121,33 @@ export default {
         const answers = await Promise.all(bodies.map((b) => call(storageRequest(subject, b), env)));
         return Response.json(await Promise.all(answers.map(async (r) => ({ status: r.status, body: await r.json() }))));
       }
-      case "/__oversize": {
-        // A body of `bytes` bytes, sent to the storage route inside this
-        // invocation: once declaring its length, and once streamed in 100,000
-        // byte chunks with no Content-Length. Over HTTP, wrangler dev's own
-        // proxy can drop the connection when a Worker answers before reading
-        // all of a body over about 4 MB, so the Worker's answer may not arrive.
+      case "/__body": {
+        // A get padded to exactly `bytes` bytes, sent to the storage route
+        // inside this invocation: once declaring its length, and once
+        // streamed in 100,000-byte chunks with no Content-Length. Over HTTP,
+        // wrangler dev's own proxy can drop the connection when a Worker
+        // answers before reading all of a body over about 4 MB, so the
+        // Worker's answer may not arrive.
         const bytes = Number(q("bytes"));
+        const head = new TextEncoder().encode('{"op":"get","key":"a","pad":"');
+        const tail = new TextEncoder().encode('"}');
+        const body = new Uint8Array(bytes).fill(0x78);
+        body.set(head, 0);
+        body.set(tail, bytes - tail.byteLength);
         const declared = await call(new Request("http://app.test/api/storage", {
           method: "POST",
           headers: { ...identity("alice"), "content-length": String(bytes) },
-          body: "{}",
+          body,
         }), env);
-        const chunk = new Uint8Array(100_000).fill(0x78);
-        const chunks = Math.ceil(bytes / chunk.byteLength);
+        const size = 100_000;
+        const chunks = Math.ceil(bytes / size);
         let pulled = 0;
         const stream = new ReadableStream<Uint8Array>({
           pull(c) {
-            if (pulled++ < chunks) c.enqueue(chunk);
-            else c.close();
+            if (pulled === chunks) return c.close();
+            const at = pulled * size;
+            pulled++;
+            c.enqueue(body.slice(at, at + size));
           },
         });
         const streamedRequest = new Request("http://app.test/api/storage", { method: "POST", headers: identity("alice"), body: stream });
