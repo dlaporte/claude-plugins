@@ -735,5 +735,9 @@ descriptions and three answers are reworded (the jit sentence, the narrowing
 to members-only, and `grant_admin`'s re-grant over a pinned row),
 `list_connections`' fleet view and `list_user_connections` now answer at most
 100 and say when more exist, a variable change on a running container app
-re-checks its health, as a restart does, and `request_start`'s email to the
-admins obeys the instance's lifecycle email switch; the floor stays 7.0.0.
+re-checks its health, as a restart does, `request_start`'s email to the
+admins obeys the instance's lifecycle email switch, a data link's containment
+judges a pinned person by the address they sign in with now (so `grant_access`,
+`transfer_app` or `link_app_data` can be refused `link_containment` where it
+passed before, or the reverse), and a health probe answered 401, 403 or 302
+names the app's own `/healthz` answer as a cause; the floor stays 7.0.0.
