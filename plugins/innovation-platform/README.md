@@ -751,8 +751,9 @@ error; a value may be 1,900,000 bytes of UTF-8 (it was 1,000,000 characters,
 which a large value outside ASCII could pass only for production D1 to refuse
 it), and the starter's exported `MAX_VALUE` is now `MAX_VALUE_BYTES`, counting
 bytes, for any converter whose own code read it; a request's body is bounded
-at 4,000,000 bytes, twice the value limit so that JSON's escapes never push a
-value at its limit over (`413 body_too_large`), a body that is not a JSON
+at 4,000,000 bytes, twice the value limit so that JSON's two-byte escapes (a
+quote or a backslash) never push a value at its limit over (`413
+body_too_large`), though a value full of raw control characters still can, a body that is not a JSON
 object answers `400 bad_request`, and a list prefix over 200 characters or not
 a string answers `400 bad_prefix` instead of listing every key; a call is
 checked whole before any statement runs; the 1,000-key quota is checked inside

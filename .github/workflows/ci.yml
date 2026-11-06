@@ -328,6 +328,8 @@ jobs:
     env:
       CI: "true"
       WRANGLER_SEND_METRICS: "false"
+      # miniflare otherwise fetches workers.cloudflare.com/cf.json on every run.
+      CLOUDFLARE_CF_FETCH_ENABLED: "false"
     steps:
       # The only job that runs code from the npm registry, so the checkout
       # keeps no token in the repository's git config for that code to read.

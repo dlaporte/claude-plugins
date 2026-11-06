@@ -102,6 +102,8 @@ npx --no-install tsc -p suite/tsconfig.worker.json
 npx --no-install tsc -p suite/tsconfig.ui.json
 echo "test-starter: running the suite"
 export WRANGLER_SEND_METRICS=false
+# miniflare otherwise fetches workers.cloudflare.com/cf.json on every run.
+export CLOUDFLARE_CF_FETCH_ENABLED=false
 export STARTER_SKILL_DIR="$skill"
 node --test --test-concurrency=1 suite/*.test.mjs
 echo "test-starter: OK"
