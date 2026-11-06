@@ -180,9 +180,13 @@ export async function handleStorage(
         return json({ key: call.key, deleted: (r.meta.changes ?? 0) > 0, shared }, 200, headers);
       }
       case "list": {
+        // The prefix's length is SQLite's own count of its characters:
+        // JavaScript's counts UTF-16 units, two for an emoji. substr, not
+        // LIKE, so % and _ in a prefix match only themselves.
         const rows = await env.DATA.prepare(
-          "SELECT key FROM artifact_storage WHERE scope = ? AND owner = ? AND substr(key, 1, ?) = ? ORDER BY key LIMIT ?",
-        ).bind(scope, owner, call.prefix.length, call.prefix, MAX_LIST).all<{ key: string }>();
+          "SELECT key FROM artifact_storage WHERE scope = ?1 AND owner = ?2 AND substr(key, 1, length(?3)) = ?3 " +
+            "ORDER BY key LIMIT ?4",
+        ).bind(scope, owner, call.prefix, MAX_LIST).all<{ key: string }>();
         return json({ keys: rows.results.map((r) => r.key), prefix: call.prefix, shared }, 200, headers);
       }
     }

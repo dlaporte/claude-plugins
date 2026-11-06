@@ -310,3 +310,22 @@ describe("the key quota under concurrent writes (R06)", () => {
     assert.equal((await control(w, "/__stats")).statements, 2);
   });
 });
+
+describe("a list prefix outside the Basic Multilingual Plane (R07)", () => {
+  let w;
+  before(async () => { w = await start("index.ts"); });
+  after(() => w.stop());
+
+  // JavaScript counts an emoji as two UTF-16 units and SQLite as one
+  // character, so the prefix's length must be SQLite's own.
+  test("an emoji prefix lists its keys, and other prefixes still match exactly", async () => {
+    const key = "\u{1F511}";
+    for (const k of [key, `${key}item`, "abc", "été", "漢字x"]) await storage(w, { op: "set", key: k, value: "v" }, { subject: "jo" });
+    const list = async (prefix) => (await storage(w, { op: "list", prefix }, { subject: "jo" })).body.keys;
+    assert.deepEqual(await list(key), [key, `${key}item`]);
+    assert.deepEqual(await list(`${key}i`), [`${key}item`]);
+    assert.deepEqual(await list("é"), ["été"]);
+    assert.deepEqual(await list("漢"), ["漢字x"]);
+    assert.deepEqual(await list(""), ["abc", "été", "漢字x", key, `${key}item`]);
+  });
+});
