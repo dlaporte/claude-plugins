@@ -160,17 +160,18 @@ export async function handleStorage(
         return json(row ? { key: call.key, value: row.value, shared } : null, 200, headers);
       }
       case "set": {
-        const exists = await env.DATA.prepare("SELECT 1 FROM artifact_storage WHERE scope = ? AND owner = ? AND key = ?")
-          .bind(scope, owner, call.key).first();
-        if (!exists) {
-          const count = await env.DATA.prepare("SELECT COUNT(*) AS n FROM artifact_storage WHERE scope = ? AND owner = ?")
-            .bind(scope, owner).first<{ n: number }>();
-          if ((count?.n ?? 0) >= MAX_KEYS_PER_OWNER) return json({ error: "too_many_keys" }, 400, headers);
-        }
-        await env.DATA.prepare(
-          "INSERT INTO artifact_storage (scope, owner, key, value, updated_at) VALUES (?, ?, ?, ?, ?) " +
+        // One statement, with the quota checked inside it: a key that exists
+        // is overwritten, and a new one is written only while the owner holds
+        // fewer than MAX_KEYS_PER_OWNER. Checked in a separate statement
+        // first, concurrent writes could all pass the check and overshoot
+        // it, and keys past MAX_LIST would drop out of list().
+        const r = await env.DATA.prepare(
+          "INSERT INTO artifact_storage (scope, owner, key, value, updated_at) SELECT ?1, ?2, ?3, ?4, ?5 " +
+            "WHERE EXISTS (SELECT 1 FROM artifact_storage WHERE scope = ?1 AND owner = ?2 AND key = ?3) " +
+            "OR (SELECT COUNT(*) FROM artifact_storage WHERE scope = ?1 AND owner = ?2) < ?6 " +
             "ON CONFLICT (scope, owner, key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at",
-        ).bind(scope, owner, call.key, call.value, Date.now()).run();
+        ).bind(scope, owner, call.key, call.value, Date.now(), MAX_KEYS_PER_OWNER).run();
+        if ((r.meta.changes ?? 0) === 0) return json({ error: "too_many_keys" }, 400, headers);
         return json({ key: call.key, value: call.value, shared }, 200, headers);
       }
       case "delete": {

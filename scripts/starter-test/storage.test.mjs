@@ -271,3 +271,42 @@ describe("the request's shape and size (R05)", () => {
     }
   });
 });
+
+describe("the key quota under concurrent writes (R06)", () => {
+  let w;
+  const race = async (subject, bodies) => (await w.fetch("/__race", { method: "POST", body: JSON.stringify({ subject, bodies }) })).json();
+  before(async () => {
+    w = await start("suite/fault-entry.ts");
+    await storage(w, { op: "get", key: "warm" });
+  });
+  after(() => w.stop());
+
+  // Inside one invocation, so the calls' round trips interleave every time.
+  // Five concurrent HTTP requests to one local isolate do not reliably
+  // interleave (the first finishes before the next arrives), so they would
+  // not show the race.
+  test("five new keys written together at 999 keys store exactly one", async () => {
+    await control(w, "/__seed?owner=frank&n=999");
+    const answers = await race("frank", [1, 2, 3, 4, 5].map((i) => ({ op: "set", key: `new${i}`, value: "v" })));
+    assert.deepEqual(answers.map((a) => a.status).sort(), [200, 400, 400, 400, 400]);
+    for (const a of answers.filter((x) => x.status === 400)) assert.deepEqual(a.body, { error: "too_many_keys" });
+    assert.equal((await control(w, "/__count?owner=frank")).n, 1000);
+  });
+
+  test("at the cap an existing key is still overwritten, and each scope and person has its own quota", async () => {
+    await control(w, "/__seed?owner=gina&n=1000");
+    const [overwrite, fresh] = await race("gina", [{ op: "set", key: "seed0000", value: "w" }, { op: "set", key: "fresh", value: "v" }]);
+    assert.deepEqual([overwrite.status, fresh.status], [200, 400]);
+    assert.equal((await storage(w, { op: "get", key: "seed0000" }, { subject: "gina" })).body.value, "w");
+    assert.equal((await storage(w, { op: "set", key: "fresh", value: "v", shared: true }, { subject: "gina" })).status, 200);
+    assert.equal((await storage(w, { op: "set", key: "fresh", value: "v" }, { subject: "hal" })).status, 200);
+    assert.equal((await control(w, "/__count?owner=gina")).n, 1000);
+  });
+
+  test("a write is one statement, a new key or an existing one", async () => {
+    await control(w, "/__reset");
+    await storage(w, { op: "set", key: "one", value: "v" }, { subject: "ivy" });
+    await storage(w, { op: "set", key: "one", value: "w" }, { subject: "ivy" });
+    assert.equal((await control(w, "/__stats")).statements, 2);
+  });
+});
