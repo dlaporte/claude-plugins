@@ -113,6 +113,12 @@ Read the whole artifact and list, using `references/artifact-runtime.md`:
   section 10), or it is dropped.
 - **File inputs and downloads**, and anything that renders user text as HTML
   (`dangerouslySetInnerHTML`, `innerHTML`): the second is a finding to fix.
+- **Inline styles**: every literal `style="..."` attribute in the markup
+  (HTML or SVG), and any script that writes one, in an HTML string or with
+  `setAttribute("style", ...)`. The page's policy (`style-src 'self'`) drops
+  each one quietly, so each becomes a class in `app/ui/artifact.css`
+  (`references/html-artifacts.md`). A React `style={{...}}` prop is set
+  through the DOM, which the policy allows, and stays.
 - **Browser storage**: `localStorage`/`sessionStorage` keep working, per
   browser; say so, and suggest `window.storage` for anything that should
   follow the person.

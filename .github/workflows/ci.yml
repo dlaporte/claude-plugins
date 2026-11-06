@@ -1,6 +1,6 @@
 name: CI
 
-# Seven jobs, all cheap and dependency-free (jq is preinstalled on the
+# Eight jobs. Seven are cheap and dependency-free (jq is preinstalled on the
 # runner): the manifests and the marketplace catalog must be well-formed, each
 # catalog entry's description must be its plugin.json's, any
 # change to a plugin must come with a version bump for that plugin
@@ -26,7 +26,10 @@ name: CI
 # release, vendored by scripts/platform-compat.sh because the platform
 # repository is private; CI reads only the vendored copy. The list of what
 # moved that the script prints at a resync is proved on records its test
-# plants (scripts/test-platform-compat.sh).
+# plants (scripts/test-platform-compat.sh). The eighth, starter, installs the
+# inno-convert-artifact starter's locked dependencies and runs its runtime
+# suite (scripts/test-starter.sh): the starter is the one executable asset
+# here, copied into every converted artifact's repository.
 #
 # Why the bump is a HARD gate rather than a convention: delivery is keyed on
 # the declared version. Claude Code caches an installed plugin at
@@ -318,3 +321,35 @@ jobs:
         run: |
           set -euo pipefail
           bash scripts/test-platform-compat.sh
+
+  starter:
+    runs-on: ubuntu-26.04
+    timeout-minutes: 15
+    env:
+      CI: "true"
+      WRANGLER_SEND_METRICS: "false"
+      # miniflare otherwise fetches workers.cloudflare.com/cf.json on every run.
+      CLOUDFLARE_CF_FETCH_ENABLED: "false"
+    steps:
+      # The only job that runs code from the npm registry, so the checkout
+      # keeps no token in the repository's git config for that code to read.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # The node the platform's CI builds an app with.
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+
+      # A copy of the starter, installed from scripts/starter-test/package-lock.json
+      # (npm ci, install scripts off): its interface built with its own
+      # dev/build-ui.mjs, the Worker and the interface type-checked, then the
+      # storage route on workerd with a local D1 through the starter's own
+      # wrangler, and its local proxy, dev/serve.mjs. No credential, and no
+      # network beyond the npm registry. The script's header says what moves
+      # the lock and how to write a new one.
+      - name: The inno-convert-artifact starter builds, type-checks and passes its runtime suite
+        run: |
+          set -euo pipefail
+          bash scripts/test-starter.sh

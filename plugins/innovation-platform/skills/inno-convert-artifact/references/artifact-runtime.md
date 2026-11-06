@@ -35,10 +35,19 @@ await window.storage.list(prefix?, shared?)     // { keys, prefix, shared }
   than return `null`. The shim returns `null`; an artifact that catches the
   throw still works, one that tests for `null` works too.
 - Limits (in `app/storage.ts`): keys up to 200 characters, values up to
-  1,000,000 characters, 1,000 keys per person (and 1,000 shared), `list`
-  returns at most 1,000 keys. A call over a limit throws, with the reason in
-  the error's message. Raise a limit only with a reason: they bound what one
-  person can store.
+  1,900,000 bytes of UTF-8 (a character outside ASCII takes two to four
+  bytes; the database refuses more than 2,000,000 in a row), 1,000 keys per
+  person (and 1,000 shared), `list` returns at most 1,000 keys, and its
+  prefix is at most 200 characters (a longer one is refused, not ignored).
+  A request carries at most 4,000,000 bytes: twice the value limit, since
+  JSON writes each quote or backslash in a value as two bytes, so a value at
+  its limit fits however many it holds (stored JSON holds many). Only a value
+  full of raw control characters, which JSON writes as six bytes each, can
+  still be refused as `body_too_large`. A call over a limit throws, with the
+  reason in the error's message. Raise a limit only with a reason: they bound what one
+  person can store, and the value limit must stay under the database's.
+- When the database fails, a call throws with `storage_unavailable` in its
+  message, and the next call tries again.
 - Every call needs a signed-in person, shared ones included, since the app
   is identity-aware. Data saved on claude.ai does not move over.
 
