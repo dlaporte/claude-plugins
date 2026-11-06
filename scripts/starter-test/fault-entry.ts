@@ -27,7 +27,10 @@ function counted(stmt: D1PreparedStatement, sql: string): D1PreparedStatement {
           if (sql.startsWith("CREATE")) creates++;
           if (fail.remaining > 0 && sql.startsWith(fail.prefix)) {
             fail.remaining--;
-            // D1's own text for a transient fault it does not retry on a write.
+            // A lost connection fails after a while, not at once, so calls
+            // that arrive meanwhile meet the same attempt. The text is D1's
+            // own for a transient fault, which it does not retry on a write.
+            await new Promise((resolve) => setTimeout(resolve, 50));
             throw new Error("D1_ERROR: Network connection lost.");
           }
           return (target[prop] as (...a: unknown[]) => unknown)(...args);

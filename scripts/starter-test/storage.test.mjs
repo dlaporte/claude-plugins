@@ -101,3 +101,94 @@ describe("the key quota", () => {
     assert.equal((await control(w, "/__count?owner=erin")).n, 1000);
   });
 });
+
+describe("a database fault (R02)", () => {
+  test("a failed first CREATE answers 503, with the app's headers", async () => {
+    const w = await start("suite/fault-entry.ts");
+    try {
+      await control(w, "/__fail?sql=CREATE&n=1");
+      const first = await storage(w, { op: "get", key: "a" });
+      assert.deepEqual([first.status, first.body], [503, { error: "storage_unavailable" }]);
+      assert.equal(first.headers.get("x-suite-headers"), "app");
+      assert.equal(first.headers.get("cache-control"), "private, no-store");
+    } finally {
+      await w.stop();
+    }
+  });
+
+  test("after a failed CREATE the next call tries it again, and one that succeeded is not run again", async () => {
+    const w = await start("suite/fault-entry.ts");
+    try {
+      await control(w, "/__fail?sql=CREATE&n=1");
+      await storage(w, { op: "get", key: "a" });
+      const next = await storage(w, { op: "set", key: "a", value: "x" });
+      assert.deepEqual([next.status, (await control(w, "/__stats")).creates], [200, 2], JSON.stringify(next.body));
+      for (let i = 0; i < 3; i++) assert.equal((await storage(w, { op: "get", key: "a" })).body.value, "x");
+      assert.equal((await control(w, "/__stats")).creates, 2);
+    } finally {
+      await w.stop();
+    }
+  });
+
+  test("calls that arrive together share one CREATE, and each sees its failure", async () => {
+    const w = await start("suite/fault-entry.ts");
+    try {
+      await control(w, "/__fail?sql=CREATE&n=1");
+      const together = await (await w.fetch("/__race", {
+        method: "POST",
+        body: JSON.stringify({ subject: "alice", bodies: [{ op: "get", key: "a" }, { op: "get", key: "b" }] }),
+      })).json();
+      assert.deepEqual(together, [
+        { status: 503, body: { error: "storage_unavailable" } },
+        { status: 503, body: { error: "storage_unavailable" } },
+      ]);
+      assert.equal((await control(w, "/__stats")).creates, 1);
+      assert.equal((await storage(w, { op: "get", key: "a" })).status, 200);
+      assert.equal((await control(w, "/__stats")).creates, 2);
+    } finally {
+      await w.stop();
+    }
+  });
+
+  test("a fault in any later statement answers 503 too, never an unhandled exception", async () => {
+    const w = await start("suite/fault-entry.ts");
+    try {
+      await storage(w, { op: "get", key: "warm" });
+      await control(w, "/__fail?sql=INSERT&n=1");
+      const failed = await storage(w, { op: "set", key: "a", value: "x" });
+      assert.deepEqual([failed.status, failed.body], [503, { error: "storage_unavailable" }]);
+      assert.equal((await storage(w, { op: "set", key: "a", value: "x" })).status, 200);
+    } finally {
+      await w.stop();
+    }
+  });
+});
+
+describe("the value limit, in bytes (R05)", () => {
+  let w;
+  before(async () => {
+    w = await start("suite/fault-entry.ts");
+    await storage(w, { op: "get", key: "warm" });
+  });
+  after(() => w.stop());
+
+  // Production D1 refuses a string or a row over 2,000,000 bytes. Local D1
+  // does not, so these show the starter's own check, which must refuse first.
+  test("refuses a value over 1,900,000 bytes of UTF-8 before any statement, whatever its length in characters", async () => {
+    for (const value of ["漢".repeat(640_000), "\u{1F511}".repeat(475_001)]) {
+      await control(w, "/__reset");
+      const r = await storage(w, { op: "set", key: "big", value });
+      // The status and the reason alone: a whole answer would print the value.
+      assert.deepEqual([r.status, r.body?.error], [400, "bad_value"], `${value.length} characters`);
+      assert.equal((await control(w, "/__stats")).statements, 0);
+    }
+  });
+
+  test("stores a value of up to 1,900,000 bytes", async () => {
+    for (const value of ["x".repeat(1_900_000), "漢".repeat(633_333)]) {
+      const r = await storage(w, { op: "set", key: "big", value });
+      assert.deepEqual([r.status, r.body?.error], [200, undefined], `${value.length} characters`);
+      assert.equal((await storage(w, { op: "get", key: "big" })).body.value.length, value.length);
+    }
+  });
+});

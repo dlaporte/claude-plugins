@@ -7,7 +7,8 @@
 // Every operation is a POST from the app's own page: state never changes on
 // a GET, and a request from any other page is refused (the app-security
 // notes, CSRF). Every value is bound, never built into SQL, and keys, values
-// and key counts are bounded.
+// and key counts are bounded. A database fault answers 503
+// storage_unavailable, never an unhandled exception.
 import type { CurrentUserResult } from "./identity";
 
 interface Env {
@@ -15,7 +16,9 @@ interface Env {
 }
 
 export const MAX_KEY = 200;
-export const MAX_VALUE = 1_000_000;
+// In bytes of UTF-8, as D1 counts: production D1 refuses a string or a row
+// over 2,000,000 bytes, and this leaves room for the row's other columns.
+export const MAX_VALUE_BYTES = 1_900_000;
 export const MAX_KEYS_PER_OWNER = 1_000;
 export const MAX_LIST = 1_000;
 
@@ -25,6 +28,21 @@ const SCHEMA =
   "PRIMARY KEY (scope, owner, key))";
 
 let ready: Promise<unknown> | null = null;
+const utf8 = new TextEncoder();
+
+/**
+ * Creates the table on this isolate's first storage call. Calls that arrive
+ * together share one attempt, and a failed attempt is forgotten, so the next
+ * call tries again: an isolate serves many requests, and a cached failure
+ * would fail every one of them until the isolate went away.
+ */
+function schemaReady(db: D1Database): Promise<unknown> {
+  ready ??= db.prepare(SCHEMA).run().catch((e: unknown) => {
+    ready = null;
+    throw e;
+  });
+  return ready;
+}
 
 function json(body: unknown, status: number, headers: Record<string, string>): Response {
   return Response.json(body, { status, headers: { ...headers, "Cache-Control": "private, no-store" } });
@@ -59,51 +77,56 @@ export async function handleStorage(
   const scope = shared ? "shared" : "personal";
   const owner = shared ? "" : caller.subject;
 
-  ready ??= env.DATA.prepare(SCHEMA).run();
-  await ready;
-
   const keyOf = (k: unknown): string | null => (typeof k === "string" && k.length > 0 && k.length <= MAX_KEY ? k : null);
 
-  switch (body.op) {
-    case "get": {
-      const key = keyOf(body.key);
-      if (key === null) return json({ error: "bad_key" }, 400, headers);
-      const row = await env.DATA.prepare("SELECT value FROM artifact_storage WHERE scope = ? AND owner = ? AND key = ?")
-        .bind(scope, owner, key).first<{ value: string }>();
-      return json(row ? { key, value: row.value, shared } : null, 200, headers);
-    }
-    case "set": {
-      const key = keyOf(body.key);
-      if (key === null) return json({ error: "bad_key" }, 400, headers);
-      if (typeof body.value !== "string" || body.value.length > MAX_VALUE) return json({ error: "bad_value" }, 400, headers);
-      const exists = await env.DATA.prepare("SELECT 1 FROM artifact_storage WHERE scope = ? AND owner = ? AND key = ?")
-        .bind(scope, owner, key).first();
-      if (!exists) {
-        const count = await env.DATA.prepare("SELECT COUNT(*) AS n FROM artifact_storage WHERE scope = ? AND owner = ?")
-          .bind(scope, owner).first<{ n: number }>();
-        if ((count?.n ?? 0) >= MAX_KEYS_PER_OWNER) return json({ error: "too_many_keys" }, 400, headers);
+  try {
+    await schemaReady(env.DATA);
+    switch (body.op) {
+      case "get": {
+        const key = keyOf(body.key);
+        if (key === null) return json({ error: "bad_key" }, 400, headers);
+        const row = await env.DATA.prepare("SELECT value FROM artifact_storage WHERE scope = ? AND owner = ? AND key = ?")
+          .bind(scope, owner, key).first<{ value: string }>();
+        return json(row ? { key, value: row.value, shared } : null, 200, headers);
       }
-      await env.DATA.prepare(
-        "INSERT INTO artifact_storage (scope, owner, key, value, updated_at) VALUES (?, ?, ?, ?, ?) " +
-          "ON CONFLICT (scope, owner, key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at",
-      ).bind(scope, owner, key, body.value, Date.now()).run();
-      return json({ key, value: body.value, shared }, 200, headers);
+      case "set": {
+        const key = keyOf(body.key);
+        if (key === null) return json({ error: "bad_key" }, 400, headers);
+        if (typeof body.value !== "string" || utf8.encode(body.value).byteLength > MAX_VALUE_BYTES) {
+          return json({ error: "bad_value" }, 400, headers);
+        }
+        const exists = await env.DATA.prepare("SELECT 1 FROM artifact_storage WHERE scope = ? AND owner = ? AND key = ?")
+          .bind(scope, owner, key).first();
+        if (!exists) {
+          const count = await env.DATA.prepare("SELECT COUNT(*) AS n FROM artifact_storage WHERE scope = ? AND owner = ?")
+            .bind(scope, owner).first<{ n: number }>();
+          if ((count?.n ?? 0) >= MAX_KEYS_PER_OWNER) return json({ error: "too_many_keys" }, 400, headers);
+        }
+        await env.DATA.prepare(
+          "INSERT INTO artifact_storage (scope, owner, key, value, updated_at) VALUES (?, ?, ?, ?, ?) " +
+            "ON CONFLICT (scope, owner, key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at",
+        ).bind(scope, owner, key, body.value, Date.now()).run();
+        return json({ key, value: body.value, shared }, 200, headers);
+      }
+      case "delete": {
+        const key = keyOf(body.key);
+        if (key === null) return json({ error: "bad_key" }, 400, headers);
+        const r = await env.DATA.prepare("DELETE FROM artifact_storage WHERE scope = ? AND owner = ? AND key = ?")
+          .bind(scope, owner, key).run();
+        return json({ key, deleted: (r.meta.changes ?? 0) > 0, shared }, 200, headers);
+      }
+      case "list": {
+        const prefix = typeof body.prefix === "string" && body.prefix.length <= MAX_KEY ? body.prefix : "";
+        const rows = await env.DATA.prepare(
+          "SELECT key FROM artifact_storage WHERE scope = ? AND owner = ? AND substr(key, 1, ?) = ? ORDER BY key LIMIT ?",
+        ).bind(scope, owner, prefix.length, prefix, MAX_LIST).all<{ key: string }>();
+        return json({ keys: rows.results.map((r) => r.key), prefix, shared }, 200, headers);
+      }
+      default:
+        return json({ error: "bad_op" }, 400, headers);
     }
-    case "delete": {
-      const key = keyOf(body.key);
-      if (key === null) return json({ error: "bad_key" }, 400, headers);
-      const r = await env.DATA.prepare("DELETE FROM artifact_storage WHERE scope = ? AND owner = ? AND key = ?")
-        .bind(scope, owner, key).run();
-      return json({ key, deleted: (r.meta.changes ?? 0) > 0, shared }, 200, headers);
-    }
-    case "list": {
-      const prefix = typeof body.prefix === "string" && body.prefix.length <= MAX_KEY ? body.prefix : "";
-      const rows = await env.DATA.prepare(
-        "SELECT key FROM artifact_storage WHERE scope = ? AND owner = ? AND substr(key, 1, ?) = ? ORDER BY key LIMIT ?",
-      ).bind(scope, owner, prefix.length, prefix, MAX_LIST).all<{ key: string }>();
-      return json({ keys: rows.results.map((r) => r.key), prefix, shared }, 200, headers);
-    }
-    default:
-      return json({ error: "bad_op" }, 400, headers);
+  } catch (e) {
+    console.error("storage: the database call failed:", e);
+    return json({ error: "storage_unavailable" }, 503, headers);
   }
 }
