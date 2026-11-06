@@ -39,11 +39,12 @@ await window.storage.list(prefix?, shared?)     // { keys, prefix, shared }
   bytes; the database refuses more than 2,000,000 in a row), 1,000 keys per
   person (and 1,000 shared), `list` returns at most 1,000 keys, and its
   prefix is at most 200 characters (a longer one is refused, not ignored).
-  A request carries at most 2,100,000 bytes, and JSON's escapes count there:
-  each quote or backslash in a value takes two bytes of the request, so a
-  value near its limit that holds many of them (stored JSON does) can be
-  refused as `body_too_large`. A call over a limit throws, with the reason in
-  the error's message. Raise a limit only with a reason: they bound what one
+  A request carries at most 4,000,000 bytes: twice the value limit, since
+  JSON writes each quote or backslash in a value as two bytes, so a value at
+  its limit fits however many it holds (stored JSON holds many). Only a value
+  full of raw control characters, which JSON writes as six bytes each, can
+  still be refused as `body_too_large`. A call over a limit throws, with the
+  reason in the error's message. Raise a limit only with a reason: they bound what one
   person can store, and the value limit must stay under the database's.
 - When the database fails, a call throws with `storage_unavailable` in its
   message, and the next call tries again.

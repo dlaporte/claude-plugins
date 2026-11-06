@@ -210,6 +210,17 @@ describe("the value limit, in bytes (R05)", () => {
       assert.equal((await storage(w, { op: "get", key: "big" })).body.value.length, value.length);
     }
   });
+
+  // JSON writes each quote and backslash as two bytes, so the request
+  // carrying a stored-JSON value is up to twice the value's size.
+  test("stores a stored-JSON value at the limit, however many quotes and backslashes it holds", async () => {
+    for (const value of ['{"k":"v"},'.repeat(190_000), '\\"'.repeat(950_000)]) {
+      assert.equal(new TextEncoder().encode(value).byteLength, 1_900_000);
+      const r = await storage(w, { op: "set", key: "json", value });
+      assert.deepEqual([r.status, r.body?.error], [200, undefined], `${JSON.stringify({ value }).length} bytes of request`);
+      assert.equal((await storage(w, { op: "get", key: "json" })).body.value === value, true);
+    }
+  });
 });
 
 describe("the request's shape and size (R05)", () => {
@@ -261,29 +272,19 @@ describe("the request's shape and size (R05)", () => {
     }
   });
 
-  test("refuses a body over 2,100,000 bytes with 413, whether it declares its length or not", async () => {
+  // The limit is twice the value limit plus 200,000 bytes, 4,000,000. The
+  // over-limit bodies are sent inside one invocation (fault-entry.ts says why).
+  test("refuses a body over 4,000,000 bytes with 413, whether it declares its length or not", async () => {
     const w = await start("suite/fault-entry.ts");
     try {
-      const declared = await storage(w, { op: "get", key: "a", junk: "x".repeat(2_100_000) });
-      assert.deepEqual([declared.status, declared.body], [413, { error: "body_too_large" }]);
-      assert.equal(declared.headers.get("x-suite-headers"), "app");
-
-      // 22 chunks of 100,000 bytes, streamed: the Worker sees no Content-Length.
-      const streamed = (path) => {
-        const chunk = new TextEncoder().encode("x".repeat(100_000));
-        let sent = 0;
-        const body = new ReadableStream({
-          pull(c) {
-            if (sent === 0) c.enqueue(new TextEncoder().encode('{"op":"get","key":"a","junk":"'));
-            if (sent++ < 22) c.enqueue(chunk);
-            else { c.enqueue(new TextEncoder().encode('"}')); c.close(); }
-          },
-        });
-        return w.fetch(path, { method: "POST", headers: person("alice"), body, duplex: "half" });
-      };
-      assert.deepEqual(await (await streamed("/__content-length")).json(), { contentLength: null });
-      const r = await answer(await streamed("/api/storage"));
-      assert.deepEqual([r.status, r.body], [413, { error: "body_too_large" }]);
+      // Twice the limit, so a reader that stopped at the limit leaves chunks unread.
+      const { declared, streamed } = await control(w, "/__oversize?bytes=8000000");
+      const refused = { status: 413, body: { error: "body_too_large" }, appHeaders: "app" };
+      assert.deepEqual(declared, refused);
+      const { contentLength, pulled, chunks, ...answer } = streamed;
+      assert.deepEqual(answer, refused);
+      assert.equal(contentLength, null, "the streamed body declared its length");
+      assert.ok(pulled < chunks, `read ${pulled} of ${chunks} chunks: reading did not stop at the limit`);
       assert.equal((await control(w, "/__stats")).statements, 0);
     } finally {
       await w.stop();

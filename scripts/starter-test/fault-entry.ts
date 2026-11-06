@@ -62,17 +62,21 @@ async function call(request: Request, env: Env): Promise<Response> {
   }
 }
 
+function identity(subject: string): Record<string, string> {
+  return {
+    "x-forwarded-user": `${subject}@example.edu`,
+    "x-forwarded-subject": subject,
+    "sec-fetch-site": "same-origin",
+    "content-type": "application/json",
+  };
+}
+
 function storageRequest(subject: string, body: unknown): Request {
-  return new Request("http://app.test/api/storage", {
-    method: "POST",
-    headers: {
-      "x-forwarded-user": `${subject}@example.edu`,
-      "x-forwarded-subject": subject,
-      "sec-fetch-site": "same-origin",
-      "content-type": "application/json",
-    },
-    body: JSON.stringify(body),
-  });
+  return new Request("http://app.test/api/storage", { method: "POST", headers: identity(subject), body: JSON.stringify(body) });
+}
+
+async function summary(r: Response): Promise<{ status: number; body: unknown; appHeaders: string | null }> {
+  return { status: r.status, body: await r.json(), appHeaders: r.headers.get("x-suite-headers") };
 }
 
 export default {
@@ -113,11 +117,34 @@ export default {
         const answers = await Promise.all(bodies.map((b) => call(storageRequest(subject, b), env)));
         return Response.json(await Promise.all(answers.map(async (r) => ({ status: r.status, body: await r.json() }))));
       }
-      case "/__content-length":
-        // What the Worker sees of a request body's length, so a test can show
-        // its streamed body really arrives with no Content-Length.
-        await request.arrayBuffer();
-        return Response.json({ contentLength: request.headers.get("content-length") });
+      case "/__oversize": {
+        // A body of `bytes` bytes, sent to the storage route inside this
+        // invocation: once declaring its length, and once streamed in 100,000
+        // byte chunks with no Content-Length. Over HTTP, wrangler dev's own
+        // proxy can drop the connection when a Worker answers before reading
+        // all of a body over about 4 MB, so the Worker's answer may not arrive.
+        const bytes = Number(q("bytes"));
+        const declared = await call(new Request("http://app.test/api/storage", {
+          method: "POST",
+          headers: { ...identity("alice"), "content-length": String(bytes) },
+          body: "{}",
+        }), env);
+        const chunk = new Uint8Array(100_000).fill(0x78);
+        const chunks = Math.ceil(bytes / chunk.byteLength);
+        let pulled = 0;
+        const stream = new ReadableStream<Uint8Array>({
+          pull(c) {
+            if (pulled++ < chunks) c.enqueue(chunk);
+            else c.close();
+          },
+        });
+        const streamedRequest = new Request("http://app.test/api/storage", { method: "POST", headers: identity("alice"), body: stream });
+        const streamed = await call(streamedRequest, env);
+        return Response.json({
+          declared: await summary(declared),
+          streamed: { ...(await summary(streamed)), contentLength: streamedRequest.headers.get("content-length"), pulled, chunks },
+        });
+      }
       default:
         return call(request, env);
     }

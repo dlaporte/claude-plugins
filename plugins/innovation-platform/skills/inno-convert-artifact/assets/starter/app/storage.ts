@@ -20,8 +20,8 @@ export const MAX_KEY = 200;
 // In bytes of UTF-8, as D1 counts: production D1 refuses a string or a row
 // over 2,000,000 bytes, and this leaves room for the row's other columns.
 export const MAX_VALUE_BYTES = 1_900_000;
-// A request's body: a value at its limit, with room for the JSON around it.
-export const MAX_BODY_BYTES = 2_100_000;
+// Twice a value's limit, since JSON writes a quote or backslash as two bytes, plus room for the rest.
+export const MAX_BODY_BYTES = 2 * MAX_VALUE_BYTES + 200_000;
 export const MAX_KEYS_PER_OWNER = 1_000;
 export const MAX_LIST = 1_000;
 
