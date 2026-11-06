@@ -95,7 +95,7 @@ describe("the page's Content-Security-Policy", () => {
     assert.ok(skill, "STARTER_SKILL_DIR is not set");
     const html = readFileSync(join(skill, "references/html-artifacts.md"), "utf8");
     const inventory = readFileSync(join(skill, "SKILL.md"), "utf8").split("## 3. Take inventory")[1]?.split("\n## ")[0] ?? "";
-    assert.doesNotMatch(html, /markup and the CSS carry over unchanged/);
+    assert.ok(!html.includes("markup and the CSS carry over unchanged"), "html-artifacts.md still says the markup carries over unchanged");
     const step = html.split("**Inline styles.**")[1]?.split(/\n\d+\. \*\*/)[0] ?? "";
     assert.ok(step, "html-artifacts.md has no Inline styles step");
     for (const needle of ['style="..."', "artifact.css", 'setAttribute("style"', "el.style.cssText", "'unsafe-inline'"]) {
