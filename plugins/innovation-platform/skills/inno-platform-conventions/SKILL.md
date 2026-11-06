@@ -458,7 +458,9 @@ that template has no such helper either, read an empty or missing
   sends their MCP client back to authorize.
 - **How fast a change reaches the header** is R3's to state: within the
   front door's cache, at most 60 seconds on an MCP app and 10 seconds on a
-  browser app.
+  browser app; a change to the app's identity provider group counts from
+  when the provider's push reaches the platform, not from the edit at the
+  provider.
 - **The platform signs people in, outside your code.** On a members-only or
   internal browser app the front door sends a person with no session through
   the platform's own

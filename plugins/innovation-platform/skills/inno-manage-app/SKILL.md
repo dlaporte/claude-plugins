@@ -104,7 +104,8 @@ scim` the identity provider also tells the platform who belongs, and a
 deactivation reaches the platform as soon as the identity provider pushes
 it (some providers push as changes happen, others on a schedule):
 
-- If a download link, a Connections page or the panel's sign-in shows the
+- If a download link, a Connections page, the panel's sign-in or the MCP
+  client's sign-in to the platform (re-authorizing the connector) shows the
   "Sign-in refused" page (HTTP 403, "This account can no longer sign in."),
   or a panel request or a platform tool answers `account_inactive` (HTTP
   401), the identity provider deactivated or deleted that person's account, or never
@@ -906,7 +907,12 @@ Things to relay to the user in plain terms:
   about six minutes of the change whatever the traffic (contract §2.3,
   **Timing**). That's the
   delivery mechanism, not a malfunction: say so before setting one on a live
-  container app, since requests in flight on the old instance drop.
+  container app, since requests in flight on the old instance drop. From
+  platform v0.18.11, on a running container app (active or warned) whose
+  probes run, its health is checked again right after, as after a restart
+  (`restart_app`'s section, above): `app_status` reads pending, then the probe's
+  answer, within about a minute, so read it then to tell whether the new
+  value broke the app's start.
 - **Stored, but the push was refused.** On a container app one of whose data
   links no longer holds, the answer's `Delivery:` line says the values were
   stored and the push refused, naming `link_invalid` or
@@ -992,11 +998,15 @@ them:
 - `member_reassigned`: an address with access now signs in as a different
   account than the one its access is pinned to. The entry names the address
   and the re-share: `references/address-changes.md`. From platform v0.18.9,
-  when the app's identity provider group still admits the new account, the
-  entry says so and names the group: a re-share (`revoke_access`, then
-  `grant_access`) then gives the new holder a way in that outlasts the group,
-  and removing them from the group at the identity provider ends theirs, on a
-  members-only app (on an internal app the audience still admits them). For an
+  on a members-only app whose identity provider group still admits the new
+  account, the entry says so and names the group: a re-share (`revoke_access`,
+  then `grant_access`) then gives the new holder a way in that outlasts the
+  group, and removing them from the group at the identity provider ends
+  theirs. From platform v0.18.11, on an internal or public app the entry says
+  instead that the audience still lets the new account in (an internal app as
+  a non-member whenever it can sign in, a public app without any sign-in),
+  with the same re-share to make them a member; before that release such an
+  entry named the group, or said that account is refused. For an
   app held in custody for the address's earlier holder, `revoke_access`
   refuses the person it is held for, so the remedy is an admin's
   `transfer_app` of the app to that address, which hands it to the address's
@@ -1154,8 +1164,8 @@ the rules.
 If the user doesn't remember an app's exact name, call the read-only
 `list_apps` tool first. It lists the apps the caller owns, or every app on the
 platform when the caller is an admin. Each row carries the name, status, type
-label, audience and identity, owner, and address, plus the GitHub repo backing it an `[UNLINKED]`
-flag when the platform's GitHub App is no longer installed on that repo (the
-remedy is `start_app`'s `app_unlinked` above), and an `[IN CUSTODY]` flag for
+label, audience and identity, owner, and address, plus the GitHub repo
+backing it, an `[UNLINKED]` flag when the platform's GitHub App is no longer
+installed on that repo (the remedy is `start_app`'s `app_unlinked` above), and an `[IN CUSTODY]` flag for
 an app held in custody (the owner shown is the custodian; `app_status` names
 whom it is held for).

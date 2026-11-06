@@ -590,8 +590,9 @@ Rules that hold regardless of language:
     `X-Caller-Assertion` of the request you are serving now, not one kept
     from an earlier request, and check the connection name you passed
     against `list_connections`. A `401 connections_bad_assertion` can also
-    be the host's: one the platform last uploaded before v0.17.4, which
-    `restart_app` or that release's host wave fixes. It is also the answer
+    be the host's: one the platform last uploaded before it began naming the
+    app, which `restart_app`, or the next release's host wave, fixes
+    (contract §2.2). It is also the answer
     to an assertion relayed through another app's host: an assertion is good
     only on the app it was issued to, so never hand one on to another app.
   - **`401 unauthorized`**: the host holds a stale seam key, as after a

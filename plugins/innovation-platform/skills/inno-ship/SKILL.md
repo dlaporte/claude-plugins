@@ -255,7 +255,8 @@ a function app's `App Worker bundle` error from the `Check the downloaded
 bundle against app-build's digest` step or the `Hand the bundle to the
 platform` step, or its `deploy-complete failed` line naming
 `bundle_missing`, `bundle_mismatch`, `bundle_invalid`,
-`bundle_compat_mismatch` or `bundle_store_unavailable`;
+`bundle_compat_mismatch` or `diagnostics_unavailable` (`bundle_store_unavailable`
+on a platform before v0.18.11);
 a `deploy-complete failed (500)` line, or `deploy-complete failed: no answer
 within 540 s`;
 `policy` failing with `Platform refused this app` (on a push or a tag: the

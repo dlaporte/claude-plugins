@@ -843,7 +843,9 @@ serves. The panel's Platform screen is the same act on a visual surface.
   member count.
 - `list_connections` without `app`, and `list_user_connections` with no
   filters or for another person without an app you manage, are the fleet
-  views of connections: admins only, and never any credential.
+  views of connections: admins only, and never any credential. From platform
+  v0.18.11 each answers at most 100 and says when more exist, so never read
+  a capped list as the whole fleet: narrow it by app or person instead.
 - `list_notifications` shows an admin every app's feed, plus these
   admin-only stages:
   - `start_requested`: an owner asked for a start. An admin's `start_app` is

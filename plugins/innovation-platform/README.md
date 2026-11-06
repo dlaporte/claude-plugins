@@ -724,5 +724,16 @@ image push;
 `inno-fleet-admin` point at the one-click redeploy of a recent release from the
 panel and say that a suspended person keeps their stored credentials while a
 deleted one loses them; `inno-manage-app` also says how long a deactivation
-takes to reach an app. No tool changed in behavior (two tool descriptions and
-two answers are reworded); the floor stays 7.0.0.
+takes to reach an app, that a variable change re-checks a running container
+app's health, what a `member_reassigned` notice says on an internal or public
+app, and that the platform's own MCP sign-in can show the "Sign-in refused"
+page. `inno-ship` routes a function app's `diagnostics_unavailable` (a
+platform with no diagnostics storage) to a platform admin, with no re-run and
+no support bundle, and `inno-platform-conventions` counts a group change's
+window from the identity provider's push. On the platform's side, six tool
+descriptions and three answers are reworded (the jit sentence, the narrowing
+to members-only, and `grant_admin`'s re-grant over a pinned row),
+`list_connections`' fleet view and `list_user_connections` now answer at most
+100 and say when more exist, a variable change on a running container app
+re-checks its health, as a restart does, and `request_start`'s email to the
+admins obeys the instance's lifecycle email switch; the floor stays 7.0.0.
