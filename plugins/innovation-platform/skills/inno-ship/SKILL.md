@@ -141,8 +141,9 @@ ones you are about to commit.
 This runs the eight gate jobs (`config-integrity`, `secrets`, `sast`, `deps`,
 `dep-age`, `container`, `scaffold-check`, `app-build`) plus the `policy` fetch
 that resolves the admin gate configuration, and then **stops**: the deploy
-job runs only on release tags. The `container` job is skipped for
-`function` and `mcp-function` apps, which have no image to build; for them
+job runs only on release tags. The `container` job's steps are skipped for
+`function` and `mcp-function` apps, which have no image to build, and the
+job reports success, so do not count it as a check that ran; for them
 `app-build` installs and bundles the app on every push, holding no
 credential, so a build failure shows on the push rather than at the tag.
 Watch with
@@ -204,6 +205,14 @@ yourself. To
 the user, one plain sentence: "The security check found an out-of-date
 dependency; I'm updating it and re-shipping." Fix the **root cause**, push,
 and cut the next patch tag (a tag is immutable: never force-move one).
+
+**The re-run rule, for every failure below:** a re-run of the deploy job
+alone reuses that run's artifacts (a container deploy's scanned image, a
+function app's bundle; kept for one day) and the record the platform staged
+for that run, so it works within a day of the run for either shape; after
+that only a re-run of the whole run (`gh run rerun <run-id>`, without
+`--job`) rebuilds them.
+
 The exception: before any fix that moves, deletes or replaces the user's
 files, or edits anything under `.github/workflows/`, show the user the change
 and ask first, whether or not the row below says so.
@@ -211,14 +220,15 @@ and ask first, whether or not the row below says so.
 | Failing job | Likely cause | Fix via |
 |---|---|---|
 | `config-integrity` | the repo carries a platform-owned or forbidden path, or `CLAUDE.md` lacks a required header. The failure message names each path; the full list, with the reason for each, is `inno-platform-conventions`' **Files you must not touch** section | **stop and ask; this is not a quiet fix.** Files under `src/` and a root `package.json` can be the user's own code: show the user every flagged path first. Only with their okay, move author code and manifests under `app/` (for example `app/src/`), update the Dockerfile `COPY` paths and the code's imports to match, and delete only what they confirm is not theirs (such as `src/node_modules/`, or a `src/gateway/` an older platform's build left). Never move or delete author code unprompted before a tagged deploy. See `inno-platform-conventions` |
-| `secrets` (the `Secret scan (gitleaks)` error) | gitleaks found a credential committed somewhere in the repository's history. It reads every commit on every branch and tag, on every run, a release tag's included, with gitleaks' default rules and the paths they skip (the contract's R8), so an app whose history already holds a secret those rules find fails each push and its next release until it does one of the fixes here. The step log names each finding's commit, file and rule (the secret redacted) and prints its fingerprint | first **rotate** the secret, since it is exposed whatever happens next, and put the new value in an app Variable (`set_app_variables`), never back in the repo. Then, with the user's okay, either **rewrite the history** to remove it from every branch and tag that holds it, or **record the finding's fingerprint**, as the step log prints it, in a `.gitleaksignore` at the repository root: `<commit>:<file>:<rule>:<line>` waives it in that commit alone, and `<file>:<rule>:<line>` in every commit. A fingerprint stops matching when what it names changes: a rebase or any other history rewrite gives the commit a new id, and a move gives the file a new path, so the finding comes back and has to be recorded again (or, better, removed from the history). **Never** delete the file in a new commit as the fix: the old commit still holds the secret, and the gate stays red. The fingerprint is the only waiver (a committed `.gitleaks.toml` or an inline `gitleaks:allow` comment does nothing); the contract's R8 has the full rule |
-| `sast` | a semgrep OWASP finding anywhere the gate scans, which is the whole repository and not just `app/` (the scope is `inno-platform-conventions`' **Rendering** section; the log names the file). A `secrets: inherit` line in `.github/workflows/deploy.yml` (older template copies carry one) is a blocking finding too | `inno-platform-conventions` (escaping, SQL); for `secrets: inherit`, tell the user and, with their okay, delete the line (the platform workflow needs no caller secrets) |
-| `deps` | a CVE in `app/requirements.txt` or a production npm dependency (what the audit covers is the contract's R8) | bump the pinned dep |
+| `secrets` (the `Secret scan (gitleaks)` error; a failure titled `Gitleaks` is the platform's, below) | gitleaks found a credential committed somewhere in the repository's history. It reads every commit on every branch and tag, on every run, a release tag's included, with gitleaks' default rules and the paths they skip (the contract's R8), so an app whose history already holds a secret those rules find fails each push and its next release until it does one of the fixes here. The step log names each finding's commit, file and rule (the secret redacted) and prints its fingerprint | first **rotate** the secret, since it is exposed whatever happens next, and put the new value in an app Variable (`set_app_variables`), never back in the repo. Then, with the user's okay, either **rewrite the history** to remove it from every branch and tag that holds it, or **record the finding's fingerprint**, as the step log prints it, in a `.gitleaksignore` at the repository root: `<commit>:<file>:<rule>:<line>` waives it in that commit alone, and `<file>:<rule>:<line>` in every commit. A fingerprint stops matching when what it names changes: a rebase or any other history rewrite gives the commit a new id, and a move gives the file a new path, so the finding comes back and has to be recorded again (or, better, removed from the history). **Never** delete the file in a new commit as the fix: the old commit still holds the secret, and the gate stays red. The fingerprint is the only waiver (a committed `.gitleaks.toml` or an inline `gitleaks:allow` comment does nothing); the contract's R8 has the full rule. A failure titled `Gitleaks` (`gitleaks exited <n> without a verdict`, or a runner git older than 2.42 so nothing was scanned) is the platform's, not a finding: change nothing; for `without a verdict`, re-run the workflow once and, if it repeats, ask a platform admin; for the old git, ask a platform admin at once, since the runner's git does not change between attempts |
+| `sast` | a semgrep OWASP finding anywhere the gate scans, which is the whole repository and not just `app/` (the scope is `inno-platform-conventions`' **Rendering** section; the log names the file). A `secrets: inherit` line in `.github/workflows/deploy.yml` (older template copies carry one) is a blocking finding too. A failure titled `Semgrep` (`semgrep exited <n> without a verdict`) or `Semgrep version` is the platform's, not a finding | `inno-platform-conventions` (escaping, SQL); for `secrets: inherit`, tell the user and, with their okay, delete the line (the platform workflow needs no caller secrets); for `Semgrep` or `Semgrep version`, change nothing, re-run the workflow once, and if it repeats ask a platform admin |
+| `deps` | a CVE in `app/requirements.txt` or a production npm dependency (what the audit covers is the contract's R8); or the `Dependency gate` error `could not resolve app/package.json into a lockfile` (a container app's) | bump the pinned dep; for the unresolvable manifest, fix the dependency ranges or commit a `package-lock.json` |
 | `dep-age` | a pinned dep is **too new** for the platform's release-age cooldown (`safety.min_release_age_days`; `get_config app=<name>` gives the value in force and its meaning), or `app/package.json` ships with no committed, parseable `app/package-lock.json` so there is nothing to date | **not** a version bump: bumping to the newest release makes it worse. Wait out the cooldown, pin an older vetted version, commit `app/package-lock.json`, or ask a platform admin for an app-scope `safety.min_release_age_days: 0` |
 | `container` | Trivy CVE, a `USER` the non-root gate refuses (the forms it accepts are the contract's R1; `inno-containerize` item 2 applies them), missing `EXPOSE 8080`, or the image never answered `GET /healthz`; a failure titled `Trivy` (`trivy exited <n> without a verdict`) is the scanner's, not a finding; one titled `Docker build` is the image build | `inno-containerize`; for `Trivy`, re-run the workflow, and if it repeats ask a platform admin; for `Docker build`, fix the Dockerfile or the files it copies |
 | `container` fails with `Accessibility check failed` (only when the app's `safety.a11y.mode` is `enforce`) | the accessibility report found something that blocks in `enforce` mode: an unwaived critical or serious violation, or a landing page `/` (or every page) the app left unscannable. Exactly what blocks, and what only warns, is the `enforce` row of the mode table `get_app_accessibility` serves | read what the report marks as blocking (`inno-safety-preflight` §1c) and fix it, push, confirm the gates are green, then cut the next patch tag. A failing `/` has to render in CI, where there is no stored data, as a real page (an empty state, not an error or a redirect off the app): `app/inno-a11y.json` adds pages that render without stored data, but it never stands in for `/`. A rule that is wrong for this app: name its rule id and have the user ask a platform admin for a time-limited waiver, `safety.ignore.a11y.<rule-id>` with an expiry date as its value |
 | `scaffold-check` fails with `Nothing deployed` (a release tag's run only) | `app/.needs-build`, the untouched scaffold's marker, is still in the repository, so the tag deploys nothing. On a push it is not a failure: the job skips `deploy` quietly while the marker exists (see §0) | build the app and delete the marker once `app/` holds real code (§0), push, confirm the gates are green, then cut the next patch tag |
 | `deploy` fails with `app_stopped`, or a container app's `container` job fails at `SBOM upload failed` naming it | the app was stopped by the lifecycle (or deliberately), and **stopped apps cannot be deployed**. Only a release tag's run fails this way (a container app's at its `container` job's SBOM upload, before `deploy` runs); a push to the default branch still runs every gate green on a stopped app, so a clean preflight is not evidence that the app can deploy | `inno-manage-app`: `start_app` first, then cut the next patch tag |
+| `app-build` fails at `Build the app's browser interface` (function-shaped apps; titled `Browser interface entry missing`, `Browser interface build` or `Tailwind build`; on every push) | `Browser interface entry missing`: `app/ui/` has no entry file. `Browser interface build`: an import that does not resolve, or a package the interface imports that sits under `devDependencies`. `Tailwind build`: the stylesheet failed | for a missing entry, add `app/ui/main.tsx` (or `main.ts`, `main.jsx`, `main.js`), or remove `app/ui/`; for a build failure, fix the import or the code the error names (a package the interface imports belongs under `dependencies` in `app/package.json`); for Tailwind, fix the stylesheet (the platform supplies `tailwindcss` itself); then push, confirm `app-build` is green, then tag |
 | `app-build` fails with `Missing app/package-lock.json` (function-shaped apps) | `app/package.json` exists but no lockfile is committed (the contract's §1.1 **Dependencies** bullet). This job runs on pushes too, so the failure blocks before any tag exists | run `npm install` inside `app/`, commit `app/package-lock.json`, push, confirm `app-build` is green, then tag |
 | `app-build` fails in `npm ci` (titled `Dependency install`), or its `Bundle the app Worker` step reports `Could not resolve "<package>"` with the titled error `Undeclared import`, or reports it with the titled error `devDependency imported at runtime` (function-shaped apps; on pushes as well as tags) | the lockfile no longer matches `app/package.json`, or the code imports a package not declared anywhere (nothing is installed at the repo root), or the code imports at runtime a package declared only under `devDependencies` (`app-build` installs `--omit=dev`, so that tree was never installed) | for an undeclared package: declare it in `app/package.json`, run `npm install` inside `app/`, commit both files, push, confirm `app-build` is green, then cut the next patch tag. For a devDependency: move it as **Moving a devDependency into dependencies**, below this table, says; then commit `app/package.json` and `app/package-lock.json`, push, confirm `app-build` is green, then cut the next patch tag |
 | `app-build` fails with `Symlink escapes the repository` or `Dangling symlink` (function-shaped apps; the step ends `A symlink in your repository points outside it; a link may name only a file inside your repository. Remove it, or point it inside.`) | a link in the checkout points outside the repository or nowhere. The check walks the whole checkout but `.git` and the platform's own CI checkout, `node_modules` directories included, which `config-integrity` does not walk: a link an installed package ships, a `file:` dependency that points outside the repository, a link among a `file:` dependency's own dependencies (installed in a `node_modules` beside it), or one in a `node_modules` committed anywhere but the repository root and `app/` (those two are removed before the install). A committed link anywhere else fails `config-integrity` first. A link may name only a file inside the repository | for a `file:` dependency, bring what it points at inside the repository; for a package that ships such a link, pin a version that ships none, or replace the package; for a committed `node_modules`, remove it from the repository; each with the user's okay. Push, confirm `app-build` is green, then cut the next patch tag |
@@ -231,7 +241,7 @@ The rarer `deploy` and broker failures and warnings, each with its fix, are
 in `references/deploy-failures.md`. Read it when the run shows any of
 these: a tag run's `container` job failing at `SBOM upload failed`;
 `No scanned image recorded`; `Image mismatch` or `image_mismatch`;
-a `deploy-token failed` line naming `app_not_ready`, `image_not_recorded`,
+a `deploy-token failed` line with no answer in 30 seconds, naming `oidc_invalid` or another 5xx, or naming `app_not_ready`, `image_not_recorded`,
 `link_invalid`, `link_source_missing` or `app_busy`, or, for a container
 app, naming `upstream_error` or `diagnostics_unavailable`;
 a `deploy-complete failed` line naming `deployment_not_completable`,
@@ -245,7 +255,8 @@ a function app's `App Worker bundle` error from the `Check the downloaded
 bundle against app-build's digest` step or the `Hand the bundle to the
 platform` step, or its `deploy-complete failed` line naming
 `bundle_missing`, `bundle_mismatch`, `bundle_invalid`,
-`bundle_compat_mismatch` or `bundle_store_unavailable`;
+`bundle_compat_mismatch` or `diagnostics_unavailable` (`bundle_store_unavailable`
+on a platform before v0.18.11);
 a `deploy-complete failed (500)` line, or `deploy-complete failed: no answer
 within 540 s`;
 `policy` failing with `Platform refused this app` (on a push or a tag: the
@@ -317,7 +328,10 @@ platform's deploy broker, which answers only the pinned reusable workflow,
 the `CI workflow:` line of the status you read in the Version gate (keep
 `deploy.yml`'s `uses:` reference exactly as `register_app` returned it),
 running for a `refs/tags/v*` release tag. A push to any branch, a fork, or a
-`deploy.yml` edited to skip gates gets `403 deploy_denied`: there is no code
+`deploy.yml` edited to skip gates gets a `403 deploy_denied` refusal
+(`deploy_denied:workflow` for a `uses:` line that no longer names the pinned
+workflow, `deploy_denied:ref` off a release tag, `deploy_denied:repo_id` from
+a fork): there is no code
 path where removing the gates yields a working deploy. The release tag is
 recorded on the deployment, and the safety sweep's auto-respin rebuilds at
 exactly that tag. A container app's deploy ships exactly the image the
@@ -464,10 +478,8 @@ contract's R2 (`get_app_contract` with `sections: ["R2"]`), and
   hourly pass to judge, as a deploy's is. It does not update the deployment
   record, so it never restarts the 10 minutes in which an hourly pass
   defers after a deploy.
-- Re-running the whole tag run (`gh run rerun <run-id>`, without `--job`: a
-  container deploy needs the image that same run's `container` job scanned,
-  kept for only one day) finalizes another deploy, whose probe records a
+- Re-running the tag run (`gh run rerun <run-id>`) finalizes another deploy, whose probe records a
   healthy answer at once but defers a failing one again and restarts the 10
   minutes in which an hourly pass defers. A re-run can confirm a fix sooner
   than the next hourly pass, but it never surfaces a failure sooner, and it
-  can delay the alarm.
+  can delay the alarm. The re-run rule is in §3, **On failure**.

@@ -97,12 +97,15 @@ membership modes, which the `Identity provider:` line of the status you read
 in the Version gate names. In `membership jit` anyone the identity provider
 lets sign in is a member, and the platform never learns that an account was
 deactivated there: that person keeps what they had until their sessions and
-grants end, and only a platform admin can end it sooner. In `membership
+grants end, and only a platform admin can end it sooner (a delete the
+identity provider pushes over SCIM still ends their way in through an app's
+identity provider group, described below). In `membership
 scim` the identity provider also tells the platform who belongs, and a
 deactivation reaches the platform as soon as the identity provider pushes
 it (some providers push as changes happen, others on a schedule):
 
-- If a download link, a Connections page or the panel's sign-in shows the
+- If a download link, a Connections page, the panel's sign-in or the MCP
+  client's sign-in to the platform (re-authorizing the connector) shows the
   "Sign-in refused" page (HTTP 403, "This account can no longer sign in."),
   or a panel request or a platform tool answers `account_inactive` (HTTP
   401), the identity provider deactivated or deleted that person's account, or never
@@ -110,11 +113,16 @@ it (some providers push as changes happen, others on a schedule):
   nothing in this skill can undo it: the account has to be reactivated, or
   provisioned, at the identity provider, by the identity team or a platform
   admin. The same account check ends their access to every app, MCP and
-  browser alike, and their platform tool calls, within the window
-  `auth.status_check_minutes` sets (a platform-scope setting, which only an
-  admin's `get_config` catalog lists), plus the front door's cache
-  (contract R3); and an admin whose account is deactivated loses admin
-  standing.
+  browser alike, and their platform tool calls, as follows. In scim mode a
+  deactivation ends their panel and browser app sessions at once; their MCP
+  tokens and platform tool calls stop within the window
+  `auth.status_check_minutes` sets (default 1 minute; a
+  platform-scope setting, which only an admin's `get_config` catalog lists),
+  plus the front door's introspection cache (contract R3); and a browser
+  app's front door holds an answer for at most 10 seconds. An admin whose
+  account is deactivated loses admin standing. A person merely suspended
+  keeps their stored connection credentials, and a deleted account loses
+  them.
 - **The apps that person owns move into a platform admin's custody** as
   soon as that push arrives: the admin becomes their owner (`app_status` names them), and each
   app keeps running, with its audience, its member list, its data links and
@@ -534,7 +542,9 @@ what serves. Only a run that never reached that step (it was cancelled or
 timed out, or its runner died), or whose step warned `App not released`,
 holds the app `deploying` until a later deploy finishes or the lifecycle
 pass's recovery sweep reverts it, and until then those tools keep refusing.
-Each of their descriptions says when the sweep comes; the interval it counts
+The platform's server
+instructions, and the `app_deploying` message itself, say when the sweep
+comes (two run intervals, at least 2 hours); the interval it counts
 is the platform-scope `lifecycle.run_interval_hours`, which an owner's
 `get_config app=` does not list. While an app is deploying, `app_status`'s
 `Lifecycle:` line says when that deploy began and names its CI run, as its
@@ -600,7 +610,8 @@ is the ↻ icon next to the container name on the app's panel page.
 
 Its admin-only neighbor, `rebuild_app`, rebuilds an app's released code at
 its live tag (`inno-fleet-admin`). Owners never need it: they redeploy by
-tagging their own repo, which is `inno-ship`.
+tagging their own repo, which is `inno-ship`, or redeploy an earlier release
+from the panel (the `degraded` entry, under **Notifications**).
 
 ## `set_app_access({ app, audience, accept_guardrails? })`: who may reach the app
 
@@ -619,7 +630,9 @@ An app's **audience** says who may reach it:
 `app_status` and `list_apps` name each app's audience and identity. A change
 of audience never modifies the named member list or the group, so
 narrowing back to members-only restores exactly the access configured: say
-so when confirming either way. The tool's description says when a change takes effect and what
+so when confirming either way. The narrowing's answer names the member list and the live members of the
+app's identity provider group (`<groupPrefix><app>-users`), since both still
+admit. The tool's description says when a change takes effect and what
 a narrowing does to data links.
 
 The panel narrows only. For a widening it names the audience the app would
@@ -894,7 +907,12 @@ Things to relay to the user in plain terms:
   about six minutes of the change whatever the traffic (contract §2.3,
   **Timing**). That's the
   delivery mechanism, not a malfunction: say so before setting one on a live
-  container app, since requests in flight on the old instance drop.
+  container app, since requests in flight on the old instance drop. From
+  platform v0.18.11, on a running container app (active or warned) whose
+  probes run, its health is checked again right after, as after a restart
+  (`restart_app`'s section, above): `app_status` reads pending, then the probe's
+  answer, within about a minute, so read it then to tell whether the new
+  value broke the app's start.
 - **Stored, but the push was refused.** On a container app one of whose data
   links no longer holds, the answer's `Delivery:` line says the values were
   stored and the push refused, naming `link_invalid` or
@@ -932,11 +950,15 @@ Things to relay to the user in plain terms:
   variable reported `pending delivery` has not reached the deployed app yet
   (the next deploy delivers it with the app, so it is there from that
   deploy's first request).
-- **A hidden variable that reads `needs a value`** was delivered to a script
-  a platform release has since replaced (from platform v0.17.0, each secret
-  set before it reads this way once), so nothing holds it now and it counts
-  as missing. The owner sets it again with `set_app_variables`; `app_status`
-  names every such variable until then (contract §2.3).
+- **A hidden variable that reads `needs a value`** is a secret no deploy can
+  deliver, for one of two causes: it was delivered to an app's script before
+  the platform's one earlier move of every app onto a new script, and stayed
+  behind on the old one; or the platform still holds it, pending delivery,
+  sealed under an encryption key the platform no longer has (a never-deployed
+  app's secrets can meet this too). It holds no value and counts as missing.
+  The owner sets it again with `set_app_variables`, or, for the second cause,
+  the platform's operator puts the earlier key back; `app_status` names every
+  such variable until then (contract §2.3).
 - `app_status` names a REQUIRED declared variable that has no value, on its
   own line.
 
@@ -956,7 +978,7 @@ Stages worth acting on when one appears: `first_deploy_due`,
 `connection_expired`, `connection_locked`, `connection_refused`, `unlinked` /
 `relinked`,
 `transferred`, `access_changed`, `shared`, `exported`, `member_reassigned`,
-`cross_owner_link_revoked`, `host_upload_blocked`. What to do on ten of
+`cross_owner_link_revoked`, `host_upload_blocked`. What to do on eleven of
 them:
 
 - `first_deploy_due`: a registered app has not completed its first deploy,
@@ -976,11 +998,15 @@ them:
 - `member_reassigned`: an address with access now signs in as a different
   account than the one its access is pinned to. The entry names the address
   and the re-share: `references/address-changes.md`. From platform v0.18.9,
-  when the app's identity provider group still admits the new account, the
-  entry says so and names the group: a re-share (`revoke_access`, then
-  `grant_access`) then gives the new holder a way in that outlasts the group,
-  and removing them from the group at the identity provider ends theirs, on a
-  members-only app (on an internal app the audience still admits them). For an
+  on a members-only app whose identity provider group still admits the new
+  account, the entry says so and names the group: a re-share (`revoke_access`,
+  then `grant_access`) then gives the new holder a way in that outlasts the
+  group, and removing them from the group at the identity provider ends
+  theirs. From platform v0.18.11, on an internal or public app the entry says
+  instead that the audience still lets the new account in (an internal app as
+  a non-member whenever it can sign in, a public app without any sign-in),
+  with the same re-share to make them a member; before that release such an
+  entry named the group, or said that account is refused. For an
   app held in custody for the address's earlier holder, `revoke_access`
   refuses the person it is held for, so the remedy is an admin's
   `transfer_app` of the app to that address, which hands it to the address's
@@ -991,6 +1017,17 @@ them:
   (**When an account is deactivated**, above). An app that came back kept
   running while it was away, with its audience and its data links; nothing
   needs redoing.
+- `degraded`: the owner's app is failing requests. Two senders: the
+  error-budget burn (the last hour's failures against the availability
+  target), and the post-deploy watch (failures since the latest deploy,
+  against the rate before it). The stopgap is the panel's app page,
+  **Overview, then Releases**: any recent release the Releases card
+  lists, but the running one, redeploys with one click while the app is live. It goes back through the full gates and deploys
+  only if they pass today, it runs against the app's current data (an app
+  that changed how it stores things may misbehave), and the next release tag
+  supersedes it, since there is no pin to a version. Or fix forward with a
+  new release (`inno-ship`). The redeploy is the panel's alone: no tool
+  does it, and `rebuild_app` is the admin's.
 - `connection_expired`: a person's stored credential for one of the app's
   backends was removed (it expired or was revoked, could not be opened,
   their encryption key was reset, or the connection's endpoints changed),
@@ -1127,6 +1164,8 @@ the rules.
 If the user doesn't remember an app's exact name, call the read-only
 `list_apps` tool first. It lists the apps the caller owns, or every app on the
 platform when the caller is an admin. Each row carries the name, status, type
-label, audience and identity, owner, and address, plus the GitHub repo backing it and an `[UNLINKED]`
-flag when the platform's GitHub App is no longer installed on that repo (the
-remedy is `start_app`'s `app_unlinked` above).
+label, audience and identity, owner, and address, plus the GitHub repo
+backing it, an `[UNLINKED]` flag when the platform's GitHub App is no longer
+installed on that repo (the remedy is `start_app`'s `app_unlinked` above), and an `[IN CUSTODY]` flag for
+an app held in custody (the owner shown is the custodian; `app_status` names
+whom it is held for).

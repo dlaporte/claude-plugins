@@ -710,3 +710,34 @@ two-app pattern says an editor's members may reach a members-only site through
 its group. `inno-platform-conventions` no longer names a platform admin group
 among what `X-Forwarded-Groups` never carries. No tool changed in behavior
 (three tool descriptions are reworded); the floor stays 7.0.0.
+
+Plugin 7.3.3 follows platform v0.18.11 and contract 47. `inno-add-connection`
+now reads a header-delivery credential's `header` as well as `access_token`,
+leaves `refresh` at its default, prefers the default `client_auth`, and says
+what the "Start this connection again" page and the `401 unauthorized` and
+`400 bad_request` seam answers mean. `inno-ship` and `inno-safety-preflight`
+route a scanner's own fault apart from a finding and name the
+`deploy_denied:workflow` refusal as the author's to fix; `inno-ship` also gains
+rows for the browser interface build, a `deploy-token` timeout and a failed
+image push;
+`inno-containerize` gains two probe-clock clauses. `inno-manage-app` and
+`inno-fleet-admin` point at the one-click redeploy of a recent release from the
+panel and say that a suspended person keeps their stored credentials while a
+deleted one loses them; `inno-manage-app` also says how long a deactivation
+takes to reach an app, that a variable change re-checks a running container
+app's health, what a `member_reassigned` notice says on an internal or public
+app, and that the platform's own MCP sign-in can show the "Sign-in refused"
+page. `inno-ship` routes a function app's `diagnostics_unavailable` (a
+platform with no diagnostics storage) to a platform admin, with no re-run and
+no support bundle, and `inno-platform-conventions` counts a group change's
+window from the identity provider's push. On the platform's side, six tool
+descriptions and three answers are reworded (the jit sentence, the narrowing
+to members-only, and `grant_admin`'s re-grant over a pinned row),
+`list_connections`' fleet view and `list_user_connections` now answer at most
+100 and say when more exist, a variable change on a running container app
+re-checks its health, as a restart does, `request_start`'s email to the
+admins obeys the instance's lifecycle email switch, a data link's containment
+judges a pinned person by the address they sign in with now (so `grant_access`,
+`transfer_app` or `link_app_data` can be refused `link_containment` where it
+passed before, or the reverse), and a health probe answered 401, 403 or 302
+names the app's own `/healthz` answer as a cause; the floor stays 7.0.0.

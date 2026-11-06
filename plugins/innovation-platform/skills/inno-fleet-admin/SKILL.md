@@ -115,7 +115,9 @@ instance's **membership mode**, the platform setting `auth.provisioning`
   upgrade to platform v0.18.0: anyone the identity provider lets sign in is
   a member. The platform cannot learn that an account was suspended or
   deleted there, and the line goes on to say so and to name the settings
-  that bound how long such a person keeps access.
+  that bound how long such a person keeps access. A delete the provider
+  pushes over SCIM ends their way in through an app's group at the next
+  decision, and the line says so.
 - `membership scim`: the identity provider pushes its accounts to the
   platform over SCIM, and only an active pushed account may sign in, beside
   the break-glass addresses (`references/custody.md`). The line counts
@@ -155,9 +157,10 @@ the one account-status answer every tool uses, held for
   v0.18.8: an instance's `validate` refuses it and says to delete the key.
   An admin group at the identity provider, if one still exists, changes no
   one's standing in either direction.
-- Each admin row is pinned to the identity provider
-  account that holds its address (`grant_admin`'s description says when, and
-  where the pin applies), so an address that passes to another person does
+- Each admin row is pinned, as a grant is, to the identity provider
+  account that holds its address (at grant
+  time when the platform can resolve the address to one account that has
+  signed in at it, in scim mode, else at the address's first sign-in), so an address that passes to another person does
   not take the standing with it. The admins get an `identity_reassigned`
   notification (**Fleet-wide reads**), and the fix, if the new holder should
   be an admin, is `revoke_admin`, then `grant_admin`, for the address.
@@ -637,7 +640,7 @@ Dispatches a rebuild of the app's already-released code at its live release
 tag: the full CI gates run and the app deploys only if they pass, with no
 new commit and no code change. It exists for what an owner cannot
 self-serve, such as redeploying a third-party-owned repo an admin cannot
-push a tag to. Owners never need it: they redeploy by tagging their own repo (`inno-ship`).
+push a tag to. Owners never need it: they redeploy by tagging their own repo (`inno-ship`), or redeploy an earlier release from the panel.
 The platform also rebuilds, on its own, a function-shaped consumer whose
 revoked data link it owes a rebuild: one another account owns
 (`inno-manage-app`'s **Data links across owners**), one a narrowing or a
@@ -803,8 +806,10 @@ serves. The panel's Platform screen is the same act on a visual surface.
   also carries `health=` with its latest probe's result (`healthy`,
   `unhealthy`, or `unknown` when the probe could not complete or has not
   run yet); `[VULNERABLE]` marks an app with open safety findings,
-  whatever its status; and `[UNLINKED]` one whose repository the
-  platform's GitHub App is no longer installed on.
+  whatever its status; `[UNLINKED]` one whose repository the
+  platform's GitHub App is no longer installed on; and `[IN CUSTODY]` one held
+  in custody (the owner shown is the custodian; `app_status` names whom it is
+  held for).
 - `get_platform_status`, for an admin, names the apps behind its UNHEALTHY
   and VULNERABLE counts on an `Unhealthy apps:` and a `Vulnerable apps:`
   line, each only when its count is above zero and naming the first few
@@ -838,7 +843,9 @@ serves. The panel's Platform screen is the same act on a visual surface.
   member count.
 - `list_connections` without `app`, and `list_user_connections` with no
   filters or for another person without an app you manage, are the fleet
-  views of connections: admins only, and never any credential.
+  views of connections: admins only, and never any credential. From platform
+  v0.18.11 each answers at most 100 and says when more exist, so never read
+  a capped list as the whole fleet: narrow it by app or person instead.
 - `list_notifications` shows an admin every app's feed, plus these
   admin-only stages:
   - `start_requested`: an owner asked for a start. An admin's `start_app` is
@@ -956,7 +963,7 @@ shared tools below them are listed for everyone.
 | `get_provisioning` / `create_scim_token` / `revoke_scim_token` | platform admins only (prefer the panel's Identity tab for a new token) |
 | `transfer_app` | platform admins only (owners ask an admin; `also` moves a linked set, and a public app needs `accept_guardrails`) |
 | `purge_app` | platform admins only |
-| `rebuild_app` | platform admins only (owners redeploy by tagging their own repo) |
+| `rebuild_app` | platform admins only (owners redeploy by tagging their own repo, or redeploy an earlier release from the panel) |
 | `revoke_sessions` | platform admins only |
 | `accept_naming_change` | platform admins only |
 | `list_users` / `query_audit` / `get_platform_logs` / `export_platform_backup` | platform admins only |

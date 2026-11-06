@@ -110,7 +110,9 @@ base to the digest `get_app_contract` serves.
      refuses outright, up to about 162 seconds if it accepts the connection
      and then hangs. It requires **exactly 200**, and so does the runtime
      probe: a 204, and any 3xx, fail both, so a framework that redirects
-     `/healthz` to `/healthz/` fails both. Anything else, or no answer at
+     `/healthz` to `/healthz/` fails both. A container that exits before
+     `/healthz` answers 200 ends the window early and fails with its logs.
+     Anything else, or no answer at
      all, and it dumps the container logs and fails the job, which fails
      `deploy`.
    - **The runtime health probe.** It binds to the same endpoint after every
@@ -136,6 +138,8 @@ base to the digest `get_app_contract` serves.
      about 95 seconds. That span is neither the hourly re-probe nor
      `health.probe_interval_hours`. A 401, a 403 or a 302 is not retried:
      it reads as the probe being blocked, not as the app being unhealthy.
+     On the probe a deploy fires, a thrown connection error is the one
+     result not retried: it is deferred at once.
 
    Size the boot to answer inside that first 45 second attempt; a second
    attempt follows 5 seconds later, and nothing follows it. Keep it cheap and
