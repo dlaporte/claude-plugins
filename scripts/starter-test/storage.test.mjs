@@ -192,3 +192,82 @@ describe("the value limit, in bytes (R05)", () => {
     }
   });
 });
+
+describe("the request's shape and size (R05)", () => {
+  test("refuses a body that is not an object, before any statement, even as an isolate's first call", async () => {
+    const w = await start("suite/fault-entry.ts");
+    try {
+      for (const body of ["null", "[]", "5", '"x"', "true", ""]) {
+        const r = await storage(w, body, { raw: true });
+        assert.deepEqual([r.status, r.body], [400, { error: "bad_request" }], JSON.stringify(body));
+      }
+      assert.equal((await control(w, "/__stats")).statements, 0);
+    } finally {
+      await w.stop();
+    }
+  });
+
+  test("checks the whole call before any statement", async () => {
+    const w = await start("suite/fault-entry.ts");
+    try {
+      const cases = [
+        [{ op: "get" }, "bad_key"],
+        [{ op: "delete", key: 7 }, "bad_key"],
+        [{ op: "set", key: "a" }, "bad_value"],
+        [{ op: "list", prefix: 5 }, "bad_prefix"],
+        [{ op: "rename", key: "a" }, "bad_op"],
+      ];
+      for (const [body, error] of cases) {
+        const r = await storage(w, body);
+        assert.deepEqual([r.status, r.body], [400, { error }], JSON.stringify(body));
+      }
+      assert.equal((await control(w, "/__stats")).statements, 0);
+    } finally {
+      await w.stop();
+    }
+  });
+
+  test("refuses a list prefix that is too long or not a string, rather than listing everything", async () => {
+    const w = await start("index.ts");
+    try {
+      await storage(w, { op: "set", key: "k1", value: "v" });
+      for (const prefix of ["z".repeat(201), 5, null, ["k"]]) {
+        const r = await storage(w, { op: "list", prefix });
+        assert.deepEqual([r.status, r.body], [400, { error: "bad_prefix" }], JSON.stringify(prefix).slice(0, 20));
+      }
+      assert.deepEqual((await storage(w, { op: "list", prefix: "z".repeat(200) })).body.keys, []);
+      assert.deepEqual((await storage(w, { op: "list" })).body, { keys: ["k1"], prefix: "", shared: false });
+    } finally {
+      await w.stop();
+    }
+  });
+
+  test("refuses a body over 2,100,000 bytes with 413, whether it declares its length or not", async () => {
+    const w = await start("suite/fault-entry.ts");
+    try {
+      const declared = await storage(w, { op: "get", key: "a", junk: "x".repeat(2_100_000) });
+      assert.deepEqual([declared.status, declared.body], [413, { error: "body_too_large" }]);
+      assert.equal(declared.headers.get("x-suite-headers"), "app");
+
+      // 22 chunks of 100,000 bytes, streamed: the Worker sees no Content-Length.
+      const streamed = (path) => {
+        const chunk = new TextEncoder().encode("x".repeat(100_000));
+        let sent = 0;
+        const body = new ReadableStream({
+          pull(c) {
+            if (sent === 0) c.enqueue(new TextEncoder().encode('{"op":"get","key":"a","junk":"'));
+            if (sent++ < 22) c.enqueue(chunk);
+            else { c.enqueue(new TextEncoder().encode('"}')); c.close(); }
+          },
+        });
+        return w.fetch(path, { method: "POST", headers: person("alice"), body, duplex: "half" });
+      };
+      assert.deepEqual(await (await streamed("/__content-length")).json(), { contentLength: null });
+      const r = await answer(await streamed("/api/storage"));
+      assert.deepEqual([r.status, r.body], [413, { error: "body_too_large" }]);
+      assert.equal((await control(w, "/__stats")).statements, 0);
+    } finally {
+      await w.stop();
+    }
+  });
+});

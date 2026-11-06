@@ -6,9 +6,10 @@
 //
 // Every operation is a POST from the app's own page: state never changes on
 // a GET, and a request from any other page is refused (the app-security
-// notes, CSRF). Every value is bound, never built into SQL, and keys, values
-// and key counts are bounded. A database fault answers 503
-// storage_unavailable, never an unhandled exception.
+// notes, CSRF). Every value is bound, never built into SQL, and the body,
+// keys, values and key counts are bounded. A call is checked whole before any
+// statement runs, so a refused one touches nothing, and a database fault
+// answers 503 storage_unavailable, never an unhandled exception.
 import type { CurrentUserResult } from "./identity";
 
 interface Env {
@@ -19,6 +20,8 @@ export const MAX_KEY = 200;
 // In bytes of UTF-8, as D1 counts: production D1 refuses a string or a row
 // over 2,000,000 bytes, and this leaves room for the row's other columns.
 export const MAX_VALUE_BYTES = 1_900_000;
+// A request's body: a value at its limit, with room for the JSON around it.
+export const MAX_BODY_BYTES = 2_100_000;
 export const MAX_KEYS_PER_OWNER = 1_000;
 export const MAX_LIST = 1_000;
 
@@ -48,6 +51,71 @@ function json(body: unknown, status: number, headers: Record<string, string>): R
   return Response.json(body, { status, headers: { ...headers, "Cache-Control": "private, no-store" } });
 }
 
+/**
+ * The request's body as text, or null when it is over MAX_BODY_BYTES. A
+ * declared Content-Length is checked first, but a streamed body declares
+ * none, so the bytes are counted as they arrive too, and reading stops at the
+ * limit. Throws when the body cannot be read.
+ */
+async function readBody(request: Request): Promise<string | null> {
+  const declared = Number(request.headers.get("content-length"));
+  if (Number.isFinite(declared) && declared > MAX_BODY_BYTES) {
+    await request.body?.cancel().catch(() => {});
+    return null;
+  }
+  if (!request.body) return "";
+  const reader = request.body.getReader();
+  const chunks: Uint8Array[] = [];
+  let total = 0;
+  for (;;) {
+    const { done, value } = await reader.read();
+    if (done) break;
+    total += value.byteLength;
+    if (total > MAX_BODY_BYTES) {
+      await reader.cancel().catch(() => {});
+      return null;
+    }
+    chunks.push(value);
+  }
+  const bytes = new Uint8Array(total);
+  let at = 0;
+  for (const chunk of chunks) {
+    bytes.set(chunk, at);
+    at += chunk.byteLength;
+  }
+  return new TextDecoder().decode(bytes);
+}
+
+/** One storage call, as its body asked for it and checked whole. */
+type Call =
+  | { op: "get" | "delete"; key: string }
+  | { op: "set"; key: string; value: string }
+  | { op: "list"; prefix: string };
+
+/** The call a request's body asks for, or the reason it is refused. */
+function parseCall(body: Record<string, unknown>): Call | { error: string } {
+  const key = typeof body.key === "string" && body.key.length > 0 && body.key.length <= MAX_KEY ? body.key : null;
+  switch (body.op) {
+    case "get":
+    case "delete":
+      return key === null ? { error: "bad_key" } : { op: body.op, key };
+    case "set":
+      if (key === null) return { error: "bad_key" };
+      if (typeof body.value !== "string" || utf8.encode(body.value).byteLength > MAX_VALUE_BYTES) {
+        return { error: "bad_value" };
+      }
+      return { op: "set", key, value: body.value };
+    case "list": {
+      // The shim always sends a prefix; a missing one lists every key.
+      const prefix = body.prefix === undefined ? "" : body.prefix;
+      if (typeof prefix !== "string" || prefix.length > MAX_KEY) return { error: "bad_prefix" };
+      return { op: "list", prefix };
+    }
+    default:
+      return { error: "bad_op" };
+  }
+}
+
 /** True when the request came from this app's own page. */
 export function sameOrigin(request: Request): boolean {
   const site = request.headers.get("sec-fetch-site");
@@ -67,36 +135,33 @@ export async function handleStorage(
   if (!sameOrigin(request)) return json({ error: "cross_origin" }, 403, headers);
   if (!caller || !caller.subject) return json({ error: "no_signed_in_user" }, 403, headers);
 
-  let body: { op?: unknown; key?: unknown; value?: unknown; prefix?: unknown; shared?: unknown };
+  let body: unknown;
   try {
-    body = await request.json();
+    const text = await readBody(request);
+    if (text === null) return json({ error: "body_too_large" }, 413, headers);
+    body = JSON.parse(text);
   } catch {
     return json({ error: "bad_request" }, 400, headers);
   }
-  const shared = body.shared === true;
+  if (typeof body !== "object" || body === null || Array.isArray(body)) return json({ error: "bad_request" }, 400, headers);
+  const fields = body as Record<string, unknown>;
+  const call = parseCall(fields);
+  if ("error" in call) return json({ error: call.error }, 400, headers);
+  const shared = fields.shared === true;
   const scope = shared ? "shared" : "personal";
   const owner = shared ? "" : caller.subject;
 
-  const keyOf = (k: unknown): string | null => (typeof k === "string" && k.length > 0 && k.length <= MAX_KEY ? k : null);
-
   try {
     await schemaReady(env.DATA);
-    switch (body.op) {
+    switch (call.op) {
       case "get": {
-        const key = keyOf(body.key);
-        if (key === null) return json({ error: "bad_key" }, 400, headers);
         const row = await env.DATA.prepare("SELECT value FROM artifact_storage WHERE scope = ? AND owner = ? AND key = ?")
-          .bind(scope, owner, key).first<{ value: string }>();
-        return json(row ? { key, value: row.value, shared } : null, 200, headers);
+          .bind(scope, owner, call.key).first<{ value: string }>();
+        return json(row ? { key: call.key, value: row.value, shared } : null, 200, headers);
       }
       case "set": {
-        const key = keyOf(body.key);
-        if (key === null) return json({ error: "bad_key" }, 400, headers);
-        if (typeof body.value !== "string" || utf8.encode(body.value).byteLength > MAX_VALUE_BYTES) {
-          return json({ error: "bad_value" }, 400, headers);
-        }
         const exists = await env.DATA.prepare("SELECT 1 FROM artifact_storage WHERE scope = ? AND owner = ? AND key = ?")
-          .bind(scope, owner, key).first();
+          .bind(scope, owner, call.key).first();
         if (!exists) {
           const count = await env.DATA.prepare("SELECT COUNT(*) AS n FROM artifact_storage WHERE scope = ? AND owner = ?")
             .bind(scope, owner).first<{ n: number }>();
@@ -105,25 +170,20 @@ export async function handleStorage(
         await env.DATA.prepare(
           "INSERT INTO artifact_storage (scope, owner, key, value, updated_at) VALUES (?, ?, ?, ?, ?) " +
             "ON CONFLICT (scope, owner, key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at",
-        ).bind(scope, owner, key, body.value, Date.now()).run();
-        return json({ key, value: body.value, shared }, 200, headers);
+        ).bind(scope, owner, call.key, call.value, Date.now()).run();
+        return json({ key: call.key, value: call.value, shared }, 200, headers);
       }
       case "delete": {
-        const key = keyOf(body.key);
-        if (key === null) return json({ error: "bad_key" }, 400, headers);
         const r = await env.DATA.prepare("DELETE FROM artifact_storage WHERE scope = ? AND owner = ? AND key = ?")
-          .bind(scope, owner, key).run();
-        return json({ key, deleted: (r.meta.changes ?? 0) > 0, shared }, 200, headers);
+          .bind(scope, owner, call.key).run();
+        return json({ key: call.key, deleted: (r.meta.changes ?? 0) > 0, shared }, 200, headers);
       }
       case "list": {
-        const prefix = typeof body.prefix === "string" && body.prefix.length <= MAX_KEY ? body.prefix : "";
         const rows = await env.DATA.prepare(
           "SELECT key FROM artifact_storage WHERE scope = ? AND owner = ? AND substr(key, 1, ?) = ? ORDER BY key LIMIT ?",
-        ).bind(scope, owner, prefix.length, prefix, MAX_LIST).all<{ key: string }>();
-        return json({ keys: rows.results.map((r) => r.key), prefix, shared }, 200, headers);
+        ).bind(scope, owner, call.prefix.length, call.prefix, MAX_LIST).all<{ key: string }>();
+        return json({ keys: rows.results.map((r) => r.key), prefix: call.prefix, shared }, 200, headers);
       }
-      default:
-        return json({ error: "bad_op" }, 400, headers);
     }
   } catch (e) {
     console.error("storage: the database call failed:", e);
