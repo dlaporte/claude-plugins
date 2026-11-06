@@ -1,7 +1,7 @@
 {
   "format": 1,
   "contract": {
-    "version": 46,
+    "version": 47,
     "sections": [
       "1",
       "1.1",
@@ -31,11 +31,11 @@
   },
   "served": {
     "docs/APP-ACCESSIBILITY.md": "db05be7ad23b1d327c9e9f802b3ca788ce6895c59d252648fb04cfd52ce63472",
-    "docs/APP-CONTRACT-HISTORY.md": "239ea2869651c037d9a4864ff3375edb70e6e5a847cf2e76b608616dba7e67b4",
-    "docs/APP-CONTRACT.md": "fe86a0492c717f52c5155d131674805ee627d50db5e763da12d0c82c176e2026",
+    "docs/APP-CONTRACT-HISTORY.md": "767d69a339c963bf089d67a9014e3a7d4e31c4713528394c09a84c608220e056",
+    "docs/APP-CONTRACT.md": "650492b8f411d41bba0e828d1368922e1d607c0c3a1dcf29e5be906b7dd353b4",
     "docs/APP-SECURITY.md": "72f3b18008ea9e4186224e7adb0d4296fa3910c1332a54bfe71d5a5248f69697",
     "docs/GUARDRAILS.md": "f14583f2c042b23eae3b46656c29bb8289397e91e226ebd78eab63a639c2d0ee",
-    "docs/PLATFORM-DOCS.md": "2d180d4307381e1e794509fde39999103054da618acf4dadc9a224b891d8d4c9"
+    "docs/PLATFORM-DOCS.md": "665d8b0077be7d8078178a04f894731ba0ccede7a6a0d33f3174d196cdb22729"
   },
   "tools": {
     "count": 55,
@@ -745,7 +745,7 @@
     }
   },
   "pinned": {
-    "ref": "v0.18.10",
-    "commit": "97bb4702614e0e13dc63adb4b33609c158e5419c"
+    "ref": "v0.18.11",
+    "commit": "cf416ab0aa0106df4fd9ec9b596d91f0cfa66654"
   }
 }
