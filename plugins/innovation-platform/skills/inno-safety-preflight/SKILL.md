@@ -146,8 +146,8 @@ Then call the `get_app_contract` MCP tool with `sections: ["2", "5", "6"]`
 (the requirements R1 to R10, the deployment patterns with what is not
 supported today, and the enforcement map). Add to that call the app's own
 shape section: `"1.1"` for a `function` app, `"1.1"` and `"1.2"` for an
-`mcp-function` app, `"1.3"` for an `mcp-container` app (a `container` app
-adds none: section 2 is its baseline). Add to it too `"2.1"`, `"2.2"` or
+`mcp-function` app, `"1.2"` and `"1.3"` for an `mcp-container` app (a
+`container` app adds none: §2 is its baseline). Add to it too `"2.1"`, `"2.2"` or
 `"2.3"` when the app links data, uses a connection or declares variables.
 Judge the app
 against the MUSTs, focusing on the ones the enforcement map (§6) leaves to

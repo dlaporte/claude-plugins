@@ -294,12 +294,12 @@ The written plan covers, at minimum, each assessment product above:
   proof-of-control file under `.inno-platform/`, and, when the repo has a
   top-level `scaffold/` directory, the commit call 2 pushes to rewrite it
   (Phase 2 step 1)
-- **Effort summary and open decisions** (read-only default, members, …)
+- **Effort summary and open decisions** (members, …)
 
 Only after that plan is in your reply: **stop and get explicit user approval**
 (of the plan *and* the name) before Phase 2. Ask the approval question in
 your own words referencing the plan the user can now read; put genuinely
-separate decisions (name choice, identity, read-only default, members) in
+separate decisions (name choice, identity, members) in
 their own questions rather than folding them into the approval. If a blocker
 means the
 app cannot function on the platform at all, say so plainly and stop here.
