@@ -836,13 +836,8 @@ you read in §1b (§1.1 to §1.3) are the authority for each type's deltas.
   route** returning **exactly 200** (a 204 or a redirect to `/healthz/` fails
   both the CI smoke gate and the runtime probe), and reach storage through
   the app's **own bindings** `env.DATA` (D1) and `env.FILES` (R2), not
-  `storage.internal`. Declare every npm package the code imports in a
-  **non-root** `app/package.json`, and commit the `app/package-lock.json`
-  that `npm install` (run inside `app/`) produces, kept in sync with
-  `package.json`. The install rule and everything it refuses have one home,
-  `inno-platform-conventions`' **Node apps** paragraph; the short of it is
-  that a runtime import must sit under `dependencies`, because CI installs
-  `--omit=dev`. Never interpolate user data into hand-built HTML: even
+  `storage.internal`. Declare dependencies and commit the lockfile as
+  `inno-platform-conventions`' **Node apps** paragraph says. Never interpolate user data into hand-built HTML: even
   escaped, the SAST gate blocks it; return dynamic data as JSON (like the
   scaffold's `/me`) or use an auto-escaping template library. Do NOT create
   `wrangler.jsonc`/`app-worker.jsonc`: those are platform-injected. The

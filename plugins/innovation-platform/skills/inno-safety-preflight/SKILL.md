@@ -426,8 +426,7 @@ proves the lockfile on its own, because `app-build` runs on every push to the
 default branch, so a missing or stale lockfile is a red job in the run you are
 narrating, not a surprise at the tag; the same job bundles the app, so an
 import that does not resolve or a bundle over the size cap shows here too.
-(The `deps` gate refuses a function-shaped app's missing lockfile too.) One
-exception, and it is about what you REPORT rather than about safety:
+One exception, and it is about what you REPORT rather than about safety:
 `app-build` is `needs: [policy, config-integrity, scaffold-check]`, so a
 red `config-integrity` skips it, and while `app/.needs-build` is present
 it runs no steps. Nothing unsafe follows, because such a run skips

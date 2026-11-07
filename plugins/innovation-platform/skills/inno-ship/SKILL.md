@@ -448,34 +448,23 @@ in their own browser; don't pre-check it for them.
 
 ### Right after a deploy, health may read `re-probe pending`, which is not a verdict
 
-Right after a deploy, `app_status` can read `Health: re-probe pending (not
-answering yet: <what the probe saw>, checked again within the hour)`,
+Right after a deploy, `app_status` can read
+`Health: re-probe pending (not answering yet: <what the probe saw>, checked again within the hour)`,
 followed by `; last recorded: <status>` when an earlier probe recorded one.
-The probe a deploy fires never judges a failure: it defers every unhealthy
-result to an hourly pass and notifies no one, while a healthy answer is
-recorded at once. All of this holds only when probes run for the app
-(`health.probe_enabled`, which `get_config app=<name>` shows): with them
-off, no probe follows a deploy or a restart, no pending line appears, and
-`app_status` keeps the last verdict. The rule and its clocks are the
-contract's R2 (`get_app_contract` with `sections: ["R2"]`), and
-`inno-containerize` item 4 is the plugin's home for them. What that means for you:
+The rule and its clocks, and when probes run at all, are the contract's R2
+(`get_app_contract` with `sections: ["R2"]`), and `inno-containerize` item 4
+is the plugin's home for them. What that means for this deploy:
 
 - The last-recorded status is from before this deploy and says nothing
   about it. On a brand-new app a pending line is normal while a container
   finishes cold-starting, and one failing answer right after any deploy can
   be transient.
-- A broken deploy alarms only when an hourly pass judges it, within about
-  70 minutes, never at once: do not tell the user a broken deploy would
-  already have alarmed, and do not read a pending line, or an old
-  `healthy`, as proof the new deploy works.
-- `restart_app` re-checks health too, for a running app (active or warned),
-  as `start_app` does after a start: health reads pending, then a healthy
-  answer within about a minute, while a failing one is left to the next
-  hourly pass to judge, as a deploy's is. It does not update the deployment
-  record, so it never restarts the 10 minutes in which an hourly pass
-  defers after a deploy.
-- Re-running the tag run (`gh run rerun <run-id>`) finalizes another deploy, whose probe records a
-  healthy answer at once but defers a failing one again and restarts the 10
-  minutes in which an hourly pass defers. A re-run can confirm a fix sooner
-  than the next hourly pass, but it never surfaces a failure sooner, and it
-  can delay the alarm. The re-run rule is in §3, **On failure**.
+- A broken deploy alarms only when an hourly pass judges it, never at once
+  (`inno-containerize` item 4 gives the clock): do not tell the user a
+  broken deploy would already have alarmed, and do not read a pending line,
+  or an old `healthy`, as proof the new deploy works.
+- Re-running the tag run (`gh run rerun <run-id>`) finalizes another
+  deploy, whose probe records a healthy answer at once but defers a failing
+  one again and restarts the window in which an hourly pass defers. A
+  re-run can confirm a fix sooner than the next hourly pass, but it never
+  surfaces a failure sooner, and it can delay the alarm. The re-run rule is in §3, **On failure**.

@@ -393,14 +393,10 @@ restore point is.
      cookies follow the same paragraph.
    - **Persistence rewired** to the storage endpoints (container) or the app's
      `env.DATA`/`env.FILES` bindings (function).
-   - **Dependencies** pinned in the stack's manifest under `app/`, CVE-clean.
-     A function-shaped app (`function`, `mcp-function`) must declare every
-     package it imports in `app/package.json` and commit a matching
-     `app/package-lock.json` (run `npm install` inside `app/`). The migration
-     trap is that CI installs `--omit=dev` and nothing is installed at the
-     repo root, so an import the repo used to satisfy from a root
-     `package.json` or from `devDependencies` now fails to bundle. The whole
-     rule is `inno-platform-conventions`' **Node apps** paragraph.
+   - **Dependencies** pinned in the stack's manifest under `app/`, CVE-clean;
+     a function-shaped app's follow `inno-platform-conventions`' **Node
+     apps** paragraph, whose rules on the repo root and on `devDependencies`
+     are where a migrated repo usually trips.
    - **Dockerfile** (container) written per `inno-containerize` for the app's
      actual runtime.
    - A root **`CLAUDE.md`** carrying the required section headers: start
