@@ -677,3 +677,27 @@ before. `inno-manage-app`'s list of `set_config` refusals drops the code and
 says that, over MCP, an over-long note is refused by its argument's limit
 (200 characters) before the tool runs: shorten it and call again. No starter
 file changed.
+
+## 8.0.0
+
+Plugin 8.0.0 follows platform v0.18.18 and contract 47. That release renames
+tool arguments, so this is a major: a person's address is `email` on every
+tool that takes one by address, where `transfer_app` took `new_owner_email`
+and `list_user_connections`, `disconnect_user_connection` and `get_config`
+took `user` (`set_config`'s and `remove_config`'s `scope_id` stays, since it
+names an app or an address). `restart_app` answers a `function` or
+`mcp-function` app `app_type_unsupported`, its message naming the app's
+type, where it answered `not_a_container`. `get_platform_docs` serves its
+document in 20 numbered sections and takes an optional `sections` argument
+with `get_app_contract`'s grammar, and the tools' descriptions name the
+section they mean ("get_platform_docs section 16"). The skills follow:
+`inno-fleet-admin`'s `transfer_app` heading takes `email`; `inno-manage-app`,
+`inno-fleet-admin` and `inno-new-app` read an account's settings with
+`get_config email=<address>`; `inno-manage-app`'s restart paragraph names
+`app_type_unsupported`; and every pointer into the platform's docs, the
+README's included, names its section by number with its title, such as
+`get_platform_docs` section 11 (Lifecycle), where it named the section's
+bold title. The v0.18.18 release raises the floor to 8.0.0, so the platform
+tells every 7.x build to update, and its skills stop at their Version gate
+until it does; a 7.x plugin's calls that use the old argument names are
+refused. The tools' input changed, so reconnect after that upgrade too.

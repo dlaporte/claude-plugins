@@ -197,8 +197,8 @@ different name. An admin's immediate `purge_app` is `inno-fleet-admin`'s.
 
 ## The lifecycle (know this before advising anyone)
 
-The platform serves the lifecycle from one place, the **Lifecycle (idle
-clock)** section of `get_platform_docs`: its states, its windows' current
+The platform serves the lifecycle from one place, `get_platform_docs`
+section 11 (Lifecycle): its states, its windows' current
 defaults, and the sentence that says what resets an app's idle clock. Fetch
 it and quote that sentence; never hand-write your own list of request kinds.
 Traffic is the only keep-alive: there is no "renew" action.
@@ -390,7 +390,8 @@ read `app_status` a minute after a restart to tell whether it fixed the
 app: a healthy answer is recorded at once, while a failing one stays
 pending, with what the probe saw, until the next hourly pass judges it. A
 `function` or `mcp-function` app runs no
-container, so it answers `not_a_container`: a wedged function app is fixed
+container, so it answers `app_type_unsupported`, its message naming the
+app's type: a wedged function app is fixed
 by shipping it again (`inno-ship`). A deploy needs no restart after it,
 since a deploy starts a new instance by itself. Reach for it when a
 container app is wedged at runtime (hung process, poisoned in-memory state)
@@ -523,10 +524,10 @@ it is deleted on that card.
   can manage it. **Reach for this before theorizing about platform behavior on
   a specific app**: which gates actually run on its deploys, how many days it
   really has before a stop, what an admin changed and why.
-- `get_config user=<email>`: that account's, for the user themselves or an
-  admin.
+- `get_config email=<address>`: that account's, for the user themselves or
+  an admin.
 - With no arguments it is the fleet catalog, which is admin-only
-  (`inno-fleet-admin`). Passing both `app` and `user` is refused
+  (`inno-fleet-admin`). Passing both `app` and `email` is refused
   (`bad_request`): an app's chain already resolves through its owner's user
   scope, so the combination has no single meaning.
 
@@ -555,7 +556,7 @@ account, and naming anyone else's is refused `forbidden`.
   broke (`<key> must be ...`: a type, a grammar, or for a number the range
   it must fall in). Fix the named thing rather than guessing at the format.
 - `unknown_setting`: no setting has that key. Check its spelling against
-  `get_config user=<your address>`.
+  `get_config email=<your address>`.
 - `scope_not_allowed`: the message names the scopes the setting takes.
 - `forbidden`: an owner may set only their own Notifications settings, at
   user scope; any other key, scope or person is an admin's to set.

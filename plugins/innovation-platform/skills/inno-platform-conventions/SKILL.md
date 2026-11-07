@@ -476,8 +476,7 @@ that template has no such helper either, read an empty or missing
   no session, shows a "Sign in" page whose link opens the app's root
   address in the whole window (another page's frame of the app is refused:
   **No browser calls or frames between apps**, below). What people see
-  is the platform docs' **Signing in and out: what people see**
-  (`get_platform_docs`).
+  is `get_platform_docs` section 5 (Signing in and out).
 
 The front door also sets three proxy headers you may trust:
 `X-Forwarded-Host` (the hostname the request arrived on; build links from
@@ -651,8 +650,8 @@ every app and every instance, so there is nothing to look up, and `/_auth/`
 is the platform's on every app host (R3): route nothing under it yourself.
 An app made before platform v0.17.0 links to the old sign-out address and
 changes that link once (the contract's version 34 note, `get_app_contract` with
-`history: true`). What people see when they sign in and out is the platform
-docs' **Signing in and out: what people see** (`get_platform_docs`).
+`history: true`). What people see when they sign in and out is
+`get_platform_docs` section 5 (Signing in and out).
 
 ## Logging: stdout, one event per line
 
@@ -668,11 +667,10 @@ issues guidance) is actually useful later instead of a wall of noise.
 
 There is nothing for you to configure here. The platform sets `ENVIRONMENT`
 to `production` itself, with every other binding, when it uploads a function
-app's Worker, and a container app's host is the platform's own (R7, and
-`get_platform_docs`'
-**Environment & config integrity**). No wrangler config may live in your
-repo (below), and `ENVIRONMENT` is a reserved Variable name that
-`set_app_variables` refuses. For local dev, pass mock identity headers
+app's Worker, and a container app's host is the platform's own, as R7 and
+`get_platform_docs` section 10 (Environment & config integrity) say. No
+wrangler config may live in your repo (below), and `ENVIRONMENT` is a
+reserved Variable name that `set_app_variables` refuses. For local dev, pass mock identity headers
 straight to the locally run container, and try each kind of caller R3
 names; never add an "auth disabled in dev" code path. An anonymous app
 tries the last one alone, since every request it gets looks like that:

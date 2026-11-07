@@ -100,7 +100,8 @@ the loop that exhausts it) and the app lifecycle.
   and neither touches any group at the identity provider.
   Confirm the person by name before either, and spell the address back to
   the admin: the row follows the identity provider account that holds the
-  address (`get_platform_docs` says when it pins). In scim mode
+  address, and `get_platform_docs` section 4 (Identity) says when it pins.
+  In scim mode
   `grant_admin` checks the address, read-only, against the accounts the
   identity provider pushed, and the grant still lands, with a `WARNING:`
   when no active pushed account holds it: relay it, and if the address is
@@ -178,7 +179,7 @@ worded in full there:
 return, or a deactivated `identity.initialAdmins` address comes up, load
 `references/custody.md`.
 
-## `transfer_app({ app, new_owner_email, force?, also?, accept_guardrails? })`: reassign ownership
+## `transfer_app({ app, email, force?, also?, accept_guardrails? })`: reassign ownership
 
 Admins only: there is no accept step, so in an owner's hands a transfer could
 dump unwanted apps on people. When the person asking is an app's owner and
@@ -408,7 +409,7 @@ arguments lists every key with its value, where it comes from, its type, the
 scopes it takes and its description, plus every override. Read a key's
 description there before setting one you did not choose (the panel's
 Platform screen, Configuration tab, shows it too). The reading forms an
-owner uses (`get_config app=` and `get_config user=`) are in
+owner uses (`get_config app=` and `get_config email=`) are in
 `inno-manage-app`'s **Configuration** section.
 
 - `set_config({ key, scope, scope_id?, value, note?, confirm? })` writes at

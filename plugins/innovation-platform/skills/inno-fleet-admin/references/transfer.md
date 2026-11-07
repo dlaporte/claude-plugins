@@ -66,9 +66,9 @@ notification names such an app, **Fleet-wide reads**), in either
 membership mode. In scim mode the owner row moves to the account the
 identity provider pushed for the address, once a sign-in has pinned it;
 where there is none, and always in jit mode, the owner row is left for the
-address's next sign-in to pin. `get_platform_docs`' **What the tools do in
-detail** lists every outcome; a read that fails refuses it `upstream_error`,
-with the pin as it was. The mistyped-address repair below does not apply,
+address's next sign-in to pin. `get_platform_docs` section 16 (What the
+tools do in detail) lists every outcome; a read that fails refuses it
+`upstream_error`, with the pin as it was. The mistyped-address repair below does not apply,
 since the address is the owner's own. Confirm with the admin first: it
 takes the app from the account that owned it, which may be the same person
 under a new address.
