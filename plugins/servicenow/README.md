@@ -1,7 +1,7 @@
 # servicenow
 
 Connects Claude Code to ServiceNow through
-[snow-mcp](https://github.com/dlaporte/snow-mcp) — a shared remote MCP server
+[snow-mcp](https://github.com/dlaporte/snow-mcp), a shared remote MCP server
 with **per-user OAuth**: every tool call runs as *you*, under your normal
 ServiceNow ACLs. On first use the server walks you through the OAuth flow in
 your browser (re-auth later via `/mcp`).

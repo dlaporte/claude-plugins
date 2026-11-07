@@ -27,7 +27,7 @@ OR). Sorting is part of the query: `^ORDERBY<field>` / `^ORDERBYDESC<field>`.
 - Current user: `assigned_to=javascript:gs.getUserID()`
 
 Only simple `javascript:gs.<helper>()` calls (optionally one integer
-argument) are accepted — the server rejects any other `javascript:`
+argument) are accepted; the server rejects any other `javascript:`
 expression in a query.
 
 ## Dot-walking
