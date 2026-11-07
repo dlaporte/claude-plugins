@@ -1,0 +1,61 @@
+# snow-mcp's MCP tool names, one per line: 50 tools at v1.0.0
+# (commit 334ac7c2b60445950e38de182f98081740f7c875), the release the server
+# in the servicenow plugin's .mcp.json runs. Written from the server's
+# source, not by hand: every function decorated @mcp.tool in a module under
+# src/snow_mcp/tools/ (parsed, not imported; no decorator passes a name, so
+# each tool is its function's name), checked against the tool tables in the
+# server's README. All eight packages are listed, as the full deployment
+# serves them; a deployment with fewer packages or SNOW_READ_ONLY serves a
+# subset, which the skills read from connection_info. Rewrite it the same
+# way when the plugin moves to a new snow-mcp release, then run:
+#   bash scripts/check-tool-names.sh --pinned scripts/snow-tools.txt plugins/servicenow
+add_change_task
+add_comment
+add_to_cart
+aggregate_stats
+assess_change_risk
+check_change_conflicts
+checkout_cart
+checkout_order_guide
+commit_update_set
+connection_info
+create_article
+create_change
+create_incident
+create_record
+delete_record
+describe_table
+get_article
+get_attachment
+get_cart
+get_catalog_item
+get_change
+get_change_schedule
+get_change_states
+get_order_guide_items
+get_record
+get_task_slas
+list_attachments
+list_catalogs
+list_change_models
+list_changes
+list_my_approvals
+list_standard_change_templates
+list_tables
+my_work
+order_catalog_item
+publish_article
+query_records
+remove_cart_item
+resolve_incident
+respond_to_approval
+schedule_change_first_available
+search_catalog
+search_knowledge
+submit_record_producer
+update_cart_item
+update_change
+update_incident
+update_record
+upload_attachment
+whoami

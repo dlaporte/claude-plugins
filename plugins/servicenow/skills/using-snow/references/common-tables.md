@@ -1,6 +1,6 @@
 # Common tables
 
-Most work records extend `task` — task fields (number, state,
+Most work records extend `task`: task fields (number, state,
 short_description, assigned_to, assignment_group, priority, active,
 opened_at) exist on all of them, and `my_work` spans them all.
 
@@ -19,7 +19,7 @@ opened_at) exist on all of them, and `my_work` spans them all.
 | `sys_user_group` | Groups | name, manager; membership in `sys_user_grmember` |
 | `cmdb_ci` | Configuration items (base class) | sys_class_name discriminates subtypes; relations in `cmdb_rel_ci` |
 | `sys_journal_field` | Journal entries (comments/work notes) | query `element_id=<record sys_id>`; the Table API doesn't return journals inline |
-| `sys_update_set` | Update sets (dev) | state; complete via commit_update_set |
+| `sys_update_set` | Update sets (dev) | state; complete via `commit_update_set` |
 
 Chain to remember for catalog orders: `sc_request` → `sc_req_item` →
 `sc_task`. Chain for changes: `change_request` → `change_task`.
