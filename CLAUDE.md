@@ -43,6 +43,8 @@ their own: `plugin.json` is the single source of truth, and
 `claude plugin tag` validates the two agree when both are present. An
 entry's `description` is its plugin's `plugin.json` description, word for
 word: change both together. The `manifests` CI job fails when they differ.
+The repository's `README.md` table of plugins carries the same description,
+word for word, so a change moves all three.
 
 ## Releasing
 
@@ -132,8 +134,8 @@ check by bytes with that script.
 The `inno-convert-artifact` starter is code that ships: the skill copies its
 `app/` into the app's repository, and that copy is the app's code from then
 on, so a plugin release reaches only the conversions after it. A release
-that changes a starter file names the file in the plugin README's history
-paragraph, so anyone who converted earlier can copy it again.
+that changes a starter file names the file in its entry in the plugin's
+`CHANGELOG.md`, so anyone who converted earlier can copy it again.
 
 `scripts/test-starter.sh` (the `starter` CI job) copies the starter to a
 temporary directory, installs its dependencies from
