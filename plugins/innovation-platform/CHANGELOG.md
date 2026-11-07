@@ -701,3 +701,9 @@ bold title. The v0.18.18 release raises the floor to 8.0.0, so the platform
 tells every 7.x build to update, and its skills stop at their Version gate
 until it does; a 7.x plugin's calls that use the old argument names are
 refused. The tools' input changed, so reconnect after that upgrade too.
+`inno-convert-artifact`'s starter `app/dev/build-ui.mjs` gains a header
+naming the platform's `ci/build-ui.mjs` it mirrors (at v0.18.18, last
+changed in ac8c1f4f, with its sha256) and what a local build does
+differently; its code is unchanged, so an app converted earlier need not
+copy it again. This repository now checks that header against the
+platform's record.

@@ -137,8 +137,9 @@ Refresh both files at every resync with the platform:
    `outputRevision` line needs every skill that reads that tool's result
    checked against what the tool now returns (section 7.4.2 of the
    platform's `docs/OPERATIONS.md` says which output changes are breaking).
-   A `shipped` line needs this repository's copy of that file taken again
-   ("The starter" below).
+   A `shipped` line needs this repository's copy of that file taken again,
+   or for `ci/build-ui.mjs` the starter's builder diffed against it ("The
+   starter" below).
 4. Run the checks ("The checks" above), then commit both files with the
    skill changes that answer the list. When the build tools moved, the
    starter's pins move with them, and its suite's lock must follow ("The
@@ -168,6 +169,7 @@ bash scripts/check-contract-sections.sh plugins/innovation-platform scripts/plat
 bash scripts/check-plugin-floor.sh scripts/platform-compat.preview.json
 bash scripts/check-build-tools.sh plugins/innovation-platform/skills/inno-convert-artifact/assets/starter/app/package.json scripts/platform-compat.preview.json
 bash scripts/check-scaffold-copy.sh scripts/starter-test/identity.ts scripts/platform-compat.preview.json
+bash scripts/check-starter-builder.sh plugins/innovation-platform/skills/inno-convert-artifact/assets/starter/app/dev/build-ui.mjs scripts/platform-compat.preview.json
 ```
 
 No file under either plugin, and neither this file, the repository's
@@ -215,3 +217,17 @@ pinned record's `shipped` entry for
 names no release of its own. When a resync prints that entry as moved,
 copy the platform's file at the new tag below the header again and run the
 starter's suite.
+
+The starter's `dev/build-ui.mjs` builds an app's interface locally the way
+the platform's CI builds it with `ci/build-ui.mjs`: a second
+implementation, not a copy, whose header names the platform release, the
+commit and the sha256 of the `ci/build-ui.mjs` it was last diffed against,
+and says what it does differently. The `platform-compat` job's
+`scripts/check-starter-builder.sh` compares that sha256 with the pinned
+record's `shipped` entry for `ci/build-ui.mjs`, so when a resync prints it
+as moved, the check fails until the starter is diffed against the new file
+(`git -C <platform checkout> diff <old tag> <new tag> -- ci/build-ui.mjs`),
+changed to match, and its header moved: the release, the commit
+(`git -C <platform checkout> log -1 --format=%h <new tag> -- ci/build-ui.mjs`)
+and the sha256. A change to the file is a change to the starter (a plugin
+release, named in `CHANGELOG.md`).

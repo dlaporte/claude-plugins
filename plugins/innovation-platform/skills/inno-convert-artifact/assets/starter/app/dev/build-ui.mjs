@@ -4,6 +4,17 @@
 // would. CI never runs this file: it removes any app/.ui-build/ and builds
 // its own with its own pinned tools.
 //
+// It mirrors the platform's ci/build-ui.mjs at platform v0.18.18, where that
+// file last changed in ac8c1f4f and has the sha256
+// 35d437a0045a8a847ae8d3be4c709a6b42645042dbff1c3908560a1c2b0b3d56: the
+// same entry modules in the same order, asset loaders, esbuild options,
+// Tailwind detection, content hash and four exported constants, so one ui/
+// builds the same script, styles and paths either way. What differs is
+// local: it runs this app's tools (the versions CI pins), stops with an
+// error where CI annotates one, needs a ui/ entry where CI builds nothing
+// for an app with no ui/, prints esbuild's warnings, and its module's
+// comment says it was built locally.
+//
 // Usage (in app/): node dev/build-ui.mjs
 import { execFileSync } from "node:child_process";
 import { createHash } from "node:crypto";
