@@ -17,35 +17,23 @@ set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 # shellcheck source=scripts/test-lib.sh
 . "$here/test-lib.sh"
+# block, skill, skills <tree> and edit: the planted skills and source, one
+# shape with scripts/test-check-version-gate.sh's.
+# shellcheck source=scripts/fixtures/version-gate.sh
+. "$here/fixtures/version-gate.sh"
 render="$here/render-gates.sh"
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 
-block() {
-  printf '%s\n' '## Version gate: do this first' '' '1. Read the version.' '2. Call the tool with it.' '' 'Carry on.'
-}
-# skill <name>: a skill that holds block()'s lines at lines 7 to 12.
-skill() {
-  printf '%s\n' --- "name: $1" --- '' "# $1" ''
-  block
-  printf '%s\n' '' "The skill's own steps."
-}
-# skills <tree>: a source and three skills (a, b, c), with a copy of each
-# skill as it should be, under expected/.
-skills() {
+# planted <tree>: skills, with a copy of each skill as it should be, under
+# expected/.
+planted() {
   local name
+  skills "$1"
   mkdir -p "$tmp/$1/expected"
-  block >"$tmp/$1/source.md"
   for name in a b c; do
-    mkdir -p "$tmp/$1/skills/$name"
-    skill "$name" >"$tmp/$1/skills/$name/SKILL.md"
     skill "$name" >"$tmp/$1/expected/$name.md"
   done
-}
-# edit <tree> <file> <sed program>: one planted file, edited in place.
-edit() {
-  sed "$3" "$tmp/$1/$2" >"$tmp/$1/$2.new"
-  mv -f "$tmp/$1/$2.new" "$tmp/$1/$2"
 }
 # same <tree>: which skills are byte for byte what expected/ holds.
 same() {
@@ -65,7 +53,7 @@ render() {
 }
 ok="render-gates: OK (3 skills hold source.md's block;"
 
-skills drift
+planted drift
 edit drift skills/b/SKILL.md 's/^2\. Call the tool with it\.$/2. Call the tool./'
 expect "--check on a skill that differs" 1 "$(
   echo "::error file=skills/b/SKILL.md,line=10::the gate block differs from source.md here (its line 4)"
@@ -86,7 +74,7 @@ expect "--check after a render" 0 "$(
   echo "same as expected: a b c"
 )" render drift --check
 
-skills source
+planted source
 edit source source.md 's/^1\. Read the version\.$/1. Read the plugin version./'
 for name in a b c; do edit source "expected/$name.md" 's/^1\. Read the version\.$/1. Read the plugin version./'; done
 expect "an edit to the source reaches every skill" 0 "$(
@@ -97,7 +85,7 @@ expect "an edit to the source reaches every skill" 0 "$(
   echo "same as expected: a b c"
 )" render source
 
-skills stuck
+planted stuck
 edit stuck skills/a/SKILL.md 's/^2\. Call the tool with it\.$/2. Call the tool./'
 edit stuck skills/c/SKILL.md '12d'
 expect "a malformed block stops the render" 2 "$(

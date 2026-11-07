@@ -1,6 +1,8 @@
 #!/usr/bin/env bash
-# Sourced by every scripts/test-*.sh: the harness they share, as
-# scripts/lib.sh holds what the checks share.
+# Sourced by every scripts/test-*.sh but scripts/test-starter.sh, the
+# starter's runtime suite, which asserts in node's test runner over
+# scripts/starter-test/*.test.mjs rather than case by case here: the harness
+# they share, as scripts/lib.sh holds what the checks share.
 #
 #   expect <label> <exit> <output> <command> [arg ...]
 #
@@ -8,9 +10,12 @@
 # unless its exit status and its whole output are exactly the ones given: it
 # prints the label, the two statuses and a diff (< expected, > got) to stderr,
 # and sets fail=1. n counts the cases. The command may be a function of the
-# test's own; it runs in a subshell, so a cd in it stays there. A test ends
-# with [ "$fail" -eq 0 ] || exit 1 and its OK line. Messages begin with the
-# test's name, its file name without .sh.
+# test's own; it runs in a subshell, so a cd in it stays there. Where a
+# whole output is not fixed (test-check-tool-names.sh's reverse check lists
+# whichever pinned tools its fixture never names, so a resync moves it), a
+# test asserts on the lines it needs and sets fail=1 itself. A test ends with
+# [ "$fail" -eq 0 ] || exit 1 and its OK line. Messages begin with the test's
+# name, its file name without .sh.
 #
 # Run rather than sourced (bash scripts/test-lib.sh), it proves expect on
 # itself, and scripts/lib.sh's helpers on cases it plants: an exact match

@@ -17,33 +17,14 @@ set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 # shellcheck source=scripts/test-lib.sh
 . "$here/test-lib.sh"
+# block, skill, skills <tree> and edit: the planted skills and source, one
+# shape with scripts/test-render-gates.sh's.
+# shellcheck source=scripts/fixtures/version-gate.sh
+. "$here/fixtures/version-gate.sh"
 check="$here/check-version-gate.sh"
 tmp="$(mktemp -d)"
 trap 'rm -rf "$tmp"' EXIT
 
-block() {
-  printf '%s\n' '## Version gate: do this first' '' '1. Read the version.' '2. Call the tool with it.' '' 'Carry on.'
-}
-# skills <tree> [name...]: a source and three skills (a, b, c) that hold its
-# block at lines 7 to 12.
-skills() {
-  local name
-  mkdir -p "$tmp/$1"
-  block >"$tmp/$1/source.md"
-  for name in a b c; do
-    mkdir -p "$tmp/$1/skills/$name"
-    {
-      printf '%s\n' --- "name: $name" --- '' "# $name" ''
-      block
-      printf '%s\n' '' "The skill's own steps."
-    } >"$tmp/$1/skills/$name/SKILL.md"
-  done
-}
-# edit <tree> <file> <sed program>: one planted file, edited in place.
-edit() {
-  sed "$3" "$tmp/$1/$2" >"$tmp/$1/$2.new"
-  mv -f "$tmp/$1/$2.new" "$tmp/$1/$2"
-}
 # gate <tree>: the check on that tree's skills and source.
 gate() {
   cd "$tmp/$1" && bash "$check" skills source.md

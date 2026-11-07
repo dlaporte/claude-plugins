@@ -12,8 +12,8 @@
 # among them, an id after the literal, a list with no sections key, a section
 # sign in prose, an empty literal, a word that ends in sections, the key right
 # after a bracket). The
-# whole of skills/ must report exactly the planted lines and exit 1; passes/
-# alone must exit 0.
+# whole of skills/ must report exactly the planted lines and the failure
+# that counts them, and exit 1; passes/ alone must pass with its OK line.
 # Both runs read the fixture's own record,
 # scripts/fixtures/check-contract-sections/record.json, not the real pinned
 # one, so a resync that renumbers the contract needs no fixture edit. It has
@@ -23,6 +23,8 @@
 set -euo pipefail
 
 here="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=scripts/test-lib.sh
+. "$here/test-lib.sh"
 fixture="scripts/fixtures/check-contract-sections"
 record="$fixture/record.json"
 file="$fixture/skills/fails/SKILL.md"
@@ -43,27 +45,20 @@ $file:19: "R3.1" is not a section id: an id is numbers joined by dots, or R and 
 $json:1: "9" is not a section of the pinned contract
 EOF
 )"
+pinned="contract 1 at vfixture ($record)"
+# sections <path>: the check on that path of the fixture, against its record,
+# from the repository root.
+sections() {
+  cd "$here/.." && bash scripts/check-contract-sections.sh "$1" "$record"
+}
 
-fail=0
-rc=0
-out="$(cd "$here/.." && bash scripts/check-contract-sections.sh "$fixture/skills" "$record" 2>/dev/null)" || rc=$?
-if [ "$rc" -ne 1 ]; then
-  echo "test-check-contract-sections: the check exited $rc on the fixture, expected 1" >&2
-  fail=1
-fi
-if [ "$out" != "$expected" ]; then
-  echo "test-check-contract-sections: the check reported something other than what the fixture plants:" >&2
-  diff <(printf '%s\n' "$expected") <(printf '%s\n' "$out") >&2 || true
-  fail=1
-fi
+expect "the whole fixture" 1 "$(
+  printf '%s\n' "$expected"
+  echo "check-contract-sections: FAIL, $(printf '%s\n' "$expected" | grep -c .) element(s) above are not sections of $pinned. Fix the id, or if the platform renumbered its contract, resync with scripts/platform-compat.sh and read the contract's history."
+)" sections "$fixture/skills"
+expect "the passing file alone" 0 \
+  "check-contract-sections: OK ($fixture/skills/passes, 10 literal(s) asking for 21 section(s), all in contract 1 at vfixture)" \
+  sections "$fixture/skills/passes"
 
-# The passing file alone.
-rc=0
-out="$(cd "$here/.." && bash scripts/check-contract-sections.sh "$fixture/skills/passes" "$record" 2>&1)" || rc=$?
-if [ "$rc" -ne 0 ]; then
-  echo "test-check-contract-sections: the check exited $rc on passes/, expected 0:" >&2
-  printf '%s\n' "$out" >&2
-  fail=1
-fi
 [ "$fail" -eq 0 ] || exit 1
 echo "test-check-contract-sections: OK ($(printf '%s\n' "$expected" | grep -c .) planted lines reported, nothing else; the look-alikes pass alone)"
