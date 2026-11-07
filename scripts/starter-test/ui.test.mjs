@@ -24,6 +24,10 @@ const UI_SCRIPT = (() => {
 })();
 
 const EMAIL = "alice@example.edu";
+// The page's address, and its path and query: where Sign in again must point,
+// with no fragment, since a link to the same address with one loads nothing.
+const ORIGIN = "http://localhost:8787";
+const PAGE = "/notes?view=all";
 const DEADLINE = 30_000;
 
 // Answers a test gives.
@@ -51,13 +55,13 @@ afterEach(() => {
 });
 
 /**
- * Opens the page with `route(call)` answering each fetch; a call is
+ * Opens the page at `url` with `route(call)` answering each fetch; a call is
  * { path, method, op, body, init, signal }, with op and body read from a
  * storage call's JSON.
  */
-function open(route) {
+function open(route, url = ORIGIN + PAGE) {
   const { window } = new JSDOM('<!doctype html><html lang="en"><body><div id="root"></div></body></html>', {
-    url: "http://localhost:8787/notes?view=all",
+    url,
     runScripts: "outside-only",
     pretendToBeVisual: true,
   });
@@ -141,7 +145,7 @@ describe("the app bar (PL-12, R11)", () => {
     await until(() => status(bar(page)).includes("session has ended"), "session end in the bar");
     const link = control(bar(page), "Sign in again");
     assert.equal(link?.tagName, "A");
-    assert.equal(link.href, page.window.location.href);
+    assert.equal(link.getAttribute("href"), PAGE);
     assert.equal(control(bar(page), "Sign out"), undefined);
   });
 
@@ -157,7 +161,20 @@ describe("the app bar (PL-12, R11)", () => {
   test("a storage call answered with 401 tells the bar the session has ended", async () => {
     const page = open(app({ storage: () => answer(401) }));
     await until(() => status(bar(page)).includes("session has ended"), "session end in the bar");
-    assert.equal(control(bar(page), "Sign in again")?.href, page.window.location.href);
+    assert.equal(control(bar(page), "Sign in again")?.getAttribute("href"), PAGE);
+  });
+
+  // The bar's own Skip to content link puts #main in the address, and a link
+  // to that same address only scrolls.
+  test("Sign in again, in the bar and in a counter, points at the page without its fragment, after Skip to content too", async () => {
+    const page = open(app({ storage: (c) => (c.op === "get" && !c.body.shared ? answer(401) : ok(null)) }), `${ORIGIN}${PAGE}#main`);
+    await until(() => status(bar(page)).includes("session has ended") && alert(mine(page)).includes("session has ended"), "session end");
+    assert.equal(page.window.location.hash, "#main");
+    for (const [where, root] of [["the bar", bar(page)], ["the counter", mine(page)]]) {
+      const link = control(root, "Sign in again");
+      assert.equal(link?.getAttribute("href"), PAGE, where);
+      assert.equal(link.href, ORIGIN + PAGE, where);
+    }
   });
 });
 
@@ -228,7 +245,7 @@ describe("the placeholder artifact's states (R11)", () => {
   test("a read answered with 401 says the session has ended, with a link that loads this page again", async () => {
     const page = open(app({ storage: (c) => (c.op === "get" && !c.body.shared ? answer(401) : ok(null)) }));
     await until(() => alert(mine(page)).includes("session has ended"), "session end");
-    assert.equal(control(mine(page), "Sign in again")?.href, page.window.location.href);
+    assert.equal(control(mine(page), "Sign in again")?.getAttribute("href"), PAGE);
     assert.equal(control(mine(page), "Try again"), undefined);
   });
 
@@ -253,7 +270,7 @@ describe("the placeholder artifact's states (R11)", () => {
   });
 
   for (const [name, fail, expire] of [["a 503", () => answer(503, { error: "storage_unavailable" }), false], ["a network failure", offline, false], ["the deadline", never, true]]) {
-    test(`a save whose answer was lost (${name}) says it may have been saved, and offers to read the count again, never sending it again`, async () => {
+    test(`a save whose answer was lost (${name}) says it may have been saved, holds its button until the count is read again, and never sends it again`, async () => {
       let read = () => count(1);
       const page = open(app({ storage: (c) => (c.op === "set" ? fail() : c.body.shared ? count(0, true) : read()) }));
       await until(() => control(mine(page), "Mine:"), "count");
@@ -263,12 +280,17 @@ describe("the placeholder artifact's states (R11)", () => {
         page.expire();
       }
       await until(() => alert(mine(page)).includes("may have been saved"), "lost save");
+      // The count shown may be stale: a click now would save what may be stored already.
+      const button = control(mine(page), "Mine:");
+      assert.equal(button.disabled, true, "the counter stays live after a lost save");
+      button.click();
       await sleep(100);
       assert.equal(storageCalls(page, "set").length, 1, "the save was sent again");
       const gets = storageCalls(page, "get").filter((c) => !c.body.shared).length;
       read = () => count(2);
       control(mine(page), "Check the count").click();
       await until(() => text(control(mine(page), "Mine:")) === "Mine: 2", "count read again");
+      assert.equal(control(mine(page), "Mine:").disabled, false, "the counter stays held after the count was read");
       assert.equal(storageCalls(page, "get").filter((c) => !c.body.shared).length, gets + 1);
       assert.equal(storageCalls(page, "set").length, 1);
       assert.equal(alert(mine(page)), "");
