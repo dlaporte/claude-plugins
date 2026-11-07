@@ -23,4 +23,5 @@ subset of tool packages (`SNOW_TOOL_PACKAGES`). The skills probe this with
 
 ## Install
 
-From the `davidlaporte` marketplace: `/plugin install servicenow@davidlaporte`
+Add the marketplace and install the plugin as the repository's
+[README](../../README.md#add-the-marketplace) says.
