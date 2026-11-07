@@ -160,9 +160,17 @@ which no tool lists.
   Read it first for any question in this section.
 
 Before `create_scim_token`, `revoke_scim_token` or any change of
-`auth.provisioning`, read `references/scim.md`: it holds how the token is
-handled, the switch to scim (a preview, then an explicit yes) and the way
-back to jit, each with its stops.
+`auth.provisioning`, read `references/scim.md`. Stops it holds, each worded in full there:
+
+- A new token comes from the panel by preference; here it is created only
+  when the admin asks, after saying it lands in this conversation's
+  transcript, and it is relayed exactly once, never repeated or written down.
+- Before revoking the only live token, say that pushes stop until a new one
+  is pasted.
+- The switch to scim stops for the admin's explicit yes after the preview is
+  read with them person by person, and never passes a `confirm` not just
+  read from a preview.
+- The switch back to jit is confirmed with the admin all the same.
 
 **Custody and the break-glass**: when a deactivated owner's apps, their
 return, or a deactivated `identity.initialAdmins` address comes up, load
@@ -185,7 +193,15 @@ and who keeps what, and which data links (if any) it will break.
 Read `references/transfer.md` before the call: a linked set (`also`), a
 public app (its review and `accept_guardrails`), what a previous owner who is
 not kept loses, a transfer to the owner's own address, and each refusal and
-answer, among them when `force: true` may be passed.
+answer, among them when `force: true` may be passed. Stops it holds, each worded in full there:
+
+- A public app's transfer stops for the review and the admin's explicit yes
+  before `accept_guardrails: true`; a guardrails conflict is a HARD STOP.
+- On `link_transfer_blocked`, `force: true` is never added without saying
+  what it does, naming the affected apps, and an explicit yes.
+- On `app_limit_reached`, never offer to stop the recipient's apps.
+- A transfer to the owner's own address is confirmed with the admin first.
+- `app_busy` is retried once, never in a loop.
 
 ## `revoke_sessions({ email })`: sign someone out of the panel and every browser app
 
@@ -208,7 +224,9 @@ domains (above), keeps their sessions until this ends them.
   sessions were ended.
 
 A full offboarding, or an owner of public apps who is leaving: read
-`references/offboarding.md` first.
+`references/offboarding.md` first. It stops for one decision: each public
+app the person owns is decided with the admin (transfer, narrow, or stop
+then purge), best before the account is deactivated.
 
 ## `purge_app({ app })`: delete an app now
 
@@ -486,8 +504,12 @@ serves. The panel's Platform screen is the same act on a visual surface.
   v0.18.11 each answers at most 100 and says when more exist, so never read
   a capped list as the whole fleet: narrow it by app or person instead.
 - `list_notifications` shows an admin every app's feed, plus admin-only
-  stages: what each means and what to do is `references/admin-notifications.md`,
-  to read when one appears.
+  stages: what each means and what to do is
+  `references/admin-notifications.md`, to read when one appears. Its stops:
+  before acting on `identity_reassigned`, confirm with the admin who should
+  have the app or the standing; before acting on `edge_mismatch`,
+  `cross_owner_link_revoked` or `host_upload_blocked`, confirm with the
+  app's owner.
 
   `mark_all_notifications_read` marks an admin's own notices and the
   admins' shared ones by default (`scope: "mine"`); `scope: "platform"`

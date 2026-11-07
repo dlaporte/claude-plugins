@@ -213,35 +213,29 @@ produce is a Dockerfile and app code rather than sentences a user reads.
 Each skill loads on its own, so a few blocks are deliberately repeated rather
 than pointed at. The **Version gate** at the top of every skill is the main
 one: it is byte-identical in every skill by design, because a skill that
-loads alone cannot follow a pointer to reach its own precondition. Check that
-it has stayed identical with:
+loads alone cannot follow a pointer to reach its own precondition. It is
+written into every skill from `scripts/version-gate.md` by
+`scripts/render-gates.sh`, and `bash scripts/render-gates.sh --check` (CI's
+`version-gate-parity` job) fails when a copy differs or is malformed;
+`CLAUDE.md` says how to change it.
 
-```
-for f in plugins/innovation-platform/skills/*/SKILL.md; do
-  awk '/^## Version gate/{p=1} p{print} p&&/^Carry on\.$/{exit}' "$f" | md5 -q
-done | sort -u
-```
-
-One line of output means every skill agrees. That is the same block CI's
-`version-gate-parity` job compares, so this check and CI cannot disagree. Everything else that appeared in
-several skills now has one home and pointers from the rest:
-`inno-platform-conventions` owns the semgrep scope, the forbidden-path list,
-the identity header rule, the Node dependency rule, the storage caps, the
-`CLAUDE.md` header rule and what to do for each refusal the platform's
-tools share; `inno-new-app`'s
+Everything else that appeared in several skills now has one home and
+pointers from the rest: `inno-platform-conventions` owns the semgrep scope,
+the forbidden-path list, the identity header rule, the Node dependency rule,
+the storage caps, the `CLAUDE.md` header rule and what to do for each
+refusal the platform's tools share; `inno-new-app`'s
 `references/hand-authored-layout.md` owns which `CLAUDE.md` to start from;
 `inno-manage-app` owns the call budget (the CI poll cadence included),
 support bundles, the active-app-limit rule, the transfer request, where a
-request for a platform admin goes, and the
-`cross_owner_link_revoked` and `host_upload_blocked` notices;
-`inno-safety-preflight` owns the pre-push branch and symlink checks, how to
-read `get_ci_status`, and how to read the CI accessibility, response-header
-and Dockerfile reports, and its `references/gate-failures.md` owns each
-safety gate's cause and fix, the gitleaks fix and the fingerprint waiver
-among them; `inno-containerize` owns the health-probe clock;
-`inno-new-app` owns the name-check rules; `inno-fleet-admin` owns the
-admin-only actions (a purge's missing archive included); and this README
-owns House style.
+request for a platform admin goes, and the `cross_owner_link_revoked` and
+`host_upload_blocked` notices; `inno-safety-preflight` owns the pre-push
+branch and symlink checks, how to read `get_ci_status`, and how to read the
+CI accessibility, response-header and Dockerfile reports, and its
+`references/gate-failures.md` owns each safety gate's cause and fix, the
+gitleaks fix and the fingerprint waiver among them; `inno-containerize` owns
+the health-probe clock; `inno-new-app` owns the name-check rules;
+`inno-fleet-admin` owns the admin-only actions (a purge's missing archive
+included); and this README owns House style.
 
 What the platform serves, the skills fetch rather than copy. The
 application contract comes from `get_app_contract`: with no arguments it

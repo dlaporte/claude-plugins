@@ -255,6 +255,14 @@ from `register_app`'s answer, rather than building it.
 Read `references/sharing.md` before a grant or a revoke: what admits a
 person, why someone cannot sign in or was signed out, and each refusal,
 warning and outcome of both tools, including when a revoke is not yet done.
+Stops it holds, each worded in full there:
+
+- A revoke is not reported done until its result text is read: a group may
+  still admit the person, an address may not have matched, and a partial
+  cascade's `WARNING:` is relayed and the steps it names are run.
+- A cascade is never repaired by hand at the identity provider.
+- A "Try again shortly" (503) page is an outage, not a revoke: never
+  re-grant for it.
 
 **A grant is pinned to one person**: `grant_access`'s
 description says how a grant is pinned to the identity provider account that
@@ -430,9 +438,15 @@ A widening is members-only to internal, or either to public. Every one needs
 the review in `references/audience.md` and a recorded guardrails acceptance:
 the platform records `accepted_guardrails` and `accepted_by` on the change's
 `access_changed` audit row, and an admin's acceptance stands in for the
-owner's. Follow that file's **Widening** steps in order before any call:
-they hold the precheck, the HARD STOP for a guardrails conflict, and the
-explicit yes that must come before `accept_guardrails: true`.
+owner's. Follow that file's **Widening** steps in order before any call.
+Stops it holds, each worded in full there:
+
+- Step 3 never accepts past an unmet precheck entry, and never works around
+  `[audience_disallowed]` with mass `grant_access`.
+- Step 4 is a HARD STOP at a guardrails conflict the review found: no
+  acceptance until the app changes or a platform admin grants an exception.
+- Step 4 stops for the user's explicit yes to the review's conclusions
+  before any call with `accept_guardrails: true`.
 
 ### Narrowing
 
@@ -585,7 +599,9 @@ Things to relay to the user in plain terms:
 
 Every other answer (values stored but not delivered, a refused call, a
 removal that stopped part-way, a variable the app still reports missing):
-read `references/variables.md`.
+read `references/variables.md`. One stop is among them: an encryption or
+platform key refusal is relayed and the work stops there, since only a
+platform admin can fix it.
 
 ## Notifications (`list_notifications` / `mark_notification_read` / `mark_all_notifications_read`)
 
@@ -598,7 +614,10 @@ so narrow by app, `stage` or unread rather than trying to read a long
 history in one go.
 
 Which stages are worth acting on, and what to do on each: read
-`references/notifications.md` when one appears.
+`references/notifications.md` when one appears. Two stages stop for someone
+first: `host_upload_blocked` waits for the user's yes before an unlink, and
+the steps `cross_owner_link_revoked` names are an admin's, so you only offer
+to draft the request.
 
 The admin-only stages are `inno-fleet-admin`'s.
 `mark_notification_read` answers `notification_not_found` for an id that
@@ -638,7 +657,8 @@ each means.
 
 When an account can no longer sign in (the "Sign-in refused" page, or
 `account_inactive`), or an app's owner changed to a platform admin, read
-`references/deactivation.md`.
+`references/deactivation.md`. Nothing in this skill can undo a
+deactivation: it is reversed at the identity provider.
 
 Most per-app tools in this skill are for the app's owner or a platform
 admin. The exceptions: starts are limited for owners and not for admins,
