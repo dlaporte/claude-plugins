@@ -11,18 +11,22 @@
 #      scaffold's app/identity.ts beside it (the starter imports it; the copy
 #      in scripts/starter-test/ names where it came from);
 #   2. installs the starter's dependencies, with typescript added for the type
-#      check, from the lock in scripts/starter-test/package-lock.json (npm ci,
-#      install scripts off). The starter itself ships no lock: a conversion
-#      writes its own (the skill's step 6.7);
+#      check and jsdom for the interface's tests, from the lock in
+#      scripts/starter-test/package-lock.json (npm ci, install scripts off).
+#      The starter itself ships no lock: a conversion writes its own (the
+#      skill's step 6.7), and neither suite package reaches it;
 #   3. builds the interface with the starter's own dev/build-ui.mjs;
 #   4. type-checks the Worker (index.ts, storage.ts, identity.ts and the
 #      built module, against the Workers types) and the interface (ui/,
 #      against the DOM);
 #   5. runs scripts/starter-test/*.test.mjs with node's test runner, one file
 #      at a time: the storage route on workerd with a local D1, through the
-#      starter's own wrangler, and the local proxy, dev/serve.mjs. A test that
-#      holds the skill's guidance to the starter's behavior reads the skill
-#      the starter sits in (STARTER_SKILL_DIR, three levels above its app/).
+#      starter's own wrangler; the local proxy, dev/serve.mjs, on ports the
+#      operating system hands out, so two checkouts' suites can run at once;
+#      and the built interface in a DOM (jsdom), against answers each test
+#      chooses. A test that holds the skill's guidance to the starter's
+#      behavior reads the skill the starter sits in (STARTER_SKILL_DIR, three
+#      levels above its app/).
 #
 # npm ci refuses a lock that no longer matches the starter's package.json, so
 # a starter pin that moves (scripts/check-build-tools.sh moves the build
@@ -33,14 +37,17 @@
 # Usage: bash scripts/test-starter.sh [--relock] [starter app directory]
 #   (default plugins/innovation-platform/skills/inno-convert-artifact/assets/starter/app)
 # Another starter directory runs the suite against that copy, such as a past
-# release's, to show a test failing before its fix.
+# release's, to show a test failing before its fix. The suite reads the
+# starter's dev/wrangler-config.mjs and imports Env from its storage.ts, so it
+# runs against the starter of innovation-platform 7.4.0 or later.
 # Exits 0 when the build, the type check and every test pass.
 set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"
 suite="$here/starter-test"
 
-# The type checker the suite adds to the starter's devDependencies.
+# The type checker and the DOM the suite adds to the starter's devDependencies.
 typescript="5.9.3"
+jsdom="30.1.3"
 
 relock=0
 if [ "${1:-}" = "--relock" ]; then
@@ -71,7 +78,7 @@ cp -R "$starter" "$app"
 # Whatever a local run left in the source copy is not the starter's.
 rm -rf "$app/node_modules" "$app/.ui-build" "$app/.dev" "$app/.wrangler" "$app/package-lock.json"
 cp "$suite/identity.ts" "$app/identity.ts"
-jq --arg v "$typescript" '.devDependencies.typescript = $v' "$starter/package.json" >"$app/package.json"
+jq --arg ts "$typescript" --arg dom "$jsdom" '.devDependencies.typescript = $ts | .devDependencies.jsdom = $dom' "$starter/package.json" >"$app/package.json"
 cd "$app"
 
 if [ "$relock" -eq 1 ]; then

@@ -4,11 +4,7 @@
 // built files, the signed-in caller, and the artifact's saved data.
 import { UI_SCRIPT, UI_SCRIPT_PATH, UI_STYLES, UI_STYLES_PATH } from "./.ui-build/ui";
 import { currentUser } from "./identity";
-import { handleStorage } from "./storage";
-
-export interface Env {
-  DATA: D1Database;
-}
+import { type Env, handleStorage } from "./storage";
 
 const CSP = [
   "default-src 'self'",
