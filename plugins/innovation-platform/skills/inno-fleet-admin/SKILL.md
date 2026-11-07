@@ -100,7 +100,7 @@ the loop that exhausts it) and the app lifecycle.
   and neither touches any group at the identity provider.
   Confirm the person by name before either, and spell the address back to
   the admin: the row follows the identity provider account that holds the
-  address, and `get_platform_docs` section 4 (Identity) says when it pins.
+  address, and `grant_admin`'s description says when it pins.
   In scim mode
   `grant_admin` checks the address, read-only, against the accounts the
   identity provider pushed, and the grant still lands, with a `WARNING:`

@@ -216,6 +216,32 @@ jobs:
           set -euo pipefail
           bash scripts/check-build-tools.sh
 
+      # The floor check first proves it compares versions as numbers (2.10.0
+      # is above 2.9.0) on records and manifests it plants.
+      - name: The floor check catches what its fixture plants
+        run: |
+          set -euo pipefail
+          bash scripts/test-check-plugin-floor.sh
+
+      - name: The innovation-platform plugin is at least the pinned release's app plugin floor
+        run: |
+          set -euo pipefail
+          bash scripts/check-plugin-floor.sh
+
+      # At a resync, scripts/platform-compat.sh prints what moved since the
+      # previous pin, the resync's to-do list, and nothing in CI reads it. Its
+      # test pins records from a repository it plants, at release tags only,
+      # and previews one at a commit, leaving the pin alone.
+      - name: The resync's moved list reports what its fixture plants
+        run: |
+          set -euo pipefail
+          bash scripts/test-platform-compat.sh
+
+      # The two pairs below read the pinned record's shipped key, which a
+      # record from before platform v0.18.18 lacks, so pinned at one they fail
+      # (and so does the build-parity job); last in the job, so every step
+      # above still runs.
+
       # The starter's suite runs against scripts/starter-test/identity.ts, a
       # copy of the platform scaffold's app/identity.ts below its header,
       # which the pinned record's shipped key hashes (platform v0.18.18 on).
@@ -244,27 +270,6 @@ jobs:
         run: |
           set -euo pipefail
           bash scripts/check-starter-builder.sh
-
-      # The floor check first proves it compares versions as numbers (2.10.0
-      # is above 2.9.0) on records and manifests it plants.
-      - name: The floor check catches what its fixture plants
-        run: |
-          set -euo pipefail
-          bash scripts/test-check-plugin-floor.sh
-
-      - name: The innovation-platform plugin is at least the pinned release's app plugin floor
-        run: |
-          set -euo pipefail
-          bash scripts/check-plugin-floor.sh
-
-      # At a resync, scripts/platform-compat.sh prints what moved since the
-      # previous pin, the resync's to-do list, and nothing in CI reads it. Its
-      # test pins records from a repository it plants, at release tags only,
-      # and previews one at a commit, leaving the pin alone.
-      - name: The resync's moved list reports what its fixture plants
-        run: |
-          set -euo pipefail
-          bash scripts/test-platform-compat.sh
 
   starter:
     runs-on: ubuntu-26.04
@@ -315,6 +320,14 @@ jobs:
       - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: 22
+
+      # The parity run's gate first proves itself, offline, on records and a
+      # platform checkout it plants: a record with no sha256 for the builder
+      # fails closed, and a builder with another hash never runs.
+      - name: The parity run's gate refuses what its fixture plants
+        run: |
+          set -euo pipefail
+          bash scripts/test-build-parity-gate.sh
 
       # The starter's dev/build-ui.mjs and the platform's ci/build-ui.mjs, the
       # one whose sha256 the pinned record holds (taken from the platform's

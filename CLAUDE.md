@@ -76,10 +76,10 @@ grep -E '^ +bash scripts/' .github/workflows/ci.yml | while read -r c; do sh -c 
 
 The version-bump gate skips without `BASE_SHA` (the commit to compare with),
 `test-starter.sh` needs the npm registry, and `test-build-parity.sh` needs
-it and github.com, and a pinned record from platform v0.18.18 on. A new check takes the same
-shape: a script that sources `scripts/lib.sh` for what the checks share, a
-`test-*.sh` twin built on `scripts/test-lib.sh`'s `expect`, and a step of one
-line.
+it, github.com (unless given `--platform`) and a pinned record from
+platform v0.18.18 on. A new check takes the same shape: a script that
+sources `scripts/lib.sh` for what the checks share, a `test-*.sh` twin
+built on `scripts/test-lib.sh`'s `expect`, and a step of one line.
 
 ## innovation-platform specifics
 
@@ -111,10 +111,13 @@ run. CI reads only these copies, never the platform repository: the
 the record's contract has, that the plugin's `version` is at least the
 record's app plugin floor (`plugins.app.minVersion`), and that the starter's
 copies of the files the platform ships are the record's (`shipped`, from
-platform v0.18.18; "The starter" below). That job's fixture
-tests plant their own records, so a resync leaves them alone. The tool-name
-fixture test still reads the real pinned list, so a resync that retires a
-tool its fixture uses fails that test until the fixture is edited.
+platform v0.18.18; "The starter" below). A record from before v0.18.18 has
+no `shipped` key, so pinned at one, the `platform-compat` job and the
+`build-parity` job both fail until the pin moves to v0.18.18 or later.
+The `platform-compat` job's fixture tests plant their own records, so a
+resync leaves them alone. The tool-name fixture test still reads the real
+pinned list, so a resync that retires a tool its fixture uses fails that
+test until the fixture is edited.
 
 Refresh both files at every resync with the platform:
 
@@ -172,7 +175,13 @@ bash scripts/check-plugin-floor.sh scripts/platform-compat.preview.json
 bash scripts/check-build-tools.sh plugins/innovation-platform/skills/inno-convert-artifact/assets/starter/app/package.json scripts/platform-compat.preview.json
 bash scripts/check-scaffold-copy.sh scripts/starter-test/identity.ts scripts/platform-compat.preview.json
 bash scripts/check-starter-builder.sh plugins/innovation-platform/skills/inno-convert-artifact/assets/starter/app/dev/build-ui.mjs scripts/platform-compat.preview.json
+bash scripts/test-build-parity.sh --platform <platform checkout> scripts/platform-compat.preview.json
 ```
+
+The last needs the npm registry, and with `--platform` it reads the
+builder from the checkout rather than the mirror, which publishes only
+after the platform's main branch CI runs, so it is the parity run's one
+form at a release commit before the tag.
 
 No file under either plugin, and neither this file, the repository's
 `README.md`, the marketplace catalog, the CI workflow under `.github` nor
@@ -245,6 +254,8 @@ holds from the platform's public CI mirror, `dlaporte/inno-platform-ci`
 (which publishes once the platform's main branch CI runs, so a release
 that changes `ci/build-ui.mjs` fails this job until then), or, with
 `--platform <checkout>`, from a platform checkout at the record's pinned
-commit; neither conversion nor `npm run dev` needs either. A difference the
-starter's header documents is left out of the comparison, and a new one
-goes in that header and the script's.
+commit; neither conversion nor `npm run dev` needs either. Its twin,
+`scripts/test-build-parity-gate.sh`, proves offline that a record with no
+such sha256 fails closed and that a builder with another hash never runs.
+A difference the starter's header documents is left out of the
+comparison, and a new one goes in that header and the script's.

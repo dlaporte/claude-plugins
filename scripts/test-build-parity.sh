@@ -43,6 +43,11 @@
 # each prints, and what each does with no ui/, no entry or a failed build
 # (CI annotates and exits, the starter throws), which no case here plants.
 #
+# scripts/test-build-parity-gate.sh proves step 1's gate offline, on records
+# and a platform checkout it plants: a record with no sha256 for the builder
+# fails closed before any fetch, and a builder with another hash than the
+# record's fails before anything is installed or run.
+#
 # Usage: bash scripts/test-build-parity.sh [--platform <checkout>] [record]
 #   (default record scripts/platform-compat.json; a preview's
 #   scripts/platform-compat.preview.json, with the checkout it was read

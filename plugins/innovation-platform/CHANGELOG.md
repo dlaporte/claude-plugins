@@ -700,14 +700,22 @@ README's included, names its section by number with its title, such as
 bold title. The platform's tools now print ASCII arrows only, so
 `inno-new-app` quotes `register_app`'s first line as `Registration started
 for "{name}" <- {repo}.`, where it quoted the Unicode arrow (U+2190). The
-v0.18.18 release raises the floor to 8.0.0, so the platform
-tells every 7.x build to update, and its skills stop at their Version gate
-until it does; a 7.x plugin's calls that use the old argument names are
-refused. The tools' input changed, so reconnect after that upgrade too.
-`inno-convert-artifact`'s starter `app/dev/build-ui.mjs` gains a header
-naming the platform's `ci/build-ui.mjs` it mirrors (at v0.18.18, last
-changed in ac8c1f4f, with its sha256) and what a local build does
-differently; its code is unchanged, so an app converted earlier need not
-copy it again. This repository now checks that header against the
+v0.18.18 release raises the floor to 8.0.0, so once the instance's admins
+raise `plugin.min_version` to it, the platform tells every 7.x build to
+update, and its skills stop at their Version gate until it does. The
+platform keeps no alias for the old names, and until that gate is set a
+7.x build's calls that use them are not all refused: `transfer_app` and
+`disconnect_user_connection` refuse a call that omits `email`, while
+`get_config` and `list_user_connections` ignore the old `user` key and
+answer as if no address were named, within the caller's standing (an
+admin's `get_config` answers the fleet catalog, and `list_user_connections`
+every session the caller may read, where one account's was asked for), so
+update before reading one account's settings or sessions. The tools' input
+changed, so reconnect after that upgrade too. `inno-convert-artifact`'s
+starter `app/dev/build-ui.mjs` gains a header naming the platform's
+`ci/build-ui.mjs` it mirrors (at v0.18.18, last changed in ac8c1f4f, with
+its sha256) and what a local build does differently: an app converted on
+an earlier release may copy it again for that header, and its code is
+unchanged, so it builds as before either way. This repository now checks that header against the
 platform's record and builds one corpus with both builders to compare what
 they write.
