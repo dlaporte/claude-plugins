@@ -5,3 +5,8 @@
 # macOS Finder droppings
 .DS_Store
 docs/superpowers/
+
+# scripts/platform-compat.sh --preview's output: a check against a platform
+# commit before its release, never committed (CLAUDE.md, the resync)
+scripts/platform-compat.preview.json
+scripts/platform-tools.preview.txt
