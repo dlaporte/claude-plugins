@@ -1,0 +1,5 @@
+/* No Tailwind, so esbuild builds it, following its own @import. */
+@import "./base.css";
+body {
+  margin: 0;
+}

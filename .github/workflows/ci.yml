@@ -1,6 +1,6 @@
 name: CI
 
-# Eight jobs, every step's run block set -euo pipefail and one
+# Nine jobs, every step's run block set -euo pipefail and one
 # `bash scripts/...` line run from the repository root, so a local run is
 # those same lines (CLAUDE.md, "The checks"). Each script's header says what
 # it checks, and a check's test-*.sh twin runs first and proves it on cases it
@@ -275,8 +275,9 @@ jobs:
       # miniflare otherwise fetches workers.cloudflare.com/cf.json on every run.
       CLOUDFLARE_CF_FETCH_ENABLED: "false"
     steps:
-      # The only job that runs code from the npm registry, so the checkout
-      # keeps no token in the repository's git config for that code to read.
+      # One of the two jobs that run code from the npm registry (with
+      # build-parity), so the checkout keeps no token in the repository's git
+      # config for that code to read.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
@@ -299,3 +300,33 @@ jobs:
         run: |
           set -euo pipefail
           bash scripts/test-starter.sh
+
+  build-parity:
+    runs-on: ubuntu-26.04
+    timeout-minutes: 15
+    steps:
+      # It runs code from the npm registry, as the starter job does, so the
+      # checkout keeps no token in the repository's git config either.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # The node the platform's CI builds an app with.
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+
+      # The starter's dev/build-ui.mjs and the platform's ci/build-ui.mjs, the
+      # one whose sha256 the pinned record holds (taken from the platform's
+      # public CI mirror and run beside a stand-in for its ci/cli.mjs), each
+      # build one corpus (scripts/build-parity/: the entry variants, Tailwind
+      # and plain stylesheets, imported CSS, an image, an SVG and a font) with
+      # the same tools, installed from scripts/starter-test/package-lock.json
+      # (npm ci, install scripts off); their generated modules' four exports
+      # must match, and the two builders' entry and asset lists too. No
+      # credential, and no network beyond the npm registry and github.com.
+      # The script's header says what is compared and what is not.
+      - name: The starter's builder and the platform's build one corpus alike
+        run: |
+          set -euo pipefail
+          bash scripts/test-build-parity.sh

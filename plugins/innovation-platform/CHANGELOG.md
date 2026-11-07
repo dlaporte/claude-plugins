@@ -706,4 +706,5 @@ naming the platform's `ci/build-ui.mjs` it mirrors (at v0.18.18, last
 changed in ac8c1f4f, with its sha256) and what a local build does
 differently; its code is unchanged, so an app converted earlier need not
 copy it again. This repository now checks that header against the
-platform's record.
+platform's record and builds one corpus with both builders to compare what
+they write.

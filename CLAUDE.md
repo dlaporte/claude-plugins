@@ -6,7 +6,8 @@ Everything here is markdown and JSON except one executable asset: the
 (`plugins/innovation-platform/skills/inno-convert-artifact/assets/starter/app/`),
 a Worker in TypeScript, a React interface and two Node scripts, which the
 skill copies into an app's own repository. The `starter` CI job builds and
-runs it (see "The starter" below); nothing else here is built or run.
+runs it, and the `build-parity` job runs its interface builder beside the
+platform's (see "The starter" below); nothing else here is built or run.
 
 ## The one rule: change a plugin, bump its version
 
@@ -63,7 +64,7 @@ claude plugin update <name>@davidlaporte     # restart to apply
 
 ## The checks
 
-CI's eight jobs (`.github/workflows/ci.yml`) run each check as a step of one
+CI's nine jobs (`.github/workflows/ci.yml`) run each check as a step of one
 `bash scripts/<name>.sh` line from the repository root, so a check runs
 locally as that same line. Each script's header says what it checks, and a
 check's `scripts/test-*.sh` twin runs first and proves it on cases it plants.
@@ -74,7 +75,8 @@ grep -E '^ +bash scripts/' .github/workflows/ci.yml | while read -r c; do sh -c 
 ```
 
 The version-bump gate skips without `BASE_SHA` (the commit to compare with),
-and `test-starter.sh` needs the npm registry. A new check takes the same
+`test-starter.sh` needs the npm registry, and `test-build-parity.sh` needs
+it and github.com, and a pinned record from platform v0.18.18 on. A new check takes the same
 shape: a script that sources `scripts/lib.sh` for what the checks share, a
 `test-*.sh` twin built on `scripts/test-lib.sh`'s `expect`, and a step of one
 line.
@@ -231,3 +233,18 @@ changed to match, and its header moved: the release, the commit
 (`git -C <platform checkout> log -1 --format=%h <new tag> -- ci/build-ui.mjs`)
 and the sha256. A change to the file is a change to the starter (a plugin
 release, named in `CHANGELOG.md`).
+
+The `build-parity` job's `scripts/test-build-parity.sh` then runs both
+builders on one corpus, `scripts/build-parity/` (the entry variants,
+Tailwind and plain stylesheets, imported CSS, an image, an SVG and a font,
+each case with an `expect` file of what its build must hold), with the same
+tools, and fails unless their generated modules export the same script,
+styles and paths and the two builders list the same entries and asset
+extensions. It takes the platform's builder whose sha256 the pinned record
+holds from the platform's public CI mirror, `dlaporte/inno-platform-ci`
+(which publishes once the platform's main branch CI runs, so a release
+that changes `ci/build-ui.mjs` fails this job until then), or, with
+`--platform <checkout>`, from a platform checkout at the record's pinned
+commit; neither conversion nor `npm run dev` needs either. A difference the
+starter's header documents is left out of the comparison, and a new one
+goes in that header and the script's.

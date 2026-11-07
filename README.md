@@ -44,9 +44,12 @@ plugins/
     skills/…/SKILL.md
   servicenow/                     same shape
 scripts/                          CI's checks, the pinned list of the
-                                  platform's MCP tool names, and the
+                                  platform's MCP tool names, the
                                   inno-convert-artifact starter's runtime
-                                  suite (test-starter.sh, starter-test/)
+                                  suite (test-starter.sh, starter-test/),
+                                  and the corpus its interface builder
+                                  shares with the platform's
+                                  (test-build-parity.sh, build-parity/)
 ```
 
 ## Versioning
