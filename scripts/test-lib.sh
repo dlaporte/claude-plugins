@@ -80,7 +80,8 @@ if [ "${BASH_SOURCE[0]}" = "$0" ]; then
   expect "require_jq passes with jq on the PATH" 0 "" require_jq
   expect "require_jq stops a check that has no jq" 2 "$test_name: jq is required" without_jq
   # sha256 of "abc" (FIPS 180-2's example), from either tool: a PATH holding
-  # only shasum and the tools around it shows the macOS branch on Linux too.
+  # only shasum and the tools around it shows the macOS branch on Linux too,
+  # wherever shasum is installed (a host without it never takes that branch).
   abc() { printf abc | sha256_of; }
   abc_by_shasum() {
     mkdir -p "$tmp/bin"
@@ -93,7 +94,9 @@ if [ "${BASH_SOURCE[0]}" = "$0" ]; then
   }
   abc_hash=ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad
   expect "sha256_of prints its input's hash" 0 "$abc_hash" abc
-  expect "sha256_of prints it by shasum where there is no sha256sum" 0 "$abc_hash" abc_by_shasum
+  if command -v shasum >/dev/null; then
+    expect "sha256_of prints it by shasum where there is no sha256sum" 0 "$abc_hash" abc_by_shasum
+  fi
   expect "join_names lists one name" 0 "a" join_names a
   expect "join_names lists two names" 0 "a and b" join_names a b
   expect "join_names lists three names" 0 "a, b and c" join_names a b c
