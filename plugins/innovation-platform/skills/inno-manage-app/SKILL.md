@@ -257,9 +257,12 @@ person, why someone cannot sign in or was signed out, and each refusal,
 warning and outcome of both tools, including when a revoke is not yet done.
 Stops it holds, each worded in full there:
 
-- A revoke is not reported done until its result text is read: a group may
-  still admit the person, an address may not have matched, and a partial
-  cascade's `WARNING:` is relayed and the steps it names are run.
+- Read a revoke's result text before telling anyone the person is off: an
+  address may not have matched.
+- A person the app's identity provider group still admits is not off: do
+  not tell the owner they are.
+- A `WARNING:` naming apps the cascade could not update means the revoke is
+  not complete: relay it, do not report it done, and run what it names.
 - A cascade is never repaired by hand at the identity provider.
 - A "Try again shortly" (503) page is an outage, not a revoke: never
   re-grant for it.
@@ -398,7 +401,9 @@ refused with `link_invalid` or `link_source_missing` while one of the app's
 data links is no longer valid: unlink it (`unlink_app_data`), or have the
 source's owner fix it. The same two steps, `unlink_app_data` and then
 `restart_app`, clear an app a platform release left on its earlier host
-(the `host_upload_blocked` notice, `references/notifications.md`). The same lever
+(the `host_upload_blocked` notice, `references/notifications.md`); confirm
+with the user before unlinking, since the app loses its read of that
+source's data. The same lever
 is the ↻ icon next to the container name on the app's panel page.
 
 Its admin-only neighbor, `rebuild_app`, rebuilds an app's released code at
@@ -441,6 +446,8 @@ the platform records `accepted_guardrails` and `accepted_by` on the change's
 owner's. Follow that file's **Widening** steps in order before any call.
 Stops it holds, each worded in full there:
 
+- Step 2's review goes into your reply as a structured section, never a
+  one-line summary.
 - Step 3 never accepts past an unmet precheck entry, and never works around
   `[audience_disallowed]` with mass `grant_access`.
 - Step 4 is a HARD STOP at a guardrails conflict the review found: no
@@ -600,8 +607,9 @@ Things to relay to the user in plain terms:
 Every other answer (values stored but not delivered, a refused call, a
 removal that stopped part-way, a variable the app still reports missing):
 read `references/variables.md`. One stop is among them: an encryption or
-platform key refusal is relayed and the work stops there, since only a
-platform admin can fix it.
+platform key refusal (`encryption_key_missing`, `encryption_key_invalid`,
+`platform_key_missing`) is relayed and the work stops there, since only a
+platform admin can fix it and retrying will not help.
 
 ## Notifications (`list_notifications` / `mark_notification_read` / `mark_all_notifications_read`)
 

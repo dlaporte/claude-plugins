@@ -231,7 +231,7 @@ Check, with the user:
 
 ## 8. Review before shipping
 
-Walk the app against `get_app_security` (sections 3, 4, 9 and 12 above all:
+Walk the app against `get_app_security` (§3, §4, §9 and §12 above all:
 escaping, input bounds, headers, forged requests; the starter covers 9 and
 12 for its own routes, so check any route you added) and against
 `get_app_accessibility` (a page title, `lang`, labeled controls, visible

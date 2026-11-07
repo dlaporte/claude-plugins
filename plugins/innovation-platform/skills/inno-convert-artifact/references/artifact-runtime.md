@@ -5,7 +5,7 @@ things the artifact's code never declares. Each one needs a home in the app.
 
 | On claude.ai | In the converted app |
 |---|---|
-| React compiled in the browser, libraries provided | `app/ui/`, built by the platform's CI (contract section 1.1, Browser interface); each library a pinned entry under `dependencies` in `app/package.json` (`libraries.md`) |
+| React compiled in the browser, libraries provided | `app/ui/`, built by the platform's CI (contract §1.1, Browser interface); each library a pinned entry under `dependencies` in `app/package.json` (`libraries.md`) |
 | Tailwind utility classes, always available | `app/ui/styles.css` holding `@import "tailwindcss";`, built by CI's pinned Tailwind CLI over `app/ui/` |
 | `window.storage`, personal | `app/ui/storage-shim.ts` and `app/storage.ts`: one D1 table, each key scoped to the signed-in person's `X-Forwarded-Subject` |
 | `window.storage`, shared (`true` as the last argument) | the same table with no owner: one copy for everyone who reaches the app |

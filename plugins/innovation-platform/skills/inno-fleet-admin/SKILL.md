@@ -160,7 +160,8 @@ which no tool lists.
   Read it first for any question in this section.
 
 Before `create_scim_token`, `revoke_scim_token` or any change of
-`auth.provisioning`, read `references/scim.md`. Stops it holds, each worded in full there:
+`auth.provisioning`, read `references/scim.md`. Stops it holds, each
+worded in full there:
 
 - A new token comes from the panel by preference; here it is created only
   when the admin asks, after saying it lands in this conversation's
@@ -169,7 +170,8 @@ Before `create_scim_token`, `revoke_scim_token` or any change of
   is pasted.
 - The switch to scim stops for the admin's explicit yes after the preview is
   read with them person by person, and never passes a `confirm` not just
-  read from a preview.
+  read from a preview; a count that moved (`preview_stale`) needs another
+  yes.
 - The switch back to jit is confirmed with the admin all the same.
 
 **Custody and the break-glass**: when a deactivated owner's apps, their
@@ -193,12 +195,14 @@ and who keeps what, and which data links (if any) it will break.
 Read `references/transfer.md` before the call: a linked set (`also`), a
 public app (its review and `accept_guardrails`), what a previous owner who is
 not kept loses, a transfer to the owner's own address, and each refusal and
-answer, among them when `force: true` may be passed. Stops it holds, each worded in full there:
+answer, among them when `force: true` may be passed. Stops it holds, each
+worded in full there:
 
 - A public app's transfer stops for the review and the admin's explicit yes
-  before `accept_guardrails: true`; a guardrails conflict is a HARD STOP.
-- On `link_transfer_blocked`, `force: true` is never added without saying
-  what it does, naming the affected apps, and an explicit yes.
+  before `accept_guardrails: true`, never passed on your own; a guardrails
+  conflict is a HARD STOP.
+- On `link_transfer_blocked`, never add `force: true` on your own: say what
+  it does, name the affected apps, and get an explicit yes.
 - On `app_limit_reached`, never offer to stop the recipient's apps.
 - A transfer to the owner's own address is confirmed with the admin first.
 - `app_busy` is retried once, never in a loop.

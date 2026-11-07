@@ -159,7 +159,7 @@ produce is a Dockerfile and app code rather than sentences a user reads.
   into a function app whose browser interface the platform's CI builds from
   `app/ui/`, with the artifact's `window.storage` kept in the app's own
   database, then register, preflight and ship it. Needs a platform whose
-  contract section 1.1 has the Browser interface bullet.
+  contract §1.1 has the Browser interface bullet.
 - **`skills/inno-platform-conventions`**: stack policy (Python/Starlette is
   the tested stack; any stack meeting the contract is fine), escaping,
   the storage client/endpoints, identity (the kinds of caller the

@@ -82,8 +82,10 @@ platform admin** says.
 ## 1. Intake: seven questions, five of them now
 
 Ask the user these five now. The design (§1b) asks the other two, the
-identity and the audience the app is meant for in the end, and states
-everything else as your recommendation.
+identity and the audience the app is meant for in the end (one question,
+which also asks for the address the user signs in with when the app is meant
+for more than its members and you do not know it), and states everything
+else as your recommendation.
 
 1. **App name**: lowercase letters, digits, hyphens only, 3-29 chars,
    starting with a letter. This drives the app's **hostname** on the platform
@@ -301,14 +303,16 @@ app only), is `inno-manage-app`'s widening review, run once the app is built
 and checked, never at registration. Ask which audience the app is meant for in
 the end, so the design serves it (an anonymous app is reviewed as public from
 the start, `inno-safety-preflight`), and say plainly that it starts
-members-only.
+members-only. Ask it as one question, with a conditional part when you do
+not already know the address the user signs in with: if the app is meant for
+more than its members, which address that is (the check below needs it).
 
 **When the answer is internal or public, check now whether it is allowed.**
 Whether an app may be widened is a platform setting a platform admin
 controls: `access.allow_internal` (on by default) and `access.allow_public`
 (off by default), each settable for the whole platform, for one owner, or
 for one app. Before you design further, call `get_config user=<the user's
-own sign-in address>` (ask for it if you do not know it) and read the
+own sign-in address>` (the audience question above asks for it) and read the
 target's line, `access.allow_public = <value> [<where it came from>]` (or
 `access.allow_internal`):
 

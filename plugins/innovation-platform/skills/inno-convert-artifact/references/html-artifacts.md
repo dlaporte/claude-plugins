@@ -24,7 +24,7 @@ over unchanged, and the scripts move.
    with `document.getElementById("root")!.innerHTML = body;` in `main.ts`.
    That string is the artifact's own fixed markup, never anything a person
    typed: data a person enters is shown with `textContent`, never written
-   into HTML (`get_app_security` section 3). If the semgrep gate flags the
+   into HTML (`get_app_security` §3). If the semgrep gate flags the
    assignment, build the markup with `document.createElement` instead. Its
    `style` attributes come out first (step 6 below).
 3. **Styles.** Move the `<style>` block to `app/ui/artifact.css`. If the
