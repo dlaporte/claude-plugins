@@ -194,6 +194,7 @@ describe("window.storage, the shim (R11)", () => {
         const e = await page.window.storage[op](...args).then(() => undefined, (x) => x);
         assert.deepEqual(failure(e), { name: "RequestError", ...expected, outcomeUnknown: write && lostWrite }, op);
         assert.match(e.message, /^[A-Z].*\.$/, `${op}: ${e.message}`);
+        if (expected.reason) assert.ok(e.message.includes(expected.reason), `${op}: the message does not name ${expected.reason}: ${e.message}`);
       }
       await sleep(50);
       assert.deepEqual(page.calls.filter((c) => c.body?.key === "probe").map((c) => c.op), ["get", "set", "delete"], "a call was sent again");

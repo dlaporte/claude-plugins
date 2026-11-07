@@ -34,11 +34,11 @@ export const SIGNED_OUT = "app:signed-out";
 export type Failure = "signed_out" | "refused" | "unavailable" | "timeout" | "network";
 
 const SAYS: Record<Failure, string> = {
-  signed_out: "Your session has ended: sign in again to continue.",
+  signed_out: "Your session has ended: sign in again to continue",
   refused: "The app refused this request",
-  unavailable: "The app could not answer just now.",
-  timeout: "The app took too long to answer.",
-  network: "The app could not be reached.",
+  unavailable: "The app could not answer just now",
+  timeout: "The app took too long to answer",
+  network: "The app could not be reached",
 };
 
 export class RequestError extends Error {
@@ -51,7 +51,9 @@ export class RequestError extends Error {
   readonly outcomeUnknown: boolean;
 
   constructor(kind: Failure, status: number | null = null, reason: string | null = null, outcomeUnknown = false) {
-    const says = kind === "refused" ? `${SAYS.refused} (${reason ?? status}).` : SAYS[kind];
+    // An answer the app gave names its reason (storage.ts's error), or its status.
+    const why = kind === "refused" || kind === "unavailable" ? ` (${reason ?? status})` : "";
+    const says = `${SAYS[kind]}${why}.`;
     super(outcomeUnknown ? `${says} It may have been saved: check before trying again.` : says);
     this.name = "RequestError";
     this.kind = kind;
