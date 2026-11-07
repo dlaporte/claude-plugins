@@ -78,6 +78,12 @@ else
   list="$here/platform-tools.txt"
 fi
 source_file="docs/compat.json"
+# The end of both refusals below: the preview command and the two files it
+# writes, so whoever runs this at a commit (the platform's release order
+# does) lands on the right command.
+preview_hint() {
+  echo "run bash scripts/platform-compat.sh --preview $platform $1, which writes ${here#"$PWD"/}/platform-compat.preview.json and ${here#"$PWD"/}/platform-tools.preview.txt (git ignores both) and leaves the committed pin alone."
+}
 
 if [ "$preview" -eq 1 ]; then
   if ! commit="$(git -C "$platform" rev-parse --verify --quiet --end-of-options "$ref^{commit}")"; then
@@ -85,10 +91,10 @@ if [ "$preview" -eq 1 ]; then
     exit 2
   fi
 elif ! semver_release_tag "$ref"; then
-  echo "platform-compat: $ref is not a release tag (v and a plain MAJOR.MINOR.PATCH triple), and only a release is pinned. To check a commit before its release, run: bash scripts/platform-compat.sh --preview $platform $ref" >&2
+  echo "platform-compat: $ref is not a release tag (v and a plain MAJOR.MINOR.PATCH triple), and only a release is pinned. To check a commit before its release, $(preview_hint "$ref")" >&2
   exit 2
 elif ! commit="$(git -C "$platform" rev-parse --verify --quiet "refs/tags/$ref^{commit}")"; then
-  echo "platform-compat: $ref is not a tag in $platform. Fetch it first (git -C $platform fetch origin tag $ref); a commit before its release runs with --preview." >&2
+  echo "platform-compat: $ref is not a tag in $platform. Fetch it first (git -C $platform fetch origin tag $ref); to check a commit before its release, $(preview_hint "<commit>")" >&2
   exit 2
 fi
 tmp="$(mktemp -d)"
