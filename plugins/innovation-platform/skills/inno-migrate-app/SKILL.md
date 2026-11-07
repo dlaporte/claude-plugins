@@ -321,71 +321,27 @@ capture a restore point, either a branch or tag on the pre-migration commit
 and merge to the default branch once it's ready. Tell the user where the
 restore point is.
 
-1. **Register the repo (two calls, with a proof file between them).** Call
-   `register_app({ app, repo, description, type, identity, members, accept_guardrails: true, connections })`
-   with the app name from Phase 1 in `app` (the wire parameter is `app`, not
-   `name`) and the user's existing `owner/repo` slug in `repo` (a **slug, not a
-   URL**). Those two are the only two the schema requires. Pass
-   `identity: "anonymous"` when item 9 chose it, and omit it otherwise: the
-   call that creates the app (call 2) fixes its identity, a call that
-   resumes or repeats a registration keeps the identity the app has, and
-   call 2's answer names it on its `Identity:` line, so pass the same
-   `identity` both times (call 1 does not record it) and check that line:
-   if it is not the one the plan chose, stop and tell the user before
-   adapting anything, since a different identity is a new app. Call 2 may
-   leave `type` and `description` out: the first call's are used, and one
-   call 2 names differently is kept from the first, on a `WARNING:` or
-   `NOTE:` line of its answer. Settle the type before call 1: the App often
-   covers the repo already, and then a repeated call 1 cannot change it
-   (`inno-new-app` §3's `type` bullet has the rule). Pass `connections`
-   only if step 2's assessment found per-user backend auth to replace: a list of
-   the names you plan to set up. It creates nothing (only `set_app_connection`
-   can); for an identity-aware `mcp-container` the response echoes it back as
-   a reminder to configure each one, and any other type's answer says the app
-   takes no Connections (`set_app_connection` refuses it
-   `app_type_unsupported`), the sign that the type is wrong for a per-user
-   backend. A migrated app whose per-user backend auth must stay needs the
-   `mcp-container` type, settled before call 1 (`inno-add-connection` step
-   1). An anonymous app takes none (`app_anonymous`). The
-   repo already exists, so ignore the response's "create it first from the
-   platform template" note.
-
-   The first call returns text beginning `Registration started …` with two
-   things to act on, in this order:
-   - a **proof-of-control file**: an exact `path:` under `.inno-platform/` and
-     exact `contents:`. Commit that file, with exactly those contents, on the
-     repo's **default branch** and push it. The default branch may not be
-     `main`; `gh repo view <owner/repo> --json defaultBranchRef -q .defaultBranchRef.name`
-     names it. The restore-point branch or a migration feature branch does not
-     count: the platform reads only the default branch. If that branch is
-     protected against direct pushes, land the file through a pull request
-     merged into it. Do this with the user's own `git` or `gh`; it is not a
-     user-only step. Leave the file in place: call 2 re-checks it.
-   - an **App install link**: give it to the user and have them **install the
-     platform GitHub App** on the account/org that owns the repo, scoped to that
-     repository. If the App already covers the repo (including "All
-     repositories"), they can skip the link. A setup page that says **GitHub
-     App installed** (rather than **Repository verified**) is fine: run call 2.
-
-   The rest of call 1 (the setup page's titles, the link's expiry, a new
-   proof path after it) is `inno-new-app` §3's: follow it there.
-
-   Once the proof file is on the default branch and the App is installed, call
-   `register_app` **again with the same arguments** (`type` and
-   `description` may be left out, `identity` may not); the second call binds the
-   repo and returns the app URL and a `deploy.yml`. If the repo carries a
-   top-level `scaffold/` directory, call 2 treats it as a template copy's,
-   in a server-side commit on the repo's default branch, the commit the plan
-   named: for a `container` app it deletes `scaffold/` wholesale, and for
-   another type it lays `scaffold/<type>/` over the root when the repo has
-   one, or else leaves the repo untouched and warns (`register_app`'s
-   description says the rest). So `git pull` before editing. Branch on the
-   response the same way `inno-new-app` §3 documents (`repo_control_unproven`,
-   `name_quarantined`, `repo_already_registered`, `repo_owner_claimed`,
-   `repo_identity_changed`, `app_limit_reached`, `repo_mismatch`,
-   `guardrails_not_accepted`, `email_domain_not_allowed`, `host_in_use`,
-   `app_anonymous`, …), including what happens to each address in
-   `members`.
+1. **Register the repo (two calls, with a proof file between them).** Follow
+   `inno-new-app` §3 unchanged, with the answers Phase 1 settled: the approved
+   name in `app`, the user's existing `owner/repo` slug in `repo`, the type,
+   the identity (item 9) and any `members`. Settle the type before call 1,
+   since the App often covers the repo already and a repeated call 1 cannot
+   change it. Pass `connections` only when item 2 found per-user backend
+   auth to replace; a migrated app that keeps it needs the `mcp-container`
+   type (`inno-add-connection` step 1). What differs from a new app:
+   - **The repo already exists**: ignore call 1's "create it first from the
+     platform template" note.
+   - **The proof file goes on the default branch**, which may not be `main`
+     (`gh repo view <owner/repo> --json defaultBranchRef -q .defaultBranchRef.name`
+     names it). The restore-point branch or a migration feature branch does
+     not count. If the default branch is protected against direct pushes,
+     land the file through a pull request merged into it.
+   - **A top-level `scaffold/`** is treated by call 2 as a template copy's,
+     in a server-side commit on the default branch, the commit the plan
+     named: a `container` app's is deleted wholesale, and for another type
+     `scaffold/<type>/` is laid over the root when the repo has one, else the
+     repo is left untouched with a warning (`register_app`'s description says
+     the rest). So `git pull` before editing.
 2. **Add the caller workflow.** Write `.github/workflows/deploy.yml` exactly as
    `register_app` returned it. If the repo already has a `deploy.yml`, never
    overwrite it silently: rename or retire it only as the approved plan says,
