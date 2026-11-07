@@ -511,7 +511,7 @@ register_app({ app, repo, description, type, identity, members, accept_guardrail
   `set_app_connection`. An anonymous app takes none: a call with
   `identity: "anonymous"` and any `connections` is refused.
 
-The first call returns text beginning **`Registration started for "{name}" ←
+The first call returns text beginning **`Registration started for "{name}" <-
 {repo}.`** It carries, in this order: (a) the template link again, in case the
 repo doesn't exist yet; (b) a **proof-of-control file**: a `path:` under
 `.inno-platform/` and the exact `contents:` (a 64-character hex string), with a

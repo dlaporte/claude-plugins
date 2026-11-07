@@ -697,7 +697,10 @@ section they mean ("get_platform_docs section 16"). The skills follow:
 `app_type_unsupported`; and every pointer into the platform's docs, the
 README's included, names its section by number with its title, such as
 `get_platform_docs` section 11 (Lifecycle), where it named the section's
-bold title. The v0.18.18 release raises the floor to 8.0.0, so the platform
+bold title. The platform's tools now print ASCII arrows only, so
+`inno-new-app` quotes `register_app`'s first line as `Registration started
+for "{name}" <- {repo}.`, where it quoted the Unicode arrow (U+2190). The
+v0.18.18 release raises the floor to 8.0.0, so the platform
 tells every 7.x build to update, and its skills stop at their Version gate
 until it does; a 7.x plugin's calls that use the old argument names are
 refused. The tools' input changed, so reconnect after that upgrade too.
