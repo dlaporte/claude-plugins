@@ -371,8 +371,9 @@ Nothing deploys from this push. Watch the run either way:
   gate points at appear only in the run's annotations (on the run link, or
   with `gh run view <run-id>`), not in those log lines, so match a row by the
   failed job's name as `get_ci_status` and `gh run view` print it (the name a
-  row gives beside the job's id), the failed step and the message. A short
-  step's window can also hold the step's own script, its
+  row gives beside the job's id, or, on a platform before v0.18.16, the id
+  itself for every job but `app-build`), the failed step and the message. A
+  short step's window can also hold the step's own script, its
   `echo "::error title=..."` line
   among it: `title=` text there is the script's source, not a title the log
   carried. Those lines are the run's own output, each fenced in «» as
@@ -444,12 +445,12 @@ One exception, and it is about what you REPORT rather than about safety:
 `app-build` is `needs: [policy, config-integrity, scaffold-check]`, so a
 red `config-integrity` (shown as Config integrity) skips it, and while
 `app/.needs-build` is present it runs no steps. Nothing unsafe follows,
-because such a run skips `deploy` too and there is no tag to cut, but a
-skipped or empty `app-build` proved nothing. Do not report the lockfile or the
-build as clear on such a run, and say that they will be checked for the first
-time on the re-push, so a build failure arriving then is not a new regression.
-Checking the file yourself is otherwise belt, not the safeguard: it saves
-a round trip through CI.
+because such a run skips `deploy` (shown as Deploy) too and there is no tag to
+cut, but a skipped or empty `app-build` proved nothing. Do not report the
+lockfile or the build as clear on such a run, and say that they will be
+checked for the first time on the re-push, so a build failure arriving then is
+not a new regression. Checking the file yourself is otherwise belt, not the
+safeguard: it saves a round trip through CI.
 
 Report the declared variables (§1b) beside the verdict too, never inside
 it: each `required` name with no value, and any problem in

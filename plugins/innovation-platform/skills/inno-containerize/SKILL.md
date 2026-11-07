@@ -105,17 +105,18 @@ base to the digest `get_app_contract` serves.
    and this item is the plugin's one home for the probe clocks (`inno-ship`
    points here). There are three separate clocks, and R2 states each one
    exactly:
-   - **The CI smoke gate.** The `container` job runs the built image
-     (`docker run -d -p 8080:8080`) and polls `/healthz` 18 times, 5 seconds
-     apart, with a 4 second per-try timeout: about 90 seconds if the port
-     refuses outright, up to about 162 seconds if it accepts the connection
-     and then hangs. It requires **exactly 200**, and so does the runtime
-     probe: a 204, and any 3xx, fail both, so a framework that redirects
-     `/healthz` to `/healthz/` fails both. A container that exits before
-     `/healthz` answers 200 ends the window early and fails with its logs.
-     Anything else, or no answer at
-     all, and it dumps the container logs and fails the job, which fails
-     `deploy`.
+   - **The CI smoke gate.**
+     `container` (shown as Container contract and image scan) runs the built
+     image (`docker run -d -p 8080:8080`) and polls `/healthz` 18 times, 5
+     seconds apart, with a 4 second per-try timeout: about 90 seconds if the
+     port refuses outright, up to about 162 seconds if it accepts the
+     connection and then hangs. It requires **exactly 200**, and so does the
+     runtime probe: a 204, and any 3xx, fail both, so a framework that
+     redirects `/healthz` to `/healthz/` fails both. A container that exits
+     before `/healthz` answers 200 ends the window early and fails with its
+     logs. Anything else, or no answer at
+     all, and it dumps the container logs and fails the job, so
+     `deploy` (shown as Deploy) is skipped.
    - **The runtime health probe.** It binds to the same endpoint after every
      deploy, when probes run for the app (`health.probe_enabled`, which
      `get_config app=<name>` shows): immediately on each green one, then on
