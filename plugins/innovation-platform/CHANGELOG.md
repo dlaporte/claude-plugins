@@ -4,8 +4,8 @@ What each release of the plugin changed, oldest first, from 3.0.0.
 
 ## 3.0.0
 
-Platform v0.17.0 made another: its status no longer carries a sign-out
-address or gateway capabilities, and the admin tool that promoted the
+Platform v0.17.0 made a breaking change of its own: its status no longer
+carries a sign-out address or gateway capabilities, and the admin tool that promoted the
 gateway went with it, so reconnect after that upgrade too. Plugin 3.0.0
 follows v0.17.0 and contract 34, where the platform signs people in to
 browser apps itself and every app's sign-out link is `/_auth/signout`; the
@@ -550,3 +550,50 @@ since the page's policy drops them. Anyone who converted an artifact on plugin
 from the starter into their repository: the table and its schema are
 unchanged, so saved data carries over. No platform tool changed in v0.18.12;
 the floor stays 7.0.0.
+
+## 7.4.0
+
+Plugin 7.4.0 follows platform v0.18.14 and contract 47 (no platform tool
+changed in v0.18.13 or v0.18.14; the floor stays 7.0.0). It reshapes the
+skills and the starter. `inno-manage-app` and `inno-fleet-admin` open on a
+**Find the task** table, one row per task their descriptions name, and their
+long procedures moved into references that each heading points at
+(manage-app's `references/sharing.md`, `audience.md`, `variables.md`,
+`notifications.md` and `deactivation.md`; fleet-admin's
+`references/admin-standing.md`, `scim.md`, `transfer.md`, `offboarding.md`
+and `admin-notifications.md`), each heading naming the stops its reference
+holds, so a task loads 24 to 44 percent less text.
+`inno-safety-preflight/references/gate-failures.md` holds each safety gate's
+cause and fix once, for a push and a tag alike. Every skill's description
+quotes its trigger phrases, the six workflow skills number their steps and
+end on a hand-off naming the next skill, `inno-new-app`'s intake asks seven
+questions and states the type, pattern and stack as recommendations,
+`inno-migrate-app` registers by `inno-new-app` §3 and keeps only what a
+migration changes, and the Version gate every skill opens with is written
+from one source (`scripts/version-gate.md`) and checked in CI. The
+per-release history moved from the README to this file. In
+`inno-convert-artifact`'s starter, `npm run dev` (`app/dev/serve.mjs`, with
+the new `app/dev/wrangler-config.mjs` it reads) now serves only its own
+Worker and lives as long as it does: wrangler dev runs on a free port of its
+own (or `DEV_WORKER_PORT`) in a process group of its own, the proxy forwards
+nothing until that port answers with a token made for the run, startup fails
+when the Worker cannot start or another process holds its port, the proxy
+closes when wrangler dev exits, and Ctrl-C stops everything; `DEV_PORT` moves
+the proxy from 8787, so two apps can run at once. `app/ui/storage-shim.ts`
+gives every request a 30-second deadline, never sends one again by itself,
+and fails with a `RequestError` whose kind (`signed_out`, `refused`,
+`unavailable`, `timeout` or `network`) and message a page can show, marking a
+write whose answer was lost as possibly stored; an artifact's own
+`window.storage` calls keep working and still reject with an `Error` naming
+the app's reason. `app/ui/AppBar.tsx` puts "Signed in as" before the address
+for screen readers, shows a failed read with Try again, and offers to sign in
+again once the session has ended; the placeholder `app/ui/Artifact.tsx` shows
+the loading, failed-read, saving and failed-save states; `app/storage.ts` and
+`app/index.ts` declare `Env` once, with no change in behavior. The skill's
+dev-server, app-bar and storage-error guidance follows the new starter, and
+an HTML conversion's own `app/ui/app-bar.ts` now does what `AppBar.tsx` does.
+Anyone who converted an artifact on plugin 6.2.0 to 7.3.4 should copy
+`app/dev/serve.mjs` with `app/dev/wrangler-config.mjs`, and
+`app/ui/storage-shim.ts` with `app/ui/AppBar.tsx` (then replace `APP_TITLE`
+in it again), from the starter into their repository; saved data is
+unchanged.

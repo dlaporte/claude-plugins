@@ -84,7 +84,10 @@ over unchanged, and the scripts move.
    element, with a Try again button, and keeps the sign-out link; once the
    session has ended (a `RequestError` of kind `signed_out`, or the shim's
    `SIGNED_OUT` event on `window`), it says so with a Sign in again link to
-   the page itself instead. A caller with no address sees neither link.
+   the page itself instead, at the address the shim's `signInAddress()`
+   builds (pathname plus search, never the fragment: a link that keeps a
+   `#main` fragment only scrolls). A caller with no address sees neither
+   link.
 8. **Title.** The page's `<title>` is the one in `app/index.ts`
    (`APP_TITLE`); the artifact's own `<title>` goes there.
 
