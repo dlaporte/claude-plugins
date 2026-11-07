@@ -139,8 +139,8 @@ jobs:
           set -euo pipefail
           bash scripts/check-tool-names.sh plugins/innovation-platform
 
-      # Against scripts/snow-tools.txt, snow-mcp's tool names at the release
-      # its header names.
+      # Against scripts/snow-tools.txt, snow-mcp's tool names pinned at a
+      # release (its header says how it was written).
       - name: The servicenow plugin names only tools snow-mcp serves, and all of them
         run: |
           set -euo pipefail
