@@ -355,6 +355,22 @@ provider's discovery document for how the platform authenticates at its token
 endpoint, and a directory named without its secret shows a red dot on the
 panel's Status card. No tool changed; the floor stays 6.0.0.
 
+## 6.2.0
+
+Plugin 6.2.0 adds `inno-convert-artifact`, which turns a Claude artifact
+(React or HTML) into a function app whose browser interface the platform's
+CI builds from `app/ui/` (contract §1.1, Browser interface, from platform
+v0.17.24). The skill gets the artifact's source, inventories what claude.ai
+provided (libraries, `window.storage`, `window.claude`), plans and gets
+approval, registers through `inno-new-app`'s steps, then builds the app from
+a starter: a Worker serving the page and hashed assets under a strict
+Content-Security-Policy, `/api/me` for the sign-out bar, and `/api/storage`,
+a D1-backed `window.storage` with personal and shared scopes, same-origin
+POST only, bounded keys and values. Local runs use `app/dev/` (CI's build
+shape, and a proxy that adds stand-in identity headers). `window.claude` is
+not supported. `inno-new-app` and `inno-migrate-app` point an artifact to
+it, and the README counts ten skills.
+
 ## 7.0.0
 
 Plugin 7.0.0 follows platform v0.18.0, contract 41, which learns who may
@@ -562,7 +578,7 @@ long procedures moved into references that each heading points at
 `notifications.md` and `deactivation.md`; fleet-admin's
 `references/admin-standing.md`, `scim.md`, `transfer.md`, `offboarding.md`
 and `admin-notifications.md`), each heading naming the stops its reference
-holds, so a task loads 24 to 44 percent less text.
+holds, so a task loads 23.5 to 44 percent less text.
 `inno-safety-preflight/references/gate-failures.md` holds each safety gate's
 cause and fix once, for a push and a tag alike. Every skill's description
 quotes its trigger phrases, the six workflow skills number their steps and
@@ -593,7 +609,11 @@ the loading, failed-read, saving and failed-save states; `app/storage.ts` and
 dev-server, app-bar and storage-error guidance follows the new starter, and
 an HTML conversion's own `app/ui/app-bar.ts` now does what `AppBar.tsx` does.
 Anyone who converted an artifact on plugin 6.2.0 to 7.3.4 should copy
-`app/dev/serve.mjs` with `app/dev/wrangler-config.mjs`, and
-`app/ui/storage-shim.ts` with `app/ui/AppBar.tsx` (then replace `APP_TITLE`
-in it again), from the starter into their repository; saved data is
-unchanged.
+`app/dev/serve.mjs` with `app/dev/wrangler-config.mjs` and
+`app/ui/storage-shim.ts` from the starter into their repository, and then,
+for a React conversion, copy `app/ui/AppBar.tsx` too (and replace
+`APP_TITLE` in it again), or, for an HTML conversion, which has its own
+`app/ui/app-bar.ts` in place of that file, bring the bar up to
+`references/html-artifacts.md`'s step 7 (the signed-in address through the
+shim's `send()`, the failed read with Try again, and Sign in again at
+`signInAddress()`); saved data is unchanged.
