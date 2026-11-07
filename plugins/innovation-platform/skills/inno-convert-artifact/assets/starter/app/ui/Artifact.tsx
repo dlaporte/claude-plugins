@@ -5,12 +5,13 @@
 // under way; that one failed, never shown as a count of zero; that a save is
 // in flight, its button disabled until it ends, so clicks meanwhile send
 // nothing; and, after a failure, a next step the person chooses: read again,
-// sign in again, or, when a save's answer was lost, read the count before
-// saving again. Nothing is sent again by itself. window.storage.set replaces
-// a value; it is not an atomic increment, so two people adding to the shared
-// count at the same moment can both save the same number.
+// sign in again, or, when a save's answer was lost, read the count again,
+// its button held until then, since the count it shows may be stale. Nothing
+// is sent again by itself. window.storage.set replaces a value; it is not an
+// atomic increment, so two people adding to the shared count at the same
+// moment can both save the same number.
 import { useCallback, useEffect, useRef, useState } from "react";
-import type { RequestError } from "./storage-shim";
+import { type RequestError, signInAddress } from "./storage-shim";
 
 type Count = { state: "loading" } | { state: "ready"; value: number } | { state: "failed"; error: RequestError };
 
@@ -60,7 +61,7 @@ function Counter({ label, shared }: { label: string; shared: boolean }) {
   return (
     <div className="space-y-2">
       {count.state === "ready" && (
-        <button type="button" className="rounded bg-blue-700 px-4 py-2 text-white disabled:opacity-60" disabled={saving} onClick={add}>
+        <button type="button" className="rounded bg-blue-700 px-4 py-2 text-white disabled:opacity-60" disabled={saving || saveError?.outcomeUnknown === true} onClick={add}>
           {label}: {count.value}
         </button>
       )}
@@ -72,7 +73,7 @@ function Counter({ label, shared }: { label: string; shared: boolean }) {
           </p>
         )}
         {error?.kind === "signed_out" ? (
-          <a href={window.location.href} className="underline">
+          <a href={signInAddress()} className="underline">
             Sign in again
           </a>
         ) : count.state === "failed" ? (

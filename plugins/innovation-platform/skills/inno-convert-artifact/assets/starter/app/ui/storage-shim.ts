@@ -25,6 +25,16 @@ export const REQUEST_TIMEOUT_MS = 30_000;
 export const SIGNED_OUT = "app:signed-out";
 
 /**
+ * Where a Sign in again link points: this page, without its fragment.
+ * Loading it sends the person through the platform's sign-in and back here;
+ * a link to the same address with a fragment (after Skip to content, say)
+ * only scrolls, and loads nothing.
+ */
+export function signInAddress(): string {
+  return window.location.pathname + window.location.search;
+}
+
+/**
  * signed_out: the session has ended (401); loading the page signs in again.
  * refused: the app turned the request down (another 4xx) and changed nothing.
  * unavailable: the app could not answer just now (5xx, 408, 429).

@@ -7,7 +7,7 @@
 // the page, which the platform sends through its sign-in. A caller with no
 // address, such as a public app's visitor, sees neither.
 import { useCallback, useEffect, useState } from "react";
-import { RequestError, SIGNED_OUT, send } from "./storage-shim";
+import { RequestError, SIGNED_OUT, send, signInAddress } from "./storage-shim";
 
 type Me =
   | { state: "checking" }
@@ -62,7 +62,7 @@ export default function AppBar() {
           </button>
         )}
         {ended && (
-          <a href={window.location.href} className="underline">
+          <a href={signInAddress()} className="underline">
             Sign in again
           </a>
         )}
