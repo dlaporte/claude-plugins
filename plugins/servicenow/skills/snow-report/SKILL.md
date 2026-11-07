@@ -30,15 +30,15 @@ numbers, `query_records` for the rows behind them. Operator syntax is in
 **Counts are not readable rows.** snow-mcp asks ServiceNow as the user and
 scopes nothing itself: the rows a call returns are the ones the user's ACLs
 let them read, while `total_matching` (in a `query_records` result) and
-every `aggregate_stats` figure are ServiceNow's counts of matching records,
-which may include records the user cannot read (the server does not
-establish which). Never present a count as the number of records the user
-can read. To tell, when `total_matching` is 500 or less, run the query
+every `aggregate_stats` figure are ServiceNow's, computed over the matching
+records, which may include records the user cannot read (the server does
+not establish which). Never present a count as the number of records the
+user can read. To tell, when `total_matching` is 500 or less, run the query
 again with a `limit` of at least `total_matching`: the page then holds the
 whole match, and a `count` below `total_matching`, or an `aggregate_stats`
-count above that `count`, means the counts include records the user cannot
-read; say so. A null `total_matching` means the instance sent no count: say
-the total is unknown.
+count above that `count`, means those figures include records the user
+cannot read; say so. A null `total_matching` means the instance sent no
+count: say the total is unknown.
 
 - For "how many", quote `total_matching` or the `aggregate_stats` count,
   not the page length, and call it the number of matching records.
