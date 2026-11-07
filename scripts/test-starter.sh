@@ -37,7 +37,9 @@
 # Usage: bash scripts/test-starter.sh [--relock] [starter app directory]
 #   (default plugins/innovation-platform/skills/inno-convert-artifact/assets/starter/app)
 # Another starter directory runs the suite against that copy, such as a past
-# release's, to show a test failing before its fix.
+# release's, to show a test failing before its fix. The suite reads the
+# starter's dev/wrangler-config.mjs and imports Env from its storage.ts, so it
+# runs against the starter of innovation-platform 7.4.0 or later.
 # Exits 0 when the build, the type check and every test pass.
 set -euo pipefail
 here="$(cd "$(dirname "$0")" && pwd)"

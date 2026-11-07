@@ -257,8 +257,10 @@ describe("the placeholder artifact's states (R11)", () => {
       const page = open(app({ storage: (c) => (c.op === "set" ? fail() : c.body.shared ? count(0, true) : read()) }));
       await until(() => control(mine(page), "Mine:"), "count");
       control(mine(page), "Mine:").click();
-      await until(() => status(mine(page)) === "Saving.", "saving status");
-      if (expire) page.expire();
+      if (expire) {
+        await until(() => status(mine(page)) === "Saving.", "saving status");
+        page.expire();
+      }
       await until(() => alert(mine(page)).includes("may have been saved"), "lost save");
       await sleep(100);
       assert.equal(storageCalls(page, "set").length, 1, "the save was sent again");
@@ -288,7 +290,11 @@ describe("the page against the starter's own Worker", () => {
   test("signs in, reads, saves and reads back each person's count and the shared one through the storage route", async () => {
     const w = await start("index.ts");
     try {
-      const as = (subject) => (c) => w.fetch(c.path, { method: c.method, headers: { ...(c.init.headers ?? {}), ...person(subject) }, body: c.init.body });
+      const as = (subject) => (c) => {
+        const headers = new Headers(c.init.headers);
+        for (const [name, value] of Object.entries(person(subject))) headers.set(name, value);
+        return w.fetch(c.path, { method: c.method, headers, body: c.init.body });
+      };
       const first = open(as("alice"));
       await until(() => text(bar(first)).includes("Signed in as alice@example.edu"), "address", 15_000);
       await until(() => control(mine(first), "Mine: 0"), "count", 15_000);

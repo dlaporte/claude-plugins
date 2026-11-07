@@ -3,15 +3,8 @@
 // few routes the tests use to set up and read the database. Everything else
 // is the real local D1. Only the suite starts it (harness.mjs); it never ships.
 import { currentUser } from "../identity";
+import type { Env } from "../storage";
 import * as storage from "../storage";
-
-// The starter's body limit, read by name so the suite still builds against a
-// starter that does not export it (7.3.3's): it is then null.
-const MAX_BODY_BYTES = (storage as unknown as Record<string, unknown>).MAX_BODY_BYTES ?? null;
-
-interface Env {
-  DATA: D1Database;
-}
 
 // The headers the starter passes as its security headers, so a test can see
 // that an answer carries the app's own.
@@ -92,7 +85,7 @@ export default {
         fail = { prefix: q("sql"), remaining: Number(q("n") || 1) };
         return Response.json({ ok: true });
       case "/__stats":
-        return Response.json({ creates, statements, maxBodyBytes: MAX_BODY_BYTES });
+        return Response.json({ creates, statements, maxBodyBytes: storage.MAX_BODY_BYTES });
       case "/__reset":
         creates = 0;
         statements = 0;

@@ -407,7 +407,7 @@ describe("the proxy lives as long as its own Worker, and serves no other (R02)",
       const answers = await watch(run, port, 70_000);
       await failedCleanly(run, [port]);
       assert.ok(!answers.some((a) => String(a).includes(OTHER)), `the proxy served the other process: ${answers.join(" | ")}`);
-      assert.match(run.output, /not this run's Worker/);
+      assert.match(run.output, /not as this run's Worker/);
     } finally {
       await end(run);
       other.close();
