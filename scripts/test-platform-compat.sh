@@ -200,8 +200,13 @@ compat() {
   left "$dir"
   return "$rc"
 }
+# Both refusals end by naming the preview command and the two files it
+# writes, so a reader of either repository lands on the right command.
+preview_hint() {
+  echo "run bash scripts/platform-compat.sh --preview $platform $1, which writes scripts/platform-compat.preview.json and scripts/platform-tools.preview.txt (git ignores both) and leaves the committed pin alone."
+}
 not_a_release() {
-  echo "platform-compat: $1 is not a release tag (v and a plain MAJOR.MINOR.PATCH triple), and only a release is pinned. To check a commit before its release, run: bash scripts/platform-compat.sh --preview $platform $1"
+  echo "platform-compat: $1 is not a release tag (v and a plain MAJOR.MINOR.PATCH triple), and only a release is pinned. To check a commit before its release, $(preview_hint "$1")"
 }
 first_pin="platform-compat: no previous pin (scripts/platform-compat.json did not exist), so there is nothing to compare"
 facts="5 tools, contract 1, app plugin floor 1.0.0"
@@ -224,7 +229,7 @@ expect "a raw commit SHA is not pinned" 2 "$(not_a_release "$head"; echo "files:
 expect "a tag of another form is not pinned" 2 "$(not_a_release v1.0.16-rc.1; echo "files:")" \
   compat "$(fresh)" "$platform" v1.0.16-rc.1
 expect "a release tag's form that is not a tag in the checkout is not pinned" 2 "$(
-  echo "platform-compat: v1.0.99 is not a tag in $platform. Fetch it first (git -C $platform fetch origin tag v1.0.99); a commit before its release runs with --preview."
+  echo "platform-compat: v1.0.99 is not a tag in $platform. Fetch it first (git -C $platform fetch origin tag v1.0.99); to check a commit before its release, $(preview_hint "<commit>")"
   echo "files:"
 )" compat "$(fresh)" "$platform" v1.0.99
 expect "no arguments" 2 "$(
