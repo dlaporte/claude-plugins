@@ -53,16 +53,13 @@ front door's headers), migration is just: `register_app`, commit the proof file 
 names, install the platform GitHub App on the repo, and `register_app` again. If it's an **arbitrary app** not written for the platform, you
 assess it, then adapt it in place before shipping.
 
-Requires the `inno-platform` MCP server (ships with this plugin). The first tool
-call triggers a browser sign-in through your organization's identity
-provider: expected, not an error.
+The first `inno-platform` tool call triggers a browser sign-in through your
+organization's identity provider, which is expected; a connector authorized
+only after this session started needs a session restart before its tools
+appear.
 
-**Asking a platform admin.** Where this skill sends the user to a platform
-admin (a guardrails exception, a higher app limit, a fix on the platform's
-side), the request goes to the contact the platform names: the `Support:`
-line of the status you read in the Version gate, when it has one.
-`inno-manage-app`'s **Asking a platform admin** is the one home for that
-rule.
+A request for a platform admin goes where `inno-manage-app`'s **Asking a
+platform admin** says.
 
 ## Phase 1: Assess (read-only; register nothing yet)
 

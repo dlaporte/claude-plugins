@@ -43,15 +43,12 @@ function app with a browser interface and keeps its saved data.
 Creates a new Innovation Platform app end to end: intake -> the user creates a
 repo **they own** from the platform template -> `register_app` (first call)
 -> commit the proof-of-control file it names + install the platform GitHub App
--> `register_app` (second call) provisions + binds it -> pull + scaffold. Requires the
-`inno-platform` MCP server (ships with this plugin's `.mcp.json`) to be
-connected. The first call to any `inno-platform` tool triggers a browser
-sign-in through your organization's identity provider. That's expected, not an
-error: wait for it to complete. **If the
-connector wasn't already authorized when the session started, waiting isn't
-enough**: mid-session authorization alone does not expose the tools (the MCP
-client enumerates tools at startup); the user must authorize it AND you must
-restart the session before calling any `inno-platform` tool.
+-> `register_app` (second call) provisions + binds it -> pull + scaffold.
+
+The first `inno-platform` tool call triggers a browser sign-in through your
+organization's identity provider, which is expected; a connector authorized
+only after this session started needs a session restart before its tools
+appear.
 
 **The repo is the USER's.** There is no platform-owned repo model anymore. The
 repo lives in the user's **own** account or org, created from the instance's public
@@ -79,12 +76,8 @@ product names unless they have shown technical fluency. The full rule is the
 plugin README's **House style** section, and it applies to every user-facing
 sentence in this flow.
 
-**Asking a platform admin.** Where this skill sends the user to a platform
-admin (a guardrails exception, a higher app limit, registration turned back
-on), the request goes to the contact the platform names: the `Support:` line
-of the status you read in the Version gate, when it has one.
-`inno-manage-app`'s **Asking a platform admin** is the one home for that
-rule.
+A request for a platform admin goes where `inno-manage-app`'s **Asking a
+platform admin** says.
 
 ## 1. Intake: ask the user for five things
 

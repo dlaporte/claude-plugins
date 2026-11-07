@@ -44,9 +44,10 @@ accounts. This skill walks through recognizing when that's what you need,
 figuring out how the backend signs people in, setting the Connection up, and
 wiring the app's code to use it.
 
-Requires the `inno-platform` MCP server (ships with this plugin's `.mcp.json`).
-If this is the first call against it this session, expect a browser sign-in
-through your organization's identity provider; that's expected, not an error.
+The first `inno-platform` tool call triggers a browser sign-in through your
+organization's identity provider, which is expected; a connector authorized
+only after this session started needs a session restart before its tools
+appear.
 
 **Read the contract's Connections section before you start:** call
 `get_app_contract` with `sections: ["2.2"]`. §2.2 is the
@@ -71,13 +72,10 @@ paste in." Never "OAuth," "PKCE" or "client secret." Those words are fine in
 your own reasoning and in the tool calls you make, just not in the sentences
 you say back to a non-technical user.
 
-**Asking a platform admin.** Where this skill sends the user to a platform
-admin (the platform's encryption key, or its own Connections setup), the
-request goes to the contact the platform names: the `Support:` line of the
-status you read in the Version gate, when it has one. `inno-manage-app`'s
-**Asking a platform admin** is the one home for that rule. A request to
-the backend's own administrators (for a registered client, say) is not
-one of these.
+A request for a platform admin goes where `inno-manage-app`'s **Asking a
+platform admin** says.
+A request to the backend's own administrators (for a registered client, say)
+is not such a request.
 
 **No catalog, no steering.** This skill doesn't maintain or suggest a list of
 backends. If the target is a big enterprise service that already has its own

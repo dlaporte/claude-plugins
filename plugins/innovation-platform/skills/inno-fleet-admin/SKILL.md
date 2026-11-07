@@ -236,7 +236,7 @@ Before calling it:
   owner's ready notice (or the app's Data exports card on the panel), then
   purge. Its member list goes too, and no import can rebuild it: only
   the nightly database dumps and any `export_platform_backup` snapshot hold
-  it. This bullet is the plugin's one home for that rule.
+  it. This bullet is the plugin's one home for it.
 - **Name the consumers.** It revokes every data link touching the app, in
   both directions, and an app that READS this one's database and files keeps
   bindings to them that now fail; the platform rebuilds a function-shaped

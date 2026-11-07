@@ -49,15 +49,13 @@ share link).
 user up front: further edits to the original artifact on claude.ai do not
 reach the app, and changes are made in the repository from then on.
 
-Requires the `inno-platform` MCP server (ships with this plugin). The first tool
-call triggers a browser sign-in through your organization's identity
-provider: expected, not an error.
+The first `inno-platform` tool call triggers a browser sign-in through your
+organization's identity provider, which is expected; a connector authorized
+only after this session started needs a session restart before its tools
+appear.
 
-**Asking a platform admin.** Where this skill sends the user to a platform
-admin, the request goes to the contact the platform names: the `Support:`
-line of the status you read in the Version gate, when it has one.
-`inno-manage-app`'s **Asking a platform admin** is the one home for that
-rule.
+A request for a platform admin goes where `inno-manage-app`'s **Asking a
+platform admin** says.
 
 ## 1. Check the platform builds browser interfaces
 
