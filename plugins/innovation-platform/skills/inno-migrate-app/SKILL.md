@@ -160,9 +160,10 @@ order:
 4. **Contract deltas**: listens on 8080, serves `/healthz`, runs non-root,
    patched base image (container; see `inno-containerize`); app code arranged
    under `app/`; a root `CLAUDE.md` carrying the platform's required section
-   headers (config-integrity checks them; which guide to start from, and how
-   to merge it into a `CLAUDE.md` the repo already has, is `inno-new-app`'s
-   `references/hand-authored-layout.md`). The repo's **default branch** needs no
+   headers, which `config-integrity` (shown as Config integrity) checks (which
+   guide to start from, and how to merge it into a `CLAUDE.md` the repo
+   already has, is `inno-new-app`'s `references/hand-authored-layout.md`). The
+   repo's **default branch** needs no
    special handling: registration's scaffold prune and the `deploy.yml` that
    `register_app` returns both target the repo's actual default branch,
    whatever it is named, and `inno-safety-preflight` and
@@ -180,10 +181,10 @@ order:
    repository, not just `app/`**: root-level scripts, tools, workflow files
    and the Dockerfile all count, so a migrated repo's non-app files can fail
    the gate too. R8 states the exact scope, and what it skips. Then list every path
-   the `config-integrity` gate rejects. That list has one home too,
-   `inno-platform-conventions`' **Files you must not touch** section; walk it
-   against this repo and note every hit. The three that catch migrated repos
-   most often:
+   `config-integrity` (shown as Config integrity) rejects. That list has one
+   home too, `inno-platform-conventions`' **Files you must not touch**
+   section; walk it against this repo and note every hit. The three that catch
+   migrated repos most often:
    - **anything under a repo-root `src/`**, which a repo whose code lives
      there must move, for example to `app/src/` (updating the Dockerfile's
      `COPY` paths);
@@ -206,8 +207,8 @@ order:
    `deploy.yml`, often a live pipeline to another host with its own secrets,
    has to be renamed (for example to `legacy-deploy.yml`) or retired, and that
    is the user's decision. Any workflow that passes `secrets: inherit` also
-   fails the `sast` gate; the fix is to drop the line or pass only the named
-   secrets that workflow needs.
+   fails `sast` (shown as SAST (semgrep)); the fix is to drop the line or pass
+   only the named secrets that workflow needs.
 
    Also list every `.semgrepignore` file and `# nosemgrep` comment in the repo.
    The `sast` gate honors neither (R8), so whatever they hid becomes a
@@ -426,9 +427,10 @@ restore point is.
      `inno-platform-conventions`' **Accessibility** section and **Response
      headers** paragraph.
 4. **Secrets in history**: because this is the same repo, a credential in any
-   past commit still trips the `secrets` gate. Rotate it first (a history
-   rewrite alone doesn't un-leak it), then, before shipping, either remove it
-   from the history or record its finding's fingerprint in `.gitleaksignore`,
+   past commit still trips `secrets` (shown as Secret scan (gitleaks)). Rotate
+   it first (a history rewrite alone doesn't un-leak it), then, before
+   shipping, either remove it from the history or record its finding's
+   fingerprint in `.gitleaksignore`,
    as §1's **Gate risks** and the `secrets` row of
    `inno-safety-preflight`'s `references/gate-failures.md` say; never
    delete the file in a new commit, which leaves the secret in the old one.

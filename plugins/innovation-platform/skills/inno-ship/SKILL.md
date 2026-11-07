@@ -61,8 +61,9 @@ test -f app/.needs-build && echo "BLOCKED: app/.needs-build present, build the a
 ```
 
 For a function-shaped app (`function`, `mcp-function`), also confirm the
-lockfile. The push checks do catch its absence, in the `app-build` job; the
-rule they enforce is `inno-platform-conventions`' **Node apps** paragraph.
+lockfile. The push checks do catch its absence, in
+`app-build` (shown as Build the app Worker); the rule they enforce is
+`inno-platform-conventions`' **Node apps** paragraph.
 Check it here anyway, as belt, to save a round trip through CI:
 
 ```bash
@@ -129,13 +130,18 @@ git push origin HEAD
 Between the `git add -A` and the commit, run the **symlink check** from
 `inno-safety-preflight` §2. It has one copy in this plugin and lives there;
 a committed directory link, dangling link or link out of the repository
-fails `config-integrity` with no policy toggle, and the check has to run
-after `git add -A` so the index covers both already-tracked links and the
-ones you are about to commit.
+fails `config-integrity` (shown as Config integrity) with no policy toggle,
+and the check has to run after `git add -A` so the index covers both
+already-tracked links and the ones you are about to commit.
 
-This runs the eight gate jobs (`config-integrity`, `secrets`, `sast`, `deps`,
-`dep-age`, `container`, `scaffold-check`, `app-build`) plus the `policy` fetch
-that resolves the admin gate configuration, and then **stops**: the deploy
+This runs the eight gate jobs, `config-integrity` (shown as Config integrity),
+`secrets` (shown as Secret scan (gitleaks)), `sast` (shown as SAST (semgrep)),
+`deps` (shown as Dependency audit), `dep-age` (shown as Dependency cooldown),
+`container` (shown as Container contract and image scan),
+`scaffold-check` (shown as Scaffold check) and
+`app-build` (shown as Build the app Worker), plus
+`policy` (shown as Gate policy), the fetch that resolves the admin gate
+configuration, and then **stops**: the deploy
 job runs only on release tags. The `container` job's steps are skipped for
 `function` and `mcp-function` apps, which have no image to build, and the
 job reports success, so do not count it as a check that ran; for them
@@ -147,8 +153,9 @@ Watch with
 as `inno-safety-preflight` §2 says. If a gate fails, follow the failure guidance below and re-push;
 never tag on top of red checks.
 
-The `container` job also writes the accessibility, response-header and
-Dockerfile reports; `inno-safety-preflight` §1c says where they are and how
+`container` (shown as Container contract and image scan) also writes the
+accessibility, response-header and Dockerfile reports; `inno-safety-preflight`
+§1c says where they are and how
 to read them. In the default `report` mode their findings never block a
 push or a tag, so do not hold a release for them, and do not read a green
 `container` job as a clean report either. Only when an admin has set the
@@ -213,23 +220,28 @@ The exception: before any fix that moves, deletes or replaces the user's
 files, or edits anything under `.github/workflows/`, show the user the change
 and ask first, whether or not a row says so.
 
-A gate job's failure (`config-integrity`, `secrets`, `sast`, `deps`,
-`dep-age`, `container`, `app-build` or `policy`) is read and fixed the same on a
-tag as on a push: its row is in `inno-safety-preflight`'s
+A gate job's failure, in `config-integrity` (shown as Config integrity),
+`secrets` (shown as Secret scan (gitleaks)), `sast` (shown as SAST (semgrep)),
+`deps` (shown as Dependency audit), `dep-age` (shown as Dependency cooldown),
+`container` (shown as Container contract and image scan),
+`app-build` (shown as Build the app Worker) or
+`policy` (shown as Gate policy), is read and fixed the same on a tag as on a
+push: its row is in `inno-safety-preflight`'s
 `references/gate-failures.md`. The table below is a release tag's own
 failures.
 
 | Failing job | Likely cause | Fix via |
 |---|---|---|
-| `scaffold-check` fails with `Nothing deployed` (a release tag's run only) | `app/.needs-build`, the untouched scaffold's marker, is still in the repository, so the tag deploys nothing. On a push it is not a failure: the job skips `deploy` quietly while the marker exists (see §0) | build the app and delete the marker once `app/` holds real code (§0), push, confirm the gates are green, then cut the next patch tag |
-| `deploy` fails with `app_stopped`, or a container app's `container` job fails at `SBOM upload failed` naming it | the app was stopped by the lifecycle (or deliberately), and **stopped apps cannot be deployed**. Only a release tag's run fails this way (a container app's at its `container` job's SBOM upload, before `deploy` runs); a push to the default branch still runs every gate green on a stopped app, so a clean preflight is not evidence that the app can deploy | `inno-manage-app`: `start_app` first, then cut the next patch tag |
-| `deploy` fails at finalize with `script_rejected` (function-shaped apps; the `Finalize deployment` step logs `deploy-complete failed (409): script_rejected: Cloudflare refused the Worker upload (HTTP <status>): <reason>`, the reason Cloudflare's own codes and messages, read whole from up to 2000 characters of its answer) | Cloudflare refused the Worker upload, most often for an error the app's code throws as it starts (at module top level, outside `fetch`), or for a Worker over Cloudflare's own size limit after compression. A 400 can also be the platform's side: a binding whose database or file storage was deleted outside the platform, which the reason names. Nothing went live, and the app keeps serving its previous version | read the reason on that line. If it is about the app's code, fix the code, push, confirm the gates are green, then cut the next patch tag. If it names a database or file storage binding, change nothing in the app: tell the user in one plain sentence that the platform could not finish this deploy and that their platform admin needs to look at it, then offer a support bundle. If it is about neither, re-run the whole tag run once (`gh run rerun <run-id>`); if it repeats, stop and offer a support bundle |
-| `deploy` fails with `app_not_deployable` | the app was stopped, or its repo lost the platform GitHub App, while this deploy was starting | if the repo was unlinked, have the user reinstall the GitHub App on it first (re-linking leaves the app stopped); then `start_app` (`inno-manage-app`) and cut the next patch tag |
-| `deploy` fails at finalize with `app_not_deploying` | the app was stopped or purged while the deploy ran; nothing went live. (A newer deploy of the app started meanwhile answers `deployment_not_completable` instead, which `references/deploy-failures.md` covers: never re-run the older release on its own) | `app_status` to see which; if stopped, `start_app`, then cut the next patch tag |
+| `scaffold-check` (shown as Scaffold check) fails with `Nothing deployed` (a release tag's run only) | `app/.needs-build`, the untouched scaffold's marker, is still in the repository, so the tag deploys nothing. On a push it is not a failure: the job skips `deploy` quietly while the marker exists (see §0) | build the app and delete the marker once `app/` holds real code (§0), push, confirm the gates are green, then cut the next patch tag |
+| `deploy` (shown as Deploy) fails with `app_stopped`, or, for a container app, `container` (shown as Container contract and image scan) fails at `SBOM upload failed` naming it | the app was stopped by the lifecycle (or deliberately), and **stopped apps cannot be deployed**. Only a release tag's run fails this way (a container app's at its `container` job's SBOM upload, before `deploy` runs); a push to the default branch still runs every gate green on a stopped app, so a clean preflight is not evidence that the app can deploy | `inno-manage-app`: `start_app` first, then cut the next patch tag |
+| `deploy` (shown as Deploy) fails at finalize with `script_rejected` (function-shaped apps; the `Finalize deployment` step logs `deploy-complete failed (409): script_rejected: Cloudflare refused the Worker upload (HTTP <status>): <reason>`, the reason Cloudflare's own codes and messages, read whole from up to 2000 characters of its answer) | Cloudflare refused the Worker upload, most often for an error the app's code throws as it starts (at module top level, outside `fetch`), or for a Worker over Cloudflare's own size limit after compression. A 400 can also be the platform's side: a binding whose database or file storage was deleted outside the platform, which the reason names. Nothing went live, and the app keeps serving its previous version | read the reason on that line. If it is about the app's code, fix the code, push, confirm the gates are green, then cut the next patch tag. If it names a database or file storage binding, change nothing in the app: tell the user in one plain sentence that the platform could not finish this deploy and that their platform admin needs to look at it, then offer a support bundle. If it is about neither, re-run the whole tag run once (`gh run rerun <run-id>`); if it repeats, stop and offer a support bundle |
+| `deploy` (shown as Deploy) fails with `app_not_deployable` | the app was stopped, or its repo lost the platform GitHub App, while this deploy was starting | if the repo was unlinked, have the user reinstall the GitHub App on it first (re-linking leaves the app stopped); then `start_app` (`inno-manage-app`) and cut the next patch tag |
+| `deploy` (shown as Deploy) fails at finalize with `app_not_deploying` | the app was stopped or purged while the deploy ran; nothing went live. (A newer deploy of the app started meanwhile answers `deployment_not_completable` instead, which `references/deploy-failures.md` covers: never re-run the older release on its own) | `app_status` to see which; if stopped, `start_app`, then cut the next patch tag |
 
 The rarer `deploy` and broker failures and warnings, each with its fix, are
 in `references/deploy-failures.md`. Read it when the run shows any of
-these: a tag run's `container` job failing at `SBOM upload failed`;
+these: a tag run's `container` (shown as Container contract and image scan)
+failing at `SBOM upload failed`;
 `No scanned image recorded`; `Image mismatch` or `image_mismatch`;
 a `deploy-token failed` line with no answer in 30 seconds, naming `oidc_invalid` or another 5xx, or naming `app_not_ready`, `image_not_recorded`,
 `link_invalid`, `link_source_missing` or `app_busy`, or, for a container
@@ -249,16 +261,16 @@ platform` step, or its `deploy-complete failed` line naming
 on a platform before v0.18.11);
 a `deploy-complete failed (500)` line, or `deploy-complete failed: no answer
 within 540 s`;
-`policy` failing with `Platform refused this app` (on a push or a tag: the
-line names `app_mismatch`, with the app this repository is registered as
-and the line to fix, or `repo_unlinked`) or with `Invalid app name`, or
-warning `Gate policy unavailable`;
+`policy` (shown as Gate policy) failing with `Platform refused this app` (on a
+push or a tag: the line names `app_mismatch`, with the app this repository is
+registered as and the line to fix, or `repo_unlinked`) or with
+`Invalid app name`, or warning `Gate policy unavailable`;
 a tag run's `deploy-sbom failed (403)` or `deploy-token failed (403)` line
 naming `repo_unlinked` (an unlink after the `policy` job passed); or the
 deploy job's last step ending in an `App not released` warning.
 
-**A failed release releases the app at once.** When the `deploy` job fails
-after the platform started the deployment (a finalize refusal, a failed
+**A failed release releases the app at once.** When `deploy` (shown as Deploy)
+fails after the platform started the deployment (a finalize refusal, a failed
 image push or bundle hand-over, any failure after the token), its last
 step, `Release the app after a failed deploy`, asks the platform to undo
 that start and ends in one line. `App released` (a notice): the platform
@@ -291,7 +303,8 @@ false-positive `secrets` finding is waived by its fingerprint in a
 
 #### Moving a devDependency into dependencies
 
-When `app-build` reports `devDependency imported at runtime` for a package,
+When `app-build` (shown as Build the app Worker) reports
+`devDependency imported at runtime` for a package,
 that package's entry moves from `devDependencies` to `dependencies` exactly
 as it stands, specifier and locked version unchanged. The error's own
 `Move it:` line carries the command, with the package already named. Read
@@ -436,9 +449,9 @@ cache, such as macOS `mDNSResponder`) for minutes. The app then looks broken
 to the user long after it went live, and it won't self-correct until each
 cache's negative TTL expires or someone flushes it by hand.
 
-The `deploy` job's success or failure and the `app_status` MCP tool's
-deployment timestamp are the authoritative, side-effect-free signals: use
-those. If the user wants to see the app for themselves, let them visit it
+The success or failure of `deploy` (shown as Deploy) and the `app_status` MCP
+tool's deployment timestamp are the authoritative, side-effect-free signals:
+use those. If the user wants to see the app for themselves, let them visit it
 in their own browser; don't pre-check it for them.
 
 ### Right after a deploy, health may read `re-probe pending`, which is not a verdict

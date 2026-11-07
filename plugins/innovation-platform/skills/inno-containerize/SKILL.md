@@ -50,8 +50,9 @@ mcp-container app). R1, R2, R7 and R8 state exactly the rules this skill
 applies, §4.1 is the base-image policy, and the answer opens with the
 platform's current digest-pinned recommended base images.
 
-The `container` CI job builds your Dockerfile with **no deploy credentials
-present** (an app author fully controls this build's inputs, and nothing of
+The CI job `container` (shown as Container contract and image scan) builds
+your Dockerfile with **no deploy credentials present** (an app author fully
+controls this build's inputs, and nothing of
 platform value is reachable from it), then runs four checks: a Trivy image
 scan, a non-root-user assertion, an `EXPOSE 8080` assertion, and a
 **`GET /healthz` smoke test** against the built image. Every check that runs
@@ -149,15 +150,15 @@ base to the digest `get_app_contract` serves.
    that waits on storage is not. Never stub it as a TODO.
 5. **Keep build inputs where the gates allow them.** Put the app's code and
    manifests under `app/` (an `app/src/` is fine); a repo-root `src/` is
-   platform-owned and the `config-integrity` gate fails any file in it. The
-   two that bite a Dockerfile author specifically: never commit a `.npmrc`
-   anywhere, `app/.npmrc` included, even for a container build that would use
-   it, and never commit a symlink that points at a **directory**, anywhere in
-   the repo, dangling ones included, or at a file outside the repository (a
-   link to a *file* inside the repository is fine). Copy the real directory
-   or file in, or produce it during the image build. The full
-   forbidden-path list is R7; the plugin's copy, with the reason for each, is
-   `inno-platform-conventions`' **Files you must not touch** section.
+   platform-owned and `config-integrity` (shown as Config integrity) fails any
+   file in it. The two that bite a Dockerfile author specifically: never
+   commit a `.npmrc` anywhere, `app/.npmrc` included, even for a container
+   build that would use it, and never commit a symlink that points at a
+   **directory**, anywhere in the repo, dangling ones included, or at a file
+   outside the repository (a link to a *file* inside the repository is fine).
+   Copy the real directory or file in, or produce it during the image build.
+   The full forbidden-path list is R7; the plugin's copy, with the reason for
+   each, is `inno-platform-conventions`' **Files you must not touch** section.
 
 **Base image: use the digest-pinned recommended bases (python/node/go) that
 `get_app_contract` serves; never hard-code a digest from this skill,

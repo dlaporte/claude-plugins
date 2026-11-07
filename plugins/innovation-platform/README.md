@@ -257,8 +257,11 @@ bypass (only the thin caller `deploy.yml` in their own repo is editable, and
 stripping it just means the reusable workflow never runs). A push to the
 default branch runs the gates and deploys nothing. Only pushing a `v*` release tag reaches
 the deploy job, and it runs the same gates first. That workflow gates the
-deploy behind config-integrity, secret scanning, SAST, dependency auditing,
-the dependency release-age cooldown, and container/image scanning, all of which
+deploy behind six jobs, each named here by its id and by the name a run page
+shows: `config-integrity` (shown as Config integrity),
+`secrets` (shown as Secret scan (gitleaks)), `sast` (shown as SAST (semgrep)),
+`deps` (shown as Dependency audit), `dep-age` (shown as Dependency cooldown)
+and `container` (shown as Container contract and image scan), all of which
 must pass before the deploy even starts. A container deploy ships the exact
 image those gates scanned, pinned by digest, never a second build; a function
 deploy ships the exact bundle CI built in a job that holds no credential of

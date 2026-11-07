@@ -620,3 +620,25 @@ for a React conversion, copy `app/ui/AppBar.tsx` too (and replace
 `references/html-artifacts.md`'s step 7 (the signed-in address through the
 shim's `send()`, the failed read with Try again, and Sign in again at
 `signInAddress()`); saved data is unchanged.
+
+## 7.4.1
+
+Plugin 7.4.1 follows platform v0.18.16 and contract 47 (no platform tool
+changed in v0.18.15 or v0.18.16; the floor stays 7.0.0). Platform v0.18.16
+gives every job of the tenant workflow a name, and a run page,
+`get_ci_status` and `gh run view` now show each job by that name, after
+`deploy.yml`'s own job (`platform / Config integrity`), where they showed its
+id: `policy` (shown as Gate policy), `config-integrity` (shown as Config
+integrity), `secrets` (shown as Secret scan (gitleaks)), `sast` (shown as
+SAST (semgrep)), `deps` (shown as Dependency audit), `container` (shown as
+Container contract and image scan), `dep-age` (shown as Dependency
+cooldown), `scaffold-check` (shown as Scaffold check), `app-build` (shown as
+Build the app Worker, its name before too) and `deploy` (shown as Deploy).
+The ids are unchanged, but the skills, their references and the README named
+a job by its id where a person reads the run page, so every failure table's
+rows, every list of a run's jobs and every sentence about a job failing or
+what it shows now give the name beside the id, in that form.
+`inno-safety-preflight` §2 matches a failure row by the failed job's name as
+`get_ci_status` and `gh run view` print it (a platform before v0.18.16 prints
+the id of every job but `app-build`), and its `references/gate-failures.md`
+says how a run names a job. No starter file changed.

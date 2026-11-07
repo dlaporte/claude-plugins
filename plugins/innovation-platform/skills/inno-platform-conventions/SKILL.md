@@ -160,9 +160,10 @@ apps alike (`inno-migrate-app` keeps the original stack by default): don't
 Whatever the stack, pin dependencies in its own manifest under `app/`
 (`requirements.txt` for the Python reference, where the template's copy is
 the source for its pins; `package.json` for Node; `go.mod` for Go) and keep
-them CVE-clean: the `deps` and `container` gates fail the build otherwise.
-R8 says what each gate audits, and §4 names the known FastAPI trap: check
-that the lockfile resolves a clean Starlette before committing to it.
+them CVE-clean: `deps` (shown as Dependency audit) and
+`container` (shown as Container contract and image scan) fail the build
+otherwise. R8 says what each gate audits, and §4 names the known FastAPI trap:
+check that the lockfile resolves a clean Starlette before committing to it.
 
 **Node apps: commit `app/package-lock.json`, and declare every import.**
 §1.1's **Dependencies** bullet and R8 are the rule; this is how to follow it:
@@ -190,18 +191,18 @@ that the lockfile resolves a clean Starlette before committing to it.
 - Regenerate the lockfile with `npm install` inside `app/` whenever you
   change dependencies, and commit both files together. A function-shaped app
   (`function`, `mcp-function`) that ships `app/package.json` must commit
-  `app/package-lock.json`: the `app-build` job fails, naming the file, when
-  it is missing or out of step. That job installs and bundles the app on
-  **every push to the default branch**, so the preflight catches a missing
-  lockfile, an import that does not resolve, a devDependency used at
-  runtime, a symlink out of the repository and a bundle over 16 MiB before
-  you tag. The `deps` gate refuses a function-shaped app's `app/package.json`
-  with no committed lockfile as well.
+  `app/package-lock.json`: `app-build` (shown as Build the app Worker) fails,
+  naming the file, when it is missing or out of step. That job installs and
+  bundles the app on **every push to the default branch**, so the preflight
+  catches a missing lockfile, an import that does not resolve, a devDependency
+  used at runtime, a symlink out of the repository and a bundle over 16 MiB
+  before you tag. `deps` (shown as Dependency audit) refuses a function-shaped
+  app's `app/package.json` with no committed lockfile as well.
 - A container app should commit it too: while an admin has the release-age
   cooldown on (`safety.min_release_age_days` above 0), an app shipping
   `app/package.json` with no committed, parseable `app/package-lock.json`
-  fails the `dep-age` gate, because ranges have no single publish date to
-  check.
+  fails `dep-age` (shown as Dependency cooldown), because ranges have no
+  single publish date to check.
 - The cooldown dates a function-shaped app's `dependencies` alone, since
   its build never installs `devDependencies`, and a container app's
   `devDependencies` too, since its Dockerfile may install them.
@@ -215,13 +216,14 @@ concatenation**. The current user's identity (`X-Forwarded-User`) is
 attacker-influenced input (anyone who can reach the front door with a valid
 sign-in controls their own email string, and it flows straight into your
 pages), so unescaped interpolation is a stored or reflected XSS that the
-`sast` job's semgrep OWASP scan and human review both reject. That scan
-covers the whole repository except the platform-owned root `src/` and the
-directories semgrep skips by default at any depth (`test/`, `tests/`,
-`build/`, `dist/`, `vendor/` and `node_modules/`), so your Dockerfile,
-`.github/workflows/deploy.yml` and any root-level script are scanned too;
-R8 is the authoritative scope. Use your stack's auto-escaping template
-engine. In the Python reference, `Jinja2Templates(directory="templates")`
+semgrep OWASP scan of `sast` (shown as SAST (semgrep)) and human review both
+reject. That scan covers the whole repository except the platform-owned root
+`src/` and the directories semgrep skips by default at any depth (`test/`,
+`tests/`, `build/`, `dist/`, `vendor/` and `node_modules/`), so your
+Dockerfile, `.github/workflows/deploy.yml` and any root-level script are
+scanned too; R8 is the authoritative scope. Use your stack's auto-escaping
+template engine. In the Python reference,
+`Jinja2Templates(directory="templates")`
 autoescapes by default: route all dynamic content through
 `templates.TemplateResponse(request, "page.html", {...})`.
 
@@ -690,10 +692,10 @@ The platform installs its own build tools when CI builds your app, from its
 CI mirror, into a directory of its own outside your checkout, and supplies a
 function app's bundling config, so **none of the following may exist in your
 repo at all**. R7 is the authoritative list,
-with the reason for each; the `config-integrity` gate fails outright,
-naming each path it finds ("delete `<file>`: the platform injects ...").
-Never create or restore one locally, even to "match the template": there is
-no version of these files that belongs in your repo.
+with the reason for each; `config-integrity` (shown as Config integrity) fails
+outright, naming each path it finds ("delete `<file>`: the platform injects
+..."). Never create or restore one locally, even to "match the template":
+there is no version of these files that belongs in your repo.
 
 - `src/`, all of it, at the repo root. The platform owns that directory, so
   the gate fails a repo with anything of yours under it (a source file,

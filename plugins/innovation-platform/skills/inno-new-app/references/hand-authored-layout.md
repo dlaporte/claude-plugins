@@ -47,7 +47,8 @@ This is the plugin's one home for it: `inno-platform-conventions` (whose
   of the guide above into it, each header with the guide's text under it,
   and leave the rest of the file as it is.
 
-Start from the guide rather than writing one: the `config-integrity` gate
+Start from the guide rather than writing one:
+`config-integrity` (shown as Config integrity)
 checks five required section headers, and the check is **type-blind**, so a
 container app carrying the function headers passes and the reverse passes as
 well. Take your own type's guide anyway, so the body describes the runtime
