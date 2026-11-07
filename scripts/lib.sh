@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # Sourced, never run: the helpers the checks share, as scripts/semver.sh holds
 # a version's shape. A check sources it with
 #   . "$(cd "$(dirname "$0")" && pwd)/lib.sh"

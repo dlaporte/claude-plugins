@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # Sourced, never run: the one home for a version's shape, its reading and its
 # comparison. scripts/plugin-version.sh and scripts/check-plugin-floor.sh read
 # a version from JSON with semver_json, check-plugin-floor.sh compares the

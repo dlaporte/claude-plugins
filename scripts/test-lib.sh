@@ -65,7 +65,9 @@ if [ "${BASH_SOURCE[0]}" = "$0" ]; then
   expect "grep_or_none passes no match" 0 "" grep_or_none -x c "$tmp/ab"
   expect "grep_or_none stops the check on a grep error" 2 "$test_name: grep failed (2)" \
     grep_or_none -s -x a "$tmp/absent"
+  # A PATH with no jq on it, in expect's subshell alone.
   without_jq() {
+    # shellcheck disable=SC2123
     PATH=/nonexistent
     require_jq
   }
