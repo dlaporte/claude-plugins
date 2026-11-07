@@ -11,8 +11,9 @@
 #   - a record whose pinned commit the checkout lacks, --platform with no
 #     checkout, and a record that is not JSON exit 2.
 # The planted builder, run, writes a file (a control case shows it does), and
-# every other case's output ends with whether it did. The cases where the gate passes
-# need the npm registry, and the build-parity job runs them right after this.
+# every other case's output ends with whether it did. The cases where the
+# gate passes need the npm registry, and the build-parity job runs them right
+# after this.
 # Usage (from the repo root): bash scripts/test-build-parity-gate.sh
 set -euo pipefail
 for v in "${!GIT_@}"; do unset "$v"; done

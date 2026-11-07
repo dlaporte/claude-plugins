@@ -697,9 +697,20 @@ section they mean ("get_platform_docs section 16"). The skills follow:
 `app_type_unsupported`; and every pointer into the platform's docs, the
 README's included, names its section by number with its title, such as
 `get_platform_docs` section 11 (Lifecycle), where it named the section's
-bold title. The platform's tools now print ASCII arrows only, so
+bold title. Every listing line now takes one grammar: a head (`- `, the
+name, then its bracketed status and marks) and then `key=value` pairs, so
+`inno-fleet-admin` and `inno-manage-app` read `list_apps`' line as
+`- <name> [<status>]`, its marks (`[IN CUSTODY]` first, then
+`[VULNERABLE]` and `[UNLINKED]`, beside the status where they came last),
+then `type=`, `audience=`, `identity=`, `owner=`, `url=`, `repo=`
+(`(pending)` while registration has recorded none) and `health=`, and
+`query_audit`'s rows as pairs whose `actor=` and `detail=` values arrive
+fenced in «» (`list_connections`' line, which the grammar follows, is
+unchanged). The platform's tools now print ASCII arrows only, so
 `inno-new-app` quotes `register_app`'s first line as `Registration started
-for "{name}" <- {repo}.`, where it quoted the Unicode arrow (U+2190). The
+for "{name}" <- {repo}.`, where it quoted the Unicode arrow (U+2190); and
+a counted noun in a tool's answer now agrees with its count (`1 line`,
+`2 lines`), where some read `line(s)`, which no skill quoted. The
 v0.18.18 release raises the floor to 8.0.0, so once the instance's admins
 raise `plugin.min_version` to it, the platform tells every 7.x build to
 update, and its skills stop at their Version gate until it does. The
@@ -716,6 +727,6 @@ starter `app/dev/build-ui.mjs` gains a header naming the platform's
 `ci/build-ui.mjs` it mirrors (at v0.18.18, last changed in ac8c1f4f, with
 its sha256) and what a local build does differently: an app converted on
 an earlier release may copy it again for that header, and its code is
-unchanged, so it builds as before either way. This repository now checks that header against the
-platform's record and builds one corpus with both builders to compare what
-they write.
+unchanged, so it builds as before either way. This repository now checks
+that header against the platform's record and builds one corpus with both
+builders to compare what they write.
