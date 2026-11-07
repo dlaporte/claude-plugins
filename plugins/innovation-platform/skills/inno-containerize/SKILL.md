@@ -130,6 +130,8 @@ base to the digest `get_app_contract` serves.
      `app_status` reading `Health: re-probe pending (not answering yet: ...)`
      is normal right after a deploy (see `inno-ship`), and a deploy that
      leaves `/healthz` failing alarms within about 70 minutes, not at once.
+     A restart or a start re-checks health the same way, but it does not
+     update the deployment record, so it never restarts those 10 minutes.
      The hourly floor applies only while a status is pending: once it
      clears, the recurring check goes back to following
      `health.probe_interval_hours`, so it is not always literally daily.
