@@ -261,9 +261,11 @@ jobs:
       # (npm ci, install scripts off): its interface built with its own
       # dev/build-ui.mjs, the Worker and the interface type-checked, then the
       # storage route on workerd with a local D1 through the starter's own
-      # wrangler, and its local proxy, dev/serve.mjs. No credential, and no
-      # network beyond the npm registry. The script's header says what moves
-      # the lock and how to write a new one.
+      # wrangler, its local proxy, dev/serve.mjs, and the built interface in a
+      # DOM (jsdom, which the script adds beside typescript at run time, never
+      # to the starter's package.json). No credential, and no network beyond
+      # the npm registry. The script's header says what moves the lock and how
+      # to write a new one.
       - name: The inno-convert-artifact starter builds, type-checks and passes its runtime suite
         run: |
           set -euo pipefail

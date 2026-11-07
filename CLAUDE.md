@@ -186,11 +186,15 @@ temporary directory, installs its dependencies from
 `scripts/starter-test/package-lock.json` with `npm ci`, builds its interface
 with its own `dev/build-ui.mjs`, type-checks the Worker and the interface,
 and runs `scripts/starter-test/*.test.mjs`: the storage route on workerd
-with a local D1, through the starter's own wrangler, and the local proxy,
-`dev/serve.mjs`. It needs no credential and no network beyond the npm
+with a local D1, through the starter's own wrangler; the local proxy,
+`dev/serve.mjs`; and the built interface in a DOM (jsdom 30.1.3, which the
+script adds beside typescript at run time, never to the starter's
+`package.json`). It needs no credential and no network beyond the npm
 registry. A change to the starter comes with a test that fails before it:
 `bash scripts/test-starter.sh <a copy of the old app/>` runs the suite
-against another copy.
+against another copy, a starter of innovation-platform 7.4.0 or later only
+(the suite reads its `dev/wrangler-config.mjs` and imports `Env` from its
+`storage.ts`).
 
 The starter ships no lock of its own (a conversion writes one), so the
 suite keeps one. `npm ci` refuses it once the starter's `package.json`
