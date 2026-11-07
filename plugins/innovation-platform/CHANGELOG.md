@@ -648,3 +648,32 @@ and later mentions in the same row or passage.
 every job but `app-build` by its id. `inno-containerize` now says a failed
 smoke test skips `deploy`, as the run page shows, where it said it fails it.
 No starter file changed.
+
+## 7.4.2
+
+Plugin 7.4.2 follows platform v0.18.17 and contract 47 (no platform tool
+changed in v0.18.17; the floor stays 7.0.0). Platform v0.18.17 gives every
+refusal a deploy route answers a `message` saying what to fix, except the
+authentication refusals, which stay bare: `deploy_denied` and its
+`deploy_denied:<reason>` codes, `oidc_invalid` and the broker's other
+`*_denied` codes. CI prints each as `<call> failed (<status>): <code>:
+<message>` (`deploy-token failed (409): app_not_ready: ...`), where it
+printed some as the bare `{"error":"<code>"}`. `inno-ship`'s
+`references/deploy-failures.md` quoted two of those, and now says what the
+platform prints. Its `app_not_ready` row quotes the line the run now shows,
+which names the provisioning to finish. Its `deployment_not_completable` row
+told two cases apart from the others by their having no message: a
+deployment that is not one of the app's, and one that stopped being in
+progress while the finalize attached its host, whose host may already serve
+the release. Each now has a sentence of its own, and the row tells all four
+cases apart by their message, each with the fix it had. `inno-ship` §3
+points at the second of those by its message, where it named the case
+message-less. Both rows say what a platform before v0.18.17 answers. The
+`deploy_denied:workflow` row, whose line says the platform gave no reason,
+and the other refusals that give none are unchanged. Platform v0.18.17 also
+leaves `text_too_long` with no writer: the panel refuses an over-long note
+`bad_request`, and over MCP the argument's own limit refuses it first, as
+before. `inno-manage-app`'s list of `set_config` refusals drops the code and
+says that, over MCP, an over-long note is refused by its argument's limit
+(200 characters) before the tool runs: shorten it and call again. No starter
+file changed.

@@ -280,8 +280,9 @@ so `stop_app`, `set_app_variables` and the rest work at once; fix what
 failed above it, then cut the next patch tag. It says nothing about which
 code serves: most failures leave the previous release serving, but a
 function app's finalize that failed after its upload landed already serves
-the new code (the `deploy-complete failed (500)` row and the message-less
-`deployment_not_completable` case in `references/deploy-failures.md`), and
+the new code (the `deploy-complete failed (500)` row and the
+`deployment_not_completable` case whose message says the deployment
+stopped being in progress, in `references/deploy-failures.md`), and
 a container rollout that timed out may still finish (its
 `container_rollout_failed` row).
 `Nothing to release` (a notice): the deployment was no longer this run's
