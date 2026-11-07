@@ -243,16 +243,12 @@ order:
    any response headers `get_app_security` §9 lists that the app does not
    send.
 9. **Identity, and who the app is for.** Ask the user the identity question
-   in these words: **"does the app need to know who each caller is?"** Yes
-   is `identity-aware`, the default, and the answer for most migrated apps,
-   since they had a sign-in of their own. No is `anonymous`: the app is
-   never told who the caller is, at any audience, takes no Connections,
-   follows the contract's R10 (no accounts, no per-person views, and what a
-   visitor submits is stored and never rendered), and is the only kind of
-   app that can be made public. Identity is fixed at registration, like the
-   type. Then ask who should reach the app in the end. It starts
-   members-only; internal (everyone who signs in) or public (anyone on the
-   internet) comes later, through `inno-manage-app`'s widening review.
+   as `inno-new-app` §1b words it; §1b also says what each answer means.
+   `identity-aware` is the default and the answer for most migrated apps,
+   since they had a sign-in of their own. Then ask who should reach the app
+   in the end. It starts members-only; internal (everyone who signs in) or
+   public (anyone on the internet) comes later, through `inno-manage-app`'s
+   widening review.
    **A public site's new address is the main cost to name.** An app that is
    public today (anyone reaches it without signing in) can be public here
    only as an anonymous app, at the platform's address for its name, so its

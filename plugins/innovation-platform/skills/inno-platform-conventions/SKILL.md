@@ -528,21 +528,11 @@ session: it never identifies anyone.
 
 ### An anonymous app: R10
 
-The contract's rule for an app registered `anonymous`, R10
-(`get_app_contract` with `sections: ["R10"]`, the authoritative text), opens:
-
-> **R10: An anonymous app keeps nothing per person**
->
-> An app registered with
-> `identity: "anonymous"` is never told who its caller is, at any audience
-> (R3): the four identity headers arrive present and empty on every request,
-> and no `X-Caller-Assertion` arrives, so it has no Connections (§2.2). Only an
-> anonymous app can be public. No accounts, no per-person views, no keys or
-> limits taken from a person. What a visitor submits is stored and never
-> rendered. Per-visitor state (a cart, a multi-step form, a vote already cast)
-> lives in the app's own cookie or under a random cookie key, is never an
-> identity, and follows APP-SECURITY's forged-request rules. The app may be
-> public.
+The contract's rule for an app registered `anonymous` is R10
+(`get_app_contract` with `sections: ["R10"]`, the authoritative text: read it
+before writing such an app's code). Its gist: the app is never told who
+calls, at any audience, so it keeps nothing per person and has no
+Connections.
 
 So the app reads none of the identity headers, keys nothing on them, and
 shows no sign-out link (it never shows who is signed in, so R4 asks for
@@ -553,8 +543,8 @@ none). R10 goes on to every app's cookies (above), where the promise ends
 - **Per-visitor state** takes the cookie rule above (`__Host-`, `HttpOnly`
   unless the app's own script reads it), and a state change is accepted
   only from the app's own pages (`get_app_security` §12).
-- **Submissions** are stored and never rendered by this app; whatever reads
-  them (an identity-aware editor, the two-app pattern's) protects them in
+- **Submissions** stay out of this app's own pages, as R10 says; whatever
+  reads them (an identity-aware editor, the two-app pattern's) protects them in
   its own code, and serves any uploaded file as **Files someone uploaded**
   (under **Rendering**) says.
 - **Where the promise ends** (R10). While the app is members-only or
