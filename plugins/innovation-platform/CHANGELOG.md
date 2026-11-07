@@ -359,8 +359,8 @@ panel's Status card. No tool changed; the floor stays 6.0.0.
 
 Plugin 6.2.0 adds `inno-convert-artifact`, which turns a Claude artifact
 (React or HTML) into a function app whose browser interface the platform's
-CI builds from `app/ui/` (contract §1.1, Browser interface, from platform
-v0.17.24). The skill gets the artifact's source, inventories what claude.ai
+CI builds from `app/ui/` (contract §1.1, Browser interface, which platform
+v0.18.0 shipped). The skill gets the artifact's source, inventories what claude.ai
 provided (libraries, `window.storage`, `window.claude`), plans and gets
 approval, registers through `inno-new-app`'s steps, then builds the app from
 a starter: a Worker serving the page and hashed assets under a strict
