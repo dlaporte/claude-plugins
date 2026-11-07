@@ -213,9 +213,12 @@ directory: `app/dev/serve.mjs` keeps its local config under the ignored
 
 ## 7. Try it locally
 
-In `app/`: `npm run dev`, then open `http://localhost:8787`. It builds the
-interface as CI does, runs the Worker with a local database, and signs the
-user in as a stand-in person (`DEV_USER=<address> npm run dev` changes who).
+In `app/`: `npm run dev`, then open the address it prints,
+`http://localhost:8787` (`DEV_PORT=<port> npm run dev` moves it, so two apps
+can run at once). It builds the interface as CI does, runs the Worker with a
+local database on a port of its own, and signs the user in as a stand-in
+person (`DEV_USER=<address> npm run dev` changes who). Ctrl-C stops it all;
+if the Worker cannot start, or stops, `npm run dev` stops too and says why.
 Check, with the user:
 
 - the artifact looks and behaves as it did on claude.ai;

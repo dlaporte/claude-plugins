@@ -48,6 +48,15 @@ await window.storage.list(prefix?, shared?)     // { keys, prefix, shared }
   person can store, and the value limit must stay under the database's.
 - When the database fails, a call throws with `storage_unavailable` in its
   message, and the next call tries again.
+- A call that fails throws a `RequestError` (`app/ui/storage-shim.ts`) whose
+  `kind` is `signed_out` (the session has ended: loading the page signs in
+  again), `refused`, `unavailable`, `timeout` (no answer within 30 seconds)
+  or `network`, and whose `message` is a sentence a person can read. A `set`
+  or `delete` whose answer was lost has `outcomeUnknown` set, since it may
+  have been stored: read before writing again. The shim never sends a call
+  again by itself, and an ended session shows in the app bar too. The
+  starter's placeholder `Artifact.tsx` shows the states a page can offer
+  around a call.
 - Every call needs a signed-in person, shared ones included, since the app
   is identity-aware. Data saved on claude.ai does not move over.
 
