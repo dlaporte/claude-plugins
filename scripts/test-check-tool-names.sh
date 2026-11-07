@@ -12,6 +12,8 @@
 set -euo pipefail
 
 here="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=scripts/test-lib.sh
+. "$here/test-lib.sh"
 fixture="scripts/fixtures/check-tool-names"
 file="$fixture/skills/demo/SKILL.md"
 
@@ -27,24 +29,16 @@ $file:16: \`register_ap\`
 EOF
 )"
 
-rc=0
-out="$(cd "$here/.." && bash scripts/check-tool-names.sh --partial "$fixture" 2>/dev/null)" || rc=$?
-got="$(printf '%s\n' "$out" | sed -n 's/^\(.*: `[a-z0-9_]*`\) is .*/\1/p' | LC_ALL=C sort)"
-
-fail=0
-if [ "$rc" -ne 1 ]; then
-  echo "test-check-tool-names: the check exited $rc on the fixture, expected 1" >&2
-  fail=1
-fi
-if [ "$got" != "$expected" ]; then
-  echo "test-check-tool-names: the check reported a different set of names than the fixture plants:" >&2
-  diff <(printf '%s\n' "$expected") <(printf '%s\n' "$got") >&2 || true
-  fail=1
-fi
-if printf '%s\n' "$out" | grep -q 'is never named'; then
-  echo "test-check-tool-names: --partial still ran the reverse check" >&2
-  fail=1
-fi
+# partial_names: the check on the fixture with --partial, its exit status,
+# and of its output the names it reports (file:line: `name`, in byte order)
+# and any reverse-check line, which --partial must not print.
+partial_names() {
+  local rc=0 out
+  out="$(cd "$here/.." && bash scripts/check-tool-names.sh --partial "$fixture" 2>/dev/null)" || rc=$?
+  printf '%s\n' "$out" | sed -n -e 's/^\(.*: `[a-z0-9_]*`\) is .*/\1/p' -e '/is never named$/p' | LC_ALL=C sort
+  return "$rc"
+}
+expect "the planted names, with --partial and no reverse check" 1 "$expected" partial_names
 
 # The reverse check, on the same fixture without --partial.
 rc=0

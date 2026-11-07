@@ -13,13 +13,14 @@
 # remote (nothing left to compare). Any other failure, a network error, a bad
 # SHA or a git diff error, stops the gate with a message.
 #
-# Every version is read through scripts/plugin-version.sh, so a changed plugin
-# with no manifest, or one whose version is not a plain MAJOR.MINOR.PATCH
-# string, fails here whether or not it existed at the base. The new version
+# Every version, the new one and the one at the base, is read through
+# scripts/plugin-version.sh, so a changed plugin with no manifest, or one
+# whose version is not a plain MAJOR.MINOR.PATCH string, fails here whether or
+# not it existed at the base, and a version at the base of another shape is
+# refused as that, not read as a version that did not go up. The new version
 # must be above the old by scripts/semver.sh's semver_above, field by field as
 # numbers, so 1.10.0 beats 1.9.0 (a plain string compare would get that
-# backwards); an old version of another shape fails the compare the same as a
-# real regression would.
+# backwards).
 # scripts/test-version-bump.sh runs this gate on a planted repository.
 #
 # Usage (from the repo root): BASE_SHA=<sha> [FORCED=true] bash scripts/version-bump.sh
@@ -57,7 +58,7 @@ if ! git rev-parse --verify --quiet --end-of-options "$base^{commit}" >/dev/null
 fi
 
 # scripts/test-version-bump.sh compares this loop's whole output, and
-# restates word for word the two refusals and the two OK lines marked
+# restates word for word the three refusals and the two OK lines marked
 # "Fixture:" below (with the changed-files lines after a refusal). Reword one
 # here and update the fixture in the same change, or its test fails.
 fail=0
@@ -90,9 +91,10 @@ for dir in plugins/*/; do
     continue
   fi
 
-  old="$(git show "$base:$manifest" 2>/dev/null | jq -r '.version // ""' 2>/dev/null || echo "")"
+  old="$(bash "$here/plugin-version.sh" <(git show "$base:$manifest"))" || old=""
   if [ -z "$old" ]; then
-    echo "::error file=$manifest::\"$plugin\"'s manifest exists at the base commit ($base) but its version could not be read from it"
+    # Fixture: its unreadable_base().
+    echo "::error file=$manifest::\"$plugin\"'s version at the base commit ($base) is not a plain MAJOR.MINOR.PATCH triple, so its new version cannot be compared with it"
     fail=1
     continue
   fi
@@ -104,7 +106,9 @@ for dir in plugins/*/; do
     # Fixture: its not_bumped(), the refusal and its changed-files lines.
     echo "::error file=$manifest::\"$plugin\" changed but its version is still $new: bump it. Delivery is keyed on this value, so users already on $new may never receive these changes."
     echo "  changed files:"
-    printf '    %s\n' $changed
+    while IFS= read -r f; do
+      printf '    %s\n' "$f"
+    done <<<"$changed"
     fail=1
   fi
 done

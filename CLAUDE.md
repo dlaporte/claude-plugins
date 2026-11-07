@@ -59,13 +59,37 @@ claude plugin marketplace update davidlaporte
 claude plugin update <name>@davidlaporte     # restart to apply
 ```
 
+## The checks
+
+CI's eight jobs (`.github/workflows/ci.yml`) run each check as a step of one
+`bash scripts/<name>.sh` line from the repository root, so a check runs
+locally as that same line. Each script's header says what it checks, and a
+check's `scripts/test-*.sh` twin runs first and proves it on cases it plants.
+To run them all before a pull request:
+
+```
+grep -E '^ +bash scripts/' .github/workflows/ci.yml | while read -r c; do sh -c "$c" </dev/null || echo "FAILED: $c"; done
+```
+
+The version-bump gate skips without `BASE_SHA` (the commit to compare with),
+and `test-starter.sh` needs the npm registry. A new check takes the same
+shape: a script that sources `scripts/lib.sh` for what the checks share, a
+`test-*.sh` twin built on `scripts/test-lib.sh`'s `expect`, and a step of one
+line.
+
 ## innovation-platform specifics
 
-Every skill opens with an identical **Version gate** block: it reads
-`version` from `plugin.json` and passes it to the `get_platform_status` MCP
-tool, which holds the minimum version the platform accepts and does the
-comparison server-side. Keep that block byte-identical across all skills: if
-you edit one, edit them all.
+Every skill opens with the same **Version gate** block: it reads `version`
+from `plugin.json` and passes it to the `get_platform_status` MCP tool, which
+holds the minimum version the platform accepts and does the comparison
+server-side. The block stays whole in each skill, since a skill invoked alone
+cannot follow a pointer to its own precondition, and it has one source,
+`scripts/version-gate.md`: to change the gate, edit that file and run
+`bash scripts/render-gates.sh`, which writes it into every skill. Never edit
+a skill's copy. The `version-gate-parity` job runs
+`bash scripts/render-gates.sh --check`, which fails when a skill's block
+differs from the source, or has no heading, no `Carry on.` line, or two of
+either.
 
 Skill content must match what the platform actually does. When in doubt,
 prefer having the skill call `get_app_contract` / `get_platform_docs` /
@@ -92,17 +116,15 @@ Refresh both files at every resync with the platform:
    `git -C <platform checkout> fetch origin tag <release tag>`.
 2. Run the script at that tag:
    `bash scripts/platform-compat.sh <platform checkout> <release tag>`
-   (v0.16.16 or later; an earlier release has no record). Before it overwrites
-   the previous pin it prints what moved since then: served documents, tools'
-   input and output schemas, the contract's version and sections, the plugin
-   floors and the platform behaviors. That list is the resync's
-   to-do list, and it is printed once: save it. Until you commit,
-   `git diff scripts/platform-compat.json` shows the same changes. Before the
-   platform tags a release, its release order runs this script once at the
-   release commit instead, as a check, and that pin is never merged. Its
-   printed list is the one to keep: the run at the tag compares against the
-   files the check left, so it prints only what moved after the release
-   commit, which is usually nothing.
+   (v0.16.16 or later; an earlier release has no record). It pins only a
+   release tag, `v` and a plain `MAJOR.MINOR.PATCH` triple read from the
+   checkout's tags, annotated or lightweight; a branch, a commit SHA or a
+   tag of another form is refused. Before it overwrites the previous pin it
+   prints what moved since then: served documents, tools' input and output
+   schemas, the contract's version and sections, the plugin floors and the
+   platform behaviors. That list is the resync's to-do list, and it is
+   printed once: save it. Until you commit,
+   `git diff scripts/platform-compat.json` shows the same changes.
 3. Answer the list in the skills. A renumbered contract needs every skill's
    `sections: [...]` literals updated to the new ids (the contract's history
    says what moved), a new tool needs a skill that names it, and a raised app
@@ -110,22 +132,46 @@ Refresh both files at every resync with the platform:
    `outputRevision` line needs every skill that reads that tool's result
    checked against what the tool now returns (section 7.4.2 of the
    platform's `docs/OPERATIONS.md` says which output changes are breaking).
-4. Run the `platform-compat` and `tool-names` jobs' steps, and the
-   `instance-neutral` job's step for the vendored record, locally, then
-   commit both files with the skill changes that answer the list. When the
-   build tools moved, the starter's pins move with them, and its suite's
-   lock must follow ("The starter" below).
+4. Run the checks ("The checks" above), then commit both files with the
+   skill changes that answer the list. When the build tools moved, the
+   starter's pins move with them, and its suite's lock must follow ("The
+   starter" below).
 
-Never merge a pin that is not at a release tag. A branch commit can still
-move before the release, and CI does not check that the pinned ref is a tag.
+A committed pin is a release, so nothing merged can still move: the
+`platform-compat` job fails a pin whose ref is not a release tag. To check
+the plugin against a platform commit before its release, as the platform's
+release order does at the release commit, preview it instead:
 
-No file under `plugins/innovation-platform/`, and neither this file, the
-repository's `README.md` nor the marketplace catalog, may hold an em dash
-(U+2014) or an en dash (U+2013): write a colon, a semicolon, a comma or a pair
-of parentheses instead, as the platform's served documents do. The
-`no-dashes` CI job enforces it with `scripts/check-dashes.sh`, which reads all
-four by default. A pattern typed into grep may not match these characters, so
-check by bytes with that script.
+```
+bash scripts/platform-compat.sh --preview <platform checkout> <commit or branch>
+```
+
+A preview takes any ref that names a commit, prints what moved since the
+committed pin as step 2 does, and writes
+`scripts/platform-compat.preview.json` and
+`scripts/platform-tools.preview.txt`, which git ignores, leaving the
+committed pin as it was. Its list is the release's to-do list; the run at
+the tag after the release compares with the same committed pin, so it
+prints that list again, with anything that moved after the previewed
+commit. The checks read the preview when given its files:
+
+```
+bash scripts/check-tool-names.sh --pinned scripts/platform-tools.preview.txt plugins/innovation-platform
+bash scripts/check-contract-sections.sh plugins/innovation-platform scripts/platform-compat.preview.json
+bash scripts/check-plugin-floor.sh scripts/platform-compat.preview.json
+bash scripts/check-build-tools.sh plugins/innovation-platform/skills/inno-convert-artifact/assets/starter/app/package.json scripts/platform-compat.preview.json
+```
+
+No file under either plugin, and neither this file, the repository's
+`README.md`, the marketplace catalog, the CI workflow under `.github` nor
+anything under `scripts/` (whose messages operators read in CI's logs), may
+hold an em dash (U+2014) or an en dash (U+2013): write a colon, a semicolon,
+a comma or a pair of parentheses instead, as the platform's served documents
+do. The `no-dashes` CI job enforces it with `scripts/check-dashes.sh`, which
+reads all of them by default. A pattern typed into grep may not match these
+characters, so check by bytes with that script; a test that plants one
+builds it from its bytes with printf, as `scripts/test-check-dashes.sh`
+does.
 
 ### The starter
 
@@ -140,11 +186,15 @@ temporary directory, installs its dependencies from
 `scripts/starter-test/package-lock.json` with `npm ci`, builds its interface
 with its own `dev/build-ui.mjs`, type-checks the Worker and the interface,
 and runs `scripts/starter-test/*.test.mjs`: the storage route on workerd
-with a local D1, through the starter's own wrangler, and the local proxy,
-`dev/serve.mjs`. It needs no credential and no network beyond the npm
+with a local D1, through the starter's own wrangler; the local proxy,
+`dev/serve.mjs`; and the built interface in a DOM (jsdom, at the version the
+script pins, which it adds beside typescript at run time, never to the
+starter's `package.json`). It needs no credential and no network beyond the npm
 registry. A change to the starter comes with a test that fails before it:
 `bash scripts/test-starter.sh <a copy of the old app/>` runs the suite
-against another copy.
+against another copy, a starter of innovation-platform 7.4.0 or later only
+(the suite reads its `dev/wrangler-config.mjs` and imports `Env` from its
+`storage.ts`).
 
 The starter ships no lock of its own (a conversion writes one), so the
 suite keeps one. `npm ci` refuses it once the starter's `package.json`

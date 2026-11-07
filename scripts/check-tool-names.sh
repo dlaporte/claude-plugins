@@ -82,12 +82,9 @@ for f in "$pinned_file" "$allow_file"; do
   fi
 done
 
-# grep exits 1 for "no match", which is not an error here; 2 is.
-grep_or_none() {
-  local rc=0
-  grep "$@" || rc=$?
-  [ "$rc" -le 1 ] || { echo "check-tool-names: grep failed ($rc)" >&2; exit 2; }
-}
+# grep_or_none: grep, for which no match is not an error.
+# shellcheck source=scripts/lib.sh
+. "$here/lib.sh"
 
 spans="$(grep_or_none -rnoE --include='*.md' \
   '((^|[^A-Za-z])[Cc]all(s|ed|ing)? )?`[a-z][a-z0-9]*(_[a-z0-9]+)+(`( (MCP )?tools?)?|[(]| [{]| [a-z_]+=)' \

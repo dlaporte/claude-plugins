@@ -6,17 +6,12 @@
 # pre-release or build suffix, a field of ten digits or more, or whitespace
 # anywhere in the string, a trailing newline included. Whitespace
 # is refused although compareSemver trims it: CLAUDE.md allows the plain
-# triple only.
+# triple only. The read is semver.sh's semver_json, whose header says why it
+# reads JSON rather than raw text.
 #
-# The version is read as JSON (jq -c), not raw (jq -r): a raw read inside
-# $(...) loses a trailing newline and passes "1.2.3\n", and jq's own regex
-# anchors match at a line end. Encoded, a newline stays the two characters \n,
-# a number or null carries no quotes, and a manifest of two JSON documents
-# reads as two lines, so only one quoted string whose inside is a triple
-# passes below.
-#
-# CI's manifests job and scripts/version-bump.sh both read a version through
-# this script. Usage: bash scripts/plugin-version.sh <path to plugin.json>
+# scripts/check-manifests.sh, scripts/check-plugin-floor.sh and
+# scripts/version-bump.sh read a plugin's version through this script.
+# Usage: bash scripts/plugin-version.sh <path to plugin.json>
 set -euo pipefail
 export LC_ALL=C
 # shellcheck source=scripts/semver.sh
@@ -28,8 +23,4 @@ if [ -z "$manifest" ]; then
   exit 2
 fi
 
-raw="$(jq -c '.version' "$manifest" 2>/dev/null)" || exit 1
-[[ "$raw" =~ ^\"(.*)\"$ ]] || exit 1
-version="${BASH_REMATCH[1]}"
-[[ "$version" =~ $SEMVER_TRIPLE ]] || exit 1
-printf '%s\n' "$version"
+semver_json "$manifest" .version || exit 1
