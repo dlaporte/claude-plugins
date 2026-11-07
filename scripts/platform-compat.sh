@@ -31,8 +31,12 @@
 # It refuses a ref with no docs/compat.json (any release before v0.16.16) and
 # a record in a format it does not read. When a previous pin exists, it first
 # prints what moved since then: each served document whose hash changed, each
-# tool whose inputRevision (its input schema) changed, or that came or went,
-# each tool whose outputRevision (its output schema, which only some tools
+# shipped file whose hash came, changed or went (from platform v0.18.18, the
+# files the platform ships into an app that this repository keeps a copy of:
+# ci/build-ui.mjs, which the starter's dev/build-ui.mjs mirrors, and the
+# function scaffold's app/identity.ts, which scripts/starter-test/ copies),
+# each tool whose inputRevision (its input schema) changed, or that came or
+# went, each tool whose outputRevision (its output schema, which only some tools
 # declare) came, changed or went, each tool whose readOnly flag changed
 # (tools.revision hashes it, so a flip alone moves the platform's
 # Compatibility: revision), each tool whose adminOnly flag came, flipped or
@@ -145,12 +149,20 @@ elif ! moved="$(jq -r -n --slurpfile old "$pin" --slurpfile new "$tmp/pinned.jso
   def facts: [{contract, plugins, behavior} | leaves([])] | from_entries;
   $old[0] as $o | $new[0] as $n
   | ($o.served // {}) as $os | ($n.served // {}) as $ns
+  | ($o.shipped // {}) as $oh | ($n.shipped // {}) as $nh
   | ($o | by_name) as $ot | ($n | by_name) as $nt
   | ($o | facts) as $of | ($n | facts) as $nf
   | (all_keys($os; $ns) as $k
      | if ($os | has($k) | not) then "  served \($k): new"
        elif ($ns | has($k) | not) then "  served \($k): gone"
        elif $os[$k] != $ns[$k] then "  served \($k): hash moved"
+       else empty end),
+    # A record before v0.18.18 has no shipped key, so the first pin past it
+    # prints each entry as new.
+    (all_keys($oh; $nh) as $k
+     | if ($oh | has($k) | not) then "  shipped \($k): new"
+       elif ($nh | has($k) | not) then "  shipped \($k): gone"
+       elif $oh[$k] != $nh[$k] then "  shipped \($k): hash moved"
        else empty end),
     (all_keys($ot; $nt) as $k
      | if ($ot | has($k) | not) then "  tool \($k): new (args: \($nt[$k] | args))"

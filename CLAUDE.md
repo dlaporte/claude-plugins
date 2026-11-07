@@ -122,9 +122,10 @@ Refresh both files at every resync with the platform:
    release tag, `v` and a plain `MAJOR.MINOR.PATCH` triple read from the
    checkout's tags, annotated or lightweight; a branch, a commit SHA or a
    tag of another form is refused. Before it overwrites the previous pin it
-   prints what moved since then: served documents, tools' input and output
-   schemas, the contract's version and sections, the plugin floors and the
-   platform behaviors. That list is the resync's to-do list, and it is
+   prints what moved since then: served documents, the shipped files this
+   repository keeps a copy of (from platform v0.18.18), tools' input and
+   output schemas, the contract's version and sections, the plugin floors
+   and the platform behaviors. That list is the resync's to-do list, and it is
    printed once: save it. Until you commit,
    `git diff scripts/platform-compat.json` shows the same changes.
 3. Answer the list in the skills. A renumbered contract needs every skill's
