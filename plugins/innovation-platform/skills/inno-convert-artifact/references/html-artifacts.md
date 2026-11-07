@@ -24,7 +24,7 @@ over unchanged, and the scripts move.
    with `document.getElementById("root")!.innerHTML = body;` in `main.ts`.
    That string is the artifact's own fixed markup, never anything a person
    typed: data a person enters is shown with `textContent`, never written
-   into HTML (`get_app_security` section 3). If the semgrep gate flags the
+   into HTML (`get_app_security` §3). If the semgrep gate flags the
    assignment, build the markup with `document.createElement` instead. Its
    `style` attributes come out first (step 6 below).
 3. **Styles.** Move the `<style>` block to `app/ui/artifact.css`. If the
@@ -76,9 +76,15 @@ over unchanged, and the scripts move.
    `fill="..."` are not `style` and stay. Never add `'unsafe-inline'` to the
    policy to keep the attributes.
 7. **Who is signed in, and sign-out.** Replace the React `AppBar` with
-   `app/ui/app-bar.ts`: a `<header>` element showing the address from
-   `GET /api/me` (set with `textContent`) and a link to `/_auth/signout`,
-   shown only when there is an address.
+   `app/ui/app-bar.ts`, doing what `AppBar.tsx` does: a `<header>` element
+   that reads `GET /api/me` through `send()` from `storage-shim.ts`, and
+   shows the address (set with `textContent`) after the words `Signed in as `
+   in an element with the `sr-only` class, beside a link to
+   `/_auth/signout`. When the read fails, it says so in a `role="status"`
+   element, with a Try again button, and keeps the sign-out link; once the
+   session has ended (a `RequestError` of kind `signed_out`, or the shim's
+   `SIGNED_OUT` event on `window`), it says so with a Sign in again link to
+   the page itself instead. A caller with no address sees neither link.
 8. **Title.** The page's `<title>` is the one in `app/index.ts`
    (`APP_TITLE`); the artifact's own `<title>` goes there.
 

@@ -5,7 +5,7 @@ things the artifact's code never declares. Each one needs a home in the app.
 
 | On claude.ai | In the converted app |
 |---|---|
-| React compiled in the browser, libraries provided | `app/ui/`, built by the platform's CI (contract section 1.1, Browser interface); each library a pinned entry under `dependencies` in `app/package.json` (`libraries.md`) |
+| React compiled in the browser, libraries provided | `app/ui/`, built by the platform's CI (contract §1.1, Browser interface); each library a pinned entry under `dependencies` in `app/package.json` (`libraries.md`) |
 | Tailwind utility classes, always available | `app/ui/styles.css` holding `@import "tailwindcss";`, built by CI's pinned Tailwind CLI over `app/ui/` |
 | `window.storage`, personal | `app/ui/storage-shim.ts` and `app/storage.ts`: one D1 table, each key scoped to the signed-in person's `X-Forwarded-Subject` |
 | `window.storage`, shared (`true` as the last argument) | the same table with no owner: one copy for everyone who reaches the app |
@@ -48,6 +48,15 @@ await window.storage.list(prefix?, shared?)     // { keys, prefix, shared }
   person can store, and the value limit must stay under the database's.
 - When the database fails, a call throws with `storage_unavailable` in its
   message, and the next call tries again.
+- A call that fails throws a `RequestError` (`app/ui/storage-shim.ts`) whose
+  `kind` is `signed_out` (the session has ended: loading the page signs in
+  again), `refused`, `unavailable`, `timeout` (no answer within 30 seconds)
+  or `network`, and whose `message` is a sentence a person can read. A `set`
+  or `delete` whose answer was lost has `outcomeUnknown` set, since it may
+  have been stored: read before writing again. The shim never sends a call
+  again by itself, and an ended session shows in the app bar too. The
+  starter's placeholder `Artifact.tsx` shows the states a page can offer
+  around a call.
 - Every call needs a signed-in person, shared ones included, since the app
   is identity-aware. Data saved on claude.ai does not move over.
 

@@ -30,8 +30,8 @@ every call runs as you.
 
 | Plugin | Description |
 |---|---|
-| [`innovation-platform`](plugins/innovation-platform) | Build and ship apps on your Innovation Platform. You enter the platform's address once; the skills read everything else from it. |
-| [`servicenow`](plugins/servicenow) | Work in ServiceNow as yourself via the snow-mcp server: triage incidents and approvals, drive changes through their state model, order from the service catalog, author knowledge, and report on any table. Six skills adapt to the deployment's read-only mode and tool packages. |
+| [`innovation-platform`](plugins/innovation-platform) | Build and ship apps on your organization's Innovation Platform: create an app via the inno-platform MCP server as a container (any stack, the default type), a function (its own Cloudflare Worker), or an MCP server for AI assistants (mcp-function / mcp-container) behind the platform's own front door, write it against the platform's application + app-security contracts, run the security gates before shipping through CI/CD, and manage access to a live app. |
+| [`servicenow`](plugins/servicenow) | Work in ServiceNow as yourself via the snow-mcp server (per-user OAuth): triage incidents and approvals, drive changes through their state model with conflict checks, order from the service catalog, author knowledge, and report on any table. Skills adapt to the deployment's read-only mode and tool packages. |
 
 ## Repo layout
 
@@ -53,22 +53,8 @@ scripts/                          CI's checks, the pinned list of the
 
 Each plugin declares a `version` in its own `plugin.json`, and **any change
 under `plugins/<name>/` must bump it in the same commit**: CI fails the PR
-otherwise. See [CLAUDE.md](CLAUDE.md) for which component to bump.
-
-That version is how updates are delivered: Claude Code caches an installed
-plugin under `…/cache/<marketplace>/<plugin>/<version>/` and records it in
-`installed_plugins.json`, so content shipped under a version a user already
-has may never reach them.
-
-Entries in `marketplace.json` carry no version of their own: `plugin.json` is
-the single source of truth, and `claude plugin tag` validates that the two
-agree whenever both are present.
-
-> Earlier revisions of this repo deliberately omitted the field, on the theory
-> that every commit would then roll out automatically. In practice installs
-> went stale for weeks unnoticed, and an opaque content hash was all
-> `claude plugin list` could show, nothing a user could compare against
-> anything. Hence the explicit version, and the CI gate that keeps it honest.
+otherwise. Why delivery depends on it, and which component to bump, is in
+[CLAUDE.md](CLAUDE.md).
 
 ## License
 

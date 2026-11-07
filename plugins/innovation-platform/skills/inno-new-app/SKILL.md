@@ -43,15 +43,12 @@ function app with a browser interface and keeps its saved data.
 Creates a new Innovation Platform app end to end: intake -> the user creates a
 repo **they own** from the platform template -> `register_app` (first call)
 -> commit the proof-of-control file it names + install the platform GitHub App
--> `register_app` (second call) provisions + binds it -> pull + scaffold. Requires the
-`inno-platform` MCP server (ships with this plugin's `.mcp.json`) to be
-connected. The first call to any `inno-platform` tool triggers a browser
-sign-in through your organization's identity provider. That's expected, not an
-error: wait for it to complete. **If the
-connector wasn't already authorized when the session started, waiting isn't
-enough**: mid-session authorization alone does not expose the tools (the MCP
-client enumerates tools at startup); the user must authorize it AND you must
-restart the session before calling any `inno-platform` tool.
+-> `register_app` (second call) provisions + binds it -> pull + scaffold.
+
+The first `inno-platform` tool call triggers a browser sign-in through your
+organization's identity provider, which is expected; a connector authorized
+only after this session started needs a session restart before its tools
+appear.
 
 **The repo is the USER's.** There is no platform-owned repo model anymore. The
 repo lives in the user's **own** account or org, created from the instance's public
@@ -79,14 +76,16 @@ product names unless they have shown technical fluency. The full rule is the
 plugin README's **House style** section, and it applies to every user-facing
 sentence in this flow.
 
-**Asking a platform admin.** Where this skill sends the user to a platform
-admin (a guardrails exception, a higher app limit, registration turned back
-on), the request goes to the contact the platform names: the `Support:` line
-of the status you read in the Version gate, when it has one.
-`inno-manage-app`'s **Asking a platform admin** is the one home for that
-rule.
+A request for a platform admin goes where `inno-manage-app`'s **Asking a
+platform admin** says.
 
-## 1. Intake: ask the user for five things
+## 1. Intake: seven questions, five of them now
+
+Ask the user these five now. The design (§1b) asks the other two, the
+identity and the audience the app is meant for in the end (one question,
+which also asks for the address the user signs in with when the app is meant
+for more than its members and you do not know it), and states everything
+else as your recommendation.
 
 1. **App name**: lowercase letters, digits, hyphens only, 3-29 chars,
    starting with a letter. This drives the app's **hostname** on the platform
@@ -204,8 +203,11 @@ way, the design still has to be written into your reply and approved (see
 "Present the design, THEN ask for approval" below); the skill's absence is not a
 reason to skip that.
 
-The design includes four contract-informed choices that are **the user's to
-make, with your recommendation**:
+The design includes four contract-informed choices. The identity is **the
+user's to answer**; the deployment type, the pattern and the stack are
+**your recommendation**, stated in the design, which the user may change.
+Only ask the user if it's genuinely ambiguous; otherwise just tell them what
+you're doing.
 
 - **Identity**: ask the user, in these words, **"does the app need to know
   who each caller is?"** Yes is `identity-aware`, the default: the platform
@@ -301,14 +303,16 @@ app only), is `inno-manage-app`'s widening review, run once the app is built
 and checked, never at registration. Ask which audience the app is meant for in
 the end, so the design serves it (an anonymous app is reviewed as public from
 the start, `inno-safety-preflight`), and say plainly that it starts
-members-only.
+members-only. Ask it as one question, with a conditional part when you do
+not already know the address the user signs in with: if the app is meant for
+more than its members, which address that is (the check below needs it).
 
 **When the answer is internal or public, check now whether it is allowed.**
 Whether an app may be widened is a platform setting a platform admin
 controls: `access.allow_internal` (on by default) and `access.allow_public`
 (off by default), each settable for the whole platform, for one owner, or
 for one app. Before you design further, call `get_config user=<the user's
-own sign-in address>` (ask for it if you do not know it) and read the
+own sign-in address>` (the audience question above asks for it) and read the
 target's line, `access.allow_public = <value> [<where it came from>]` (or
 `access.allow_internal`):
 
@@ -372,7 +376,7 @@ The written design covers, at minimum:
 Only after that design is in your reply: **stop and get explicit user
 approval** (of the design *and* the name) before §2. Ask the approval question
 in your own words referencing the design the user can now read; put genuinely
-separate decisions (name choice, identity, deployment type, members) in their own
+separate decisions (name choice, identity, members) in their own
 questions rather than folding them into the approval. Registration provisions
 real resources (a database, file storage and the app's member list) and
 binds them to the user's repo; the type and the identity are fixed at
@@ -388,8 +392,8 @@ account* it lands in, not *who runs the command*.
 
 **Preferred: do it for them with `gh`.** Run `gh auth status`; an authenticated
 account with `repo` scope is the user's **own** credential, so a repo it creates
-lands in their ownership exactly as the browser path does. Confirm the name and
-visibility with them, then:
+lands in their ownership exactly as the browser path does. Tell them the repo
+name and the visibility you will use, then:
 
 ```sh
 gh repo create {owner}/{repo} --template <template repo> --private
@@ -398,9 +402,10 @@ gh repo create {owner}/{repo} --template <template repo> --private
 Here `<template repo>` is the owner/name on the `Template repo:` line of the
 status you read in the Version gate.
 
-- Suggest the app name itself; public or private is fine. Ask which they want, or run
-  `gh repo list --limit 5 --json name,isPrivate` and match what their recent repos use, rather than
-  assuming.
+- Suggest the app name itself; public or private is fine. Match what their
+  recent repos use (`gh repo list --limit 5 --json name,isPrivate`) and say
+  which you chose, rather than assuming; ask only when that is genuinely
+  ambiguous.
 - Template copying is **asynchronous**: an immediate `git clone` can land an
   empty repo. Poll `git fetch` until `origin/main` exists before checking out.
 
@@ -836,13 +841,8 @@ you read in §1b (§1.1 to §1.3) are the authority for each type's deltas.
   route** returning **exactly 200** (a 204 or a redirect to `/healthz/` fails
   both the CI smoke gate and the runtime probe), and reach storage through
   the app's **own bindings** `env.DATA` (D1) and `env.FILES` (R2), not
-  `storage.internal`. Declare every npm package the code imports in a
-  **non-root** `app/package.json`, and commit the `app/package-lock.json`
-  that `npm install` (run inside `app/`) produces, kept in sync with
-  `package.json`. The install rule and everything it refuses have one home,
-  `inno-platform-conventions`' **Node apps** paragraph; the short of it is
-  that a runtime import must sit under `dependencies`, because CI installs
-  `--omit=dev`. Never interpolate user data into hand-built HTML: even
+  `storage.internal`. Declare dependencies and commit the lockfile as
+  `inno-platform-conventions`' **Node apps** paragraph says. Never interpolate user data into hand-built HTML: even
   escaped, the SAST gate blocks it; return dynamic data as JSON (like the
   scaffold's `/me`) or use an auto-escaping template library. Do NOT create
   `wrangler.jsonc`/`app-worker.jsonc`: those are platform-injected. The
