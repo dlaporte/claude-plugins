@@ -1,6 +1,6 @@
 ---
 name: inno-manage-app
-description: Use to share, check on, start, stop, export, widen or narrow, or configure a deployed Innovation Platform app via the inno-platform MCP tools (grant_access, revoke_access, set_app_access, app_status, start_app, stop_app, restart_app, request_start, export_app_data, get_app_metrics, get_app_usage, get_app_logs, get_config, set_config for one's own notification settings, set_app_variables/list_app_variables/remove_app_variables, create_support_bundle). Use when the user wants to give someone access, widen an app to everyone who signs in or to the public (with its review), narrow it back, check deploy status, bring back a stopped app, restart a wedged app, read its logs, set an environment variable or API key for their app, download their app's data, shut one down, or ask to transfer it to someone else (only an admin can; this skill says how to ask). A platform admin's fleet work (the admin list, transfers, purges, sessions, naming, settings, audit) is inno-fleet-admin.
+description: Use when the owner of a deployed Innovation Platform app wants to share it, check on it, start, stop or restart it, read its logs, set a variable or API key, download its data, change the emails they get, build a support bundle, widen or narrow who may reach it, or ask for a transfer ("share my app with Sam", "is my app up?", "bring my app back", "make my app public"). Its Find the task table maps each request to its procedure. A platform admin's fleet work is inno-fleet-admin.
 ---
 
 # inno-manage-app

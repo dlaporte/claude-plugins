@@ -1,6 +1,6 @@
 ---
 name: inno-containerize
-description: Use when writing or editing the Dockerfile for an app repo. Encodes the exact contract the platform's container gate requires (non-root, port 8080, patched base, CVE-clean image) for ANY stack, with reference recipes.
+description: Use when writing or editing the Dockerfile for an app repo ("write a Dockerfile for my app", "the container check failed", "make it run as non-root"). Encodes the exact contract the platform's container gate requires (non-root, port 8080, patched base, CVE-clean image) for ANY stack, with reference recipes.
 ---
 
 # inno-containerize

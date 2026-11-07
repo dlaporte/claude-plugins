@@ -1,6 +1,6 @@
 ---
 name: inno-ship
-description: "Use when the user is ready to release an app: pushes, waits for the safety checks, cuts the v* release tag that actually deploys, and reports the live URL. Use after inno-safety-preflight is clean (gates AND guardrails)."
+description: Use when the user is ready to release an app ("ship it", "deploy my app", "release this"), after inno-safety-preflight is clean (gates AND guardrails). Pushes, waits for the safety checks, cuts the v* release tag that actually deploys, and reports the live URL.
 ---
 
 # inno-ship
@@ -463,3 +463,10 @@ is the plugin's home for them. What that means for this deploy:
   one again and restarts the window in which an hourly pass defers. A
   re-run can confirm a fix sooner than the next hourly pass, but it never
   surfaces a failure sooner, and it can delay the alarm. The re-run rule is in §3, **On failure**.
+
+## 5. Hand off
+
+The app is live. Sharing it, widening or narrowing who may reach it,
+checking on it, its logs and variables, and stopping or starting it are
+`inno-manage-app`'s. The next change to the app's code starts again at
+`inno-safety-preflight`, then this skill.

@@ -219,7 +219,7 @@ its **Secrecy.** and **Declaring what an app wants** paragraphs
   (`list_app_variables`, or `app_status`, which names an unset required one
   directly).
 - **What is the user's decision:** whether to fix the file or set the value
-  before tagging. Report what you found beside the verdict (**Done**,
+  before tagging. Report what you found beside the verdict (§4,
   below), never as a blocker: it is purely advisory, and it is the only
   warning an author gets before their first deploy leaves a required key
   silently unset.
@@ -412,7 +412,7 @@ platform admin. The caps and refusals are `inno-manage-app`'s
 support-bundle section; the one to expect here is `bundle_limit_reached`,
 which is not a reason to retry: point the user at a bundle already created.
 
-## Done
+## 4. Hand off
 
 End with a clear verdict: **"Safe to ship"** (gates green and guardrails
 clean, and, for a `function` or `mcp-function` app that has
