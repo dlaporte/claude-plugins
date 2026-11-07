@@ -227,6 +227,11 @@ describe("the placeholder artifact's states (R11)", () => {
       const page = open(app({ storage: (c) => (c.op === "get" && !c.body.shared ? read() : ok(null)) }));
       await until(() => status(mine(page)) === "Loading the count.", "loading status");
       assert.equal(control(mine(page), "Mine:"), undefined, "a count shows before it was read");
+      // The loading line shows from the first render, before the effect sends
+      // the read (and arms its deadline), so the answer waits for the read.
+      // A failure given sooner meets no listener, and expiring sooner finds no
+      // deadline: a slow machine runs the test between the two.
+      await until(() => page.calls.some((c) => c.op === "get" && !c.body.shared), "personal read sent");
       if (expire) {
         page.expire();
       } else {
