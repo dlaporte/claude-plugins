@@ -359,9 +359,10 @@ panel's Status card. No tool changed; the floor stays 6.0.0.
 
 Plugin 6.2.0 adds `inno-convert-artifact`, which turns a Claude artifact
 (React or HTML) into a function app whose browser interface the platform's
-CI builds from `app/ui/` (the build platform v0.18.0 shipped; the contract
-names it in §1.1, Browser interface, from contract version 42 with v0.18.1).
-The skill gets the artifact's source, inventories what claude.ai
+CI builds from `app/ui/` (a build inno-platform's pull request 67 added:
+upstream's mirror has published it since 2026-10-31, and an instance's own
+mirror takes it with platform v0.18.1, where contract version 42 names it in
+§1.1, Browser interface). The skill gets the artifact's source, inventories what claude.ai
 provided (libraries, `window.storage`, `window.claude`), plans and gets
 approval, registers through `inno-new-app`'s steps, then builds the app from
 a starter: a Worker serving the page and hashed assets under a strict
@@ -608,7 +609,8 @@ again once the session has ended; the placeholder `app/ui/Artifact.tsx` shows
 the loading, failed-read, saving and failed-save states; `app/storage.ts` and
 `app/index.ts` declare `Env` once, with no change in behavior. The skill's
 dev-server, app-bar and storage-error guidance follows the new starter, and
-an HTML conversion's own `app/ui/app-bar.ts` now does what `AppBar.tsx` does.
+`references/html-artifacts.md`'s step 7 now has an HTML conversion's own
+`app/ui/app-bar.ts` do what `AppBar.tsx` does.
 Anyone who converted an artifact on plugin 6.2.0 to 7.3.4 should copy
 `app/dev/serve.mjs` with `app/dev/wrangler-config.mjs` and
 `app/ui/storage-shim.ts` from the starter into their repository, and then,
