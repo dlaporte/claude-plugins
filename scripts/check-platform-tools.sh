@@ -5,23 +5,31 @@
 # was regenerated. The list's first two lines must be the header that run
 # writes, naming the record's tool count, pinned ref and pinned commit, and
 # its other lines must be exactly the record's tools.list names, in byte
-# order. scripts/test-check-platform-tools.sh runs this on files it plants,
-# the passing pair written by platform-compat.sh itself.
+# order. The record must also be pinned at a release tag: its pinned.ref of
+# the form v and a plain MAJOR.MINOR.PATCH triple (scripts/semver.sh's
+# semver_release_tag), the only form platform-compat.sh pins. A branch or a
+# commit can still move before the release, and a preview
+# (platform-compat.sh --preview) is never the committed pin; CI cannot ask the
+# platform repository, so the ref's form is what it checks.
+# scripts/test-check-platform-tools.sh runs this on files it plants, the
+# passing pair written by platform-compat.sh itself.
 #
 # Usage: bash scripts/check-platform-tools.sh [record] [list]
 #   (default scripts/platform-compat.json and scripts/platform-tools.txt)
-# Prints file:line: and what disagrees, and exits 1 if anything does. Exits 2
-# when the record is not a format 1 record with a pinned ref and commit and a
-# list of tool names, or the list cannot be read.
+# Prints file:line: and what disagrees, and exits 1 if anything does, or if
+# the record is not pinned at a release tag. Exits 2 when the record is not a
+# format 1 record with a pinned ref and commit and a list of tool names, or
+# the list cannot be read.
 set -euo pipefail
 export LC_ALL=C
 
-if ! command -v jq >/dev/null; then
-  echo "check-platform-tools: jq is required" >&2
-  exit 2
-fi
-
 here="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=scripts/lib.sh
+. "$here/lib.sh"
+# shellcheck source=scripts/semver.sh
+. "$here/semver.sh"
+require_jq
+
 record="${1:-$here/platform-compat.json}"
 list="${2:-$here/platform-tools.txt}"
 record_name="${record#"$PWD"/}"
@@ -43,6 +51,10 @@ fi
 ref="$(jq -r '.pinned.ref' "$record")"
 commit="$(jq -r '.pinned.commit' "$record")"
 count="$(jq '.tools.list | length' "$record")"
+if ! semver_release_tag "$ref"; then
+  echo "check-platform-tools: FAIL, $record_name is pinned at $ref, which is not a release tag (v and a plain MAJOR.MINOR.PATCH triple). Pin a release with scripts/platform-compat.sh <platform checkout> <release tag>; a check before a release runs with --preview, whose files are never committed." >&2
+  exit 1
+fi
 
 fail=0
 # The header as scripts/platform-compat.sh writes it, compared whole, so a ref

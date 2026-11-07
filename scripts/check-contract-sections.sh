@@ -28,14 +28,12 @@
 # section sign in prose are not checked.
 # scripts/test-check-contract-sections.sh holds a fixture for each of these.
 set -euo pipefail
-
-if ! command -v jq >/dev/null; then
-  echo "check-contract-sections: jq is required" >&2
-  exit 2
-fi
+here="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=scripts/lib.sh
+. "$here/lib.sh"
+require_jq
 
 target="${1:-plugins/innovation-platform}"
-here="$(cd "$(dirname "$0")" && pwd)"
 record="${2:-$here/platform-compat.json}"
 
 if [ ! -d "$target" ]; then
@@ -51,18 +49,12 @@ if ! known="$(jq -er '.contract.sections
 fi
 pinned="$(jq -r '"contract \(.contract.version) at \(.pinned.ref)"' "$record")"
 
-# grep exits 1 for "no match", which is not an error here; 2 is. -I skips
-# binary files. The match takes in the whole word that ends in sections, and
-# the loop skips a longer word (subsections). Matching a boundary character
-# before the key instead would miss a literal glued to the one before it,
-# whose ] that match has already taken.
-rc=0
-literals="$(LC_ALL=C grep -rnoIE \
-  '[A-Za-z0-9_]*sections"?[[:space:]]*:[[:space:]]*\[[^]]*(\]|$)' -- "$target")" || rc=$?
-if [ "$rc" -gt 1 ]; then
-  echo "check-contract-sections: grep failed ($rc)" >&2
-  exit 2
-fi
+# -I skips binary files. The match takes in the whole word that ends in
+# sections, and the loop skips a longer word (subsections). Matching a
+# boundary character before the key instead would miss a literal glued to the
+# one before it, whose ] that match has already taken.
+literals="$(LC_ALL=C grep_or_none -rnoIE \
+  '[A-Za-z0-9_]*sections"?[[:space:]]*:[[:space:]]*\[[^]]*(\]|$)' -- "$target")"
 
 idshape='^([0-9]+(\.[0-9]+)*|R[0-9]+)$'
 nliterals=0

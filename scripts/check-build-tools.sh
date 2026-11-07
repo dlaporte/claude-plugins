@@ -22,11 +22,9 @@
 set -euo pipefail
 export LC_ALL=C
 here="$(cd "$(dirname "$0")" && pwd)"
-
-if ! command -v jq >/dev/null; then
-  echo "check-build-tools: jq is required" >&2
-  exit 2
-fi
+# shellcheck source=scripts/lib.sh
+. "$here/lib.sh"
+require_jq
 
 starter="${1:-$here/../plugins/innovation-platform/skills/inno-convert-artifact/assets/starter/app/package.json}"
 record="${2:-$here/platform-compat.json}"

@@ -8,26 +8,21 @@ import { tmpdir } from "node:os";
 import { join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 import { unstable_dev } from "wrangler";
+import { wranglerConfig } from "../dev/wrangler-config.mjs";
 
 export const APP = resolve(fileURLToPath(new URL("..", import.meta.url)));
 
 /**
  * Starts `entry` (a path under app/, such as "index.ts" or
- * "suite/fault-entry.ts") with the configuration dev/serve.mjs writes, on a
- * fresh local database. Each call is a new isolate, so module state such as
- * storage.ts's schema promise starts empty.
+ * "suite/fault-entry.ts") with the configuration dev/serve.mjs writes
+ * (dev/wrangler-config.mjs), on a fresh local database. Each call is a new
+ * isolate, so module state such as storage.ts's schema promise starts empty.
  */
 export async function start(entry) {
   const dir = mkdtempSync(join(tmpdir(), "starter-test-"));
   const main = join(APP, entry);
   const config = join(dir, "wrangler.json");
-  writeFileSync(config, JSON.stringify({
-    name: "starter-test",
-    main,
-    compatibility_date: "2026-10-13",
-    compatibility_flags: ["nodejs_compat"],
-    d1_databases: [{ binding: "DATA", database_name: "local", database_id: "local" }],
-  }));
+  writeFileSync(config, JSON.stringify(wranglerConfig(main)));
   const worker = await unstable_dev(main, {
     config,
     local: true,

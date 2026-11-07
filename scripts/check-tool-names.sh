@@ -6,15 +6,21 @@
 # names are pinned in scripts/platform-tools.txt (refreshed at each resync by
 # scripts/platform-compat.sh), so this needs no platform checkout.
 #
-# Usage: bash scripts/check-tool-names.sh [--list] [--partial] [path]   (default plugins/innovation-platform)
+# Usage: bash scripts/check-tool-names.sh [--list] [--partial] [--pinned <file>] [path]   (default plugins/innovation-platform)
 #   --list     also prints every tool name the plugin uses, the allowlisted
 #              names it met, and the pinned tools it never names.
 #   --partial  skips the reverse check, for a tree that is not the whole
 #              plugin (the fixture scripts/test-check-tool-names.sh runs).
+#   --pinned   checks against <file>, another server's tool names one per
+#              line, instead of scripts/platform-tools.txt (the servicenow
+#              plugin's is scripts/snow-tools.txt; its header says how it
+#              was written).
 #
 # A pinned tool counts as named when any checked span below names it: a
 # snake_case name in backticks, a name on a front-matter description: line,
-# or a call in a fenced code block.
+# or a call in a fenced code block. A pinned tool whose name is one word
+# (snow-mcp's whoami) has no underscore for these to find: each place it
+# stands alone in backticks names it.
 #
 # What counts as a tool name. In the plugin's Markdown, a snake_case name in
 # backticks is checked when either:
@@ -41,16 +47,28 @@ set -euo pipefail
 
 list=0
 partial=0
+pinned_file=""
 while [ $# -gt 0 ]; do
   case "$1" in
     --list) list=1; shift ;;
     --partial) partial=1; shift ;;
+    --pinned)
+      [ $# -ge 2 ] || { echo "check-tool-names: --pinned needs a file" >&2; exit 2; }
+      pinned_file="$2"; shift 2 ;;
     *) break ;;
   esac
 done
 target="${1:-plugins/innovation-platform}"
 here="$(cd "$(dirname "$0")" && pwd)"
-pinned_file="$here/platform-tools.txt"
+# The list as the messages name it, and how a stale one is refreshed.
+if [ -n "$pinned_file" ]; then
+  pinned_name="$pinned_file"
+  refresh="rewrite $pinned_file as its header says"
+else
+  pinned_file="$here/platform-tools.txt"
+  pinned_name="scripts/platform-tools.txt"
+  refresh="refresh scripts/platform-tools.txt with scripts/platform-compat.sh"
+fi
 allow_file="$here/tool-name-allowlist.txt"
 
 if [ ! -d "$target" ]; then
@@ -64,12 +82,9 @@ for f in "$pinned_file" "$allow_file"; do
   fi
 done
 
-# grep exits 1 for "no match", which is not an error here; 2 is.
-grep_or_none() {
-  local rc=0
-  grep "$@" || rc=$?
-  [ "$rc" -le 1 ] || { echo "check-tool-names: grep failed ($rc)" >&2; exit 2; }
-}
+# grep_or_none: grep, for which no match is not an error.
+# shellcheck source=scripts/lib.sh
+. "$here/lib.sh"
 
 spans="$(grep_or_none -rnoE --include='*.md' \
   '((^|[^A-Za-z])[Cc]all(s|ed|ing)? )?`[a-z][a-z0-9]*(_[a-z0-9]+)+(`( (MCP )?tools?)?|[(]| [{]| [a-z_]+=)' \
@@ -87,10 +102,18 @@ fenced="$(find "$target" -type f -name '*.md' -exec awk '
     print FILENAME ":" FNR ":" name
   }
 ' {} +)"
+# A one-word pinned tool in backticks: <file>:<line>:<name>, fed in as a call.
+words="$(sed 's/#.*//' "$pinned_file" | tr -d '[:blank:]' | grep_or_none -xE '[a-z][a-z0-9]*')"
+oneword=""
+if [ -n "$words" ]; then
+  pats=()
+  while IFS= read -r w; do pats+=(-e "\`$w\`"); done <<<"$words"
+  oneword="$(grep_or_none -rnoF --include='*.md' "${pats[@]}" -- "$target" | sed 's/`//g')"
+fi
 
 # The awk program reads the pinned list, then the allowlist, then the hits,
 # with a marker line between them.
-awk -v list="$list" -v partial="$partial" -v target="$target" '
+awk -v list="$list" -v partial="$partial" -v target="$target" -v pinned_name="$pinned_name" -v refresh="$refresh" '
   function strip(s) { sub(/#.*/, "", s); gsub(/[[:space:]]+/, "", s); return s }
   section == 0 {
     if ($0 == "\034") { section = 1; next }
@@ -113,8 +136,8 @@ awk -v list="$list" -v partial="$partial" -v target="$target" '
     if (name in pinned) { used[name] = 1; return }
     if (name in allow) { allowed[name] = 1; return }
     v = name; sub(/_.*/, "", v)
-    if (v in verb) { printf "%s: `%s` is named like a tool but is not one the platform serves\n", where, name; hits++; return }
-    if (cue) { printf "%s: `%s` is called like a tool but is not one the platform serves\n", where, name; hits++; return }
+    if (v in verb) { printf "%s: `%s` is named like a tool but is not in %s\n", where, name, pinned_name; hits++; return }
+    if (cue) { printf "%s: `%s` is called like a tool but is not in %s\n", where, name, pinned_name; hits++; return }
   }
   # Splits <file>:<line>:<rest> into where and rest.
   function locate(rec,    i, file) {
@@ -180,10 +203,10 @@ awk -v list="$list" -v partial="$partial" -v target="$target" '
     }
     if (hits) {
       fflush()
-      printf "check-tool-names: FAIL, %d name(s) above are not in scripts/platform-tools.txt. Fix the name, or if it is not a tool (a refusal code, a field), add it to scripts/tool-name-allowlist.txt.\n", hits > "/dev/stderr"
+      printf "check-tool-names: FAIL, %d name(s) above are not in %s. Fix the name, or if it is not a tool (a refusal code, a field), add it to scripts/tool-name-allowlist.txt.\n", hits, pinned_name > "/dev/stderr"
     }
     if (unnamed) {
-      printf "check-tool-names: FAIL, %d pinned tool(s) above are never named in %s. Name each where a skill uses it, or, if the platform no longer serves it, refresh scripts/platform-tools.txt with scripts/platform-compat.sh.\n", unnamed, target > "/dev/stderr"
+      printf "check-tool-names: FAIL, %d pinned tool(s) above are never named in %s. Name each where a skill uses it, or, if its server no longer serves it, %s.\n", unnamed, target, refresh > "/dev/stderr"
     }
     if (hits || unnamed) exit 1
     printf "check-tool-names: OK (%s, %d pinned tools, all named)\n", target, npinned
@@ -194,4 +217,5 @@ awk -v list="$list" -v partial="$partial" -v target="$target" '
   if [ -n "$spans" ]; then printf '%s\n' "$spans" | sed 's/^/S/'; fi
   if [ -n "$descriptions" ]; then printf '%s\n' "$descriptions" | sed 's/^/D/'; fi
   if [ -n "$fenced" ]; then printf '%s\n' "$fenced" | sed 's/^/F/'; fi
+  if [ -n "$oneword" ]; then printf '%s\n' "$oneword" | sed 's/^/F/'; fi
 )

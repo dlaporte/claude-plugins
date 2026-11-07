@@ -132,7 +132,7 @@ whatever its reason was, its earlier keys still inside the cut-down
   `app_edge_mismatch` (target the app): the app's custom domain is out of
   step with its status, which the pass reports and never repairs, written
   with the admins' `edge_mismatch` notice (`inno-fleet-admin`'s
-  **Fleet-wide reads**) once per mismatch, again after a week while it
+  `references/admin-notifications.md`) once per mismatch, again after a week while it
   lasts, and at once when its kind or the app's status changes;
   `detail.status`, and `domain`: `attached` (the domain held while the
   status wants the placeholder) or `missing` (none while it wants the

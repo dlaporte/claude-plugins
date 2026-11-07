@@ -9,7 +9,25 @@
 #
 # Re-run it at each resync of the plugin with the platform, then commit both
 # files with the skill changes they go with:
-#   bash scripts/platform-compat.sh <platform checkout> <ref>   (a release tag, e.g. v0.16.16)
+#   bash scripts/platform-compat.sh <platform checkout> <release tag>   (e.g. v0.16.16)
+# A pin is written only at a release tag: a ref of the form v and a plain
+# MAJOR.MINOR.PATCH triple (scripts/semver.sh's semver_release_tag), read as
+# refs/tags/<ref> in the checkout, annotated or lightweight, and pinned at the
+# commit it names. A branch, a raw commit SHA, a tag of another form, and a
+# release's name that is not a tag in the checkout (not fetched yet, or a
+# branch of that name) are refused, so nothing that can still move becomes
+# the committed pin; scripts/check-platform-tools.sh fails a committed pin
+# whose ref is not of that form.
+#
+# To check the plugin against a platform commit before its release (the
+# platform's release order does, at the release commit), preview it instead:
+#   bash scripts/platform-compat.sh --preview <platform checkout> <ref>
+# takes any ref that names a commit, prints what moved since the committed
+# pin, and writes the same two files as scripts/platform-compat.preview.json
+# and scripts/platform-tools.preview.txt, which git ignores, leaving the
+# committed pin byte for byte. The checks that take a record or a list read
+# the preview when given its paths (CLAUDE.md says how).
+#
 # It refuses a ref with no docs/compat.json (any release before v0.16.16) and
 # a record in a format it does not read. When a previous pin exists, it first
 # prints what moved since then: each served document whose hash changed, each
@@ -25,28 +43,58 @@
 # contract, plugins and behavior that changed (the contract's version and
 # sections, the plugin floors, the platform behaviors). A record from
 # v0.17.0 on has no gateway block, and none is compared. That list is the
-# resync's to-do list.
+# resync's to-do list. A preview compares with the committed pin the same way.
+# scripts/test-platform-compat.sh runs this on a platform repository it
+# plants, in both modes.
 set -euo pipefail
 
-if ! command -v jq >/dev/null; then
-  echo "platform-compat: jq is required" >&2
-  exit 2
-fi
+here="$(cd "$(dirname "$0")" && pwd)"
+# shellcheck source=scripts/lib.sh
+. "$here/lib.sh"
+# shellcheck source=scripts/semver.sh
+. "$here/semver.sh"
+require_jq
 
+preview=0
+if [ "${1:-}" = --preview ]; then
+  preview=1
+  shift
+fi
 platform="${1:-}"
 ref="${2:-}"
 if [ -z "$platform" ] || [ ! -d "$platform" ] || [ -z "$ref" ]; then
-  echo "usage: bash scripts/platform-compat.sh <platform checkout> <ref>" >&2
+  echo "usage: bash scripts/platform-compat.sh <platform checkout> <release tag>" >&2
+  echo "       bash scripts/platform-compat.sh --preview <platform checkout> <ref>" >&2
   exit 2
 fi
 
-here="$(cd "$(dirname "$0")" && pwd)"
-out="$here/platform-compat.json"
-list="$here/platform-tools.txt"
+# The committed pin, which a preview compares with and never writes.
+pin="$here/platform-compat.json"
+if [ "$preview" -eq 1 ]; then
+  out="$here/platform-compat.preview.json"
+  list="$here/platform-tools.preview.txt"
+else
+  out="$pin"
+  list="$here/platform-tools.txt"
+fi
 source_file="docs/compat.json"
+# The end of both refusals below: the preview command and the two files it
+# writes, so whoever runs this at a commit (the platform's release order
+# does) lands on the right command.
+preview_hint() {
+  echo "run bash scripts/platform-compat.sh --preview $platform $1, which writes ${here#"$PWD"/}/platform-compat.preview.json and ${here#"$PWD"/}/platform-tools.preview.txt (git ignores both) and leaves the committed pin alone."
+}
 
-if ! commit="$(git -C "$platform" rev-parse --verify --quiet --end-of-options "$ref^{commit}")"; then
-  echo "platform-compat: $ref is not a commit in $platform" >&2
+if [ "$preview" -eq 1 ]; then
+  if ! commit="$(git -C "$platform" rev-parse --verify --quiet --end-of-options "$ref^{commit}")"; then
+    echo "platform-compat: $ref is not a commit in $platform" >&2
+    exit 2
+  fi
+elif ! semver_release_tag "$ref"; then
+  echo "platform-compat: $ref is not a release tag (v and a plain MAJOR.MINOR.PATCH triple), and only a release is pinned. To check a commit before its release, $(preview_hint "$ref")" >&2
+  exit 2
+elif ! commit="$(git -C "$platform" rev-parse --verify --quiet "refs/tags/$ref^{commit}")"; then
+  echo "platform-compat: $ref is not a tag in $platform. Fetch it first (git -C $platform fetch origin tag $ref); to check a commit before its release, $(preview_hint "<commit>")" >&2
   exit 2
 fi
 tmp="$(mktemp -d)"
@@ -80,10 +128,10 @@ jq --arg ref "$ref" --arg commit "$commit" '. + {pinned: {ref: $ref, commit: $co
 jq -r '.tools.list[].name' "$tmp/record.json" | LC_ALL=C sort >"$tmp/names"
 count="$(grep -c . "$tmp/names")"
 
-# What moved since the previous pin, read before it is overwritten.
-if [ ! -e "$out" ]; then
-  echo "platform-compat: no previous pin (${out#"$PWD"/} did not exist), so there is nothing to compare"
-elif ! moved="$(jq -r -n --slurpfile old "$out" --slurpfile new "$tmp/pinned.json" '
+# What moved since the previous pin, read before a pin overwrites it.
+if [ ! -e "$pin" ]; then
+  echo "platform-compat: no previous pin (${pin#"$PWD"/} did not exist), so there is nothing to compare"
+elif ! moved="$(jq -r -n --slurpfile old "$pin" --slurpfile new "$tmp/pinned.json" '
   def by_name: [(.tools.list // [])[] | {key: .name, value: .}] | from_entries;
   def args: (.args // []) | if length == 0 then "none" else join(", ") end;
   def flag: if . == null then "none" else tojson end;
@@ -135,9 +183,9 @@ elif ! moved="$(jq -r -n --slurpfile old "$out" --slurpfile new "$tmp/pinned.jso
        elif $of[$k] != $nf[$k] then "  \($k): was \($of[$k]); now \($nf[$k])"
        else empty end)
 ')"; then
-  echo "platform-compat: the previous ${out#"$PWD"/} could not be read, so nothing was compared; compare with git diff after this run instead" >&2
+  echo "platform-compat: the previous ${pin#"$PWD"/} could not be read, so nothing was compared; compare with git diff after this run instead" >&2
 else
-  previous="$(jq -r '"\(.pinned.ref // "an unknown ref") (commit \(.pinned.commit // "unknown"))"' "$out" 2>/dev/null || echo "an unreadable pin")"
+  previous="$(jq -r '"\(.pinned.ref // "an unknown ref") (commit \(.pinned.commit // "unknown"))"' "$pin" 2>/dev/null || echo "an unreadable pin")"
   if [ -z "$moved" ]; then
     echo "platform-compat: nothing moved since the previous pin, $previous"
   else
@@ -150,9 +198,19 @@ mv -f "$tmp/pinned.json" "$out"
 {
   echo "# The platform's MCP tool names, one per line: $count tools at $ref"
   echo "# (commit $commit), from tools.list of $source_file."
-  echo "# Generated by scripts/platform-compat.sh; do not edit by hand. Refresh at each"
-  echo "# resync with: bash scripts/platform-compat.sh <platform checkout> <release tag>"
+  if [ "$preview" -eq 1 ]; then
+    echo "# A preview by scripts/platform-compat.sh --preview, never committed. Pin a"
+    echo "# release with: bash scripts/platform-compat.sh <platform checkout> <release tag>"
+  else
+    echo "# Generated by scripts/platform-compat.sh; do not edit by hand. Refresh at each"
+    echo "# resync with: bash scripts/platform-compat.sh <platform checkout> <release tag>"
+  fi
   cat "$tmp/names"
 } >"$tmp/list"
 mv -f "$tmp/list" "$list"
-echo "platform-compat: pinned $ref (commit $commit): wrote ${out#"$PWD"/} and ${list#"$PWD"/}, $count tools, contract $(jq -r '.contract.version' "$out"), app plugin floor $(jq -r '.plugins.app.minVersion' "$out")"
+facts="$count tools, contract $(jq -r '.contract.version' "$out"), app plugin floor $(jq -r '.plugins.app.minVersion' "$out")"
+if [ "$preview" -eq 1 ]; then
+  echo "platform-compat: previewed $ref (commit $commit): wrote ${out#"$PWD"/} and ${list#"$PWD"/}, which git ignores, and left the committed pin alone; $facts"
+else
+  echo "platform-compat: pinned $ref (commit $commit): wrote ${out#"$PWD"/} and ${list#"$PWD"/}, $facts"
+fi

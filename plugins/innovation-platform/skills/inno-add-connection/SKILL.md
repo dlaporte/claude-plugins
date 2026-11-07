@@ -1,6 +1,6 @@
 ---
 name: inno-add-connection
-description: Use when an app needs to reach an external backend AS EACH INDIVIDUAL USER (a per-user API or SaaS account the app fronts, such as a departmental system, a niche tool or a dev instance) rather than with one shared app key. Discovers how people sign in to that backend, provisions a Connection with set_app_connection (a pasted token, the backend's own login, or a per-user client ID/secret pair), and wires the app to consume it. Identity-aware mcp-container apps only in v1.
+description: Use when an app needs to reach an external backend AS EACH INDIVIDUAL USER (a per-user API or SaaS account the app fronts, such as a departmental system, a niche tool or a dev instance) rather than with one shared app key ("connect my app to <backend> as each user", "use each person's own account"). Discovers how people sign in to that backend, provisions a Connection with set_app_connection (a pasted token, the backend's own login, or a per-user client ID/secret pair), and wires the app to consume it. Identity-aware mcp-container apps only in v1.
 ---
 
 # inno-add-connection
@@ -44,9 +44,10 @@ accounts. This skill walks through recognizing when that's what you need,
 figuring out how the backend signs people in, setting the Connection up, and
 wiring the app's code to use it.
 
-Requires the `inno-platform` MCP server (ships with this plugin's `.mcp.json`).
-If this is the first call against it this session, expect a browser sign-in
-through your organization's identity provider; that's expected, not an error.
+The first `inno-platform` tool call triggers a browser sign-in through your
+organization's identity provider, which is expected; a connector authorized
+only after this session started needs a session restart before its tools
+appear.
 
 **Read the contract's Connections section before you start:** call
 `get_app_contract` with `sections: ["2.2"]`. §2.2 is the
@@ -71,13 +72,10 @@ paste in." Never "OAuth," "PKCE" or "client secret." Those words are fine in
 your own reasoning and in the tool calls you make, just not in the sentences
 you say back to a non-technical user.
 
-**Asking a platform admin.** Where this skill sends the user to a platform
-admin (the platform's encryption key, or its own Connections setup), the
-request goes to the contact the platform names: the `Support:` line of the
-status you read in the Version gate, when it has one. `inno-manage-app`'s
-**Asking a platform admin** is the one home for that rule. A request to
-the backend's own administrators (for a registered client, say) is not
-one of these.
+A request for a platform admin goes where `inno-manage-app`'s **Asking a
+platform admin** says.
+A request to the backend's own administrators (for a registered client, say)
+is not such a request.
 
 **No catalog, no steering.** This skill doesn't maintain or suggest a list of
 backends. If the target is a big enterprise service that already has its own
@@ -649,17 +647,10 @@ When the user reports an error page after opening a connect link, read
 can show has one meaning and one next step, and its most common one ("Not
 available") deliberately hides which of several causes it is.
 
-## References
+## 7. Hand off
 
-- `references/discovery.md`: the probe recipe for step 2 when the user isn't
-  sure how the backend signs people in (which `/.well-known/*` documents to
-  fetch, how to read a `WWW-Authenticate` header, and how each finding maps
-  to a config field), and the field mapping for an `oauth2_code` config in
-  step 3.
-- `references/oauth-client-request.md`: the copy-paste request for step 3
-  when a backend admin needs to register the OAuth client.
-- `references/connect-page.md`: what each connect-page error means and what
-  to check, for step 6 when a user reports one.
-- `references/older-template-client.md`: what an older template client lacks
-  and how to replace it, for step 5 when the repo's client has no
-  `ConnectionLocked` or no `ConnectionsError`.
+Once a user's connect works, the Connection is done. Each later change to
+the app's code goes through `inno-safety-preflight`, then `inno-ship`. A
+person whose connection is stuck is `inno-manage-app`'s support lever
+(`disconnect_user_connection`), and a change to the connection's own
+settings comes back to this skill (`set_app_connection`).

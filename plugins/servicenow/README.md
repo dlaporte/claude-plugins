@@ -1,7 +1,7 @@
 # servicenow
 
 Connects Claude Code to ServiceNow through
-[snow-mcp](https://github.com/dlaporte/snow-mcp) — a shared remote MCP server
+[snow-mcp](https://github.com/dlaporte/snow-mcp), a shared remote MCP server
 with **per-user OAuth**: every tool call runs as *you*, under your normal
 ServiceNow ACLs. On first use the server walks you through the OAuth flow in
 your browser (re-auth later via `/mcp`).
@@ -23,4 +23,5 @@ subset of tool packages (`SNOW_TOOL_PACKAGES`). The skills probe this with
 
 ## Install
 
-From the `davidlaporte` marketplace: `/plugin install servicenow@davidlaporte`
+Add the marketplace and install the plugin as the repository's README
+says, under Add the marketplace.

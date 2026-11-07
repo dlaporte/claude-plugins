@@ -1,6 +1,6 @@
 ---
 name: inno-manage-app
-description: Use to share, check on, start, stop, export, widen or narrow, or configure a deployed Innovation Platform app via the inno-platform MCP tools (grant_access, revoke_access, set_app_access, app_status, start_app, stop_app, restart_app, request_start, export_app_data, get_app_metrics, get_app_usage, get_app_logs, get_config, set_config for one's own notification settings, set_app_variables/list_app_variables/remove_app_variables, create_support_bundle). Use when the user wants to give someone access, widen an app to everyone who signs in or to the public (with its review), narrow it back, check deploy status, bring back a stopped app, restart a wedged app, read its logs, set an environment variable or API key for their app, download their app's data, shut one down, or ask to transfer it to someone else (only an admin can; this skill says how to ask). A platform admin's fleet work (the admin list, transfers, purges, sessions, naming, settings, audit) is inno-fleet-admin.
+description: Use when the owner of a deployed Innovation Platform app wants to share it, check on it, start, stop or restart it, read its logs, set a variable or API key, download its data, change the emails they get, build a support bundle, widen or narrow who may reach it, or ask for a transfer ("share my app with Sam", "is my app up?", "bring my app back", "make my app public"). Its Find the task table maps each request to its procedure. A platform admin's fleet work is inno-fleet-admin.
 ---
 
 # inno-manage-app
@@ -35,53 +35,54 @@ Before anything else in this skill, do these six steps in order.
 
 Carry on.
 
-All operations here call tools on the `inno-platform` MCP server (see the
-plugin's `.mcp.json`). Every tool authorizes the caller server-side against
-the signed-in identity from the MCP OAuth session: **you can only manage
-apps you own, unless you are a platform admin.** The platform's own admin
-list decides who that is (`list_admins`, admin-only, shows it). A `forbidden`
-error back
-from any of these tools means exactly that; don't retry it and don't try to
-work around it locally: there is no local escalation, because authorization
-lives in the platform, not the client. `forbidden` is one of the refusals
-every tool can answer, named once in the platform's MCP server note;
-`inno-platform-conventions`' **Refusals every tool shares** section says what
-each means.
+**Find the task.** Go to the heading for the user's request; where a row
+names a reference, read it before the task's first call. Speak in plain terms
+(the plugin README's **House style**): the detail here is for your reasoning.
 
-A platform admin's work across the fleet (the admin list, the membership
-mode and SCIM provisioning, the apps in custody,
-ownership transfers, purges, rebuilds, ending someone's panel and browser
-app sessions,
-naming, settings, the audit log and the platform's logs) is
-`inno-fleet-admin`.
+| The user wants to | Go to |
+|---|---|
+| give someone access, or take it away | **`grant_access` / `revoke_access`**, then `references/sharing.md` |
+| widen an app to everyone who signs in, or to the public (with its review) | **`set_app_access`**'s **Widening**, then `references/audience.md` |
+| narrow it back | **`set_app_access`**'s **Narrowing** |
+| check deploy status, or how the app is doing | **`app_status` / `get_app_metrics`** |
+| know what the app costs | **`get_app_usage`** |
+| bring back a stopped app, or ask for a start when out of them | **`start_app`** (and its `request_start`) |
+| restart a wedged app | **`restart_app`** |
+| read its logs | **Runtime issues** |
+| set an environment variable or API key | **Variables**, then `references/variables.md` |
+| download their app's data | **`export_app_data`** |
+| shut one down | **`stop_app`** |
+| ask to transfer it to someone else | **Transferring an app: ask an admin** |
+| read the app's settings, or change their own notification settings | **Configuration** |
+| build a support bundle | **Support bundles** |
+| do a platform admin's fleet work (the admin list, the membership mode and SCIM, the apps in custody, transfers, purges, rebuilds, ending someone's sessions, naming, settings, the audit log and the platform's logs) | `inno-fleet-admin` |
 
-**Asking a platform admin** (this paragraph is the plugin's one home for
-where such a request goes). Several remedies below are a platform admin's
-alone: a transfer, an allowed audience, a higher app limit, an unpin, a
-rebuild. When the status you read in the Version gate has a `Support:` line,
-that is the instance's support contact (an email address or a web address):
-the request goes there, so name it when you offer to draft one. The
-platform's own refusals and notices name the same contact when the instance
-sets one. With no `Support:` line the instance names no contact: the user
-reaches a platform admin the way their organization usually does, and you
-never guess an address. A start the owner has run out of is the one request
-the platform carries itself (`request_start`, below).
+**Asking a platform admin** (this paragraph is the plugin's one home for where
+such a request goes). Several remedies below are a platform admin's alone: a
+transfer, an allowed audience, a higher app limit, an unpin, a rebuild. When
+the status you read in the Version gate has a `Support:` line, that is the
+instance's support contact (an email address or a web address): the request
+goes there, so name it when you offer to draft one. The platform's own
+refusals and notices name the same contact when the instance sets one. With no
+`Support:` line the instance names no contact: the user reaches a platform
+admin the way their organization usually does, and you never guess an address.
+A start the owner has run out of is the one request the platform carries
+itself (`request_start`, below).
 
 **Call budget** (this section is the plugin's one home for the rule; the other
 skills state one sentence and point here). Every platform tool call counts
 against one budget per signed-in person, and every agent and session that
 person runs shares it, parallel subagents included. The platform's MCP server
 note gives the figure; past it, any tool answers `rate_limited`. Wait a full
-minute before retrying, and never retry in a tight loop. If you hit it
-during ordinary work, something is calling too often (a polling loop, a retry
-loop, a parallel fan-out across many apps): stop and change the approach
-rather than pushing through. When a skill watches a CI run with
-`get_ci_status` (`inno-safety-preflight`, `inno-ship`), it waits at least 30
-seconds between calls, and never polls one run from several subagents at
-once. The web panel has its own brakes (120 changes a
-minute, and 60 a minute for its live app detail, metrics and log reads) and
-answers HTTP 429 with `Retry-After: 60`. The counts are approximate, never a
-quota to plan against.
+minute before retrying, and never retry in a tight loop. If you hit it during
+ordinary work, something is calling too often (a polling loop, a retry loop, a
+parallel fan-out across many apps): stop and change the approach rather than
+pushing through. When a skill watches a CI run with `get_ci_status`
+(`inno-safety-preflight`, `inno-ship`), it waits at least 30 seconds between
+calls, and never polls one run from several subagents at once. The web panel
+has its own brakes (120 changes a minute, and 60 a minute for its live app
+detail, metrics and log reads) and answers HTTP 429 with `Retry-After: 60`.
+The counts are approximate, never a quota to plan against.
 
 There is also a web panel (the `Panel URL:` line of the status you read in the
 Version gate) with the same capabilities (same API, same authorization); point
@@ -91,107 +92,6 @@ timelines. The panel also serves the platform's user guide at `/guide` (the
 own values and readable by anyone signed in to the platform (it is not
 public): point a member or an owner there for how the platform works from
 their side.
-
-**When an account is deactivated.** The platform runs in one of two
-membership modes, which the `Identity provider:` line of the status you read
-in the Version gate names. In `membership jit` anyone the identity provider
-lets sign in is a member, and the platform never learns that an account was
-deactivated there: that person keeps what they had until their sessions and
-grants end, and only a platform admin can end it sooner (a delete the
-identity provider pushes over SCIM still ends their way in through an app's
-identity provider group, described below). In `membership
-scim` the identity provider also tells the platform who belongs, and a
-deactivation reaches the platform as soon as the identity provider pushes
-it (some providers push as changes happen, others on a schedule):
-
-- If a download link, a Connections page, the panel's sign-in or the MCP
-  client's sign-in to the platform (re-authorizing the connector) shows the
-  "Sign-in refused" page (HTTP 403, "This account can no longer sign in."),
-  or a panel request or a platform tool answers `account_inactive` (HTTP
-  401), the identity provider deactivated or deleted that person's account, or never
-  told the platform about it. The platform has ended their sessions and
-  nothing in this skill can undo it: the account has to be reactivated, or
-  provisioned, at the identity provider, by the identity team or a platform
-  admin. The same account check ends their access to every app, MCP and
-  browser alike, and their platform tool calls, as follows. In scim mode a
-  deactivation ends their panel and browser app sessions at once; their MCP
-  tokens and platform tool calls stop within the window
-  `auth.status_check_minutes` sets (default 1 minute; a
-  platform-scope setting, which only an admin's `get_config` catalog lists),
-  plus the front door's introspection cache (contract R3); and a browser
-  app's front door holds an answer for at most 10 seconds. An admin whose
-  account is deactivated loses admin standing. A person merely suspended
-  keeps their stored connection credentials, and a deleted account loses
-  them.
-- **The apps that person owns move into a platform admin's custody** as
-  soon as that push arrives: the admin becomes their owner (`app_status` names them), and each
-  app keeps running, with its audience, its member list, its data links and
-  its data, so the people it was shared with keep their access. Meanwhile
-  only a platform admin can manage it. When the account is reactivated, the
-  person signs in again and each app comes back to them, with a
-  `transferred` notice saying it returned. A platform admin may instead
-  transfer an app to a new owner for good, and then it does not come back.
-  When a member asks why an app's owner changed to an admin, this is
-  usually why; the admin side is `inno-fleet-admin`'s.
-
-**Speak the user's language.** Plain terms with the user, no provider or
-product names unless they have shown technical fluency. The full rule is the
-plugin README's **House style** section; the technical detail in this skill is
-for YOUR reasoning, not for recitation.
-
-## Answers with one remedy everywhere
-
-Each refusal a tool can answer is named in its description or, when many
-tools share it, in the instructions the platform's MCP server sends when a
-client connects. What to do for each shared one, the same on every tool,
-has one home: `inno-platform-conventions`' **Refusals every tool shares**.
-Two of them recur across this skill, `app_busy` (another change to the app
-is in flight) and `app_deploying` (a deploy of it is in flight): follow
-that section for both. When `app_deploying` does not clear, **A deploy
-whose CI run died**, below, says what holds the app and how to release it.
-
-## The lifecycle (know this before advising anyone)
-
-The platform serves the lifecycle from one place, the **Lifecycle (idle
-clock)** section of `get_platform_docs`: its states, its windows' current
-defaults, and the sentence that says what resets an app's idle clock. Fetch
-it and quote that sentence; never hand-write your own list of request kinds.
-Traffic is the only keep-alive: there is no "renew" action.
-
-- **Every deploy touches the clock too**, which is why an MCP owner never sees
-  this while they are actively building: it bites at the handoff, when the app
-  stops being deployed and is merely connected. When an owner is surprised by
-  a warning or a stop, reconcile `app_status`'s **Last seen** against what
-  they believe has been happening. A Last seen that tracks their last deploy,
-  or their last real tool call, rather than the days their client sat
-  connected, is the tell. Say it plainly: to keep an MCP app active, make a
-  real request to it; a client that stays connected and only lists tools does
-  not count.
-- **Never quote a window from memory.** Each platform sets the warn, stop and
-  purge windows for itself (`lifecycle.idle_warn_days`,
-  `lifecycle.warn_stop_days`, `lifecycle.stop_purge_days`, each overridable
-  per app or per user): `get_config app=<name>` shows the app's own values
-  and what each means, and `app_status` gives its dates.
-- **A stopped app can't be deployed.** A push to the default branch still runs
-  the gates green on a stopped app; it is the **release tag's** run that
-  fails with `app_stopped` (a container app's at its `container` job's SBOM
-  upload, a function app's at `deploy`). Start it first, then cut the next
-  patch tag (a tag is immutable, so never force-move one).
-- **Before a purge, name the consumers.** A purge revokes every data link
-  touching the app, in both directions (`purge_app`'s description says what
-  that does to an app reading this one's data). Run `list_app_links` before
-  confirming a purge, or before telling someone a stopped app can be left to
-  age out, so the consumer apps are named while there is still time to move
-  them.
-- **Pinned** apps (the admin-set `lifecycle.pinned`) are exempt from the idle
-  clock, not from safety policy; `get_config` describes both
-  `lifecycle.pinned` and `safety.stop_pinned`.
-
-The platform **deliberately** reclaims resources from idle apps. That is a
-cost-control policy, not a malfunction to work around. **Never offer to
-schedule or automate keep-alive traffic**: no cron pings, no periodic
-anything. If an app should genuinely never expire, that's the admin-set
-`lifecycle.pinned` config, not an engineering workaround.
 
 ## `start_app({ app })`: bring back a stopped app
 
@@ -272,7 +172,7 @@ closes. **Always confirm with the user by name before calling**, and tell them
 the purge date from the response.
 
 - **`app_deploying`**: a stop does not win a race with a deploy (**Answers
-  with one remedy everywhere**, above).
+  with one remedy everywhere**, below).
 - **`app_pinned`**: the app is pinned, and only a platform admin can unpin
   it. Ask one (**Asking a platform admin**, above).
 
@@ -295,6 +195,49 @@ see `inno-new-app`) can take the name again. Purge also releases the repo
 binding, so the same repo can be registered again right away under a
 different name. An admin's immediate `purge_app` is `inno-fleet-admin`'s.
 
+## The lifecycle (know this before advising anyone)
+
+The platform serves the lifecycle from one place, the **Lifecycle (idle
+clock)** section of `get_platform_docs`: its states, its windows' current
+defaults, and the sentence that says what resets an app's idle clock. Fetch
+it and quote that sentence; never hand-write your own list of request kinds.
+Traffic is the only keep-alive: there is no "renew" action.
+
+- **Every deploy touches the clock too**, which is why an MCP owner never sees
+  this while they are actively building: it bites at the handoff, when the app
+  stops being deployed and is merely connected. When an owner is surprised by
+  a warning or a stop, reconcile `app_status`'s **Last seen** against what
+  they believe has been happening. A Last seen that tracks their last deploy,
+  or their last real tool call, rather than the days their client sat
+  connected, is the tell. Say it plainly: to keep an MCP app active, make a
+  real request to it; a client that stays connected and only lists tools does
+  not count.
+- **Never quote a window from memory.** Each platform sets the warn, stop and
+  purge windows for itself (`lifecycle.idle_warn_days`,
+  `lifecycle.warn_stop_days`, `lifecycle.stop_purge_days`, each overridable
+  per app or per user): `get_config app=<name>` shows the app's own values
+  and what each means, and `app_status` gives its dates.
+- **A stopped app can't be deployed.** A push to the default branch still runs
+  the gates green on a stopped app; it is the **release tag's** run that
+  fails with `app_stopped` (a container app's at its `container` job's SBOM
+  upload, a function app's at `deploy`). Start it first, then cut the next
+  patch tag (a tag is immutable, so never force-move one).
+- **Before a purge, name the consumers.** A purge revokes every data link
+  touching the app, in both directions (`purge_app`'s description says what
+  that does to an app reading this one's data). Run `list_app_links` before
+  confirming a purge, or before telling someone a stopped app can be left to
+  age out, so the consumer apps are named while there is still time to move
+  them.
+- **Pinned** apps (the admin-set `lifecycle.pinned`) are exempt from the idle
+  clock, not from safety policy; `get_config` describes both
+  `lifecycle.pinned` and `safety.stop_pinned`.
+
+The platform **deliberately** reclaims resources from idle apps. That is a
+cost-control policy, not a malfunction to work around. **Never offer to
+schedule or automate keep-alive traffic**: no cron pings, no periodic
+anything. If an app should genuinely never expire, that's the admin-set
+`lifecycle.pinned` config, not an engineering workaround.
+
 ## `grant_access({ app, email })` / `revoke_access({ app, email })`
 
 These tools write the platform's **member list** for the app. The platform
@@ -309,42 +252,20 @@ who is notified; `revoke_access`'s description and contract R3
 person. Quote the app's hostname from the `URL:` line of `app_status` or
 from `register_app`'s answer, rather than building it.
 
-**What admits a person** is the app's audience (`set_app_access`, below),
-on every type, MCP (`mcp-function`, `mcp-container`) and browser
-(`container`, `function`) alike: a members-only app admits a person the
-member list holds, or its identity provider group (below) holds, and an
-internal app everyone the identity provider signs
-in, the front door asking the platform at every request, and a public app
-admits anyone, with no sign-in and no question to the platform. A person a
-members-only browser app does not admit is refused when they sign in, on the
-platform's host, with a "No access" page that names the account they signed
-in with and links a sign-out to use another; once the app is shared with
-that address, they open the app again. Someone already signed in whom the
-app stops admitting gets the front door's 403 "No access" page, which names
-no account and also links a sign-out to use another account. The front door
-shows a 503 "Try again shortly" page when it cannot get an answer: that is
-an outage (the platform, or the sign-in keys it checks people against, could
-not be reached), not a revoke, so do not re-grant for it.
+Read `references/sharing.md` before a grant or a revoke: what admits a
+person, why someone cannot sign in or was signed out, and each refusal,
+warning and outcome of both tools, including when a revoke is not yet done.
+Stops it holds, each worded in full there:
 
-**When someone cannot sign in.** The platform signs people in to a browser
-app itself, on the platform's host, and what they see (the address bar
-during sign-in, about one sign-in a day, and sign-out reaching every app and
-the panel, in every browser) is `get_platform_docs`' **Signing in and out:
-what people see**: quote it rather than describing it from memory. Two cases
-come up: a "Sign-in not confirmed" page, whose way out is the identity
-provider's sign-out that the page links, after which the next sign-in
-authenticates afresh; and an app shown inside a frame, which cannot start a
-sign-in there: framed by its own page, it shows a "Sign in" page whose link
-opens the app in the whole window, and framed by any other page, a
-members-only or internal app is refused (the browser shows its
-blocked-frame placeholder), since apps never frame each other (contract R3).
-
-**When someone was signed out without asking.** Signing out anywhere, on the
-panel or on any app, ends every session that person holds on the platform,
-in every browser; and when someone else signs in at a browser where the
-person signed in before and never signed out, that signs the person out
-everywhere too. Neither is a fault or a revoke: they sign in again, and
-nothing about their access changed.
+- Read a revoke's result text before telling anyone the person is off: an
+  address may not have matched.
+- A person the app's identity provider group still admits is not off: do
+  not tell the owner they are.
+- A `WARNING:` naming apps the cascade could not update means the revoke is
+  not complete: relay it, do not report it done, and run what it names.
+- A cascade is never repaired by hand at the identity provider.
+- A "Try again shortly" (503) page is an outage, not a revoke: never
+  re-grant for it.
 
 **A grant is pinned to one person**: `grant_access`'s
 description says how a grant is pinned to the identity provider account that
@@ -356,58 +277,6 @@ cannot ask whether the address has passed to someone else, or names another
 address that a person's row is stored under or to revoke next, read
 `references/address-changes.md` before acting: the fix is a re-share the owner
 must confirm.
-
-- `email` must look like a real, unquoted email address: the platform
-  answers `invalid_email` for anything containing quotes, backslashes, or
-  whitespace. Fix the address with the user.
-- Membership grants access to the **app**, not to the platform panel: the
-  panel shows people only the apps they own.
-- When a user's MCP client is refused while they authorize it, keeps asking
-  them to approve it again, or never reaches the approval page, read
-  `references/mcp-client-approval.md`.
-
-**`grant_access` refusals and warnings:**
-
-- `email_domain_not_allowed`: the address is outside the instance's allowed
-  email domains, which the message names. Check the address. If it is right,
-  no tool can let it in: the list is the instance manifest's
-  `identity.allowedEmailDomains`, which only the platform's operator can
-  change, by editing the manifest and redeploying.
-- **An address with no account is granted anyway.** In scim mode the
-  platform checks the address against the accounts the identity provider
-  pushed, and a grant to one with no active account carries a `WARNING:` in
-  the result; in jit mode nothing is checked and no warning comes (the
-  `Identity provider:` line of `get_platform_status` names the mode). Relay
-  the warning, and check
-  the spelling with the user: if it is mistyped, `revoke_access` removes it;
-  if the person's account is still being created, the grant applies once it
-  exists.
-- **A grant to someone the member list already holds changes nothing**, and
-  says so. It is not an error: tell the user the person already had access,
-  and relay anything the result adds about the address passing to someone
-  else.
-- **A grant to someone the app's identity provider group already admits**
-  writes the row anyway, and the result carries a `NOTE:` naming the group
-  they already reach the app through. The row is a second way in: it stays
-  if the identity provider later removes them from the group. Relay the
-  note.
-- `link_containment`: this app still reads another app's data the person
-  cannot see, through a live link or, for a `function` or `mcp-function`
-  app, a revoked one whose binding is still deployed; the message names
-  every blocked source, and its own remedy for each. A refused grant
-  changes nothing. Grant them access to the named source app first, or cut
-  the source off and then grant again: for a live link, unlink it with
-  `unlink_app_data` and then **redeploy this app** (the owner's next
-  release tag, `inno-ship`, or a platform admin's `rebuild_app`), starting
-  it first if it is stopped, since neither reaches a stopped app; for a
-  revoked link whose binding is still deployed, there is nothing to unlink
-  (`unlink_app_data` answers `link_not_found`), so only redeploy it.
-  Unlinking alone is not enough for a function-shaped app: it keeps the
-  source's database and files in its deployed code until a deploy begun
-  after the unlink has finished. `list_app_links` lists each such revoked
-  link apart from the live ones, with its revocation time, and `app_status`'s
-  `Data links` line names it as revoked but still deployed, until that
-  deploy completes: read either to see whether a redeploy has cleared it.
 
 **Before a revoke, read the member list.** `app_status`'s `Members` line
 names the app's members, its owner aside (its typed `members` field holds
@@ -425,79 +294,6 @@ most 100 of the group's members). Only a row can be revoked, never a
 `group` entry. A row shown as `<newer address> (shared as <address>)` was
 shared as the second address, the one to pass (the typed `email`). A row
 marked `waiting for a first sign-in` is not pinned to an account yet.
-
-**`revoke_access` refusals and outcomes:**
-
-- **`revoke_access` removes only a member row, never a group's way in.**
-  Two answers say so:
-  - A person the group admits and no row names: nothing is removed or
-    recorded, and the answer says they reach the app through the identity
-    provider group, which only the identity provider changes. To end their
-    access, the identity provider admin removes them from that group.
-  - A person with a row whom the group also admits: the row comes out, and
-    the answer says they still reach the app through the group, so their
-    access, MCP token grants, stored credentials and linked apps are
-    unchanged. Do not tell the owner the person is off.
-  A group's removal of a person ends their access at the next decision (a
-  browser app's next access check, an MCP app's next token check), but it
-  deletes no MCP grant record or stored connection credential the way
-  `revoke_access` does; and a consumer app whose group still admits the
-  person keeps them in the cascade. For a members-only source the result
-  names such a consumer in a `WARNING:`: it still admits them through its
-  group and reads this app's data through a link, so they may still reach
-  the data there, and the next hourly containment pass revokes the link
-  unless the identity provider removes them from that group first. From an
-  internal or public source there is no such promise, since the person
-  reaches the data by signing in anyway: a consumer whose member row of
-  theirs came out gets a plain `NOTE:` ("Also removed <email>'s member row
-  from "<consumer>", which still admits them through its identity provider
-  group "<group>"."), and one that held no row gets nothing.
-- `owner_not_revocable`: the address is the app's current owner, whose access
-  comes from owning it, or the person an app in custody is held for. A
-  platform admin's `transfer_app` comes first (**Transferring an app: ask an
-  admin**), or `stop_app`.
-- **Read the result text, not just the absence of an error, before telling
-  anyone the person is off.** It says when the member list did not hold the
-  address (a mistyped revoke leaves the member it was meant for in place, so
-  check the address), when the account is still a member through another row
-  (it names the address to revoke next), and when MCP token revocation could
-  not be verified (access still ends within the front door's introspection
-  window, as the description says).
-- **A wider audience still admits them.** On an internal app they still
-  get in by signing in; on a public app anyone reaches it without signing
-  in. The member list decides only for a members-only app, so tell the
-  owner, and narrow the app (`set_app_access`) if the person must be kept
-  out.
-- **When the removal bites depends on the app type** (the description gives
-  each window). On a members-only app, an MCP app refuses them once the
-  front door's introspection cache lets go of their token, and a browser
-  app refuses them once the front
-  door's held answer runs out; their sign-in session runs on, but it no
-  longer gets them in.
-- **The revoke cascades** to every app that reads this app's data through a
-  link, and on to the apps that read those; the response names the apps it
-  removed the person from. A consumer the person **owns** is left as it is,
-  and the result names it and says they may still reach the data there: a
-  platform admin's `transfer_app` first, or unlink with `unlink_app_data`.
-  A function-shaped consumer whose link was revoked while its binding is
-  still deployed, and where the cascade would take the person's row, keeps
-  its member list, since it no longer links: the platform dispatches its
-  rebuild instead, which drops the binding, and the result names it and
-  what the rebuild came to (a stopped one is rebuilt once it next starts, a
-  dispatch that fails is tried again a day later).
-- **A partial cascade is not a finished revoke.** When the response carries a
-  `WARNING:` naming apps that could not be updated, relay it plainly, do not
-  report the revoke as complete, and run what it names (`revoke_access` on
-  that app; a revoke is safe to repeat). When the warning says the cascade
-  stopped because it could not read a link or a linked app, do what it says:
-  run `list_app_links` on the source app, then `revoke_access` for that
-  person on each app it lists as reading the source's data, and redeploy
-  each one it lists as revoked but still deployed (the owner's next release
-  tag, `inno-ship`), or ask a platform admin to run `rebuild_app` for it
-  (**Asking a platform admin**, above). Never repair it by hand at the
-  identity provider.
-  `list_app_links` enumerates the consumers at any time; the audit rows a
-  cascade writes are `inno-fleet-admin`'s.
 
 ## `app_status({ app })` / `get_app_metrics({ app, days?, hours? })`
 
@@ -605,13 +401,15 @@ refused with `link_invalid` or `link_source_missing` while one of the app's
 data links is no longer valid: unlink it (`unlink_app_data`), or have the
 source's owner fix it. The same two steps, `unlink_app_data` and then
 `restart_app`, clear an app a platform release left on its earlier host
-(the `host_upload_blocked` notice, under **Notifications**). The same lever
+(the `host_upload_blocked` notice, `references/notifications.md`); confirm
+with the user before unlinking, since the app loses its read of that
+source's data. The same lever
 is the ↻ icon next to the container name on the app's panel page.
 
 Its admin-only neighbor, `rebuild_app`, rebuilds an app's released code at
 its live tag (`inno-fleet-admin`). Owners never need it: they redeploy by
 tagging their own repo, which is `inno-ship`, or redeploy an earlier release
-from the panel (the `degraded` entry, under **Notifications**).
+from the panel (the `degraded` entry, `references/notifications.md`).
 
 ## `set_app_access({ app, audience, accept_guardrails? })`: who may reach the app
 
@@ -642,135 +440,27 @@ widen there lands here.
 ### Widening: the review, one precheck, then the acceptance
 
 A widening is members-only to internal, or either to public. Every one needs
-the review below and a recorded guardrails acceptance: the platform records
-`accepted_guardrails` and `accepted_by` on the change's `access_changed`
-audit row, and an admin's acceptance stands in for the owner's.
+the review in `references/audience.md` and a recorded guardrails acceptance:
+the platform records `accepted_guardrails` and `accepted_by` on the change's
+`access_changed` audit row, and an admin's acceptance stands in for the
+owner's. Follow that file's **Widening** steps in order before any call.
+Stops it holds, each worded in full there:
 
-1. **Public needs an anonymous app.** Asked for an identity-aware app, the
-   tool answers `audience_needs_anonymous` alone, naming the two-app
-   pattern. Check the app's identity with `app_status` first. If the user
-   wants this app's content public, or a public site with an editing area,
-   read the `inno-new-app` skill's `references/two-app-pattern.md`: a new
-   anonymous app becomes the public site, and this app its editor.
-2. **Run the review**, and write it into your reply as a structured section,
-   never a one-line summary:
-   1. what the app stores: its schema and its files (for an app already in
-      use, offer `export_app_data` so the owner can read what is there);
-   2. what each new caller will see and can do: every page, query and tool
-      the wider audience reaches;
-   3. every Variable (`list_app_variables`) and the upstream it spends: a
-      key a wider audience can spend needs the limits `get_app_security` §5
-      sets;
-   4. its data links in both directions (`list_app_links`);
-   5. for internal: that what a signed-in non-member sees and can do is
-      meant for anyone in the institution, per the **Internal apps**
-      section of `get_guardrails`;
-   6. for public: the **Public apps** section of `get_guardrails`, and that
-      what is published cannot be withdrawn from crawlers and caches, even
-      by a later narrowing;
-   7. what current users will notice.
-
-   A widening never changes the app's code. An internal app's non-members
-   arrive signed in and carry no group (the identity helper's `member` is
-   false), so app code that serves only members refuses them: check the
-   code before promising that widening lets everyone in. If the app changed
-   since `inno-safety-preflight` last ran, run it again for the target
-   audience.
-3. **One precheck call:** `set_app_access({ app, audience })`, with no
-   `accept_guardrails`. A widening call is also its complete precheck: every
-   requirement it does not meet comes back at once as one refusal,
-   `widening_requirements`, whose message lists each as `[code] sentence`,
-   in a fixed order. Read it entry by entry:
-   - `[audience_disallowed]`: the target's setting (`access.allow_internal`
-     or `access.allow_public`) does not allow it for this app or its owner.
-     Only a platform admin can change that, with `set_config`: offer to
-     draft the request (**Asking a platform admin**, above). Never work
-     around it with mass `grant_access`.
-   - `[link_containment]`: the app reads a source, through a live data link
-     or a revoked one whose binding is still deployed, that does not reach
-     as far as the target, so the wider audience would reach that source's
-     data and files. The sentence names each source and its remedy: widen
-     the source first (its own review), or unlink with `unlink_app_data` and
-     redeploy this app; for a revoked link, widen once a deploy of this app
-     made after the revocation has landed.
-   - `[owner_inactive]`: the owner's account can no longer sign in, so a
-     platform admin transfers the app to an active owner first.
-   - `[guardrails_not_accepted]`: no acceptance was passed. **When it is the
-     only entry**, every other requirement is met, and that is the cue for
-     the acceptance step, since the review has already run (step 2). With
-     any other entry beside it, fix what the other entries name (or ask for
-     it) and run the precheck again; never accept past an unmet requirement.
-4. **The acceptance.** A guardrails conflict the review found for the new
-   audience is a HARD STOP: it bars this widening, as
-   `inno-safety-preflight` says. Name the guardrail line the app conflicts
-   with for that audience, and the ways forward: change the app and run the
-   review again, keep the narrower audience it has, or ask a platform admin
-   for an explicit exception (you cannot grant one; **Asking a platform
-   admin**, above, says where the request goes). Do not ask for the
-   acceptance or pass `accept_guardrails: true` until the app is changed or
-   that exception is granted. With no conflict, show the user the review's
-   conclusions and ask for an explicit yes that the app follows the
-   guardrails for its new audience.
-   Only then call `set_app_access({ app, audience, accept_guardrails: true })`.
-   Never pass `accept_guardrails: true` without the review and that yes.
-5. **Relay the answer.** It says the app was widened and when that takes
-   effect. A widening to **public** also tells the platform admins, and turns
-   unusual-usage detection (`anomaly.usage_enabled`) on for the app unless a
-   setting already decides it; the answer says which. Tell the owner both.
-
-`app_busy` on a widening can also mean a source the app reads is changing:
-retry once.
+- Step 2's review goes into your reply as a structured section, never a
+  one-line summary.
+- Step 3 never accepts past an unmet precheck entry, and never works around
+  `[audience_disallowed]` with mass `grant_access`.
+- Step 4 is a HARD STOP at a guardrails conflict the review found: no
+  acceptance until the app changes or a platform admin grants an exception.
+- Step 4 stops for the user's explicit yes to the review's conclusions
+  before any call with `accept_guardrails: true`.
 
 ### Narrowing
 
 A narrowing (to a smaller audience) is never gated: it needs no review and
 no acceptance. Confirm it with the user by name, then call
 `set_app_access({ app, audience })`. Say before the call what it does:
-
-- **What persists**: the named member list, the app's data and files, its
-  variables, and its own links to the sources it reads.
-- **Links it revokes**: this app's data link to every consumer it no longer
-  contains (one that reaches further than its new audience, or a
-  members-only one admitting someone this app's list does not hold). The
-  result says which links went and why, and each consumer's owner is told.
-  Relink afterwards only a consumer this app contains again
-  (`link_app_data`). When the result names a consumer's member listed here
-  for another account, the fix is the re-share in
-  `references/address-changes.md`. A link the narrowing could not revoke
-  stays live and is named in the result with the `unlink_app_data` call
-  that removes it: relay that, and say that the hourly containment pass
-  revokes it within the hour if this app still does not contain that
-  consumer, which makes unlinking now optional.
-- **A function consumer it cuts is narrowed and rebuilt with it.** A
-  function-shaped consumer (`function`, `mcp-function`) whose link a
-  narrowing revokes for reach is rebuilt by the platform, whoever owns it.
-  In the same step, every function-shaped consumer wider than this app's
-  new audience is narrowed to that audience, whether its link to this app
-  goes now or went earlier with its binding still deployed, so its wider
-  audience loses this app's data and files when this app's does. Its owner
-  widens it again, with the whole review and acceptance, once the rebuild
-  (or a redeploy) of it has landed; until then a widening of it past this
-  app's audience is refused `widening_requirements`, with `link_containment`
-  among its entries. The result, and that
-  owner's notice, say which.
-- **Published content is not withdrawn.** Narrowing a public app does not
-  take back what search indexes, archives and caches already hold.
-- **What people meet**: someone the app no longer admits is sent to sign in
-  or shown the "No access" page, and a page already open gets errors on its
-  background requests until it reloads.
-
-**Data links across owners.** A data link joins
-one owner's apps (`link_app_data` refuses any other pair), and the hourly
-containment pass revokes a live link whose two apps no longer have one
-owner (a sign-in pinned their owner rows to different accounts, or a
-transfer step was lost). When the pass, a narrowing,
-`unlink_app_data` or a forced `transfer_app` revokes the link of a
-function-shaped consumer another account owns, the platform rebuilds that
-consumer to remove its binding, and the result or notice says what was done
-(`set_app_access`'s description gives the whole rule, including a stopped
-consumer and one never deployed). When a rebuild could not be dispatched, a
-platform admin can run `rebuild_app` sooner. Relay it; the consumer's owner
-redeploys (`inno-ship`) only when the answer says to.
+`references/audience.md`'s **Narrowing** lists it.
 
 ## Transferring an app: ask an admin
 
@@ -913,54 +603,13 @@ Things to relay to the user in plain terms:
   (`restart_app`'s section, above): `app_status` reads pending, then the probe's
   answer, within about a minute, so read it then to tell whether the new
   value broke the app's start.
-- **Stored, but the push was refused.** On a container app one of whose data
-  links no longer holds, the answer's `Delivery:` line says the values were
-  stored and the push refused, naming `link_invalid` or
-  `link_source_missing`. Nothing reaches the running app: unlink that link
-  (`unlink_app_data`), or have the source's owner fix it, and the app's next
-  deploy delivers the values.
-- `variables_invalid`: the message names the rule its name or value broke,
-  or a name given twice, and, when the call names two or more variables,
-  the item. Fix that item and send the whole call again: nothing was
-  stored or removed.
-- `variables_limit_reached`: the call would take the app past the most
-  variables it may hold. Remove some with `remove_app_variables`, or set
-  fewer, then call again.
-- `encryption_key_missing`, `encryption_key_invalid`, or on a container app
-  `platform_key_missing`: an admin-side precondition, not an argument
-  problem. Relay it and stop: only a platform admin can fix any of them
-  (**Asking a platform admin**, above), and retrying will not help.
-- `link_invalid` or `link_source_missing` from `remove_app_variables`: one of
-  the app's data links is no longer valid, and nothing was removed. Unlink it
-  (`unlink_app_data`), or have the source's owner fix it, then remove again.
-- **A removal whose host upload failed** (on a container app, and the answer
-  says so): the removal stands, but the running instance keeps the old
-  values until it next restarts. Relay that and offer `restart_app`;
-  `get_platform_docs`' **What the tools do in detail**, its Variables and
-  Connections item, has the detail.
-- **A removal that stopped part-way** (the answer names what was removed
-  and what was not): the names it removed are gone; call
-  `remove_app_variables` again for the rest. On a container app the answer
-  adds that its host was not uploaded again, so the running instance keeps
-  the old values until it next restarts: relay that too and offer
-  `restart_app`.
-- **"I set it and the app still reports it missing."** Check
-  `list_app_variables`: a set name that looks like a typo of a declared name
-  nobody has set carries a suggestion naming the declared one, and a hidden
-  variable reported `pending delivery` has not reached the deployed app yet
-  (the next deploy delivers it with the app, so it is there from that
-  deploy's first request).
-- **A hidden variable that reads `needs a value`** is a secret no deploy can
-  deliver, for one of two causes: it was delivered to an app's script before
-  the platform's one earlier move of every app onto a new script, and stayed
-  behind on the old one; or the platform still holds it, pending delivery,
-  sealed under an encryption key the platform no longer has (a never-deployed
-  app's secrets can meet this too). It holds no value and counts as missing.
-  The owner sets it again with `set_app_variables`, or, for the second cause,
-  the platform's operator puts the earlier key back; `app_status` names every
-  such variable until then (contract §2.3).
-- `app_status` names a REQUIRED declared variable that has no value, on its
-  own line.
+
+Every other answer (values stored but not delivered, a refused call, a
+removal that stopped part-way, a variable the app still reports missing):
+read `references/variables.md`. One stop is among them: an encryption or
+platform key refusal (`encryption_key_missing`, `encryption_key_invalid`,
+`platform_key_missing`) is relayed and the work stops there, since only a
+platform admin can fix it and retrying will not help.
 
 ## Notifications (`list_notifications` / `mark_notification_read` / `mark_all_notifications_read`)
 
@@ -972,116 +621,11 @@ sends corresponds to an entry here. A call returns a capped number of rows,
 so narrow by app, `stage` or unread rather than trying to read a long
 history in one go.
 
-Stages worth acting on when one appears: `first_deploy_due`,
-`respin_failed`, `auto_restarted`, `auto_restart_failed`, `link_severed`,
-`link_revoked`, `degraded`, `usage_anomaly`, `quota_horizon`,
-`connection_expired`, `connection_locked`, `connection_refused`, `unlinked` /
-`relinked`,
-`transferred`, `access_changed`, `shared`, `exported`, `member_reassigned`,
-`cross_owner_link_revoked`, `host_upload_blocked`. What to do on eleven of
-them:
-
-- `first_deploy_due`: a registered app has not completed its first deploy,
-  and the entry gives the date and time it is deleted unless one completes
-  first. To keep it, ship a release (`inno-ship`); if it is no longer
-  needed, nothing is required, and the repository is never touched. A
-  start of a stopped app that never completed a deploy sends it too, with
-  the new date, or, for a pinned app, with none: it is not removed.
-- `access_changed`: the app's audience changed, and the entry says who
-  changed it and why. Someone other than the owner widened or narrowed it,
-  the hourly pass narrowed it (its setting no longer allows the audience,
-  or, for a public app, its owner can no longer sign in), or a source it
-  reads was narrowed and narrowed it too: then the entry says why, its
-  `link_revoked` entry says whether the platform rebuilds it or the
-  owner redeploys, and the owner widens it again, with the review, once that
-  rebuild or redeploy has landed (**Narrowing**, above).
-- `member_reassigned`: an address with access now signs in as a different
-  account than the one its access is pinned to. The entry names the address
-  and the re-share: `references/address-changes.md`. From platform v0.18.9,
-  on a members-only app whose identity provider group still admits the new
-  account, the entry says so and names the group: a re-share (`revoke_access`,
-  then `grant_access`) then gives the new holder a way in that outlasts the
-  group, and removing them from the group at the identity provider ends
-  theirs. From platform v0.18.11, on an internal or public app the entry says
-  instead that the audience still lets the new account in (an internal app as
-  a non-member whenever it can sign in, a public app without any sign-in),
-  with the same re-share to make them a member; before that release such an
-  entry named the group, or said that account is refused. For an
-  app held in custody for the address's earlier holder, `revoke_access`
-  refuses the person it is held for, so the remedy is an admin's
-  `transfer_app` of the app to that address, which hands it to the address's
-  new holder.
-- `transferred`: the app's owner changed, and the entry says how: a
-  platform admin transferred it to or from the reader, or it came back from
-  a platform admin's custody once its owner's account could sign in again
-  (**When an account is deactivated**, above). An app that came back kept
-  running while it was away, with its audience and its data links; nothing
-  needs redoing.
-- `degraded`: the owner's app is failing requests. Two senders: the
-  error-budget burn (the last hour's failures against the availability
-  target), and the post-deploy watch (failures since the latest deploy,
-  against the rate before it). The stopgap is the panel's app page,
-  **Overview, then Releases**: any recent release the Releases card
-  lists, but the running one, redeploys with one click while the app is live. It goes back through the full gates and deploys
-  only if they pass today, it runs against the app's current data (an app
-  that changed how it stores things may misbehave), and the next release tag
-  supersedes it, since there is no pin to a version. Or fix forward with a
-  new release (`inno-ship`). The redeploy is the panel's alone: no tool
-  does it, and `rebuild_app` is the admin's.
-- `connection_expired`: a person's stored credential for one of the app's
-  backends was removed (it expired or was revoked, could not be opened,
-  their encryption key was reset, or the connection's endpoints changed),
-  so they connect again from the link the app gives them.
-- `connection_locked`: the person's stored credential still exists, but
-  their MCP client's authorization cannot open it. They re-authorize the
-  connector in their MCP client (in Claude: `/mcp`, then re-authenticate
-  that server), the fix that lasts; reconnecting the backend does not fix
-  it for good (`inno-add-connection` says why). It comes at most once a day per app,
-  under its own email setting, `notify.email.connection_locked`.
-- `connection_refused`: a backend refused to renew a person's stored
-  credential for one of the app's connections in a way no retry fixes. It
-  refused the app's registered client or its request (an expired or rotated
-  client secret, a disabled client, a withdrawn scope), not the person's
-  credential, which the platform keeps. The owner fixes the connection's
-  settings (`set_app_connection` or the app's Connections tab); the people
-  need do nothing. It comes at most once a day per connection, under its own
-  email setting, `notify.email.connection_refused`.
-- `link_revoked`: a data link this app used was revoked. The entry
-  says whether a rebuild was dispatched, whether the owner has to redeploy
-  (for an owner that is `inno-ship`), or, for a stopped app, that the platform
-  rebuilds it after it next starts. For an app that has deployed, it also
-  says that the app's code that reads the source's database or files fails
-  (a function-shaped app's once it is rebuilt, since its link bindings are
-  gone; a container-shaped app's within about a minute, since those reads
-  then answer `link_revoked`): so a rebuild is not the end of it. Remove that code, or
-  link the data again with `link_app_data` where the rules allow, as the
-  entry says. Notices sent before platform v0.17.12 are stored under
-  `link_rebuild_pending`, so a `stage` filter of `link_revoked` does not
-  find them: filter by app instead.
-- `cross_owner_link_revoked`: a function-shaped app another account owns read
-  this app's data through a link that was revoked, and the entry says what
-  the platform did to remove its binding (**Data links across owners**,
-  above). When it says the rebuild could NOT be dispatched, a platform admin
-  can run `rebuild_app` on that app sooner; after a dispatched one,
-  `rebuild_app` refuses `dispatch_in_flight` for an hour, so the entry does
-  not name it. When the entry reports a rebuild dispatched or one that could
-  not be, it also names what a platform admin can do if that app's rebuilds
-  never land (its owner can cancel each run): stop it (`stop_app`, which
-  holds only once its owner has spent their self-service starts), transfer
-  it (`transfer_app`), or stop it and then purge it (`purge_app` takes a
-  stopped app only). Those are an admin's calls: offer to draft the request,
-  naming both apps (**Asking a platform admin**, above). This bullet and the
-  next are the plugin's one home for
-  these two notices; `inno-fleet-admin` points here.
-- `host_upload_blocked` (container apps): a platform
-  release could not upload a new host for the app, because one of its data
-  links no longer holds, so the app keeps running on the host an earlier
-  release uploaded, and every release leaves it out until this is cleared.
-  The entry names the link's problem. Remove that link with
-  `unlink_app_data` (the owner or a platform admin can), then run
-  `restart_app`, which uploads the app's host from the current release.
-  Stopping the app does not clear it. Confirm with the user before
-  unlinking, since the app loses its read of that source's data.
+Which stages are worth acting on, and what to do on each: read
+`references/notifications.md` when one appears. Two stages stop for someone
+first: `host_upload_blocked` waits for the user's yes before an unlink, and
+the steps `cross_owner_link_revoked` names are an admin's, so you only offer
+to draft the request.
 
 The admin-only stages are `inno-fleet-admin`'s.
 `mark_notification_read` answers `notification_not_found` for an id that
@@ -1093,7 +637,36 @@ which is what a user asking to dismiss a backlog wants. Its
 undone: it is an admin's alone (`inno-fleet-admin`), never the answer to a
 backlog.
 
+## Answers with one remedy everywhere
+
+Each refusal a tool can answer is named in its description or, when many
+tools share it, in the instructions the platform's MCP server sends when a
+client connects. What to do for each shared one, the same on every tool,
+has one home: `inno-platform-conventions`' **Refusals every tool shares**.
+Two of them recur across this skill, `app_busy` (another change to the app
+is in flight) and `app_deploying` (a deploy of it is in flight): follow
+that section for both. When `app_deploying` does not clear, **A deploy
+whose CI run died**, above, says what holds the app and how to release it.
+
 ## Authorization summary
+
+All operations here call tools on the `inno-platform` MCP server (see the
+plugin's `.mcp.json`). Every tool authorizes the caller server-side against
+the signed-in identity from the MCP OAuth session: **you can only manage
+apps you own, unless you are a platform admin.** The platform's own admin
+list decides who that is (`list_admins`, admin-only, shows it). A `forbidden`
+error back
+from any of these tools means exactly that; don't retry it and don't try to
+work around it locally: there is no local escalation, because authorization
+lives in the platform, not the client. `forbidden` is one of the refusals
+every tool can answer, named once in the platform's MCP server note;
+`inno-platform-conventions`' **Refusals every tool shares** section says what
+each means.
+
+When an account can no longer sign in (the "Sign-in refused" page, or
+`account_inactive`), or an app's owner changed to a platform admin, read
+`references/deactivation.md`. Nothing in this skill can undo a
+deactivation: it is reversed at the identity provider.
 
 Most per-app tools in this skill are for the app's owner or a platform
 admin. The exceptions: starts are limited for owners and not for admins,

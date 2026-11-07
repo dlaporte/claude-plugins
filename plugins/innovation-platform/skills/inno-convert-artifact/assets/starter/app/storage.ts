@@ -12,7 +12,8 @@
 // answers 503 storage_unavailable, never an unhandled exception.
 import type { CurrentUserResult } from "./identity";
 
-interface Env {
+/** The Worker's bindings, named once here: index.ts imports this. */
+export interface Env {
   DATA: D1Database;
 }
 

@@ -1,44 +1,11 @@
 name: CI
 
-# Eight jobs. Seven are cheap and dependency-free (jq is preinstalled on the
-# runner): the manifests and the marketplace catalog must be well-formed, each
-# catalog entry's description must be its plugin.json's, any
-# change to a plugin must come with a version bump for that plugin
-# (scripts/version-bump.sh, which scripts/test-version-bump.sh first runs on a
-# planted repository; both jobs read a version through
-# scripts/plugin-version.sh), every
-# innovation-platform skill's Version gate block must stay byte-identical to
-# the rest, the plugin (and the platform record vendored beside it) must name
-# no one platform instance (scripts/instance-neutral.sh), every MCP tool it
-# names must be one the platform serves, and it must name every one the
-# platform serves (scripts/check-tool-names.sh, against the pinned
-# scripts/platform-tools.txt, which needs no platform checkout), no file in it,
-# and none of the repository's other public text (README.md, CLAUDE.md, the
-# marketplace catalog), may hold an em or en dash (scripts/check-dashes.sh, which
-# scripts/test-check-dashes.sh first runs on trees it plants), and it must
-# agree with the pinned platform release: the tool list is the pinned
-# record's (scripts/check-platform-tools.sh), every contract section a skill
-# asks for is one the record's contract has
-# (scripts/check-contract-sections.sh), and the plugin's version is at least
-# the record's app plugin floor (scripts/check-plugin-floor.sh), each check
-# first proved on its fixture. The record,
-# scripts/platform-compat.json, is the platform's docs/compat.json at a
-# release, vendored by scripts/platform-compat.sh because the platform
-# repository is private; CI reads only the vendored copy. The list of what
-# moved that the script prints at a resync is proved on records its test
-# plants (scripts/test-platform-compat.sh). The eighth, starter, installs the
-# inno-convert-artifact starter's locked dependencies and runs its runtime
-# suite (scripts/test-starter.sh): the starter is the one executable asset
-# here, copied into every converted artifact's repository.
-#
-# Why the bump is a HARD gate rather than a convention: delivery is keyed on
-# the declared version. Claude Code caches an installed plugin at
-# ~/.claude/plugins/cache/<marketplace>/<plugin>/<version>/ and records that
-# version in installed_plugins.json, so shipping edited content under a
-# version a user already has can leave them on the old build with no signal
-# that anything changed. Every edit under plugins/<name>/ ships to users —
-# skills, README, .mcp.json alike — so every edit needs a new version, down to
-# a typo fix (a user still has to RECEIVE the typo fix).
+# Eight jobs, every step's run block set -euo pipefail and one
+# `bash scripts/...` line run from the repository root, so a local run is
+# those same lines (CLAUDE.md, "The checks"). Each script's header says what
+# it checks, and a check's test-*.sh twin runs first and proves it on cases it
+# plants. Why every change to a plugin needs a new version, and how the
+# platform release the plugin is checked against is pinned: CLAUDE.md.
 
 on:
   pull_request:
@@ -55,74 +22,26 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Every plugin.json is well-formed and semver-versioned
+      # scripts/lib.sh holds what the checks share and scripts/test-lib.sh
+      # the tests' harness; run, test-lib.sh proves both.
+      - name: The shared helpers and the test harness do what their fixture plants
         run: |
           set -euo pipefail
-          fail=0
-          for manifest in plugins/*/.claude-plugin/plugin.json; do
-            plugin="$(basename "$(dirname "$(dirname "$manifest")")")"
-            if ! jq empty "$manifest" 2>/dev/null; then
-              echo "::error file=$manifest::not valid JSON"
-              fail=1; continue
-            fi
-            for field in name version description; do
-              if [ "$(jq -r --arg f "$field" 'has($f)' "$manifest")" != "true" ]; then
-                echo "::error file=$manifest::missing required field \"$field\""
-                fail=1
-              fi
-            done
-            name="$(jq -r '.name // ""' "$manifest")"
-            if [ "$name" != "$plugin" ]; then
-              echo "::error file=$manifest::name \"$name\" does not match its directory \"$plugin\""
-              fail=1
-            fi
-            # MAJOR.MINOR.PATCH only. The Innovation Platform compares this
-            # value server-side (compareSemver in inno-platform's src/util.ts),
-            # and it returns "unparseable" for anything else — a pre-release or
-            # v-prefixed version here would read to the platform as a plugin
-            # that failed to report its version at all. Read through
-            # scripts/plugin-version.sh, as the version-bump gate reads it,
-            # and named in the error as JSON, so whitespace in it shows.
-            if ! bash scripts/plugin-version.sh "$manifest" >/dev/null; then
-              echo "::error file=$manifest::version $(jq -c '.version' "$manifest") is not a plain MAJOR.MINOR.PATCH triple"
-              fail=1
-            fi
-          done
-          [ "$fail" -eq 0 ] || exit 1
-          echo "All plugin manifests OK."
+          bash scripts/test-lib.sh
 
-      - name: The marketplace catalog is well-formed
+      - name: The manifests check catches what its fixture plants
         run: |
           set -euo pipefail
-          if ! jq empty .claude-plugin/marketplace.json; then
-            echo "::error file=.claude-plugin/marketplace.json::not valid JSON"
-            exit 1
-          fi
-          echo "Marketplace catalog OK."
+          bash scripts/test-check-manifests.sh
 
-      # The catalog's description is the one users read at install, and
-      # plugin.json's is the one the plugin carries: one text, compared
-      # whole, so neither drifts from the other unseen (they did once, after
-      # a sync).
-      - name: Each catalog entry's description is its plugin.json's
+      # The catalog's description is the one users read at install, the
+      # README's the one they read first, and plugin.json's the one the
+      # plugin carries: one text, compared whole, so none drifts from the
+      # others unseen (two did once, after a sync).
+      - name: Every plugin.json and the marketplace catalog are well-formed, and each plugin's description is one text
         run: |
           set -euo pipefail
-          fail=0
-          while IFS=$'\t' read -r name source; do
-            manifest="${source#./}/.claude-plugin/plugin.json"
-            if [ ! -f "$manifest" ]; then
-              echo "::error file=.claude-plugin/marketplace.json::the entry \"$name\" names $source, which has no .claude-plugin/plugin.json"
-              fail=1; continue
-            fi
-            catalog="$(jq -c --arg n "$name" '.plugins[] | select(.name == $n) | .description' .claude-plugin/marketplace.json)"
-            own="$(jq -c '.description' "$manifest")"
-            if [ "$catalog" != "$own" ]; then
-              echo "::error file=.claude-plugin/marketplace.json::the entry \"$name\"'s description differs from $manifest's; copy that one here"
-              fail=1
-            fi
-          done < <(jq -r '.plugins[] | [.name, .source] | @tsv' .claude-plugin/marketplace.json)
-          [ "$fail" -eq 0 ] || exit 1
-          echo "Every catalog description is its plugin.json's."
+          bash scripts/check-manifests.sh
 
   version-bump:
     runs-on: ubuntu-26.04
@@ -156,34 +75,24 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
-      - name: Every innovation-platform skill's Version gate block matches
+      - name: The Version gate check catches what its fixture plants
         run: |
           set -euo pipefail
-          fail=0
-          first=""
-          first_file=""
-          count=0
-          for f in plugins/innovation-platform/skills/*/SKILL.md; do
-            count=$((count + 1))
-            block="$(awk '/^## Version gate/{p=1} p{print} p&&/^Carry on\.$/{exit}' "$f")"
-            if [ -z "$block" ]; then
-              echo "::error file=$f::no \"## Version gate\" block found (expected one starting at that heading and ending at a bare \"Carry on.\" line)"
-              fail=1
-              continue
-            fi
-            sum="$(printf '%s' "$block" | md5sum | cut -d' ' -f1)"
-            if [ -z "$first" ]; then
-              first="$sum"
-              first_file="$f"
-              continue
-            fi
-            if [ "$sum" != "$first" ]; then
-              echo "::error file=$f::Version gate block differs from $first_file, keep it byte-identical across every skill"
-              fail=1
-            fi
-          done
-          echo "Compared the Version gate block across $count skill files."
-          [ "$fail" -eq 0 ] || exit 1
+          bash scripts/test-check-version-gate.sh
+
+      - name: The Version gate renderer writes what its fixture plants
+        run: |
+          set -euo pipefail
+          bash scripts/test-render-gates.sh
+
+      # scripts/version-gate.md is the gate's one source, which
+      # scripts/render-gates.sh writes into every skill; --check runs
+      # scripts/check-version-gate.sh, which also refuses a block with no
+      # heading, no "Carry on." line or two of either.
+      - name: Every innovation-platform skill holds the Version gate from scripts/version-gate.md, once
+        run: |
+          set -euo pipefail
+          bash scripts/render-gates.sh --check
 
   instance-neutral:
     runs-on: ubuntu-26.04
@@ -191,25 +100,23 @@ jobs:
     steps:
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
 
+      - name: The instance check catches what its fixture plants
+        run: |
+          set -euo pipefail
+          bash scripts/test-instance-neutral.sh
+
       - name: The innovation-platform plugin names no instance
         run: |
           set -euo pipefail
           bash scripts/instance-neutral.sh plugins/innovation-platform
 
       # The vendored platform record and the tool list made from it are
-      # public too. They are scanned from a copy of their own, because
-      # scripts/ also holds instance-neutral.sh, whose patterns match
-      # themselves. The copy keeps their scripts/ path, so a hit names the
-      # file as it is in the repository.
+      # public too. Named one by one, since scripts/ also holds
+      # instance-neutral.sh, whose patterns match themselves.
       - name: The vendored platform record names no instance
         run: |
           set -euo pipefail
-          repo="$PWD"
-          dir="$(mktemp -d)"
-          mkdir "$dir/scripts"
-          cp scripts/platform-compat.json scripts/platform-tools.txt "$dir/scripts/"
-          cd "$dir"
-          bash "$repo/scripts/instance-neutral.sh" scripts
+          bash scripts/instance-neutral.sh scripts/platform-compat.json scripts/platform-tools.txt
 
   tool-names:
     runs-on: ubuntu-26.04
@@ -232,6 +139,13 @@ jobs:
           set -euo pipefail
           bash scripts/check-tool-names.sh plugins/innovation-platform
 
+      # Against scripts/snow-tools.txt, snow-mcp's tool names pinned at a
+      # release (its header says how it was written).
+      - name: The servicenow plugin names only tools snow-mcp serves, and all of them
+        run: |
+          set -euo pipefail
+          bash scripts/check-tool-names.sh --pinned scripts/snow-tools.txt plugins/servicenow
+
   no-dashes:
     runs-on: ubuntu-26.04
     timeout-minutes: 5
@@ -246,9 +160,10 @@ jobs:
           set -euo pipefail
           bash scripts/test-check-dashes.sh
 
-      # With no path the check reads the plugin and the repository's other
-      # public text: README.md, CLAUDE.md and the marketplace catalog.
-      - name: The innovation-platform plugin and the repository's public text hold no em or en dash
+      # With no path the check reads both plugins and the repository's other
+      # public text: README.md, CLAUDE.md, the marketplace catalog, .github
+      # and scripts.
+      - name: The plugins and the repository's public text hold no em or en dash
         run: |
           set -euo pipefail
           bash scripts/check-dashes.sh
@@ -263,8 +178,9 @@ jobs:
       # the pinned release, and scripts/platform-tools.txt is written from it
       # by the same run of scripts/platform-compat.sh, so the two must agree:
       # the list's header names the pinned ref and commit, and it holds
-      # exactly the record's tools. The check first proves itself on files it
-      # plants, the passing pair written by platform-compat.sh itself.
+      # exactly the record's tools. The pinned ref must be a release tag (a
+      # preview is never committed). The check first proves itself on files
+      # it plants, the passing pair written by platform-compat.sh itself.
       - name: The tool-list check catches what its fixture plants
         run: |
           set -euo pipefail
@@ -314,9 +230,8 @@ jobs:
 
       # At a resync, scripts/platform-compat.sh prints what moved since the
       # previous pin, the resync's to-do list, and nothing in CI reads it. Its
-      # test pins records from a repository it plants: one with no
-      # outputRevision reads as before, an output schema that came, moved or
-      # went is listed, and so is a tool's readOnly flag that flipped or went.
+      # test pins records from a repository it plants, at release tags only,
+      # and previews one at a commit, leaving the pin alone.
       - name: The resync's moved list reports what its fixture plants
         run: |
           set -euo pipefail
@@ -346,9 +261,11 @@ jobs:
       # (npm ci, install scripts off): its interface built with its own
       # dev/build-ui.mjs, the Worker and the interface type-checked, then the
       # storage route on workerd with a local D1 through the starter's own
-      # wrangler, and its local proxy, dev/serve.mjs. No credential, and no
-      # network beyond the npm registry. The script's header says what moves
-      # the lock and how to write a new one.
+      # wrangler, its local proxy, dev/serve.mjs, and the built interface in a
+      # DOM (jsdom, which the script adds beside typescript at run time, never
+      # to the starter's package.json). No credential, and no network beyond
+      # the npm registry. The script's header says what moves the lock and how
+      # to write a new one.
       - name: The inno-convert-artifact starter builds, type-checks and passes its runtime suite
         run: |
           set -euo pipefail

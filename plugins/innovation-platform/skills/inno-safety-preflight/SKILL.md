@@ -42,12 +42,8 @@ gate policy, IS the preflight. Never install or run scanners locally: local
 results drift from CI's and know nothing about centrally-configured ignores
 or gate toggles.
 
-**Asking a platform admin.** Where this skill sends the user to a platform
-admin (a guardrails exception, a central ignore or waiver, a shorter
-release-age cooldown, a fix on the platform's side), the request goes to
-the contact the platform names: the `Support:` line of the status you read
-in the Version gate, when it has one. `inno-manage-app`'s **Asking a
-platform admin** is the one home for that rule.
+A request for a platform admin goes where `inno-manage-app`'s **Asking a
+platform admin** says.
 
 **Know the policy that applies to THIS app before you narrate anything.** Call
 `get_config app=<name>`: the app's owner can read it, no admin needed. It
@@ -150,8 +146,8 @@ Then call the `get_app_contract` MCP tool with `sections: ["2", "5", "6"]`
 (the requirements R1 to R10, the deployment patterns with what is not
 supported today, and the enforcement map). Add to that call the app's own
 shape section: `"1.1"` for a `function` app, `"1.1"` and `"1.2"` for an
-`mcp-function` app, `"1.3"` for an `mcp-container` app (a `container` app
-adds none: section 2 is its baseline). Add to it too `"2.1"`, `"2.2"` or
+`mcp-function` app, `"1.2"` and `"1.3"` for an `mcp-container` app (a
+`container` app adds none: §2 is its baseline). Add to it too `"2.1"`, `"2.2"` or
 `"2.3"` when the app links data, uses a connection or declares variables.
 Judge the app
 against the MUSTs, focusing on the ones the enforcement map (§6) leaves to
@@ -223,7 +219,7 @@ its **Secrecy.** and **Declaring what an app wants** paragraphs
   (`list_app_variables`, or `app_status`, which names an unset required one
   directly).
 - **What is the user's decision:** whether to fix the file or set the value
-  before tagging. Report what you found beside the verdict (**Done**,
+  before tagging. Report what you found beside the verdict (§4,
   below), never as a blocker: it is purely advisory, and it is the only
   warning an author gets before their first deploy leaves a required key
   silently unset.
@@ -291,7 +287,7 @@ style** section):
   `off`): explain each in one sentence and offer the fix (`get_app_security` §9 for
   the headers, `inno-containerize` for the Dockerfile).
 - **In `enforce` mode** a blocking finding fails the `container` job with
-  `Accessibility check failed`; §3's table has the row.
+  `Accessibility check failed`; `references/gate-failures.md` has the row.
 
 Say plainly what a tool checked, what you checked by hand, and what was not
 checked. Never call the app "accessible" or "WCAG compliant" because the
@@ -355,8 +351,8 @@ Nothing deploys from this push. Watch the run either way:
   result as the answer for this push, not a stale one. For each failed job
   (up to three) it names the step that failed, then the last lines of that
   job's log up to its last error, where a gate's error line carries its
-  message: what failed and how to fix it. The title a failure row below (or
-  in `inno-ship`) names, such as `Platform refused this app`, and the file a
+  message: what failed and how to fix it. The title a failure row in
+  `references/gate-failures.md` (or in `inno-ship`) names, such as `Platform refused this app`, and the file a
   gate points at appear only in the run's annotations (on the run link, or
   with `gh run view <run-id>`), not in those log lines, so match a row by the
   failed job, the failed step and the message. A short step's window can
@@ -384,25 +380,27 @@ Nothing deploys from this push. Watch the run either way:
 
 ## 3. Translate the results: this is the actual product
 
-For each gate, tell the user what happened in THEIR terms. Plain terms, no
-provider or product names unless they have shown technical fluency; the full
-rule is the plugin README's **House style** section.
+For each gate, tell the user what happened in THEIR terms. Each failing
+gate's cause and fix are `references/gate-failures.md`, which `inno-ship`
+reads too; this table says what to tell the user and points at the row.
+Plain terms, no provider or product names unless they have shown technical
+fluency; the full rule is the plugin README's **House style** section.
 
 | Outcome | What you say / do |
 |---|---|
 | All green | "All safety gates passed. Run `/inno-ship` when you're ready to release." |
-| A `Gitleaks`, `Semgrep` or `Semgrep version` failure | The scanner's fault, not a finding: change nothing. Re-run the workflow once and, if it repeats, ask a platform admin; a `Gitleaks` failure saying the runner's git is too old goes to an admin at once (**Asking a platform admin**, above). Never rotate a secret or edit code for it. |
-| **Real finding** (SAST/deps/CVE) | Find the file:line in the log lines `get_ci_status` returns for the failed job. When it says the log is unavailable or has no lines to show, or the file:line sits above the lines it shows (at most the last 30 up to the last error), open the run link yourself (or run `gh run view <run-id> --log-failed` when the user has `gh` signed in) and read the failing step. Explain the risk in one sentence, fix it (or guide the fix), re-push. |
-| `secrets` (gitleaks) failure titled `Secret scan (gitleaks)` | A secret is committed somewhere in the repository's history. The scan reads every commit on every branch and tag, on every run, so a secret in an old commit fails this push as surely as one in its own, and a file deleted since still counts. The step log names each finding's commit, file and rule (the secret redacted) and prints its fingerprint. `get_ci_status` shows only the end of that log, where each finding takes about eleven lines, so about the last two: when the log names more findings than those lines show (gitleaks ends with a `leaks found:` count), read the whole step log on the run link (or `gh run view <run-id> --log-failed` when the user has `gh` signed in) before fixing or waiving any. Treat it as real until shown otherwise: the fix, in order, and the waiver, are `inno-ship`'s `secrets` row. Never delete the file in a new commit as the fix: the old commit still holds the secret, and the gate stays red. |
-| `policy` fails with `Platform refused this app` | The platform refused this repository's CI, so every gate that needs its answer (`secrets`, `sast`, `deps`, `dep-age`, `container` and `app-build`) was skipped and checked nothing; only `config-integrity` and `scaffold-check` ran. The line says why: most often `app_mismatch` (the repository is registered as another app, which the line names, with the `with: app:` line in `.github/workflows/deploy.yml` to fix) or `repo_unlinked` (the platform GitHub App is no longer installed on the repository). Each has its row, with its fix, in `inno-ship`'s `references/deploy-failures.md`; fix it, then re-push. A refusal naming `deploy_denied:workflow` is the author's: `deploy.yml`'s `uses:` line no longer names the instance's pinned workflow, and `inno-ship`'s `references/deploy-failures.md` has its row. Another refusal that gives no reason (a bare `deploy_denied`, `deploy_denied:repo_id`, `repo_owner` or `unbound`) says a platform admin can find it, so send the user there (**Asking a platform admin**, above). A `Gate policy unavailable` warning is different: the platform gave no usable answer (an outage, not a refusal), so every gate ran on, with no ignores (but the release-age cooldown is off and accessibility only reports), as for a container app; that file has its row too. |
-| **Likely false positive** | Never work around it in code (renames, string-splitting, suppression comments). Name the exact finding ID and tell the user a platform admin can add a central ignore for it (`safety.ignore.<tool>.<id>`, where the value is the expiry date, or empty for none), which clears it at the gate, and at the periodic safety sweep too for a `trivy` finding and for a function app's `deps` finding (the sweep's dependency lane reads function apps alone, and it has no semgrep or accessibility lane, so a `semgrep` or `a11y` ignore, or a container app's `deps` one, clears the deploy check alone). A `secrets` finding is the exception: gitleaks has no central ignore family, and its one waiver is the finding's fingerprint in a `.gitleaksignore` committed at the root of the app's own repo, an entry there being sanctioned, not an in-code workaround. Nothing else waives it: the platform scans with its own configuration, so a committed `.gitleaks.toml` is not read, and an inline `gitleaks:allow` comment does nothing. The two fingerprint forms, and when one stops matching, are `inno-ship`'s `secrets` row; which paths the scan skips (gitleaks' default exclusions, such as dependency directories and lockfiles) is the contract's R8 (`get_app_contract` with `sections: ["R8"]`). Semgrep has no repo-side escape at all: the `sast` gate honors neither a `# nosemgrep` comment nor a `.semgrepignore` (R8), so a semgrep finding is either fixed in the code (when it is real) or ignored centrally by a platform admin (`safety.ignore.semgrep.<rule id>`). |
-| `yaml.github-actions.security.secrets-inherit` finding on `.github/workflows/deploy.yml` | A real fix, not a false positive: tell the user and, with their okay, delete the `secrets: inherit` line from `deploy.yml`. The platform's reusable workflow needs no inherited secrets (it uses only the automatic `GITHUB_TOKEN` and OIDC), and repos made from older copies of the template carry that line. Keep the `workflow_dispatch` trigger. |
+| A failure titled `Gitleaks`, `Semgrep`, `Semgrep version` or `Trivy` | The check itself failed, not the app: say so plainly, and change nothing in the app. What to do is the job's row in `references/gate-failures.md` (`secrets`, `sast` or `container`). |
+| **Real finding** (SAST/deps/CVE) | Find the file:line in the log lines `get_ci_status` returns for the failed job. When it says the log is unavailable or has no lines to show, or the file:line sits above the lines it shows (at most the last 30 up to the last error), open the run link yourself (or run `gh run view <run-id> --log-failed` when the user has `gh` signed in) and read the failing step. Explain the risk in one sentence, fix it (or guide the fix) as the job's row in `references/gate-failures.md` says, re-push. |
+| `secrets` (gitleaks) failure titled `Secret scan (gitleaks)` | Say that a password or key was saved somewhere in the project's history, so it has to be replaced, and that you will show them each step. Read every finding before fixing or waiving any: `references/gate-failures.md`, its `secrets` row, has the order of work and the one waiver. |
+| `policy` fails with `Platform refused this app`, or warns `Gate policy unavailable` | For the refusal, say the platform did not accept this project's checks, so most of them did not run, and why in plain words; for the warning, that the platform could not answer, so the checks ran with its defaults. The causes and the fixes: `references/gate-failures.md`, its `policy` row. |
+| **Likely false positive** | Never work around it in code (renames, string-splitting, suppression comments). Name the exact finding ID and tell the user a platform admin can add a central ignore for it (`safety.ignore.<tool>.<id>`, where the value is the expiry date, or empty for none), which clears it at the gate, and at the periodic safety sweep too for a `trivy` finding and for a function app's `deps` finding (the sweep's dependency lane reads function apps alone, and it has no semgrep or accessibility lane, so a `semgrep` or `a11y` ignore, or a container app's `deps` one, clears the deploy check alone). A `secrets` finding is the exception: gitleaks has no central ignore family, and its one waiver is the finding's fingerprint in a `.gitleaksignore` committed at the root of the app's own repo, an entry there being sanctioned, not an in-code workaround. Nothing else waives it: the platform scans with its own configuration, so a committed `.gitleaks.toml` is not read, and an inline `gitleaks:allow` comment does nothing. The two fingerprint forms, and when one stops matching, are the `secrets` row of `references/gate-failures.md`; which paths the scan skips (gitleaks' default exclusions, such as dependency directories and lockfiles) is the contract's R8 (`get_app_contract` with `sections: ["R8"]`). Semgrep has no repo-side escape at all: the `sast` gate honors neither a `# nosemgrep` comment nor a `.semgrepignore` (R8), so a semgrep finding is either fixed in the code (when it is real) or ignored centrally by a platform admin (`safety.ignore.semgrep.<rule id>`). |
+| `yaml.github-actions.security.secrets-inherit` finding on `.github/workflows/deploy.yml` | A real finding, not a false positive: say that one line in the app's deploy file has to go, and why. The fix: `references/gate-failures.md`, its `sast` row. |
 | A `SAFETY GATE DISABLED` warning in the log | Deliberate admin configuration, not a bug. Note it and move on. |
-| config-integrity failure | Something in the repo is a file the platform injects at build time, or one it forbids outright; the failure names each path, and the full list with the reason for each is `inno-platform-conventions`' **Files you must not touch** section. Three rules govern how you act on it. **Never move or delete author code unprompted**: files under a root `src/`, and a root `package.json` / `package-lock.json` / `tsconfig.json`, are often the author's real code and manifests in a migrated repo, so show the user every flagged path and, only with their okay, move it under `app/` (for example `app/src/`), updating the Dockerfile `COPY` paths and any imports or build settings that pointed at the old location; delete only what they confirm is not theirs. **Platform-owned files go, once the user okays it** (show them the paths first: a `.env` or `.npmrc` can carry their values, and `inno-ship`'s rule is to ask before any delete): a root `wrangler.jsonc` or any competing wrangler config, a `.wrangler/` directory, a `scaffold/` that outlived `app/.needs-build`, a root-level `.env*` (its values move into app Variables with `set_app_variables`) and any root package-manager config, plus every `.npmrc` at any depth. **A symlink the gate refuses has no policy toggle** (a directory link, a dangling one, or a file link that resolves outside the repository): show the user the link, then replace it with the real directory or file inside the repository, or drop it. If instead `CLAUDE.md`'s required template headers were altered, revert them (the rest of the file is yours). A message that the gate "could not fully inspect the app tree" means a committed directory it could not read; fix or remove that path. Everything else under `app/` (an `app/package.json`, an `app/.yarnrc.yml`, an `app/src/`) is yours and fine. |
-| `dep-age` failure | The **inverse** of a CVE finding: do NOT bump to the newest release, that makes it redder. Either a pinned dependency was published more recently than the platform's cooldown allows (`safety.min_release_age_days`; `get_config app=<name>` tells you the value actually in force, and from it how many days you're short by), or the app ships `app/package.json` with no committed, parseable `app/package-lock.json` and there are no exact versions to date at all. Remedies: wait out the cooldown, pin an older vetted version, commit `app/package-lock.json`, or ask a platform admin for an app-scope `safety.min_release_age_days: 0`. Separately from this gate, a function-shaped app that ships `app/package.json` with no committed `app/package-lock.json` fails the `app-build` job and the `deps` gate outright, whatever the cooldown says, in this very run rather than at the tag (the contract's §1.1 **Dependencies** bullet). |
-| `app-build` failure (function-shaped apps) | The app's Worker did not build: a missing or stale `app/package-lock.json`, an import that does not resolve, a devDependency imported at runtime, a browser interface (`app/ui/`) that does not build, a link in the checkout (most often in a `node_modules` directory, which `config-integrity` does not walk) that points outside the repository or nowhere, or a bundle over 16 MiB. Each has its row, with its fix, in `inno-ship`'s failure table. Fix it, then re-push. |
-| `container` fails with `Accessibility check failed` | Only happens when the app's `safety.a11y.mode` is `enforce`. Read the report (§1c) for what it marks as blocking; the causes and the remedies are the row for it in `inno-ship`'s failure table. Fix, then re-push. |
-| container failure | Dockerfile contract problem (the contract's R1), or the built image never answered `GET /healthz` with exactly 200 inside the smoke test's budget (R2 gives its clocks); hand off to `inno-containerize`, whose item 2 covers a non-root failure. A failure titled `Trivy` or `Docker build` has its reading in `inno-ship`'s `container` row. |
+| `config-integrity` failure | Say the project holds a file the platform supplies itself, or one it does not allow, and show the user every path the failure names before anything moves or goes. The rules for each: `references/gate-failures.md`, its `config-integrity` row. |
+| `dep-age` failure | Say a building block of the app is newer than the platform accepts yet, so the fix is an older, vetted version or a wait, never the newest release. The remedies: `references/gate-failures.md`, its `dep-age` row. |
+| `app-build` failure (function-shaped apps) | Say the app did not build, and what stopped it, in one plain sentence. Each cause has its row in `references/gate-failures.md`. Fix it, then re-push. |
+| `container` fails with `Accessibility check failed` | Only happens when the app's `safety.a11y.mode` is `enforce`. Say which pages or controls the check could not accept: the report (§1c) marks what blocks. The causes and the remedies: `references/gate-failures.md`, its row. Fix, then re-push. |
+| container failure | Say the app's container did not meet the platform's rules, or did not start, in plain words. The causes and the fixes: `references/gate-failures.md`, its `container` row; `inno-containerize` makes the fix. |
 
 Diagnose privately (`get_ci_status`'s failed step and log lines for each
 failed job, its run link when a log is unavailable, or
@@ -414,7 +412,7 @@ platform admin. The caps and refusals are `inno-manage-app`'s
 support-bundle section; the one to expect here is `bundle_limit_reached`,
 which is not a reason to retry: point the user at a bundle already created.
 
-## Done
+## 4. Hand off
 
 End with a clear verdict: **"Safe to ship"** (gates green and guardrails
 clean, and, for a `function` or `mcp-function` app that has
@@ -424,8 +422,7 @@ proves the lockfile on its own, because `app-build` runs on every push to the
 default branch, so a missing or stale lockfile is a red job in the run you are
 narrating, not a surprise at the tag; the same job bundles the app, so an
 import that does not resolve or a bundle over the size cap shows here too.
-(The `deps` gate refuses a function-shaped app's missing lockfile too.) One
-exception, and it is about what you REPORT rather than about safety:
+One exception, and it is about what you REPORT rather than about safety:
 `app-build` is `needs: [policy, config-integrity, scaffold-check]`, so a
 red `config-integrity` skips it, and while `app/.needs-build` is present
 it runs no steps. Nothing unsafe follows, because such a run skips

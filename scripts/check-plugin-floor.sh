@@ -22,11 +22,9 @@ export LC_ALL=C
 here="$(cd "$(dirname "$0")" && pwd)"
 # shellcheck source=scripts/semver.sh
 . "$here/semver.sh"
-
-if ! command -v jq >/dev/null; then
-  echo "check-plugin-floor: jq is required" >&2
-  exit 2
-fi
+# shellcheck source=scripts/lib.sh
+. "$here/lib.sh"
+require_jq
 
 record="${1:-$here/platform-compat.json}"
 manifest="${2:-$here/../plugins/innovation-platform/.claude-plugin/plugin.json}"
@@ -35,14 +33,12 @@ if ! version="$(bash "$here/plugin-version.sh" "$manifest")"; then
   echo "check-plugin-floor: $manifest declares no plain MAJOR.MINOR.PATCH version" >&2
   exit 2
 fi
-# Read as JSON, as plugin-version.sh reads a version, so only one quoted
-# triple passes.
-floor="$(jq -c '.plugins.app.minVersion' "$record" 2>/dev/null)" || floor=""
-if ! [[ "$floor" =~ ^\"(.*)\"$ ]] || ! [[ "${BASH_REMATCH[1]}" =~ $SEMVER_TRIPLE ]]; then
+# Read as plugin-version.sh reads a version, so only one quoted triple
+# passes.
+if ! floor="$(semver_json "$record" .plugins.app.minVersion)"; then
   echo "check-plugin-floor: $record holds no plain MAJOR.MINOR.PATCH plugins.app.minVersion" >&2
   exit 2
 fi
-floor="${floor:1:${#floor}-2}"
 pin="$(jq -r '.pinned.ref // "an unpinned record"' "$record")"
 
 if semver_at_least "$version" "$floor"; then
