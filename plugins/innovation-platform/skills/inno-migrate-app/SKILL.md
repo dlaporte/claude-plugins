@@ -174,7 +174,8 @@ order:
    history, and this is the *same* repo: history is not left behind, so a
    secret buried in an old commit still fails: rotate it first, then either
    remove it from the history or record its finding's fingerprint in
-   `.gitleaksignore`, as `inno-ship`'s `secrets` row says, and never delete
+   `.gitleaksignore`, as the `secrets` row of `inno-safety-preflight`'s
+   `references/gate-failures.md` says, and never delete
    the file in a new commit, which leaves the secret in the old one; the
    rotated value then goes into an app Variable, never back in the repo),
    dependency CVEs (`pip-audit`, Trivy), and semgrep OWASP patterns such as
@@ -483,7 +484,8 @@ restore point is.
    past commit still trips the `secrets` gate. Rotate it first (a history
    rewrite alone doesn't un-leak it), then, before shipping, either remove it
    from the history or record its finding's fingerprint in `.gitleaksignore`,
-   as Phase 1's **Gate risks** and `inno-ship`'s `secrets` row say; never
+   as Phase 1's **Gate risks** and the `secrets` row of
+   `inno-safety-preflight`'s `references/gate-failures.md` say; never
    delete the file in a new commit, which leaves the secret in the old one.
    Set the rotated value as an app **Variable**; never re-commit it.
 5. **Rewrite `README.md`** to describe the migrated app (what it does, who it's

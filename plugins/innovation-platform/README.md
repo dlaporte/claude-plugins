@@ -236,8 +236,9 @@ request for a platform admin goes, and the
 `cross_owner_link_revoked` and `host_upload_blocked` notices;
 `inno-safety-preflight` owns the pre-push branch and symlink checks, how to
 read `get_ci_status`, and how to read the CI accessibility, response-header
-and Dockerfile reports; `inno-ship`'s `secrets` row owns the gitleaks fix
-and the fingerprint waiver; `inno-containerize` owns the health-probe clock;
+and Dockerfile reports, and its `references/gate-failures.md` owns each
+safety gate's cause and fix, the gitleaks fix and the fingerprint waiver
+among them; `inno-containerize` owns the health-probe clock;
 `inno-new-app` owns the name-check rules; `inno-fleet-admin` owns the
 admin-only actions (a purge's missing archive included); and this README
 owns House style.
