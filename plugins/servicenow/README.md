@@ -23,5 +23,5 @@ subset of tool packages (`SNOW_TOOL_PACKAGES`). The skills probe this with
 
 ## Install
 
-Add the marketplace and install the plugin as the repository's
-[README](../../README.md#add-the-marketplace) says.
+Add the marketplace and install the plugin as the repository's README
+says, under Add the marketplace.
