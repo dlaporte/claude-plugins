@@ -79,7 +79,11 @@ sentence in this flow.
 A request for a platform admin goes where `inno-manage-app`'s **Asking a
 platform admin** says.
 
-## 1. Intake: ask the user for five things
+## 1. Intake: seven questions, five of them now
+
+Ask the user these five now. The design (§1b) asks the other two, the
+identity and the audience the app is meant for in the end, and states
+everything else as your recommendation.
 
 1. **App name**: lowercase letters, digits, hyphens only, 3-29 chars,
    starting with a letter. This drives the app's **hostname** on the platform
@@ -197,8 +201,11 @@ way, the design still has to be written into your reply and approved (see
 "Present the design, THEN ask for approval" below); the skill's absence is not a
 reason to skip that.
 
-The design includes four contract-informed choices that are **the user's to
-make, with your recommendation**:
+The design includes four contract-informed choices. The identity is **the
+user's to answer**; the deployment type, the pattern and the stack are
+**your recommendation**, stated in the design, which the user may change.
+Only ask the user if it's genuinely ambiguous; otherwise just tell them what
+you're doing.
 
 - **Identity**: ask the user, in these words, **"does the app need to know
   who each caller is?"** Yes is `identity-aware`, the default: the platform
@@ -365,7 +372,7 @@ The written design covers, at minimum:
 Only after that design is in your reply: **stop and get explicit user
 approval** (of the design *and* the name) before §2. Ask the approval question
 in your own words referencing the design the user can now read; put genuinely
-separate decisions (name choice, identity, deployment type, members) in their own
+separate decisions (name choice, identity, members) in their own
 questions rather than folding them into the approval. Registration provisions
 real resources (a database, file storage and the app's member list) and
 binds them to the user's repo; the type and the identity are fixed at
@@ -381,8 +388,8 @@ account* it lands in, not *who runs the command*.
 
 **Preferred: do it for them with `gh`.** Run `gh auth status`; an authenticated
 account with `repo` scope is the user's **own** credential, so a repo it creates
-lands in their ownership exactly as the browser path does. Confirm the name and
-visibility with them, then:
+lands in their ownership exactly as the browser path does. Tell them the repo
+name and the visibility you will use, then:
 
 ```sh
 gh repo create {owner}/{repo} --template <template repo> --private
@@ -391,9 +398,10 @@ gh repo create {owner}/{repo} --template <template repo> --private
 Here `<template repo>` is the owner/name on the `Template repo:` line of the
 status you read in the Version gate.
 
-- Suggest the app name itself; public or private is fine. Ask which they want, or run
-  `gh repo list --limit 5 --json name,isPrivate` and match what their recent repos use, rather than
-  assuming.
+- Suggest the app name itself; public or private is fine. Match what their
+  recent repos use (`gh repo list --limit 5 --json name,isPrivate`) and say
+  which you chose, rather than assuming; ask only when that is genuinely
+  ambiguous.
 - Template copying is **asynchronous**: an immediate `git clone` can land an
   empty repo. Poll `git fetch` until `origin/main` exists before checking out.
 
