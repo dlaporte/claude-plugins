@@ -39,7 +39,7 @@ A Claude artifact is a single page (React, or plain HTML) that runs inside
 claude.ai, with libraries and a saved-data API (`window.storage`) that
 claude.ai provides. This skill turns one into a **function** app: a Cloudflare
 Worker that serves the artifact's page, with the page built by the platform's
-CI from `app/ui/` (the contract's **Browser interface**, section 1.1), and the
+CI from `app/ui/` (the contract's **Browser interface**, §1.1), and the
 artifact's saved data kept in the app's own D1 database. The artifact's look
 and behavior carry over; what changes is where its code is built, where its
 data lives, and who can reach it (the platform's front door, not a claude.ai
@@ -56,6 +56,10 @@ appear.
 
 A request for a platform admin goes where `inno-manage-app`'s **Asking a
 platform admin** says.
+
+**Speak the user's language.** Plain terms with the user, no provider or
+product names unless they have shown technical fluency; the full rule is the
+plugin README's **House style** section.
 
 ## 1. Check the platform builds browser interfaces
 
@@ -102,13 +106,13 @@ Read the whole artifact and list, using `references/artifact-runtime.md`:
 - **Calls to Claude**: any `window.claude.complete` (or other `window.claude`)
   call. **Not supported in this version of the skill**: the platform forbids
   an endpoint that relays a browser-written prompt on the app's key
-  (`get_app_security` section 11), and who pays for model calls is a policy
+  (`get_app_security` §11), and who pays for model calls is a policy
   decision this skill does not make. List each use and what the feature
   does; the plan removes it (step 4).
 - **Outside requests**: any `fetch` to another site, which the page's
   Content-Security-Policy (`connect-src 'self'`) blocks. Each needs a
   server-side route in `app/index.ts` with a fixed host list (`get_app_security`
-  section 10), or it is dropped.
+  §10), or it is dropped.
 - **File inputs and downloads**, and anything that renders user text as HTML
   (`dangerouslySetInnerHTML`, `innerHTML`): the second is a finding to fix.
 - **Inline styles**: every literal `style="..."` attribute in the markup
@@ -128,7 +132,7 @@ artifact's purpose and behavior against it. A conflict is a HARD STOP:
 `register_app` requires `accept_guardrails: true`, which you must not pass
 until it is clean or the user has an explicit admin exception.
 
-Choose the app name with `check_name`, following `inno-new-app` section 1's
+Choose the app name with `check_name`, following `inno-new-app` §1's
 name bullet unchanged.
 
 Then write the plan **into your reply**, never only inside an approval
@@ -154,12 +158,12 @@ Get explicit approval of the plan and the name before step 5.
 
 ## 5. Create the repository and register
 
-Follow `inno-new-app` sections 2 and 3 unchanged, with these answers: type
+Follow `inno-new-app` §2 and §3 unchanged, with these answers: type
 `function`, identity `identity-aware`, the approved name, and the user's
 description. That creates the repository from the platform's template in the
 user's own account, commits the proof file, has the user install the
 platform GitHub App, and returns the `deploy.yml` to write. Then pull, as
-`inno-new-app` section 4 says: the registration's scaffold commit leaves
+`inno-new-app` §4 says: the registration's scaffold commit leaves
 `app/index.ts`, `app/identity.ts` and the function `CLAUDE.md`.
 
 ## 6. Build the app from the starter
@@ -187,7 +191,7 @@ In the repository:
    artifact relied on a storage behavior the reference marks as unverified,
    test that path in step 7.
 6. **Delete the scaffold marker.** `rm -f app/.needs-build`, as `inno-new-app`
-   section 4 says: with the marker in place CI skips the interface build and
+   §4 says: with the marker in place CI skips the interface build and
    `inno-ship` refuses to deploy, so step 9's preflight would prove nothing
    about the build.
 7. **Dependencies.** Add each library from step 3 to `dependencies` in
@@ -240,4 +244,4 @@ real gates, the interface build among them, and deploys nothing), then
 `inno-ship`. Tell them the app starts members-only, and that widening it to
 everyone who signs in goes through `inno-manage-app` after it ships. Quote
 the first-deploy deadline from `register_app`'s second answer, as
-`inno-new-app` section 5 says.
+`inno-new-app` §5 says.
