@@ -219,8 +219,9 @@ Traffic is the only keep-alive: there is no "renew" action.
   and what each means, and `app_status` gives its dates.
 - **A stopped app can't be deployed.** A push to the default branch still runs
   the gates green on a stopped app; it is the **release tag's** run that
-  fails with `app_stopped` (a container app's at its `container` job's SBOM
-  upload, a function app's at `deploy`). Start it first, then cut the next
+  fails with `app_stopped` (a container app's at the SBOM upload of
+  `container` (shown as Container contract and image scan), a function app's
+  at `deploy` (shown as Deploy)). Start it first, then cut the next
   patch tag (a tag is immutable, so never force-move one).
 - **Before a purge, name the consumers.** A purge revokes every data link
   touching the app, in both directions (`purge_app`'s description says what

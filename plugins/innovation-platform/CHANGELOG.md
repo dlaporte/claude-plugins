@@ -620,3 +620,31 @@ for a React conversion, copy `app/ui/AppBar.tsx` too (and replace
 `references/html-artifacts.md`'s step 7 (the signed-in address through the
 shim's `send()`, the failed read with Try again, and Sign in again at
 `signInAddress()`); saved data is unchanged.
+
+## 7.4.1
+
+Plugin 7.4.1 follows platform v0.18.16 and contract 47 (no platform tool
+changed in v0.18.15 or v0.18.16; the floor stays 7.0.0). Platform v0.18.16
+gives every job of the tenant workflow a name, and a run page,
+`get_ci_status` and `gh run view` now show each job by that name, after
+`deploy.yml`'s own job (`platform / Config integrity`), where they showed its
+id: `policy` (shown as Gate policy), `config-integrity` (shown as Config
+integrity), `secrets` (shown as Secret scan (gitleaks)), `sast` (shown as
+SAST (semgrep)), `deps` (shown as Dependency audit), `container` (shown as
+Container contract and image scan), `dep-age` (shown as Dependency
+cooldown), `scaffold-check` (shown as Scaffold check), `app-build` (shown as
+Build the app Worker, its name before too) and `deploy` (shown as Deploy).
+The ids are unchanged, but the skills, their references and the README named
+a job by its id where a person reads the run page. Each row of a failure table
+now gives the name beside the id, in that form, once for every job the row
+reads on a run (failing, passing, running or skipped), and so does every list
+of a run's jobs and every other paragraph or list item about a job failing or
+what a run shows of it; the ids left alone are in sentences about what a gate
+checks or what a job needs or does, pointers to a table row, gate toggle names
+and later mentions in the same row or passage.
+`inno-safety-preflight` §2 matches a failure row by the failed job's name as
+`get_ci_status` and `gh run view` print it, and §2 and
+`references/gate-failures.md` both say that a platform before v0.18.16 shows
+every job but `app-build` by its id. `inno-containerize` now says a failed
+smoke test skips `deploy`, as the run page shows, where it said it fails it.
+No starter file changed.

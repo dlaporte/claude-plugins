@@ -1,8 +1,8 @@
 # Moving a devDependency into dependencies
 
-`inno-ship` loads this when the `app-build` job reports `devDependency
-imported at runtime` for a package. The fix moves that package's entry from
-`devDependencies` to `dependencies` as it stands.
+`inno-ship` loads this when `app-build` (shown as Build the app Worker)
+reports `devDependency imported at runtime` for a package. The fix moves that
+package's entry from `devDependencies` to `dependencies` as it stands.
 
 From the repo root, with the package's name in place of `<package>` (the
 error's own `Move it:` line carries this same command with the package

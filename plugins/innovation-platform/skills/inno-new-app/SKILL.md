@@ -612,7 +612,8 @@ provisions the app, and binds the repo. It returns text beginning
   every case. This is a real step, not a hands-off one. Keep the
   `workflow_dispatch` trigger (the platform re-dispatches it for security
   respins). The snippet has no `secrets:` line, and the file must not gain one:
-  `secrets: inherit` is a blocking finding for the `sast` gate, and the
+  `secrets: inherit` is a blocking finding for
+  `sast` (shown as SAST (semgrep)), and the
   platform workflow needs no caller secrets.
 
 ### Reading register_app's responses: branch, don't assume
@@ -729,7 +730,7 @@ provisions the app, and binds the repo. It returns text beginning
     not bound to the app): lay the type's files out from a current copy of
     the template repo (`references/hand-authored-layout.md`), and delete
     `scaffold/` before deploying, since the leftover fails the first
-    deploy's `config-integrity` gate.
+    deploy's `config-integrity` (shown as Config integrity).
   - **`scaffold not applied`** (a warning): the platform could not write
     the prune commit, so the repo is as it was. Lay the type's files out
     the same way (a template copy already holds them under
