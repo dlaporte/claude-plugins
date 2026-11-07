@@ -549,9 +549,8 @@ user scope. So "stop emailing me about deploys but keep the purge warnings"
 is self-service. At `user` scope an omitted `scope_id` means your own
 account, and naming anyone else's is refused `forbidden`.
 
-- `text_too_long` (from the panel; over MCP the argument's own limit refuses
-  it first): the note is longer than its limit, which the message names
-  (200 characters). Shorten it and call again.
+- An over-long note: over MCP the `note` argument's own limit (200
+  characters) refuses it before the tool runs. Shorten it and call again.
 - `invalid_value`: the message names the setting and the rule its value
   broke (`<key> must be ...`: a type, a grammar, or for a number the range
   it must fall in). Fix the named thing rather than guessing at the format.
