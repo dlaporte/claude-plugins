@@ -216,6 +216,20 @@ jobs:
           set -euo pipefail
           bash scripts/check-build-tools.sh
 
+      # The starter's suite runs against scripts/starter-test/identity.ts, a
+      # copy of the platform scaffold's app/identity.ts below its header,
+      # which the pinned record's shipped key hashes (platform v0.18.18 on).
+      # The check first proves itself on copies and records it plants.
+      - name: The scaffold-copy check catches what its fixture plants
+        run: |
+          set -euo pipefail
+          bash scripts/test-check-scaffold-copy.sh
+
+      - name: The starter suite's identity.ts is the pinned release's scaffold file
+        run: |
+          set -euo pipefail
+          bash scripts/check-scaffold-copy.sh
+
       # The floor check first proves it compares versions as numbers (2.10.0
       # is above 2.9.0) on records and manifests it plants.
       - name: The floor check catches what its fixture plants

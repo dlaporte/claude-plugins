@@ -106,8 +106,10 @@ run. CI reads only these copies, never the platform repository: the
 `tool-names` job checks every tool name the plugin uses, and the
 `platform-compat` job checks that the list is the record's, that every
 `sections: [...]` literal under `plugins/innovation-platform/` names a section
-the record's contract has, and that the plugin's `version` is at least the
-record's app plugin floor (`plugins.app.minVersion`). That job's fixture
+the record's contract has, that the plugin's `version` is at least the
+record's app plugin floor (`plugins.app.minVersion`), and that the starter's
+copies of the files the platform ships are the record's (`shipped`, from
+platform v0.18.18; "The starter" below). That job's fixture
 tests plant their own records, so a resync leaves them alone. The tool-name
 fixture test still reads the real pinned list, so a resync that retires a
 tool its fixture uses fails that test until the fixture is edited.
@@ -135,6 +137,8 @@ Refresh both files at every resync with the platform:
    `outputRevision` line needs every skill that reads that tool's result
    checked against what the tool now returns (section 7.4.2 of the
    platform's `docs/OPERATIONS.md` says which output changes are breaking).
+   A `shipped` line needs this repository's copy of that file taken again
+   ("The starter" below).
 4. Run the checks ("The checks" above), then commit both files with the
    skill changes that answer the list. When the build tools moved, the
    starter's pins move with them, and its suite's lock must follow ("The
@@ -163,6 +167,7 @@ bash scripts/check-tool-names.sh --pinned scripts/platform-tools.preview.txt plu
 bash scripts/check-contract-sections.sh plugins/innovation-platform scripts/platform-compat.preview.json
 bash scripts/check-plugin-floor.sh scripts/platform-compat.preview.json
 bash scripts/check-build-tools.sh plugins/innovation-platform/skills/inno-convert-artifact/assets/starter/app/package.json scripts/platform-compat.preview.json
+bash scripts/check-scaffold-copy.sh scripts/starter-test/identity.ts scripts/platform-compat.preview.json
 ```
 
 No file under either plugin, and neither this file, the repository's
@@ -203,5 +208,10 @@ The starter ships no lock of its own (a conversion writes one), so the
 suite keeps one. `npm ci` refuses it once the starter's `package.json`
 moves; then run `bash scripts/test-starter.sh --relock` and commit the new
 lock. The suite's `identity.ts` is a copy of the platform scaffold's, which
-the starter imports; its header names the platform release it was copied
-at.
+the starter imports, unchanged below its header: the `platform-compat`
+job's `scripts/check-scaffold-copy.sh` hashes it there and compares the
+pinned record's `shipped` entry for
+`ci/fixtures/template/scaffold/function/app/identity.ts`, so the header
+names no release of its own. When a resync prints that entry as moved,
+copy the platform's file at the new tag below the header again and run the
+starter's suite.

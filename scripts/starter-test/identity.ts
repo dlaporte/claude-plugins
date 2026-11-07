@@ -2,7 +2,8 @@
 // registration commits beside the starter (SKILL.md step 5) and the starter
 // imports. Copied because this repository's CI has no platform checkout:
 // inno-platform's ci/fixtures/template/scaffold/function/app/identity.ts at
-// v0.18.11 (last changed in 82d55547), unchanged below this header.
+// the release scripts/platform-compat.json pins, unchanged below this header:
+// scripts/check-scaffold-copy.sh holds it to that record's shipped hash.
 
 // The caller, or null when the request carries no identity (the platform's
 // health probe, or a local run without the headers). The same contract as the
