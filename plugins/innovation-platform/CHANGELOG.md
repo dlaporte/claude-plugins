@@ -697,8 +697,8 @@ section they mean ("get_platform_docs section 16"). The skills follow:
 `app_type_unsupported`; and every pointer into the platform's docs, the
 README's included, names its section by number with its title, such as
 `get_platform_docs` section 11 (Lifecycle), where it named the section's
-bold title. Every listing line now takes one grammar: a head (`- `, the
-name, then its bracketed status and marks) and then `key=value` pairs, so
+bold title. Every listing line now takes one grammar: a head (`- `, what
+the line names, then its bracketed tags) and then `key=value` pairs, so
 `inno-fleet-admin` and `inno-manage-app` read `list_apps`' line as
 `- <name> [<status>]`, its marks (`[IN CUSTODY]` first, then
 `[VULNERABLE]` and `[UNLINKED]`, beside the status where they came last),
@@ -719,9 +719,10 @@ platform keeps no alias for the old names, and until that gate is set a
 `disconnect_user_connection` refuse a call that omits `email`, while
 `get_config` and `list_user_connections` ignore the old `user` key and
 answer as if no address were named, within the caller's standing (an
-admin's `get_config` answers the fleet catalog, and `list_user_connections`
-every session the caller may read, where one account's was asked for), so
-update before reading one account's settings or sessions. The tools' input
+admin's `get_config` answers the fleet catalog and `list_user_connections`
+the fleet's sessions, where one account's was asked for, and a member's
+either one answers `forbidden`), so update before reading one account's
+settings or sessions. The tools' input
 changed, so reconnect after that upgrade too. `inno-convert-artifact`'s
 starter `app/dev/build-ui.mjs` gains a header naming the platform's
 `ci/build-ui.mjs` it mirrors (at v0.18.18, last changed in ac8c1f4f, with
