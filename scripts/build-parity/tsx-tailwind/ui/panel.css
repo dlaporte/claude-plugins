@@ -1,0 +1,9 @@
+/* Imported by main.tsx, so it joins the stylesheet after styles.css, with
+   the font inlined. */
+@font-face {
+  font-family: "Parity";
+  src: url("./font.woff2") format("woff2");
+}
+.panel-title {
+  font-family: "Parity", sans-serif;
+}

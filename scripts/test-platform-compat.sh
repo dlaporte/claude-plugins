@@ -1,6 +1,6 @@
 #!/usr/bin/env bash
 # Runs scripts/platform-compat.sh, from a copy of the scripts, on a platform
-# repository this script plants with a record at each of fifteen release tags
+# repository this script plants with a record at each of eighteen release tags
 # (v1.0.1, the first, an annotated tag; the rest lightweight), and fails
 # unless what it prints as moved since the previous pin is exactly what each
 # pair of records calls for:
@@ -26,7 +26,12 @@
 #   - a value that moved under contract, plugins or behavior prints its old
 #     and new value, and a gateway block (which a record from v0.17.0 on no
 #     longer carries) is not compared: one that comes, moves or goes prints
-#     nothing.
+#     nothing;
+#   - a served document and a shipped file (platform v0.18.18 on) that come,
+#     whose hash moves or that go each print so, by path, the served lines
+#     first: a record that gains the shipped key (the first resync past
+#     v0.18.17) prints each of its entries as new, and the same record twice
+#     prints nothing.
 # Then the two modes, each with exactly its output and the files it leaves:
 #   - a pin is written only at a release tag: an annotated tag and a
 #     lightweight one each pin the commit they name; a branch name, a raw
@@ -89,6 +94,9 @@ tag v1.0.12 'del(.gateway)'
 tag v1.0.13 '.tools.list |= map(.adminOnly = (.name == "purge_app"))'
 tag v1.0.14 'set("purge_app"; .adminOnly = false) | set("get_app_logs"; .adminOnly = true | .readOnly = true | .inputRevision = "e4")'
 tag v1.0.15 'set("purge_app"; del(.adminOnly))'
+tag v1.0.16 '.served = {"docs/A.md":"a1","docs/B.md":"b1"}'
+tag v1.0.17 '.shipped = {"ci/build-ui.mjs":"u1","ci/fixtures/identity.ts":"i1"}'
+tag v1.0.18 '.served["docs/A.md"] = "a2" | del(.served["docs/B.md"]) | .shipped["ci/build-ui.mjs"] = "u2" | del(.shipped["ci/fixtures/identity.ts"]) | .shipped["app/new.ts"] = "n1"'
 
 # fresh: a new directory holding a copy of the scripts, so each case's pin is
 # its own (platform-compat.sh writes beside itself). Prints its scripts/.
@@ -174,6 +182,19 @@ moved "a record whose tools flip adminOnly, one with its inputRevision and readO
 moved "the same record twice, with an adminOnly that is false" v1.0.14 v1.0.14
 moved "a record whose false adminOnly goes" v1.0.14 v1.0.15 \
   "  tool purge_app: adminOnly was false; now none"
+moved "a record that gains served documents" v1.0.15 v1.0.16 \
+  "  served docs/A.md: new" \
+  "  served docs/B.md: new"
+moved "a record that gains the shipped key" v1.0.16 v1.0.17 \
+  "  shipped ci/build-ui.mjs: new" \
+  "  shipped ci/fixtures/identity.ts: new"
+moved "a record whose served and shipped entries come, move and go" v1.0.17 v1.0.18 \
+  "  served docs/A.md: hash moved" \
+  "  served docs/B.md: gone" \
+  "  shipped app/new.ts: new" \
+  "  shipped ci/build-ui.mjs: hash moved" \
+  "  shipped ci/fixtures/identity.ts: gone"
+moved "the same record twice, with served and shipped entries" v1.0.18 v1.0.18
 
 # The two modes. Beside the release tags: a branch, a branch with a release
 # tag's form and no such tag, and a tag of another form.
@@ -271,4 +292,4 @@ expect "a preview with no committed pin writes the preview alone" 0 "$(
 )" compat "$(fresh)" --preview "$platform" candidate
 
 [ "$fail" -eq 0 ] || exit 1
-echo "test-platform-compat: OK ($n cases: a record with no outputRevision reads as before; an outputRevision that comes, moves or goes is listed, an unchanged one is not, and a null one reads as none; a retired tool prints only that it is gone; a readOnly or adminOnly that comes, flips or goes is listed, an unchanged one is not; a contract, plugin floor or behavior value that moves is listed, and a gateway block is never compared; only a release tag, annotated or lightweight, is pinned, and a preview takes any commit and leaves the committed pin alone)"
+echo "test-platform-compat: OK ($n cases: a record with no outputRevision reads as before; an outputRevision that comes, moves or goes is listed, an unchanged one is not, and a null one reads as none; a retired tool prints only that it is gone; a readOnly or adminOnly that comes, flips or goes is listed, an unchanged one is not; a contract, plugin floor or behavior value that moves is listed, and a gateway block is never compared; a served document or shipped file that comes, moves or goes is listed by path; only a release tag, annotated or lightweight, is pinned, and a preview takes any commit and leaves the committed pin alone)"

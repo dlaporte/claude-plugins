@@ -1,0 +1,6 @@
+script has parity-entry-tsx
+script lacks parity-decoy-main-js
+script has data:image/png;base64,
+styles has data:font/woff2
+styles has .panel-title{
+styles has .text-center{

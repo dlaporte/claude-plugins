@@ -346,7 +346,7 @@ function app's run holds no deploy credential at all: the deploy job checks
 the bundle `app-build` built against that job's digest before it requests
 any token, hands it to the platform, and the platform uploads the app's
 Worker itself, setting every binding. The served account
-is `get_platform_docs`' **Releases** and **CI gates** sections and the
+is `get_platform_docs` sections 15 (Releases) and 17 (CI gates) and the
 contract's R7 and R9.
 
 On success, report:
@@ -362,9 +362,9 @@ and say who can reach it and what it is told, from the `Audience:` and
   access via `inno-manage-app`'s `grant_access`, and the live members of its
   identity provider group (`<prefix><app>-users`, when the provider pushes
   one) can reach it. On a browser app the platform signs each person in on
-  their first visit (what they see is `get_platform_docs`' **Signing in and
-  out: what people see**), and anyone else who signs in sees a plain "No
-  access" page.
+  their first visit, and anyone else who signs in sees a plain "No access"
+  page; what they see is `get_platform_docs` section 5 (Signing in and
+  out).
 - **internal**: everyone who signs in can reach it, members or not.
 - **public**: anyone on the internet can reach it, with no sign-in.
 

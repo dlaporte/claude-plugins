@@ -1,6 +1,6 @@
 name: CI
 
-# Eight jobs, every step's run block set -euo pipefail and one
+# Nine jobs, every step's run block set -euo pipefail and one
 # `bash scripts/...` line run from the repository root, so a local run is
 # those same lines (CLAUDE.md, "The checks"). Each script's header says what
 # it checks, and a check's test-*.sh twin runs first and proves it on cases it
@@ -237,6 +237,40 @@ jobs:
           set -euo pipefail
           bash scripts/test-platform-compat.sh
 
+      # The two pairs below read the pinned record's shipped key, which a
+      # record from before platform v0.18.18 lacks, so pinned at one they fail
+      # (and so does the build-parity job); last in the job, so every step
+      # above still runs.
+
+      # The starter's suite runs against scripts/starter-test/identity.ts, a
+      # copy of the platform scaffold's app/identity.ts below its header,
+      # which the pinned record's shipped key hashes (platform v0.18.18 on).
+      # The check first proves itself on copies and records it plants.
+      - name: The scaffold-copy check catches what its fixture plants
+        run: |
+          set -euo pipefail
+          bash scripts/test-check-scaffold-copy.sh
+
+      - name: The starter suite's identity.ts is the pinned release's scaffold file
+        run: |
+          set -euo pipefail
+          bash scripts/check-scaffold-copy.sh
+
+      # The starter's dev/build-ui.mjs is a second implementation of the
+      # platform's ci/build-ui.mjs, and its header names the sha256 of the
+      # one it mirrors, which the pinned record's shipped key holds (platform
+      # v0.18.18 on). The check first proves itself on builders and records
+      # it plants.
+      - name: The starter-builder check catches what its fixture plants
+        run: |
+          set -euo pipefail
+          bash scripts/test-check-starter-builder.sh
+
+      - name: The starter's builder mirrors the pinned release's ci/build-ui.mjs
+        run: |
+          set -euo pipefail
+          bash scripts/check-starter-builder.sh
+
   starter:
     runs-on: ubuntu-26.04
     timeout-minutes: 15
@@ -246,8 +280,9 @@ jobs:
       # miniflare otherwise fetches workers.cloudflare.com/cf.json on every run.
       CLOUDFLARE_CF_FETCH_ENABLED: "false"
     steps:
-      # The only job that runs code from the npm registry, so the checkout
-      # keeps no token in the repository's git config for that code to read.
+      # One of the two jobs that run code from the npm registry (with
+      # build-parity), so the checkout keeps no token in the repository's git
+      # config for that code to read.
       - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
           persist-credentials: false
@@ -270,3 +305,41 @@ jobs:
         run: |
           set -euo pipefail
           bash scripts/test-starter.sh
+
+  build-parity:
+    runs-on: ubuntu-26.04
+    timeout-minutes: 15
+    steps:
+      # It runs code from the npm registry, as the starter job does, so the
+      # checkout keeps no token in the repository's git config either.
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+
+      # The node the platform's CI builds an app with.
+      - uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: 22
+
+      # The parity run's gate first proves itself, offline, on records and a
+      # platform checkout it plants: a record with no sha256 for the builder
+      # fails closed, and a builder with another hash never runs.
+      - name: The parity run's gate refuses what its fixture plants
+        run: |
+          set -euo pipefail
+          bash scripts/test-build-parity-gate.sh
+
+      # The starter's dev/build-ui.mjs and the platform's ci/build-ui.mjs, the
+      # one whose sha256 the pinned record holds (taken from the platform's
+      # public CI mirror and run beside a stand-in for its ci/cli.mjs), each
+      # build one corpus (scripts/build-parity/: the entry variants, Tailwind
+      # and plain stylesheets, imported CSS, an image, an SVG and a font) with
+      # the same tools, installed from scripts/starter-test/package-lock.json
+      # (npm ci, install scripts off); their generated modules' four exports
+      # must match, and the two builders' entry and asset lists too. No
+      # credential, and no network beyond the npm registry and github.com.
+      # The script's header says what is compared and what is not.
+      - name: The starter's builder and the platform's build one corpus alike
+        run: |
+          set -euo pipefail
+          bash scripts/test-build-parity.sh

@@ -677,3 +677,57 @@ before. `inno-manage-app`'s list of `set_config` refusals drops the code and
 says that, over MCP, an over-long note is refused by its argument's limit
 (200 characters) before the tool runs: shorten it and call again. No starter
 file changed.
+
+## 8.0.0
+
+Plugin 8.0.0 follows platform v0.18.18 and contract 47. That release renames
+tool arguments, so this is a major: a person's address is `email` on every
+tool that takes one by address, where `transfer_app` took `new_owner_email`
+and `list_user_connections`, `disconnect_user_connection` and `get_config`
+took `user` (`set_config`'s and `remove_config`'s `scope_id` stays, since it
+names an app or an address). `restart_app` answers a `function` or
+`mcp-function` app `app_type_unsupported`, its message naming the app's
+type, where it answered `not_a_container`. `get_platform_docs` serves its
+document in 20 numbered sections and takes an optional `sections` argument
+with `get_app_contract`'s grammar, and the tools' descriptions name the
+section they mean ("get_platform_docs section 16"). The skills follow:
+`inno-fleet-admin`'s `transfer_app` heading takes `email`; `inno-manage-app`,
+`inno-fleet-admin` and `inno-new-app` read an account's settings with
+`get_config email=<address>`; `inno-manage-app`'s restart paragraph names
+`app_type_unsupported`; and every pointer into the platform's docs, the
+README's included, names its section by number with its title, such as
+`get_platform_docs` section 11 (Lifecycle), where it named the section's
+bold title. Every listing line now takes one grammar: a head (`- `, what
+the line names, then its bracketed tags) and then `key=value` pairs, so
+`inno-fleet-admin` and `inno-manage-app` read `list_apps`' line as
+`- <name> [<status>]`, its marks (`[IN CUSTODY]` first, then
+`[VULNERABLE]` and `[UNLINKED]`, beside the status where they came last),
+then `type=`, `audience=`, `identity=`, `owner=`, `url=`, `repo=`
+(`(pending)` while registration has recorded none) and `health=`, and
+`query_audit`'s rows as pairs whose `actor=` and `detail=` values arrive
+fenced in «» (`list_connections`' line, which the grammar follows, is
+unchanged). The platform's tools now print ASCII arrows only, so
+`inno-new-app` quotes `register_app`'s first line as `Registration started
+for "{name}" <- {repo}.`, where it quoted the Unicode arrow (U+2190); and
+a counted noun in a tool's answer now agrees with its count (`1 line`,
+`2 lines`), where some read `line(s)`, which no skill quoted. The
+v0.18.18 release raises the floor to 8.0.0, so once the instance's admins
+raise `plugin.min_version` to it, the platform tells every 7.x build to
+update, and its skills stop at their Version gate until it does. The
+platform keeps no alias for the old names, and until that gate is set a
+7.x build's calls that use them are not all refused: `transfer_app` and
+`disconnect_user_connection` refuse a call that omits `email`, while
+`get_config` and `list_user_connections` ignore the old `user` key and
+answer as if no address were named, within the caller's standing (an
+admin's `get_config` answers the fleet catalog and `list_user_connections`
+the fleet's sessions, where one account's was asked for, and a member's
+either one answers `forbidden`), so update before reading one account's
+settings or sessions. The tools' input
+changed, so reconnect after that upgrade too. `inno-convert-artifact`'s
+starter `app/dev/build-ui.mjs` gains a header naming the platform's
+`ci/build-ui.mjs` it mirrors (at v0.18.18, last changed in ac8c1f4f, with
+its sha256) and what a local build does differently: an app converted on
+an earlier release may copy it again for that header, and its code is
+unchanged, so it builds as before either way. This repository now checks
+that header against the platform's record and builds one corpus with both
+builders to compare what they write.

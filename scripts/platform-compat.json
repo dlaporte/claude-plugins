@@ -35,11 +35,15 @@
     "docs/APP-CONTRACT.md": "650492b8f411d41bba0e828d1368922e1d607c0c3a1dcf29e5be906b7dd353b4",
     "docs/APP-SECURITY.md": "72f3b18008ea9e4186224e7adb0d4296fa3910c1332a54bfe71d5a5248f69697",
     "docs/GUARDRAILS.md": "f14583f2c042b23eae3b46656c29bb8289397e91e226ebd78eab63a639c2d0ee",
-    "docs/PLATFORM-DOCS.md": "665d8b0077be7d8078178a04f894731ba0ccede7a6a0d33f3174d196cdb22729"
+    "docs/PLATFORM-DOCS.md": "a2cfcffc7e00c53e70af7d6bc93a9bf9758b4cc990ac2a8d0cd69d2cf6ffde5e"
+  },
+  "shipped": {
+    "ci/build-ui.mjs": "35d437a0045a8a847ae8d3be4c709a6b42645042dbff1c3908560a1c2b0b3d56",
+    "ci/fixtures/template/scaffold/function/app/identity.ts": "e7272d620d0b70bd73dd65ad9d76af35861d5b500eee901d0c6e6b85cab8f0d5"
   },
   "tools": {
     "count": 55,
-    "revision": "00e74b9330275a4d8b1a4e0594b16b9b3b6600a4bbeddd8eb334211ec506b918",
+    "revision": "74ed63aa4fd13428381235c602f3b048bd5c02ce9849cb6b8e4e80bd73bd65c8",
     "list": [
       {
         "name": "accept_naming_change",
@@ -102,14 +106,14 @@
         "args": [
           "app",
           "connection",
-          "user"
+          "email"
         ],
         "required": [
           "app",
           "connection",
-          "user"
+          "email"
         ],
-        "inputRevision": "1ac315b9c2ae74ca92a055dcae7ec99d495f41b30633e4463da959eec859aef4"
+        "inputRevision": "bb0054ad8ad437a761502fea812a40e2e5d018e4d7500199e290dec928c17829"
       },
       {
         "name": "export_app_data",
@@ -220,10 +224,10 @@
         "adminOnly": false,
         "args": [
           "app",
-          "user"
+          "email"
         ],
         "required": [],
-        "inputRevision": "c416929d35ad129c80afbbf250ed95c312811665f08a105d86ae46807af9d247"
+        "inputRevision": "30084f9e0dc11498912ddaba998ceaf10cc9890a5ee7e73482658b7c3395fb76"
       },
       {
         "name": "get_guardrails",
@@ -237,9 +241,11 @@
         "name": "get_platform_docs",
         "readOnly": true,
         "adminOnly": false,
-        "args": [],
+        "args": [
+          "sections"
+        ],
         "required": [],
-        "inputRevision": "efddc7bd8bbcef73a14eb1ace1ffdaec81e518ef1e13c1e9271d0b8acb694a49"
+        "inputRevision": "2c04a2b56a33b86a84c6ba1831168cf225de6d4a7346462d0f0c36ad22ec6535"
       },
       {
         "name": "get_platform_logs",
@@ -384,10 +390,10 @@
         "args": [
           "app",
           "connection",
-          "user"
+          "email"
         ],
         "required": [],
-        "inputRevision": "a16dda445539a723e05c31a0616f03732c67bf8db89b4ddb3df72d896afe6d6b"
+        "inputRevision": "e82736ac5b73da193ccec2e3cf48eab1f76df9667bbcb9c94735799d9040e9a9"
       },
       {
         "name": "list_users",
@@ -699,14 +705,14 @@
           "accept_guardrails",
           "also",
           "app",
-          "force",
-          "new_owner_email"
+          "email",
+          "force"
         ],
         "required": [
           "app",
-          "new_owner_email"
+          "email"
         ],
-        "inputRevision": "96c47e81578380755c3be633baaa840f29649c00b4d08d75be2d049c6f8eeccb"
+        "inputRevision": "a6d91df89784ccf7d032c41e65c5ad8e034c8816c334ebd89493daed7fc3464d"
       },
       {
         "name": "unlink_app_data",
@@ -726,7 +732,7 @@
   },
   "plugins": {
     "app": {
-      "minVersion": "7.0.0"
+      "minVersion": "8.0.0"
     },
     "admin": {
       "minVersion": "1.9.0"
@@ -745,7 +751,7 @@
     }
   },
   "pinned": {
-    "ref": "v0.18.17",
-    "commit": "6bc320eab82a3b6930b049079727c00e6fa08e92"
+    "ref": "v0.18.18",
+    "commit": "cb43f5df74441132269ab2120f7db4430c1e0d32"
   }
 }

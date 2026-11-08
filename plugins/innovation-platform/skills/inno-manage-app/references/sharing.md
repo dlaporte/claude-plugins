@@ -25,8 +25,8 @@ revoke, so do not re-grant for it.
 **When someone cannot sign in.** The platform signs people in to a browser
 app itself, on the platform's host, and what they see (the address bar
 during sign-in, about one sign-in a day, and sign-out reaching every app and
-the panel, in every browser) is `get_platform_docs`' **Signing in and out:
-what people see**: quote it rather than describing it from memory. Two cases
+the panel, in every browser) is `get_platform_docs` section 5 (Signing in and
+out): quote it rather than describing it from memory. Two cases
 come up: a "Sign-in not confirmed" page, whose way out is the identity
 provider's sign-out that the page links, after which the next sign-in
 authenticates afresh; and an app shown inside a frame, which cannot start a

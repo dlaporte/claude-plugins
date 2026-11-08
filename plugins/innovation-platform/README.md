@@ -193,9 +193,9 @@ produce is a Dockerfile and app code rather than sentences a user reads.
   environment variables / API keys, and build support bundles
   (`create_support_bundle`'s description gives the cap). Idle apps are
   warned, stopped, then purged on a config-driven clock, and real use resets
-  it. What counts as real use is served from one place, the **Lifecycle (idle
-  clock)** section of `get_platform_docs`; this skill quotes it rather than
-  keeping its own list.
+  it. What counts as real use is served from one place, `get_platform_docs`
+  section 11 (Lifecycle); this skill quotes it rather than keeping its own
+  list.
 - **`skills/inno-fleet-admin`**: for platform admins only, the actions that
   reach across the fleet: the admin roster (`list_admins`, `grant_admin`,
   `revoke_admin`), the membership mode and SCIM provisioning

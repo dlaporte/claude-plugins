@@ -28,6 +28,17 @@ grep_or_none() {
   fi
 }
 
+# sha256_of: the sha256 of its standard input, every byte, as 64 lowercase
+# hex digits: sha256sum where there is one (Linux), else shasum -a 256
+# (macOS).
+sha256_of() {
+  if command -v sha256sum >/dev/null; then
+    sha256sum | cut -d' ' -f1
+  else
+    shasum -a 256 | cut -d' ' -f1
+  fi
+}
+
 # join_names <name>...: the names as a message lists them: "a", "a and b",
 # "a, b and c".
 join_names() {

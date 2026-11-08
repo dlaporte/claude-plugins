@@ -13,9 +13,9 @@ mode), or when
 a result names
 another address to revoke or the address a person's row is stored under. A
 grant is pinned to the identity provider account that holds its address;
-`get_platform_docs`' **Identity (do not build auth)** section (its grant
-bullet) says how; its **What the tools do in detail**, Sharing and
-audiences item, says where a sign-in is matched by its address instead.
+`get_platform_docs` section 4 (Identity), its grant bullet, says how;
+section 16 (What the tools do in detail), its Sharing and audiences item,
+says where a sign-in is matched by its address instead.
 
 The grant stays with the account it is pinned to, and every sign-in carries
 the person's identity provider subject (the panel's, an MCP client's, and a

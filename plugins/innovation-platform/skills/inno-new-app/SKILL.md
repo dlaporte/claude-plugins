@@ -261,10 +261,9 @@ you're doing.
     fixed at registration).
     **Idle clock:** an MCP app that is built and then left connected but
     unused is warned and then stopped like any idle app. What counts as use
-    is served from one place, the **Lifecycle (idle clock)** section of
-    `get_platform_docs`, and `inno-manage-app`'s lifecycle section points to
-    it: fetch and quote that sentence rather than describing the rule in your
-    own words. Tell the user when you hand the app over (`inno-manage-app`).
+    is served from one place, `get_platform_docs` section 11 (Lifecycle),
+    and `inno-manage-app`'s lifecycle section points to it: fetch and quote
+    that sentence rather than describing the rule in your own words. Tell the user when you hand the app over (`inno-manage-app`).
   - **`mcp-container`:** choose when the product is an **MCP server** that
     needs the **container** shape instead: a **non-TS/JS stack**, **native
     dependencies**, **heavy/long-running compute** a Cloudflare Worker can't
@@ -311,7 +310,7 @@ more than its members, which address that is (the check below needs it).
 Whether an app may be widened is a platform setting a platform admin
 controls: `access.allow_internal` (on by default) and `access.allow_public`
 (off by default), each settable for the whole platform, for one owner, or
-for one app. Before you design further, call `get_config user=<the user's
+for one app. Before you design further, call `get_config email=<the user's
 own sign-in address>` (the audience question above asks for it) and read the
 target's line, `access.allow_public = <value> [<where it came from>]` (or
 `access.allow_internal`):
@@ -462,8 +461,8 @@ register_app({ app, repo, description, type, identity, members, accept_guardrail
   it is missing) and, once it finds it, runs as call 2 and creates the app
   with the first call's type, fixed for good. So settle the type
   before call 1 when the App already covers the repo, and otherwise before
-  the user installs it (`get_platform_docs`' **What the tools do in
-  detail**, its Registration item, has the rule).
+  the user installs it: `get_platform_docs` section 16 (What the tools do
+  in detail), its Registration item, has the rule.
 - `identity`: from the design's identity question (§1b): `"anonymous"`
   when the app must not know who each caller is; omit it, or pass
   `"identity-aware"`, otherwise. The app's identity is set by the call
@@ -512,7 +511,7 @@ register_app({ app, repo, description, type, identity, members, accept_guardrail
   `set_app_connection`. An anonymous app takes none: a call with
   `identity: "anonymous"` and any `connections` is refused.
 
-The first call returns text beginning **`Registration started for "{name}" ←
+The first call returns text beginning **`Registration started for "{name}" <-
 {repo}.`** It carries, in this order: (a) the template link again, in case the
 repo doesn't exist yet; (b) a **proof-of-control file**: a `path:` under
 `.inno-platform/` and the exact `contents:` (a 64-character hex string), with a
@@ -780,8 +779,8 @@ a stateless FastMCP starter for `app/main.py`, plus its own `README.md`,
 the container reference's. The platform owns a fixed set of other paths (a
 repo-root `src/`, the root build files, any wrangler config, and the rest
 contract R7 lists: `get_app_contract` with `sections: ["R7"]`), and none of
-them may be in the repo: don't create any. `get_platform_docs`'
-**Environment & config integrity** section lists them too; the plugin's
+them may be in the repo: don't create any. `get_platform_docs` section 10
+(Environment & config integrity) lists them too; the plugin's
 copy, with what to do when a migrated repo already carries one, is
 `inno-platform-conventions`' **Files you must not touch** section. Load
 that skill before writing any application code (stack policy, storage,

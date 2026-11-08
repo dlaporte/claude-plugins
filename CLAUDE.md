@@ -6,7 +6,8 @@ Everything here is markdown and JSON except one executable asset: the
 (`plugins/innovation-platform/skills/inno-convert-artifact/assets/starter/app/`),
 a Worker in TypeScript, a React interface and two Node scripts, which the
 skill copies into an app's own repository. The `starter` CI job builds and
-runs it (see "The starter" below); nothing else here is built or run.
+runs it, and the `build-parity` job runs its interface builder beside the
+platform's (see "The starter" below); nothing else here is built or run.
 
 ## The one rule: change a plugin, bump its version
 
@@ -63,7 +64,7 @@ claude plugin update <name>@davidlaporte     # restart to apply
 
 ## The checks
 
-CI's eight jobs (`.github/workflows/ci.yml`) run each check as a step of one
+CI's nine jobs (`.github/workflows/ci.yml`) run each check as a step of one
 `bash scripts/<name>.sh` line from the repository root, so a check runs
 locally as that same line. Each script's header says what it checks, and a
 check's `scripts/test-*.sh` twin runs first and proves it on cases it plants.
@@ -74,10 +75,11 @@ grep -E '^ +bash scripts/' .github/workflows/ci.yml | while read -r c; do sh -c 
 ```
 
 The version-bump gate skips without `BASE_SHA` (the commit to compare with),
-and `test-starter.sh` needs the npm registry. A new check takes the same
-shape: a script that sources `scripts/lib.sh` for what the checks share, a
-`test-*.sh` twin built on `scripts/test-lib.sh`'s `expect`, and a step of one
-line.
+`test-starter.sh` needs the npm registry, and `test-build-parity.sh` needs
+it, github.com (unless given `--platform`) and a pinned record from
+platform v0.18.18 on. A new check takes the same shape: a script that
+sources `scripts/lib.sh` for what the checks share, a `test-*.sh` twin
+built on `scripts/test-lib.sh`'s `expect`, and a step of one line.
 
 ## innovation-platform specifics
 
@@ -106,11 +108,16 @@ run. CI reads only these copies, never the platform repository: the
 `tool-names` job checks every tool name the plugin uses, and the
 `platform-compat` job checks that the list is the record's, that every
 `sections: [...]` literal under `plugins/innovation-platform/` names a section
-the record's contract has, and that the plugin's `version` is at least the
-record's app plugin floor (`plugins.app.minVersion`). That job's fixture
-tests plant their own records, so a resync leaves them alone. The tool-name
-fixture test still reads the real pinned list, so a resync that retires a
-tool its fixture uses fails that test until the fixture is edited.
+the record's contract has, that the plugin's `version` is at least the
+record's app plugin floor (`plugins.app.minVersion`), and that the starter's
+copies of the files the platform ships are the record's (`shipped`, from
+platform v0.18.18; "The starter" below). A record from before v0.18.18 has
+no `shipped` key, so pinned at one, the `platform-compat` job and the
+`build-parity` job both fail until the pin moves to v0.18.18 or later.
+The `platform-compat` job's fixture tests plant their own records, so a
+resync leaves them alone. The tool-name fixture test still reads the real
+pinned list, so a resync that retires a tool its fixture uses fails that
+test until the fixture is edited.
 
 Refresh both files at every resync with the platform:
 
@@ -122,9 +129,10 @@ Refresh both files at every resync with the platform:
    release tag, `v` and a plain `MAJOR.MINOR.PATCH` triple read from the
    checkout's tags, annotated or lightweight; a branch, a commit SHA or a
    tag of another form is refused. Before it overwrites the previous pin it
-   prints what moved since then: served documents, tools' input and output
-   schemas, the contract's version and sections, the plugin floors and the
-   platform behaviors. That list is the resync's to-do list, and it is
+   prints what moved since then: served documents, the shipped files this
+   repository keeps a copy of (from platform v0.18.18), tools' input and
+   output schemas, the contract's version and sections, the plugin floors
+   and the platform behaviors. That list is the resync's to-do list, and it is
    printed once: save it. Until you commit,
    `git diff scripts/platform-compat.json` shows the same changes.
 3. Answer the list in the skills. A renumbered contract needs every skill's
@@ -134,6 +142,9 @@ Refresh both files at every resync with the platform:
    `outputRevision` line needs every skill that reads that tool's result
    checked against what the tool now returns (section 7.4.2 of the
    platform's `docs/OPERATIONS.md` says which output changes are breaking).
+   A `shipped` line needs this repository's copy of that file taken again,
+   or for `ci/build-ui.mjs` the starter's builder diffed against it ("The
+   starter" below).
 4. Run the checks ("The checks" above), then commit both files with the
    skill changes that answer the list. When the build tools moved, the
    starter's pins move with them, and its suite's lock must follow ("The
@@ -162,7 +173,15 @@ bash scripts/check-tool-names.sh --pinned scripts/platform-tools.preview.txt plu
 bash scripts/check-contract-sections.sh plugins/innovation-platform scripts/platform-compat.preview.json
 bash scripts/check-plugin-floor.sh scripts/platform-compat.preview.json
 bash scripts/check-build-tools.sh plugins/innovation-platform/skills/inno-convert-artifact/assets/starter/app/package.json scripts/platform-compat.preview.json
+bash scripts/check-scaffold-copy.sh scripts/starter-test/identity.ts scripts/platform-compat.preview.json
+bash scripts/check-starter-builder.sh plugins/innovation-platform/skills/inno-convert-artifact/assets/starter/app/dev/build-ui.mjs scripts/platform-compat.preview.json
+bash scripts/test-build-parity.sh --platform <platform checkout> scripts/platform-compat.preview.json
 ```
+
+The last needs the npm registry, and with `--platform` it reads the
+builder from the checkout rather than the mirror, which publishes only
+after the platform's main branch CI runs, so it is the parity run's one
+form at a release commit before the tag.
 
 No file under either plugin, and neither this file, the repository's
 `README.md`, the marketplace catalog, the CI workflow under `.github` nor
@@ -202,5 +221,41 @@ The starter ships no lock of its own (a conversion writes one), so the
 suite keeps one. `npm ci` refuses it once the starter's `package.json`
 moves; then run `bash scripts/test-starter.sh --relock` and commit the new
 lock. The suite's `identity.ts` is a copy of the platform scaffold's, which
-the starter imports; its header names the platform release it was copied
-at.
+the starter imports, unchanged below its header: the `platform-compat`
+job's `scripts/check-scaffold-copy.sh` hashes it there and compares the
+pinned record's `shipped` entry for
+`ci/fixtures/template/scaffold/function/app/identity.ts`, so the header
+names no release of its own. When a resync prints that entry as moved,
+copy the platform's file at the new tag below the header again and run the
+starter's suite.
+
+The starter's `dev/build-ui.mjs` builds an app's interface locally the way
+the platform's CI builds it with `ci/build-ui.mjs`: a second
+implementation, not a copy, whose header names the platform release, the
+commit and the sha256 of the `ci/build-ui.mjs` it was last diffed against,
+and says what it does differently. The `platform-compat` job's
+`scripts/check-starter-builder.sh` compares that sha256 with the pinned
+record's `shipped` entry for `ci/build-ui.mjs`, so when a resync prints it
+as moved, the check fails until the starter is diffed against the new file
+(`git -C <platform checkout> diff <old tag> <new tag> -- ci/build-ui.mjs`),
+changed to match, and its header moved: the release, the commit
+(`git -C <platform checkout> log -1 --format=%h <new tag> -- ci/build-ui.mjs`)
+and the sha256. A change to the file is a change to the starter (a plugin
+release, named in `CHANGELOG.md`).
+
+The `build-parity` job's `scripts/test-build-parity.sh` then runs both
+builders on one corpus, `scripts/build-parity/` (the entry variants,
+Tailwind and plain stylesheets, imported CSS, an image, an SVG and a font,
+each case with an `expect` file of what its build must hold), with the same
+tools, and fails unless their generated modules export the same script,
+styles and paths and the two builders list the same entries and asset
+extensions. It takes the platform's builder whose sha256 the pinned record
+holds from the platform's public CI mirror, `dlaporte/inno-platform-ci`
+(which publishes once the platform's main branch CI runs, so a release
+that changes `ci/build-ui.mjs` fails this job until then), or, with
+`--platform <checkout>`, from a platform checkout at the record's pinned
+commit; neither conversion nor `npm run dev` needs either. Its twin,
+`scripts/test-build-parity-gate.sh`, proves offline that a record with no
+such sha256 fails closed and that a builder with another hash never runs.
+A difference the starter's header documents is left out of the
+comparison, and a new one goes in that header and the script's.

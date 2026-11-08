@@ -21,8 +21,9 @@
 # itself, and scripts/lib.sh's helpers on cases it plants: an exact match
 # passes, and a wrong exit status or a wrong output is reported with exactly
 # its lines; grep_or_none passes a match and no match and stops the check on
-# a grep error; require_jq stops a check that has no jq; join_names lists one,
-# two and three names as a message does.
+# a grep error; require_jq stops a check that has no jq; sha256_of prints a
+# known input's hash, by either tool; join_names lists one, two and three
+# names as a message does.
 test_name="$(basename "$0" .sh)"
 fail=0
 n=0
@@ -78,10 +79,28 @@ if [ "${BASH_SOURCE[0]}" = "$0" ]; then
   }
   expect "require_jq passes with jq on the PATH" 0 "" require_jq
   expect "require_jq stops a check that has no jq" 2 "$test_name: jq is required" without_jq
+  # sha256 of "abc" (FIPS 180-2's example), from either tool: a PATH holding
+  # only shasum and the tools around it shows the macOS branch on Linux too,
+  # wherever shasum is installed (a host without it never takes that branch).
+  abc() { printf abc | sha256_of; }
+  abc_by_shasum() {
+    mkdir -p "$tmp/bin"
+    local t
+    for t in shasum cut perl; do
+      if command -v "$t" >/dev/null; then ln -sf "$(command -v "$t")" "$tmp/bin/$t"; fi
+    done
+    PATH="$tmp/bin"
+    abc
+  }
+  abc_hash=ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad
+  expect "sha256_of prints its input's hash" 0 "$abc_hash" abc
+  if command -v shasum >/dev/null; then
+    expect "sha256_of prints it by shasum where there is no sha256sum" 0 "$abc_hash" abc_by_shasum
+  fi
   expect "join_names lists one name" 0 "a" join_names a
   expect "join_names lists two names" 0 "a and b" join_names a b
   expect "join_names lists three names" 0 "a, b and c" join_names a b c
 
   [ "$fail" -eq 0 ] || exit 1
-  echo "$test_name: OK ($n cases: expect passes an exact match and reports a wrong exit status or output; grep_or_none, require_jq and join_names each do what the checks rely on)"
+  echo "$test_name: OK ($n cases: expect passes an exact match and reports a wrong exit status or output; grep_or_none, require_jq, sha256_of and join_names each do what the checks rely on)"
 fi
