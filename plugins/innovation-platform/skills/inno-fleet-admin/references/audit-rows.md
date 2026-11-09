@@ -105,11 +105,12 @@ whatever its reason was, its earlier keys still inside the cut-down
 
 ## The hourly passes
 
-- From platform v0.16.11 the hourly containment pass (actor
-  `containment-pass`) writes `data_link_revoked` on the consumer for each
-  link it revokes and `data_link_revoke_failed` for one it could not (tried
-  again next hour), both with `reason: "containment_pass"`. From v0.16.12 its
-  `why` is `owner_split` for a link whose two apps no longer have one owner.
+- From platform v0.16.11 the hourly containment pass (actor `containment`
+  from v0.18.20, `containment-pass` before it) writes `data_link_revoked` on
+  the consumer for each link it revokes and `data_link_revoke_failed` for
+  one it could not (tried again next hour), both with `reason:
+  "containment_pass"`. From v0.16.12 its `why` is `owner_split` for a link
+  whose two apps no longer have one owner.
 - From platform v0.17.2 a narrowing's `data_link_revoked` rows carry
   `reason: "source_narrowed"` and a `why`: `audience` (the consumer reaches
   further than the source's audience), `not_contained` (a members-only
@@ -125,30 +126,31 @@ whatever its reason was, its earlier keys still inside the cut-down
   run after that while it lasts. From platform v0.18.4 `pass` may be
   `custody` (actor `custody`): the hourly custody sweep found the app's
   lease held three runs in a row; the move waits for the next pass.
-- From platform v0.17.9 the hourly edge pass (actor `edge-reconcile`,
-  surface `lifecycle`) keeps each app's placeholder, the DNS record and
-  route that make a stopped or never-deployed app's address show the
-  platform's page, in step with the app's status, and writes three rows.
-  `app_edge_reconciled` (target the app): `detail.status`, and `did`, the
-  steps it took in order, `placeholder_added` or `placeholder_removed`.
-  `app_edge_mismatch` (target the app): the app's custom domain is out of
-  step with its status, which the pass reports and never repairs, written
-  with the admins' `edge_mismatch` notice (`inno-fleet-admin`'s
-  `references/admin-notifications.md`) once per mismatch, again after a week while it
-  lasts, and at once when its kind or the app's status changes;
+- From platform v0.17.9 the hourly edge pass (actor `edges` from v0.18.20,
+  `edge-reconcile` before it, surface `lifecycle`) keeps each app's
+  placeholder, the DNS record and route that make a stopped or
+  never-deployed app's address show the platform's page, in step with the
+  app's status, and writes three rows. `app_edge_reconciled` (target the
+  app): `detail.status`, and `did`, the steps it took in order,
+  `placeholder_added` or `placeholder_removed`. `app_edge_mismatch` (target
+  the app): the app's custom domain is out of step with its status, which
+  the pass reports and never repairs, written with the admins'
+  `edge_mismatch` notice (`inno-fleet-admin`'s
+  `references/admin-notifications.md`) once per mismatch, again after a week
+  while it lasts, and at once when its kind or the app's status changes;
   `detail.status`, and `domain`: `attached` (the domain held while the
   status wants the placeholder) or `missing` (none while it wants the
   domain). `edges_reconciled` (no target): one row for a run that acted on
   an app, found a mismatch or a failure, found an app busy, left apps for
-  the next run or removed a placeholder whose app is gone, so one every
-  hour while a failure or a mismatch lasts. Its detail: `acted` (a count),
+  the next run or removed a placeholder whose app is gone, so one every hour
+  while a failure or a mismatch lasts. Its detail: `acted` (a count),
   `mismatched` (`{ app, domain }` each), `failed` (`{ app, reason }` each,
   `reason` `host_in_use` when something other than the platform holds the
   app's host, `denied` or `failed`), `orphans` and `busy` (app names),
-  `left` (a count) and `denied`, true when Cloudflare refused the
-  platform's token, which stops the run. A refusal of the run's first reads
-  writes the row with `denied` true and every other key empty, every hour
-  until the token holds the grants the operator guide names.
+  `left` (a count) and `denied`, true when Cloudflare refused the platform's
+  token, which stops the run. A refusal of the run's first reads writes the
+  row with `denied` true and every other key empty, every hour until the
+  token holds the grants the operator guide names.
 - From platform v0.17.9 the transitions that hold or release an app's
   placeholder say so on their own rows: `app_created` and `app_stopped`
   carry `placeholder: "added"` when the hold added it, or
@@ -330,10 +332,10 @@ whatever its reason was, its earlier keys still inside the cut-down
   and null when it sent none. The backend's description is never stored,
   and nothing was stored for the person.
 - `app_first_deploy_due`: the lifecycle run warned the owner that a
-  registered app has not completed its first deploy (the
-  `first_deploy_due` notice). The actor is `scheduler`, the target the app,
-  the surface `lifecycle`, and `detail.purge_at` the time the app is
-  deleted unless a deploy completes first. It is written once the run has
-  stamped the warning, and a pinned app gets none. The purge that follows
-  writes the usual `app_purged` row, and holds no name, since the app
-  never deployed.
+  registered app has not completed its first deploy (the `first_deploy_due`
+  notice). The actor is `lifecycle` (`scheduler` before v0.18.20), the
+  target the app, the surface `lifecycle`, and `detail.purge_at` the time
+  the app is deleted unless a deploy completes first. It is written once the
+  run has stamped the warning, and a pinned app gets none. The purge that
+  follows writes the usual `app_purged` row, and holds no name, since the
+  app never deployed.

@@ -751,7 +751,7 @@
     }
   },
   "pinned": {
-    "ref": "v0.18.18",
-    "commit": "cb43f5df74441132269ab2120f7db4430c1e0d32"
+    "ref": "v0.18.20",
+    "commit": "f83cf300a61e346f6f1484bea7a84d5269dfb154"
   }
 }
