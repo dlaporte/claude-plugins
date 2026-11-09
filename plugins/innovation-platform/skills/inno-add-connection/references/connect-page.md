@@ -69,7 +69,7 @@ rewrites the connection with `client_auth: "post"`).
   the person: in scim mode their pushed account is inactive or deleted, or
   was never pushed. Nothing about the connection can fix
   that.
-- **"Your encryption key isn't reachable from here"**. The person's stored
+- **"Your encryption key is not reachable from here"**. The person's stored
   connections are sealed to them personally, and this browser session
   cannot unlock them. The page gives two ways out: use the app once from
   the chat (or the device where they last connected) and retry the link
@@ -102,7 +102,7 @@ rewrites the connection with `client_auth: "post"`).
 - **"Link already used"** (`oauth2_code` only). The backend sent the person
   back with a link that was already used or has expired. Start again from
   the chat.
-- **"Invalid connection link"** (`oauth2_code` only). The address the
+- **"Connection link not valid"** (`oauth2_code` only). The address the
   backend sent the person back to is malformed. Start again from the chat;
   if it repeats, check the connection's sign-in settings against the
   backend's documentation.
