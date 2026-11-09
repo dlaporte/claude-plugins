@@ -745,3 +745,13 @@ an instance at v0.18.20 or later, filter `query_audit` by the new names,
 since 0076 rewrote the stored rows to them. No tool's schema changed;
 `query_audit`'s `actor` description now gives `lifecycle` as its example,
 which a client shows after it reconnects. The floor stays 8.0.0.
+
+## 8.0.2
+
+Plugin 8.0.2 follows platform v0.18.21, which words its own pages one way:
+no contraction, no "please", and no link called invalid. The
+`inno-add-connection` skill's connect page reference quotes two of those
+pages, so it now reads "Your encryption key is not reachable from here",
+where it read "isn't", and "Connection link not valid", where it read
+"Invalid connection link". No tool changed, so there is nothing to
+reconnect, and the floor stays 8.0.0.
