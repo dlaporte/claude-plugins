@@ -742,5 +742,6 @@ containment pass audits as `containment` (`containment-pass` before it),
 the edge pass as `edges` (`edge-reconcile` before it), and the lifecycle
 run's `app_first_deploy_due` row as `lifecycle` (`scheduler` before it). On
 an instance at v0.18.20 or later, filter `query_audit` by the new names,
-since 0076 rewrote the stored rows to them. No tool changed, so there is
-nothing to reconnect, and the floor stays 8.0.0.
+since 0076 rewrote the stored rows to them. No tool's schema changed;
+`query_audit`'s `actor` description now gives `lifecycle` as its example,
+which a client shows after it reconnects. The floor stays 8.0.0.
