@@ -731,3 +731,16 @@ an earlier release may copy it again for that header, and its code is
 unchanged, so it builds as before either way. This repository now checks
 that header against the platform's record and builds one corpus with both
 builders to compare what they write.
+
+## 8.0.1
+
+Plugin 8.0.1 follows platform v0.18.20, which names every hourly pass's
+audit rows by the pass's label and rewrites the stored history to match
+(migration 0076). `inno-fleet-admin`'s audit rows reference names both
+eras, since its floor, 8.0.0, still serves an instance before v0.18.20: the
+containment pass audits as `containment` (`containment-pass` before it),
+the edge pass as `edges` (`edge-reconcile` before it), and the lifecycle
+run's `app_first_deploy_due` row as `lifecycle` (`scheduler` before it). On
+an instance at v0.18.20 or later, filter `query_audit` by the new names,
+since 0076 rewrote the stored rows to them. No tool changed, so there is
+nothing to reconnect, and the floor stays 8.0.0.
