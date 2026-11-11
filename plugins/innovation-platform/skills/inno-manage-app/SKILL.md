@@ -583,9 +583,8 @@ the choice with the owner by name.
 - **`"<app>"'s deploys stay held: its owner signs in to the platform again
   first, ...`**: the owner row waits for a sign-in to pin it to an account
   (a transfer to an address that has not signed in since, or a transfer to
-  the owner's own address). Only a fresh sign-in pins it, not a session
-  already open: have the owner sign out of the platform's panel and sign in
-  again, or re-authorize the platform's connector in their MCP client (in
+  the owner's own address). A fresh sign-in pins it: have the owner sign
+  out of the platform's panel and sign in again, or re-authorize the platform's connector in their MCP client (in
   Claude: `/mcp`, then re-authenticate that server; a plain reconnect does
   not sign in again), then make the same call.
 - **`"<app>"'s deploys stay held: only its owner, <address>, keeps or moves
