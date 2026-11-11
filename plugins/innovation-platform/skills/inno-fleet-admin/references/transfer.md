@@ -84,8 +84,10 @@ undoing the transfer, and the answer then says so:
   their tokens keep working, since an internal app admits everyone who
   signs in, and on a public app anyone reaches it with no token at all.
 
-They keep their panel and browser app sessions until `revoke_sessions` ends
-them (the skill's `revoke_sessions` section).
+They keep their panel and browser app sessions, and their MCP grants for
+the platform and other apps, until `revoke_sessions` ends them; before
+platform v0.18.27 it ended the sessions alone (the skill's
+`revoke_sessions` section).
 
 **A transfer to the owner's own address** re-points an app whose owner's
 address has passed to another person (the admins' `identity_reassigned`
@@ -101,7 +103,8 @@ takes the app from the account that owned it, which may be the same person
 under a new address. From platform v0.18.26 the re-point holds the app's
 deploys (above), and when the owner row was pinned to an account, it ends
 every session that account holds, everywhere, and revokes every MCP grant
-it holds, in the same move; the answer says so (`That account's sessions
+it holds (from platform v0.18.27 with the approvals its MCP clients
+remembered), in the same move; the answer says so (`That account's sessions
 were ended everywhere ...`, with how many grants were revoked, or that they
 could not all be). The address's new holder then signs in to the platform
 and keeps the repository or moves the app.

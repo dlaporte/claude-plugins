@@ -792,3 +792,48 @@ stop waits for a deploy, or that a transfer needs nothing redone, now says
 which platform release each behavior belongs to, since 8.0.x still serves
 earlier ones. No tool's schema changed, so there is nothing to reconnect,
 and the floor stays 8.0.0.
+
+## 8.0.4
+
+Plugin 8.0.4 follows platform v0.18.27, in which ending a person reaches
+their MCP grants, a SCIM token's value stays out of the conversation, and
+an MCP client's approval is remembered for an app alone, only while its
+last grant for the app lives. `revoke_sessions` now also ends every MCP
+grant the person holds, the platform's and each app's, with the approvals
+their MCP clients remembered, so offboarding in jit mode is one call plus
+`revoke_access` for each app whose member row should go:
+`inno-fleet-admin`'s `revoke_sessions` section, its Find the task row and
+its offboarding reference say so, with the answer's three sentences about
+the grants and what the call still leaves (group memberships, and a
+sign-in the identity provider still allows). In scim mode a block (a
+pushed deactivation or delete, or the switch to scim) revokes the person's
+MCP grants too, and the custody, notices and SCIM references say what the
+admins' notices and the switch's answer now name: the grants revoked or
+left, that the people past the switch's budget keep theirs (counted, never
+named), and the live
+SCIM tokens the person created, which `revoke_admin`'s answer names as
+well. A block before v0.18.27 revoked no grant, so the custody reference
+has an admin offer `revoke_sessions` for each person blocked in the 30 days
+before the upgrade, and a re-add's revive now drops the account's
+pushed-group memberships. `create_scim_token` answers the token's id and
+never its value: the SCIM reference teaches the Identity tab's one showing
+within 10 minutes, the revoke of a token not shown by then, and the
+panel's own Create token when the value cannot be held, and keeps the
+earlier rule for a platform before v0.18.27. `inno-manage-app`'s MCP client
+reference says the platform's own connection asks at every authorization,
+an app's client skips the page only while its last grant for the app
+lives, which revocations forget an approval, what the consent page now
+says, what "Consent page expired" means, and that the identity provider
+may ask for a fresh sign-in. The audit rows reference gains
+`scim_token_shown`, `scim_token_revoked`'s `not_held`, `admin_revoked`'s
+and `account_blocked`'s `scim_tokens_live`, the `grants_revoked` and
+`grants_left` of `account_blocked` and `sessions_revoked`,
+`account_updated`'s `memberships_dropped`, `mcp_grant_issued` for every
+grant with `remembered`, and `mcp_grant_denied`'s `sessions_revoked`.
+`inno-new-app` and the audit rows reference say a never-deployed app's
+first-deploy reminder comes no sooner than a day after its registration or
+latest start, which can move its deadline out by a day. Every new behavior
+is worded from platform v0.18.27, since 8.0.x still serves earlier
+releases. No tool's schema changed, though three descriptions did
+(`revoke_sessions`', `create_scim_token`'s and `register_app`'s deadline
+clause), which a client shows after it reconnects; the floor stays 8.0.0.

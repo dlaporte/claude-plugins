@@ -205,7 +205,8 @@ produce is a Dockerfile and app code rather than sentences a user reads.
   previewed switch), a deactivated owner's apps in custody,
   reassigning an app's owner, purging an app, rebuilding an app's released
   code at its live tag (`rebuild_app`), ending one person's panel and browser
-  app sessions everywhere, accepting a naming change, platform configuration,
+  app sessions everywhere (from platform v0.18.27 their MCP grants too),
+  accepting a naming change, platform configuration,
   and the fleet-wide
   reads (every app, every user, the audit log, the platform's logs and its
   backup). An owner manages their own apps with `inno-manage-app`.

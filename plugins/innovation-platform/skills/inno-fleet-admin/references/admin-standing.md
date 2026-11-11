@@ -37,7 +37,17 @@ the one account-status answer every tool uses, held for
   `identity.initialAdmins` address is the exception (`references/custody.md`).
   In jit mode the platform cannot learn of a suspension, so an admin keeps
   the powers until removed with `revoke_admin`, or until their sessions and
-  grants end (the lengths the `Identity provider:` line names).
+  grants end (the lengths the `Identity provider:` line names; from
+  platform v0.18.27 `revoke_sessions` ends both at once).
+- A SCIM token is no admin standing and outlives it. From platform
+  v0.18.27, when `revoke_admin` ends the account's admin standing, its
+  answer names each live SCIM token the address, or the row it was shared
+  as, created ("<email> created SCIM token <id>, which stays live: if the
+  identity provider pushes with it, create a replacement
+  (create_scim_token, or the panel's Identity tab) and paste it there, then
+  revoke it with revoke_scim_token."), and `admin_revoked` records
+  `scim_tokens_live`. An account still an admin through another row names
+  none.
 - When the platform cannot read an account's status (a read of the mode or
   of the pushed accounts failed), admin powers fail closed: an admin whose
   status is unknown is not an admin for that call. An admin-only tool then

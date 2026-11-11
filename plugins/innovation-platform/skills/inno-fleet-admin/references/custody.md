@@ -12,7 +12,9 @@ how to tell which mode runs), except the hourly return in jit mode.
 In scim mode, when the identity provider pushes a deactivation or a delete
 of an account, and for each person the switch to scim blocks, the platform
 at once ends that person's panel and browser app sessions, refuses their MCP
-tokens at the next check, and moves every app they own into **custody**: the
+tokens at the next check (from platform v0.18.27 it revokes every MCP grant
+they hold, the platform's and each app's, and forgets the approvals their
+MCP clients remembered), and moves every app they own into **custody**: the
 owner becomes the custodian, the first address in `identity.initialAdmins`.
 The moves go a group of linked apps at a time, so no move splits a live data
 link, and each starts only while a budget of 600 statements lasts: what a
@@ -48,6 +50,13 @@ older build wrote), which `export_platform_backup` carries beside
 `custody_of`. The custodian's own member row on it lasts exactly as
 long as custody, and a grant the custodian held before custody stays.
 
+**Blocks before platform v0.18.27 revoked no MCP grant**: the account check
+refused those grants while the account could not sign in, but they
+stayed. After an upgrade to v0.18.27, offer `revoke_sessions` for each
+person blocked in the 30 days before it (`query_audit` with
+`action: "account_blocked"` lists them, skipping rows with `exempt: true`,
+the break-glass addresses), so their grants end too.
+
 **Custody follows `identity.initialAdmins`.** The hourly pass hands any held
 app that the first address in `identity.initialAdmins` does not own to that
 address, so changing the list's first address strands nothing. The app keeps
@@ -64,7 +73,10 @@ one they control, which that notice tells them (`inno-manage-app`'s
 **Held deploys: keep or move the repository**). Linked apps return together. A
 return inside a request runs under the same budget of 600 statements, and
 the apps it leaves go back at the next hourly pass, which the admins' notice
-names. The person's sessions do not come back: they sign in again. In jit
+names. The person's sessions do not come back: they sign in again, and
+from platform v0.18.27 reconnect their MCP clients, since the block revoked
+their grants (the admins' notice: "Its earlier sessions and MCP grants stay
+ended: it signs in again and reconnects its MCP clients."). In jit
 mode the hourly pass returns every app in custody, which is how a switch
 back to jit unwinds it. Three cases are the admin's:
 
@@ -97,8 +109,13 @@ removed from the provider's app and assigned again is matched by their
 `externalId`, and their old account, deactivated after they had signed in,
 is revived unpinned (`account_updated` with `revived: true` and
 `unpinned: true`). The revive also ends that earlier person's sessions
-and revokes every MCP grant they held (`sessions_revoked`), so a re-added
-person signs in again and reconnects their MCP clients once. The apps held
+and revokes every MCP grant they held (`sessions_revoked`; from platform
+v0.18.27 with the approvals their MCP clients remembered), so a re-added
+person signs in again and reconnects their MCP clients once. From
+platform v0.18.27 the revive also drops the account's pushed-group
+memberships with its pin (`account_updated` records
+`memberships_dropped`): the apps a group admitted the returning person to
+refuse them until the identity provider's next push of their groups. The apps held
 for them return when they next sign in, since that sign-in pins the account
 to them again; only a sign-in pins, never a push. On a provider whose `externalId` names a login rather than a
 person, someone new may be matched instead: their sign-in pins the account

@@ -50,18 +50,45 @@ reads.
   with their members carries at most about 10,000 members, every listed group
   whole, so a provider pages by the `itemsPerPage` the answer gives. `/Bulk`
   and `/Me` still answer 501.
-  - **Prefer the panel for a new token.** The Identity tab's Create token
-    shows it once, in the admin's own browser. `create_scim_token` returns
-    it once in this conversation instead, which puts it in the session's
-    transcript: call it only when the admin asks for it here, after telling
-    them it lands in this conversation's transcript. Relay the token exactly once, with the base URL, for the admin to
-    paste at once; never repeat it, and never write it to a file, a commit,
-    a note, a support bundle or a later message, nor ask for it back. A
-    token that was not copied cannot be shown again: create another and
-    revoke the lost one.
+  - **A new token from platform v0.18.27.** `create_scim_token` answers
+    the token's id and never its value ("Created SCIM token <id>. Its value
+    is not in this answer, so it never enters this conversation: ..."), so
+    it may be called here whenever the admin asks. Relay the answer: the
+    creating admin opens the panel's Identity tab (the answer gives its
+    address) within 10 minutes and presses Show value on that token's row,
+    which shows the value once, to them alone, with the base URL to paste.
+    Another admin, a second showing and a late one are answered "No value
+    is held for you under that id: ...". A token not shown by then cannot
+    be shown: revoke it with `revoke_scim_token` and create another. When
+    the value cannot be held (the platform has no encryption key, or the
+    store failed), the token is revoked at once and the call answers
+    `upstream_error`: the admin creates it with the Identity tab's own
+    Create token, which shows the value once as before. A caller whose MCP
+    connection carries no account subject is told to create it on the
+    panel, and nothing is created. Never ask for the value, and never write
+    it anywhere.
+  - **A new token on a platform before v0.18.27: prefer the panel.** The
+    Identity tab's Create token shows it once, in the admin's own browser.
+    `create_scim_token` there returns it once in this conversation instead,
+    which puts it in the session's transcript: call it only when the admin
+    asks for it here, after telling them it lands in this conversation's
+    transcript. Relay the token exactly once, with the base URL, for the
+    admin to paste at once; never repeat it, and never write it to a file,
+    a commit, a note, a support bundle or a later message, nor ask for it
+    back. A token that was not copied cannot be shown again: create another
+    and revoke the lost one.
+  - **A token outlives its creator's standing.** A token records the
+    address of the admin who created it, and no end of a person revokes it,
+    so the provider's pushes go on. From platform v0.18.27 `revoke_admin`'s
+    answer, a block's `account_deactivated` notice and the switch's answer
+    and notice name the live tokens the person created, with the remedy:
+    create a replacement (`create_scim_token`, or the Identity tab), paste
+    it into the provider, then revoke the old one with `revoke_scim_token`.
   - **`revoke_scim_token`** takes an id that `get_provisioning` lists; the
     provider's next push with it is refused. An id no live token has is
-    refused `scim_token_not_found`. On any suspicion that a token leaked,
+    refused `scim_token_not_found`. From platform v0.18.27 a revoke also
+    deletes a value still waiting to be shown, so a revoked token is never
+    shown. On any suspicion that a token leaked,
     revoke it at once and read what it did with `query_audit`
     (`surface: "scim"`, or `actor: "scim:<token id>"`). Say before revoking
     the only live token that pushes stop until a new one is pasted.
@@ -102,7 +129,18 @@ reads.
   new holder's now, are left alone (the audit row says
   `panel_sessions_kept`). A person whose
   block failed is named too, and the account check refuses them all the same
-  while the next hourly pass moves their apps. Of two switches sent at once,
+  while the next hourly pass moves their apps. From platform v0.18.27 each
+  person the switch blocks loses every MCP grant too, the platform's and
+  each app's, with the approvals their MCP clients remembered, and the
+  answer and the admins' notice name what is left: the people whose grants
+  a block could not all revoke, or whose block failed (run `revoke_sessions`
+  for each of them); that the people past the budget, whom the switch
+  itself does not reach, keep theirs ("Their MCP grants stay until
+  revoke_sessions is run for each of them."), a count that names no one,
+  which no read lists either; and the live SCIM tokens the
+  people it blocked created (**A token outlives its creator's standing**,
+  above). Offer `revoke_sessions` for each person it names, confirmed with
+  the admin by name. Of two switches sent at once,
   the second answers that the mode is already set. Every
   other account reaches the new mode as its held status answer ends
   (`auth.status_check_minutes`). The admins are told
