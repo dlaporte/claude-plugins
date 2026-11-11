@@ -837,3 +837,29 @@ is worded from platform v0.18.27, since 8.0.x still serves earlier
 releases. No tool's schema changed, though three descriptions did
 (`revoke_sessions`', `create_scim_token`'s and `register_app`'s deadline
 clause), which a client shows after it reconnects; the floor stays 8.0.0.
+
+## 8.0.5
+
+Plugin 8.0.5 follows platform v0.18.28, in which `register_app` and the
+setup page answer one way before a registration is verified, whatever is
+wanting. From that release a second `register_app` call made before the
+platform GitHub App and the proof file are both in place answers
+`Registration for "<app>" <- <repo> is not verified yet.`, a paragraph that
+names both (the App installed on the account that owns the repository with
+access to it, and the proof file on the default branch), and the first
+call's instructions again, with the same proof file and install link; for
+a new app it takes the type and description it names, and
+`repo_control_unproven` comes
+only at the second call's last re-check, after the registration was
+verified. A move of an app whose deploys are held may answer the same way,
+`Repository move for "<app>" <- <repo> is not verified yet.`. The setup
+page says "Not verified yet" for every cause it told apart before ("Proof
+file not found" and the two installation pages are gone); "Proof file not
+readable", for a proof file that is not UTF-8 text, still names its cause.
+It answers a "Too many requests" page to a link opened too often in a
+minute, and to too many requests from one network in a minute.
+`inno-new-app`'s repeated-call rule, its setup page step and its reading of
+`register_app`'s answers, `inno-manage-app`'s move and the README say so,
+and keep the earlier answers for a platform before v0.18.28, since 8.0.x
+still serves earlier releases. No tool's schema or description changed;
+the floor stays 8.0.0.

@@ -29,8 +29,10 @@ the template for creating the repo); you commit that file on the repo's DEFAULT
 branch and install the App on the repo; the second call, with the same
 arguments, verifies both, finishes, and returns your `deploy.yml`. Installing
 the App proves the platform can see the repo; the committed file proves you can
-change it, and registration refuses with `repo_control_unproven` until it is
-there. There is no platform-owned repo: the repo is yours (any account, public
+change it, and from platform v0.18.28 the second call answers that the
+registration is not verified yet until both are in place (before v0.18.28 it
+refused with `repo_control_unproven` while the App could see the repo and the
+file was missing). There is no platform-owned repo: the repo is yours (any account, public
 or private), and uninstalling the App unlinks and stops the app.
 
 ## Install

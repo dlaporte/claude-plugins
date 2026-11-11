@@ -453,16 +453,23 @@ register_app({ app, repo, description, type, identity, members, accept_guardrail
   and `description` out: the first call's are used (`register_app`'s
   description says so), and a call 2 that names another keeps the first
   call's, saying so on a `WARNING:` line for the type and a `NOTE:` line
-  for the description (a description call 1 left out takes call 2's). A
-  repeated call 1 changes either only while the platform still answers it
-  as call 1 (`Registration started`, with the install link), which is only
-  until the platform GitHub App covers the repo: from then on a repeat
-  checks the proof file (`repo_control_unproven`, changing nothing, while
-  it is missing) and, once it finds it, runs as call 2 and creates the app
-  with the first call's type, fixed for good. So settle the type
-  before call 1 when the App already covers the repo, and otherwise before
-  the user installs it: `get_platform_docs` section 16 (What the tools do
-  in detail), its Registration item, has the rule.
+  for the description (a description call 1 left out takes call 2's). From
+  platform v0.18.28 a repeated call changes either until the platform
+  verifies the registration (the App on the repo and the proof file both in
+  place): until then every repeat answers call 1's instructions again,
+  under `... is not verified yet.` once the platform has checked, and takes
+  the type and description it names; once it verifies, it runs as call 2
+  and creates the app with the type the registration holds, fixed for
+  good. So settle the type before the App and the proof file are both in
+  place. On an earlier platform a repeat changes either only while the
+  platform still answers it as call 1 (`Registration started`, with the
+  install link), which is only until the platform GitHub App covers the
+  repo: from then on a repeat checks the proof file
+  (`repo_control_unproven`, changing nothing, while it is missing), so
+  there settle the type before call 1 when the App already covers the
+  repo, and otherwise before the user installs it. `get_platform_docs`
+  section 16 (What the tools do in detail), its Registration item, has the
+  rule.
 - `identity`: from the design's identity question (§1b): `"anonymous"`
   when the app must not know who each caller is; omit it, or pass
   `"identity-aware"`, otherwise. The app's identity is set by the call
@@ -558,9 +565,18 @@ nothing to prune.
    call 2 verifies access directly.
 2. Save the configuration. GitHub redirects them to the platform's verification
    page, which says **Repository verified** once the App can reach the repo AND
-   the proof file matches. If it says **Proof file not found**, the file is
-   missing, on the wrong branch, or has the wrong contents: fix it, then reopen
-   the link or simply run call 2 (it re-checks without the redirect). If it
+   the proof file matches. If it says **Not verified yet** (from platform
+   v0.18.28), one of the two is wanting, and the page cannot say which: the
+   App installed on the account that owns the repo with access to the repo
+   itself, or the proof file on the default branch with the exact contents.
+   Check both, fix what is wanting, then reopen the link or simply run call 2
+   (it re-checks without the redirect). On an earlier platform the page
+   names the cause: **Proof file not found** (the file is missing, on the
+   wrong branch, or has the wrong contents), or a page saying the App is not
+   installed on the repository or its installation does not cover it. If it
+   says **Too many requests** (from platform v0.18.28), the link was opened
+   too often in the last minute, or too many requests came from the user's
+   network in it: wait a minute, then open it again. If it
    says **GitHub App installed** instead (GitHub's configure flow, for an
    account that already had the App), that page carries no registration: just
    run call 2.
@@ -623,12 +639,22 @@ provisions the app, and binds the repo. It returns text beginning
 `register_app`'s description states what each refusal means. What to do next:
 
 - **`Registration started …`** on call 1: commit the proof file, hand over the
-  install link, and wait (above). The same text on call 2 means the platform
+  install link, and wait (above). The same text on call 2 means the 24-hour
+  registration expired, or, on a platform before v0.18.28, that the platform
   still cannot see the repo through the App (not installed yet, installed
-  without access to this repo, or a transient GitHub failure), or the 24-hour
-  registration expired. Compare the proof `path:` with the one you committed:
-  if it changed, commit the new file. Then have the user install the App on the
-  repo (or widen its repository access) and call again.
+  without access to this repo, or a transient GitHub failure). Compare the
+  proof `path:` with the one you committed: if it changed, commit the new
+  file. Then have the user install the App on the repo (or widen its
+  repository access) and call again.
+- **`Registration for "{name}" <- {repo} is not verified yet.`** on call 2
+  (from platform v0.18.28): the platform checked and could not verify the
+  registration, and answers the same whatever is wanting, so check both:
+  the App installed on the account that owns the repo with access to the
+  repo itself (not installed, installed without access to this repo, or a
+  transient GitHub failure), and the proof file on the default branch with
+  the exact contents. The paragraph after that first line names both, and
+  the rest is call 1's instructions again, with the same proof file and
+  install link: fix what is wanting, then call again.
 - **`App "{name}" registered …`**: call 2 succeeded; proceed to §4.
 - **`Repository move started for "{name}" <- {repo}.`** on call 1, or
   **`Moved "{name}" to {repo} …`** on call 2 (from platform v0.18.26): the
@@ -652,9 +678,13 @@ provisions the app, and binds the repo. It returns text beginning
   backend as each person, go back to the design: that app is identity-aware.
 - **`invalid_repo`**: pass an `owner/repo` slug, not a URL or a bare name.
 - **`repo_control_unproven`**: the error text repeats the exact path and
-  contents: commit that file (call 1 above) and call again. It can come back
-  at call 2 even after the setup page said verified, because call 2 re-checks
-  the file right before provisioning, so never delete it early.
+  contents: commit that file (call 1 above) and call again. From platform
+  v0.18.28 it comes only at call 2 after the registration was verified (the
+  setup page said verified, or an earlier call 2 found both in place),
+  because call 2 re-checks the file right before provisioning, so never
+  delete it early; before proof the platform answers `... is not verified
+  yet.` instead. On an earlier platform it also comes while the App can
+  reach the repo and the file is missing or wrong.
 - **`name_quarantined`**: the name is held after a purge until the UTC time
   the message names, and past it while a `function` or `mcp-function` app
   that read the purged app's data has not been rebuilt or redeployed since
