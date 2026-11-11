@@ -573,7 +573,12 @@ the choice with the owner by name.
   install link (its setup page then says the next call finishes moving the
   app to this repository). Call 2, with the same arguments, answers `Moved
   "<app>" to <repo> and lifted the hold on its deploys: ...`, then the
-  `deploy.yml` for the new repository. Nothing is written to either
+  `deploy.yml` for the new repository. From platform v0.18.28 a call 2 made
+  before the App and the proof file are both in place on that repository
+  answers `Repository move for "<app>" <- <repo> is not verified yet.`,
+  then the two things to check and call 1's instructions again, as
+  `inno-new-app` §3 says of a registration: fix what is wanting and call
+  again; the hold stays as it was. Nothing is written to either
   repository: the owner brings the app's code to the new one, writes that
   `deploy.yml` there, and releases from it (`inno-safety-preflight`, then
   `inno-ship`). The app keeps its name, address, type, identity, data,
