@@ -12,7 +12,11 @@ skill's `revoke_sessions` section says what that one tool ends.
    platform's own tools (`account_inactive`), their MCP access to every
    app, their access to every browser app (whose front door asks the
    platform at every request) and their admin standing, if they had one,
-   within `auth.status_check_minutes`. From platform v0.18.26 their apps'
+   within `auth.status_check_minutes`. From platform v0.18.27 the block also
+   revokes every MCP grant they hold, the platform's and each app's, and
+   forgets the approvals their MCP clients remembered (a block before
+   v0.18.27 revoked none: `references/custody.md` says what to run after
+   the upgrade). From platform v0.18.26 their apps'
    repositories also deploy nothing new from then on (`owner_inactive`
    until the move, then `app_in_custody`), but for a rebuild of the commit
    each app serves. A break-glass address is the
@@ -21,12 +25,22 @@ skill's `revoke_sessions` section says what that one tool ends.
    person keeps access until their sessions and MCP grants end, at most the
    lengths the `Identity provider:` line names, which `set_config` shortens.
    There the next two levers, and `revoke_admin` for an admin, are what end
-   it sooner. In jit mode an owner who leaves also keeps the power to
+   it sooner. From platform v0.18.27 that is one call, `revoke_sessions`,
+   which ends their sessions and every MCP grant they hold, plus
+   `revoke_access` for each app whose member row should go; before it,
+   their MCP grants for the platform and for an app they are not removed
+   from ran on to their lengths. The deactivation at the identity provider
+   still matters there: someone it still lets in can sign in and connect
+   again. In jit mode an owner who leaves also keeps the power to
    deploy to each of their apps from that app's repository until an admin
    stops the app, or, from platform v0.18.26, transfers it, which holds its
    deploys until the new owner keeps or moves the repository
    (`references/transfer.md`'s **Held deploys**).
-2. **`revoke_sessions`** ends their panel and browser app sessions now.
+2. **`revoke_sessions`** ends their panel and browser app sessions now,
+   and from platform v0.18.27 every MCP grant they hold too, the
+   platform's and each app's, with the approvals their MCP clients
+   remembered, so each client they connected must sign in again. Before
+   v0.18.27 it touched no MCP token. It reaches no group membership.
 3. **`revoke_access` on each app they are a member of** removes them from
    its member list and deletes their stored connections there
    (`inno-manage-app` has its rules). It cannot end a way in through an
@@ -42,6 +56,13 @@ skill's `revoke_sessions` section says what that one tool ends.
    and filter its member rows (`app_members`) by their address: that
    snapshot holds every member row, and no other tool lists a person's
    apps (`list_apps` names owners, `list_users` only owners and admins).
+
+**An admin who leaves** keeps the SCIM tokens they created live, since a
+token is no admin standing and no end of a person revokes it. From
+platform v0.18.27 `revoke_admin`'s answer and, in scim mode, the admins'
+`account_deactivated` notice name each live one: if the identity provider
+pushes with it, replace it there first, then revoke it
+(`references/scim.md`).
 
 None of the three stops a removed person reaching a public app: anyone on
 the internet reaches one, with no sign-in. And `revoke_access` alone does

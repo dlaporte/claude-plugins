@@ -31,7 +31,11 @@ providers push as changes happen, others on a schedule):
   `auth.status_check_minutes` sets (default 1 minute; a
   platform-scope setting, which only an admin's `get_config` catalog lists),
   plus the front door's introspection cache (contract R3); and a browser
-  app's front door holds an answer for at most 10 seconds. An admin whose
+  app's front door holds an answer for at most 10 seconds. From platform
+  v0.18.27 the deactivation also revokes every MCP grant they hold, the
+  platform's and each app's, and forgets the approvals their MCP clients
+  remembered, so once the account is reactivated they sign in again and
+  reconnect each MCP client. An admin whose
   account is deactivated loses admin standing. A person merely suspended
   keeps their stored connection credentials, and a deleted account loses
   them.

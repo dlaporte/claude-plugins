@@ -48,15 +48,28 @@ receive.
   `provisioning_changed`. From platform v0.18.26 the entry says each app
   keeps its audience and data links, with its deploys refused while held
   and, after its return, until its owner keeps or moves its repository
-  (`references/transfer.md`'s **Held deploys**).
+  (`references/transfer.md`'s **Held deploys**). From platform v0.18.27
+  the block also revokes the person's MCP grants, the platform's and each
+  app's, and the entry says so ("Its N MCP grants were revoked."), or that
+  they could not all be revoked, ending "and revoke_sessions for <address>
+  ends the rest.": offer that call. It also names each live SCIM token
+  the person created, with the remedy (`references/scim.md`'s **A token
+  outlives its creator's standing**).
 - `account_reactivated`: the apps custody held for a person returned to
   them, after a reactivation, a new push, the sign-in that pinned their
   account or the hourly pass (which in jit mode returns every app custody
   holds). Each app's owner gets a `transferred` notice too, which from
   platform v0.18.26 tells them its deploys are held until they keep or move
-  its repository.
+  its repository. From platform v0.18.27 a reactivation's entry (not the
+  created, pinned or revive entries) adds "Its earlier sessions and MCP
+  grants stay ended: it signs in again and reconnects its MCP clients."
 - `provisioning_changed`: an admin switched the membership mode; a switch
-  to scim names whom it blocked and the apps it moved into custody. From
+  to scim names whom it blocked and the apps it moved into custody, and
+  from platform v0.18.27 the people whose MCP grants a block left, that
+  the people past its statement budget keep theirs ("Their MCP grants stay
+  until revoke_sessions is run for each of them.", a count that names no
+  one, and no read lists them), and the live SCIM tokens the people it
+  blocked created; offer `revoke_sessions` for each person named (`references/scim.md`'s **The switch to scim**). From
   platform v0.18.1 the hourly pass sends it too, once per pass that handed
   a held app to the first `identity.initialAdmins` address, naming the
   apps it moved: they return to the person they are held for, as before.

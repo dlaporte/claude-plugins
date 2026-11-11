@@ -48,8 +48,8 @@ nothing about their access changed.
 - Membership grants access to the **app**, not to the platform panel: the
   panel shows people only the apps they own.
 - When a user's MCP client is refused while they authorize it, keeps asking
-  them to approve it again, or never reaches the approval page, read
-  `references/mcp-client-approval.md`.
+  them to approve it again, meets a "Consent page expired" page, or never
+  reaches the approval page, read `references/mcp-client-approval.md`.
 
 **`grant_access` refusals and warnings:**
 

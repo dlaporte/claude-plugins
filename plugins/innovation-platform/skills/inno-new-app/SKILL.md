@@ -981,7 +981,11 @@ answer (`Deploy it by <date> <time> UTC`), never worked out from memory: an
 app whose first deploy has not completed by then is deleted (its repository
 is never touched), a reminder (`first_deploy_due`) comes the number of days before it
 that the answer gives, and its name is then free again at once, unless
-another app still holds a deployed data link to it. When the answer gives
+another app still holds a deployed data link to it. From platform v0.18.27
+that reminder comes no sooner than a day after the registration (or a
+later start of the app), so where the platform's reminder lead is at least
+as long as the whole window the deadline moves out by a day; the answer's date
+already counts that day, so quote it as given. When the answer gives
 no date (a pinned app, or a repeat of a registration already provisioned),
 read the deadline from `app_status`'s `Lifecycle:` line; only that line
 says an app is pinned. When the registration named
