@@ -96,7 +96,12 @@ answers one:
   then retry: a deploy whose CI run fails releases the app at once, so the
   refusal normally clears as the run ends, green or red. If it does not
   clear, `inno-manage-app`'s **A deploy whose CI run died** says what holds
-  the app and how to release it.
+  the app and how to release it. From platform v0.18.26 only `restart_app`,
+  `set_app_variables` and `remove_app_variables` answer it: `stop_app` ends
+  the deploy in flight and stops the app, and `purge_app` answers a
+  deploying app `app_not_stopped`. The message then adds that a stop ends
+  the deploy; never stop an app only to clear this refusal unless the user
+  wants that release ended and the app offline.
 - `github_app_not_configured`, `github_app_key_invalid` or
   `installation_token_failed`: a fault on the platform's side in reaching
   the app's repository through the platform GitHub App, which only a

@@ -590,7 +590,10 @@ provisions the app, and binds the repo. It returns text beginning
   app that is not pinned: a pinned app's answer has none, and neither has a
   repeat of a registration already provisioned (nor its members sentence).
   Then read the deadline from `app_status`'s `Lifecycle:` line, which says
-  plainly when an app is pinned.
+  plainly when an app is pinned. From platform v0.18.26 such a repeat by
+  the app's owner, for an app whose deploys an ownership move held, is the
+  keep: it lifts the hold, and a NOTE leading the answer says so
+  (`inno-manage-app`'s **Held deploys: keep or move the repository**).
 - `URL (after first deploy): https://<app host>`: **quote
   this from the response, never construct it** (the host and domain are
   the instance's). For an **mcp-function** or **mcp-container** app the
@@ -627,12 +630,22 @@ provisions the app, and binds the repo. It returns text beginning
   if it changed, commit the new file. Then have the user install the App on the
   repo (or widen its repository access) and call again.
 - **`App "{name}" registered …`**: call 2 succeeded; proceed to §4.
+- **`Repository move started for "{name}" <- {repo}.`** on call 1, or
+  **`Moved "{name}" to {repo} …`** on call 2 (from platform v0.18.26): the
+  name is an existing app the user owns whose deploys an ownership move
+  held, and naming another repository moves that app there; no new app is
+  made. Stop and confirm with the user that moving that app is what they
+  meant (if not, pick another name), then follow `inno-manage-app`'s
+  **Held deploys: keep or move the repository**. A NOTE or answer saying
+  the app's deploys `stay held` is that section's too.
 - **`guardrails_not_accepted`**: do the §1a review, then pass
   `accept_guardrails: true`.
 - **`invalid_name` / reserved**: pick another name (you should have caught
   this with `check_name`).
 - **`name_unavailable`**: an app with that name already exists and is not the
-  caller's own partial registration; pick another name.
+  caller's own partial registration; pick another name. (From platform
+  v0.18.26 the owner of an app whose deploys are held, naming another
+  repository, starts that app's move instead: the bullet above.)
 - **`app_anonymous`**: the call named `identity: "anonymous"` and some
   `connections`. An anonymous app has no Connections, since it is never told
   who its caller is. Drop `connections`, or, if the app really must reach a
@@ -687,7 +700,8 @@ provisions the app, and binds the repo. It returns text beginning
   limit; never propose which to stop).
 - **`repo_already_registered`**: that GitHub repo is already bound to an app
   (one repo binds to at most one app). Use a different repo, or manage the
-  existing app via `inno-manage-app`. (`repo_id_conflict` is the audit action
+  existing app via `inno-manage-app`. A held app's move answers it too,
+  for a repository another app holds. (`repo_id_conflict` is the audit action
   the platform records for this refusal; callers never see it as an error code.)
 - **`repo_owner_claimed`**: the message names who holds that GitHub account:
   ask them or a platform admin to register on the user's behalf, or use a

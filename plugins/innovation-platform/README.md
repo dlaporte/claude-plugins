@@ -190,8 +190,10 @@ produce is a Dockerfile and app code rather than sentences a user reads.
 - **`skills/inno-manage-app`**: grant/revoke access, widen an app's audience
   through its review or narrow it, check status and metrics,
   stop, start, or restart an app, read its logs and notifications, set its
-  environment variables / API keys, and build support bundles
-  (`create_support_bundle`'s description gives the cap). Idle apps are
+  environment variables / API keys, build support bundles
+  (`create_support_bundle`'s description gives the cap), and keep or move an
+  app's repository after a transfer or a return from custody, which holds
+  its deploys from platform v0.18.26. Idle apps are
   warned, stopped, then purged on a config-driven clock, and real use resets
   it. What counts as real use is served from one place, `get_platform_docs`
   section 11 (Lifecycle); this skill quotes it rather than keeping its own
@@ -226,7 +228,8 @@ the storage caps, the `CLAUDE.md` header rule and what to do for each
 refusal the platform's tools share; `inno-new-app`'s
 `references/hand-authored-layout.md` owns which `CLAUDE.md` to start from;
 `inno-manage-app` owns the call budget (the CI poll cadence included),
-support bundles, the active-app-limit rule, the transfer request, where a
+support bundles, the active-app-limit rule, the transfer request, the
+owner's keep or move of a held app's repository, where a
 request for a platform admin goes, and the `cross_owner_link_revoked` and
 `host_upload_blocked` notices; `inno-safety-preflight` owns the pre-push
 branch and symlink checks, how to read `get_ci_status`, and how to read the

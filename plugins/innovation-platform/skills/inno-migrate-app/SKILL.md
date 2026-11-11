@@ -53,6 +53,15 @@ front door's headers), migration is just: `register_app`, commit the proof file 
 names, install the platform GitHub App on the repo, and `register_app` again. If it's an **arbitrary app** not written for the platform, you
 assess it, then adapt it in place before shipping.
 
+**The app already exists and is the user's?** When it was transferred to
+them, or returned to them from custody, and they want its code to come from
+a repository of their own, this is not a migration: from platform v0.18.26,
+while the app's deploys are held (any ownership move since that release
+holds them), `register_app` with that app's name and their repository
+moves the app there, or with its current repository keeps that one
+(`inno-manage-app`'s **Held deploys: keep or move the repository**). An
+app whose deploys are not held cannot be moved.
+
 The first `inno-platform` tool call triggers a browser sign-in through your
 organization's identity provider, which is expected; a connector authorized
 only after this session started needs a session restart before its tools
@@ -325,6 +334,10 @@ restore point is.
    type (`inno-add-connection` step 1). What differs from a new app:
    - **The repo already exists**: ignore call 1's "create it first from the
      platform template" note.
+   - **`Repository move started for ...`** in place of `Registration
+     started`: the name is an existing app of the user's whose deploys are
+     held, and the call moves that app to this repository (the paragraph
+     near the top of this skill). Confirm with the user before going on.
    - **The proof file goes on the default branch**, which may not be `main`
      (`gh repo view <owner/repo> --json defaultBranchRef -q .defaultBranchRef.name`
      names it). The restore-point branch or a migration feature branch does

@@ -18,8 +18,16 @@ The moves go a group of linked apps at a time, so no move splits a live data
 link, and each starts only while a budget of 600 statements lasts: what a
 request cannot finish, the next hourly pass does. Each app keeps running, with its audience (a
 public app stays public), its data links, its member list, its deploy state
-and its idle clock. A deactivation (a suspension) keeps the person's stored
-connection credentials, which work again once the account is reactivated;
+and its idle clock. From platform v0.18.26 its repository deploys nothing
+new while it is held: CI refuses each run with `app_in_custody` (and, from
+the moment the account can no longer sign in until the move,
+`owner_inactive`), in both cases but for a rebuild of the commit the app
+serves, and every move into custody, hand-over and return also holds the
+app's deploys (`references/transfer.md`'s **Held deploys**). A custodian's
+keep lifts a hold that custody still refuses, and the return holds the
+deploys again for the person, so never keep or move a held app's
+repository as its custodian. A deactivation (a suspension) keeps the
+person's stored connection credentials, which work again once the account is reactivated;
 a delete also removes the person's stored connection
 credentials, their key wraps and their key (from platform v0.18.4, by
 subject: the person's own, never a later holder's of the address). A push tells the admins once per person
@@ -50,7 +58,10 @@ held and returned the same way.
 The apps come back by themselves. When the account is reactivated or pushed
 again, or at the sign-in that pins it, each app returns to the person it is
 held for, its owner row as it was, and its owner is told (`transferred`);
-the admins once (`account_reactivated`). Linked apps return together. A
+the admins once (`account_reactivated`). From platform v0.18.26 its deploys
+are held then, until the person keeps its repository or moves the app to
+one they control, which that notice tells them (`inno-manage-app`'s
+**Held deploys: keep or move the repository**). Linked apps return together. A
 return inside a request runs under the same budget of 600 statements, and
 the apps it leaves go back at the next hourly pass, which the admins' notice
 names. The person's sessions do not come back: they sign in again. In jit
@@ -61,8 +72,10 @@ back to jit unwinds it. Three cases are the admin's:
   its custody mark and the custodian's custody member row, so it does not
   return. From platform v0.18.4 its answer says so ("It was held in custody
   for <address>: this transfer ended that custody") and its `app_transferred`
-  row carries `custody_ended_for` and `custody_kind`. Read `app_status` first:
-  its `Custody:` line names the person the app is held for. Decide with the
+  row carries `custody_ended_for` and `custody_kind`. From platform v0.18.26
+  it holds the app's deploys for the recipient, as any transfer does. Read
+  `app_status` first: its `Custody:` line names the person the app is held
+  for. Decide with the
   admin whether that person is gone for good before transferring one to a new
   owner.
 - **`revoke_access` will not remove the person an app is held for.** It
@@ -95,7 +108,9 @@ this way, which is a known limit: such a person gets a fresh account, and in
 scim mode stays blocked until an admin steps in. When someone new signs in
 at the address of a held app's person, the custodian's notice
 (`member_reassigned`) names the remedy: `transfer_app` of the app to the
-address, to hand it to the address's new holder instead.
+address, to hand it to the address's new holder instead (from platform
+v0.18.26 that holds its deploys until the new holder keeps or moves its
+repository).
 
 **Blocking by subject** (from platform v0.18.2). When a push or the
 switch blocks a person whose address now belongs to someone

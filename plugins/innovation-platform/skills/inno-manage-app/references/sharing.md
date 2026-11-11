@@ -93,6 +93,10 @@ nothing about their access changed.
   link apart from the live ones, with its revocation time, and `app_status`'s
   `Data links` line names it as revoked but still deployed, until that
   deploy completes: read either to see whether a redeploy has cleared it.
+  For an app whose deploys are held (from platform v0.18.26), the owner's
+  release waits for their keep or move, and a rebuild deploys only while
+  the live release tag still names the commit the app serves (the skill's
+  **Held deploys: keep or move the repository**).
 
 **`revoke_access` refusals and outcomes:**
 

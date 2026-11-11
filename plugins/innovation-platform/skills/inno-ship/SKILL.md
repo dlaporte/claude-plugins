@@ -233,10 +233,10 @@ failures.
 | Failing job | Likely cause | Fix via |
 |---|---|---|
 | `scaffold-check` (shown as Scaffold check) fails with `Nothing deployed` (a release tag's run only) | `app/.needs-build`, the untouched scaffold's marker, is still in the repository, so the tag deploys nothing. On a push it is not a failure: the job skips `deploy` (shown as Deploy) quietly while the marker exists (see §0) | build the app and delete the marker once `app/` holds real code (§0), push, confirm the gates are green, then cut the next patch tag |
-| `deploy` (shown as Deploy) fails with `app_stopped`, or, for a container app, `container` (shown as Container contract and image scan) fails at `SBOM upload failed` naming it | the app was stopped by the lifecycle (or deliberately), and **stopped apps cannot be deployed**. Only a release tag's run fails this way (a container app's at its `container` job's SBOM upload, before `deploy` runs); a push to the default branch still runs every gate green on a stopped app, so a clean preflight is not evidence that the app can deploy | `inno-manage-app`: `start_app` first, then cut the next patch tag |
+| `deploy` (shown as Deploy) fails with `app_stopped`, or, for a container app, `container` (shown as Container contract and image scan) fails at `SBOM upload failed` naming it | the app was stopped by the lifecycle (or deliberately), and **stopped apps cannot be deployed**. Only a release tag's run fails this way (a container app's at its `container` job's SBOM upload, before `deploy` runs); a push to the default branch still runs every gate green on a stopped app, so a clean preflight is not evidence that the app can deploy. From platform v0.18.26 a stop also ends a deploy in flight, so a stop made while this run deployed fails it here too, at a later step (`deploy-bundle` or `deploy-complete` answering `app_stopped`): the owner's or an admin's, or the safety sweep's at a finding's deadline, since from that release the sweep scans and stops a deploying app as well | `inno-manage-app`: `start_app` first, then cut the next patch tag. When someone stopped the app on purpose (the owner's stop notice says at whose request), ask the user before starting it |
 | `deploy` (shown as Deploy) fails at finalize with `script_rejected` (function-shaped apps; the `Finalize deployment` step logs `deploy-complete failed (409): script_rejected: Cloudflare refused the Worker upload (HTTP <status>): <reason>`, the reason Cloudflare's own codes and messages, read whole from up to 2000 characters of its answer) | Cloudflare refused the Worker upload, most often for an error the app's code throws as it starts (at module top level, outside `fetch`), or for a Worker over Cloudflare's own size limit after compression. A 400 can also be the platform's side: a binding whose database or file storage was deleted outside the platform, which the reason names. Nothing went live, and the app keeps serving its previous version | read the reason on that line. If it is about the app's code, fix the code, push, confirm the gates are green, then cut the next patch tag. If it names a database or file storage binding, change nothing in the app: tell the user in one plain sentence that the platform could not finish this deploy and that their platform admin needs to look at it, then offer a support bundle. If it is about neither, re-run the whole tag run once (`gh run rerun <run-id>`); if it repeats, stop and offer a support bundle |
 | `deploy` (shown as Deploy) fails with `app_not_deployable` | the app was stopped, or its repo lost the platform GitHub App, while this deploy was starting | if the repo was unlinked, have the user reinstall the GitHub App on it first (re-linking leaves the app stopped); then `start_app` (`inno-manage-app`) and cut the next patch tag |
-| `deploy` (shown as Deploy) fails at finalize with `app_not_deploying` | the app was stopped or purged while the deploy ran; nothing went live. (A newer deploy of the app started meanwhile answers `deployment_not_completable` instead, which `references/deploy-failures.md` covers: never re-run the older release on its own) | `app_status` to see which; if stopped, `start_app`, then cut the next patch tag |
+| `deploy` (shown as Deploy) fails at finalize with `app_not_deploying` | the app was stopped or purged while the deploy ran; nothing went live. (A newer deploy of the app started meanwhile answers `deployment_not_completable` instead, which `references/deploy-failures.md` covers: never re-run the older release on its own.) From platform v0.18.26 a stop ends the deploy in flight, so a run whose app was stopped meets `app_stopped` (the row above) or `deployment_not_completable` instead, and this code is rare | `app_status` to see which; if stopped, `start_app`, then cut the next patch tag |
 
 The rarer failures and warnings of `deploy` (shown as Deploy) and the broker,
 each with its fix, are in `references/deploy-failures.md`. Read it when the
@@ -264,10 +264,14 @@ a `deploy-complete failed (500)` line, or `deploy-complete failed: no answer
 within 540 s`;
 `policy` (shown as Gate policy) failing with `Platform refused this app` (on a
 push or a tag: the line names `app_mismatch`, with the app this repository is
-registered as and the line to fix, or `repo_unlinked`) or with
+registered as and the line to fix, or `repo_unlinked`, or, from platform
+v0.18.26, `deploys_held`, `app_in_custody` or `owner_inactive`) or with
 `Invalid app name`, or warning `Gate policy unavailable`;
 a tag run's `deploy-sbom failed (403)` or `deploy-token failed (403)` line
-naming `repo_unlinked` (an unlink after the `policy` job passed); or the
+naming `repo_unlinked` (an unlink after the `policy` job passed); a tag
+run's `deploy-sbom`, `deploy-token`, `deploy-bundle` or `deploy-complete
+failed (409)` line naming `deploys_held`, `app_in_custody` or
+`owner_inactive`; or the
 deploy job's last step ending in an `App not released` warning.
 
 **A failed release releases the app at once.** When `deploy` (shown as Deploy)
@@ -276,7 +280,9 @@ image push or bundle hand-over, any failure after the token), its last
 step, `Release the app after a failed deploy`, asks the platform to undo
 that start and ends in one line. `App released` (a notice): the platform
 set the app back to active, or to created if it never completed a deploy,
-so `stop_app`, `set_app_variables` and the rest work at once; fix what
+so `restart_app`, `set_app_variables` and `remove_app_variables` work at
+once (on a platform before v0.18.26 `stop_app` and a purge too; from that
+release a stop never waits for a deploy, since it ends it); fix what
 failed above it, then cut the next patch tag. It says nothing about which
 code serves: most failures leave the previous release serving, but a
 function app's finalize that failed after its upload landed already serves
@@ -287,7 +293,9 @@ a container rollout that timed out may still finish (its
 `container_rollout_failed` row).
 `Nothing to release` (a notice): the deployment was no longer this run's
 deploy in flight, most often because a finalize completed first, as its
-sentence says; read `app_status` before anything else. `App not released`
+sentence says, or, from platform v0.18.26, because a stop ended it (the
+sentence then says the app is stopped, not deploying); read `app_status`
+before anything else. `App not released`
 (a warning): `references/deploy-failures.md` has its row. A run that was
 cancelled or timed out never reaches that step: `inno-manage-app`'s **A
 deploy whose CI run died** says what holds the app then.
@@ -338,7 +346,11 @@ running for a `refs/tags/v*` release tag. A push to any branch, a fork, or a
 (`deploy_denied:workflow` for a `uses:` line that no longer names the pinned
 workflow, `deploy_denied:ref` off a release tag, `deploy_denied:repo_id` from
 a fork): there is no code
-path where removing the gates yields a working deploy. The release tag is
+path where removing the gates yields a working deploy. From platform
+v0.18.26 the broker also weighs who owns the app: while an ownership move
+holds its deploys, while it is in custody, or while its owner can no longer
+sign in, it admits only a run of the commit the app serves
+(`references/deploy-failures.md`'s `deploys_held` row). The release tag is
 recorded on the deployment, and the safety sweep's auto-respin rebuilds at
 exactly that tag. A container app's deploy ships exactly the image the
 `container` job scanned, pushed with a token scoped to that push. A

@@ -2,7 +2,8 @@
 
 Used from `inno-fleet-admin` when an admin reads `query_audit` and a row needs
 interpreting: what a change of audience, a cascade, a containment pass, the
-edge pass, a transfer, a sign-in, a failed connect, a first-deploy warning, a
+edge pass, a transfer, a held deploy's keep or move, a stop that ended a
+deploy, a sign-in, a failed connect, a first-deploy warning, a
 push from the identity provider, a deactivation and its custody move, the
 membership switch or a SCIM token recorded. Each row is a line of
 `key=value` pairs after its time, and its `actor=`, `target=` and
@@ -171,7 +172,12 @@ whatever its reason was, its earlier keys still inside the cut-down
   `repointed_from_revoke_failed`). From v0.17.2 a transfer that moved a
   set (`also`) names the set's other apps in `moved_with`, and one that
   moved a public app records `accepted_guardrails: true` and
-  `accepted_by`.
+  `accepted_by`. From v0.18.26 a re-point that moved the owner row away
+  from an account ends every session and MCP grant of that account, and
+  records `sessions_revoked: true`, `grants_revoked` (how many grants it
+  revoked) and, when they could not all be revoked,
+  `grants_revoke_failed: true`, in place of `repointed_from_revoked_grants`
+  and `repointed_from_revoke_failed`.
 - `app_rebuild_dispatched` carries the `ref` rebuilt, and
   `app_rebuild_dispatch_failed` the `error` (`rebuild_app`'s the `ref` as
   well). Each carries a `reason` that says who asked: none for
@@ -190,6 +196,34 @@ whatever its reason was, its earlier keys still inside the cut-down
   `deploying`, or `active` or `warned`). The hourly sweep carries that
   rebuild through unless a deploy of the consumer begun after the revocation
   completes.
+
+## Held deploys and stops (from platform v0.18.26)
+
+Every ownership move holds the app's deploys (`references/transfer.md`'s
+**Held deploys**), and a stop ends a deploy in flight. These rows record
+both:
+
+- `deploys_resumed`: the app's owner kept its bound repository with
+  `register_app` and lifted the hold. The actor is the owner, the target
+  the app, and `detail` has `repo`, `repo_id` and `held_since` (when the
+  move held it).
+- `repo_rebound`: the app's owner moved the app to another repository they
+  proved control of, lifting the hold. `detail` has `from` and
+  `from_repo_id` (the repository before), `repo` and `repo_id` (the one
+  after), `installation_id` and `held_since`. The move's first call writes
+  `app_register_started` with `move: true`.
+- `deploy_denied` with `detail.reason` `deploys_held`, `app_in_custody` or
+  `owner_inactive`: a CI run refused for one of them, one row for each
+  refused step (a refusal at the finalize adds `deployment_id`). An owner
+  who keeps pushing to a held app's repository writes one per run.
+- `app_redeploy_dispatch_failed` with an `error` naming `deploys_held`: the
+  panel's redeploy of an earlier release of a held app, which dispatched
+  nothing.
+- `app_stopped` carries `ended_deployment` when the stop ended a deploy in
+  flight, and `app_deploy_recovered` (a deploy released without finishing:
+  `revert_to`, `deployment_id` and `via`) has `via: "stop"` for it, the
+  stopper as actor, beside `via` `ci` (the failed run's own release) and
+  `sweep` (the recovery sweep).
 
 ## Identity (from platform v0.16.12)
 

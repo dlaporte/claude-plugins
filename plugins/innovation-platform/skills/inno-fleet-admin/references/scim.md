@@ -112,5 +112,7 @@ reads.
   and the admins are told. Confirm it with the admin all the same: from then
   on a deactivation at the identity provider no longer reaches the
   platform. The pushed accounts are kept, and the apps in custody return to
-  the people they are held for at the next hourly pass. A switch to the mode
+  the people they are held for at the next hourly pass (from platform
+  v0.18.26 with their deploys held until each owner keeps or moves its
+  repository: `references/transfer.md`'s **Held deploys**). A switch to the mode
   already set answers that it is already set.

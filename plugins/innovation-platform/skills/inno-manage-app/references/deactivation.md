@@ -39,9 +39,15 @@ providers push as changes happen, others on a schedule):
   soon as that push arrives: the admin becomes their owner (`app_status` names them), and each
   app keeps running, with its audience, its member list, its data links and
   its data, so the people it was shared with keep their access. Meanwhile
-  only a platform admin can manage it. When the account is reactivated, the
-  person signs in again and each app comes back to them, with a
-  `transferred` notice saying it returned. A platform admin may instead
+  only a platform admin can manage it. From platform v0.18.26 nothing new
+  deploys meanwhile: its CI is refused (`app_in_custody`, or
+  `owner_inactive` from the moment the account can no longer sign in until
+  the move), but for a rebuild of the commit the app serves. When the
+  account is reactivated, the person signs in again and each app comes back
+  to them, with a `transferred` notice saying it returned; from v0.18.26
+  its deploys are then held until they keep its repository or move the app
+  to another (the skill's **Held deploys: keep or move the repository**),
+  which that notice says. A platform admin may instead
   transfer an app to a new owner for good, and then it does not come back.
   When a member asks why an app's owner changed to an admin, this is
   usually why; the admin side is `inno-fleet-admin`'s.

@@ -45,11 +45,16 @@ receive.
   nothing moved and how to offboard it (both in `references/custody.md`).
   The hourly pass sends one too for apps it moved that a push could not.
   A switch to scim sends none: it tells the admins once, with
-  `provisioning_changed`.
+  `provisioning_changed`. From platform v0.18.26 the entry says each app
+  keeps its audience and data links, with its deploys refused while held
+  and, after its return, until its owner keeps or moves its repository
+  (`references/transfer.md`'s **Held deploys**).
 - `account_reactivated`: the apps custody held for a person returned to
   them, after a reactivation, a new push, the sign-in that pinned their
   account or the hourly pass (which in jit mode returns every app custody
-  holds). Each app's owner gets a `transferred` notice too.
+  holds). Each app's owner gets a `transferred` notice too, which from
+  platform v0.18.26 tells them its deploys are held until they keep or move
+  its repository.
 - `provisioning_changed`: an admin switched the membership mode; a switch
   to scim names whom it blocked and the apps it moved into custody. From
   platform v0.18.1 the hourly pass sends it too, once per pass that handed
@@ -80,7 +85,9 @@ receive.
   fix is no longer free; a pinned app's stop answers `app_pinned` and
   leaves it serving, so unpin it first (the skill's **`purge_app`** says how)
   and pin it again after the stop, or it counts down to its purge. For a
-  serving app it is `rebuild_app`, which redeploys its live release.
+  serving app it is `rebuild_app`, which redeploys its live release (for
+  an app whose deploys are held, only while its live tag still names the
+  commit it serves: the skill's **`rebuild_app`**).
   Confirm with the app's owner first, saying what they agree to: the
   deletion of an app nobody will ship, the minutes a stopped app serves
   again and the free start it spends, or a rebuild of a serving app.
