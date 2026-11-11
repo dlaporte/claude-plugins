@@ -3,6 +3,33 @@
 Read this before a `transfer_app` call, and before relaying its answer. The
 skill's `transfer_app` section says who may transfer and what to confirm.
 
+**Held deploys** (from platform v0.18.26). Every transfer holds each moved
+app's deploys, every app in `also` included, and so does a transfer to the
+owner's own address (one that answers the app is already owned moves
+nothing and holds nothing); so does every move into custody, hand-over and
+return (`references/custody.md`). No repository changes hands with the
+app, so its repository still holds its code: CI's `policy` job and every
+deploy step refuse new code with `deploys_held`, on every push (the
+owner's preflight included), and the panel's redeploy of an earlier
+release answers the same. A rebuild of the commit the app serves still
+deploys while the app's live release tag names that commit (the skill's
+**`rebuild_app`**). The answer names the repository and the hold, the
+recipient's notice tells them to keep it or move the app, and the previous
+owner's says the new owner does. `app_status` prints a `Deploys held since
+...` line. Only the app's owner lifts the hold, with `register_app`, once
+their owner row is pinned to their account: by keeping the bound
+repository, or by moving the app to one they control
+(`inno-manage-app`'s **Held deploys: keep or move the repository**). An
+admin who does not own the app cannot: their keep call answers who can,
+and a move call answers `name_unavailable`. A keep is final, since an app
+whose deploys are not held cannot be moved, so the owner decides before
+calling. Say
+in the confirmation that once the recipient keeps the repository, whoever
+can push a release tag to it controls the app's code, the previous owner
+too while they keep write access to it, so a repository in the previous
+owner's account is best moved. The audit rows are `deploys_resumed` (a
+keep) and `repo_rebound` (a move) (`references/audit-rows.md`).
+
 **A linked set, and a public app:**
 
 - **`also`** moves up to nine more apps in the same call, as one set: the
@@ -71,7 +98,13 @@ tools do in detail) lists every outcome; a read that fails refuses it
 `upstream_error`, with the pin as it was. The mistyped-address repair below does not apply,
 since the address is the owner's own. Confirm with the admin first: it
 takes the app from the account that owned it, which may be the same person
-under a new address.
+under a new address. From platform v0.18.26 the re-point holds the app's
+deploys (above), and when the owner row was pinned to an account, it ends
+every session that account holds, everywhere, and revokes every MCP grant
+it holds, in the same move; the answer says so (`That account's sessions
+were ended everywhere ...`, with how many grants were revoked, or that they
+could not all be). The address's new holder then signs in to the platform
+and keeps the repository or moves the app.
 
 What to do with its refusals and answers:
 
@@ -123,7 +156,12 @@ What to do with its refusals and answers:
   `REBUILD NOT DISPATCHED` for an app, that app keeps its binding until a
   deploy of it completes: the hourly check tries a function-shaped one again
   a day later, and a redeploy by hand (its owner's tag, or `rebuild_app`)
-  cuts it sooner. Tell the admin and that app's owner.
+  cuts it sooner. Tell the admin and that app's owner. From platform
+  v0.18.26 a consumer this transfer moves has its deploys held, so its
+  rebuild deploys only while its live release tag still names the commit
+  it serves; once the tag names another commit the rebuild fails at its
+  `policy` step, and the binding stays until the recipient keeps or moves
+  the repository and releases, or an admin stops the app.
 - `link_containment`: `force` does not override it. Grant the recipient
   access to the named source app first, move the source with the app in
   `also` (when that source shares the link with `app` itself), or unlink

@@ -1,6 +1,6 @@
 ---
 name: inno-manage-app
-description: Use when the owner of a deployed Innovation Platform app wants to share it, check on it, start, stop or restart it, read its logs, set a variable or API key, download its data, change the emails they get, build a support bundle, widen or narrow who may reach it, or ask for a transfer ("share my app with Sam", "is my app up?", "bring my app back", "make my app public"). Its Find the task table maps each request to its procedure. A platform admin's fleet work is inno-fleet-admin.
+description: Use when the owner of a deployed Innovation Platform app wants to share it, check on it, start, stop or restart it, read its logs, set a variable or API key, download its data, change the emails they get, build a support bundle, widen or narrow who may reach it, ask for a transfer, or keep or move an app's repository after a transfer so it deploys again ("share my app with Sam", "is my app up?", "bring my app back", "make my app public"). Its Find the task table maps each request to its procedure. A platform admin's fleet work is inno-fleet-admin.
 ---
 
 # inno-manage-app
@@ -53,6 +53,7 @@ names a reference, read it before the task's first call. Speak in plain terms
 | download their app's data | **`export_app_data`** |
 | shut one down | **`stop_app`** |
 | ask to transfer it to someone else | **Transferring an app: ask an admin** |
+| deploy again after an app was transferred to them or returned from custody (its deploys are held, CI refuses `deploys_held`), keeping its repository or moving the app to another | **Held deploys: keep or move the repository** |
 | read the app's settings, or change their own notification settings | **Configuration** |
 | build a support bundle | **Support bundles** |
 | do a platform admin's fleet work (the admin list, the membership mode and SCIM, the apps in custody, transfers, purges, rebuilds, ending someone's sessions, naming, settings, the audit log and the platform's logs) | `inno-fleet-admin` |
@@ -110,9 +111,12 @@ waits for its first deploy. A start needs no redeploy, with one exception:
 an app that was stopped when the platform moved its apps into its app
 namespace (platform v0.17.0) has no script there, so starting it, when it
 has a released deployment, also dispatches a rebuild of its live release
-tag, and it serves once that rebuild deploys (`get_ci_status` watches it).
-The answer says when that happened; relay it. When it says the rebuild
-could not be dispatched, the app is started but does not serve yet: a
+tag, and it serves once that rebuild deploys (`get_ci_status` watches it;
+for an app whose deploys are held, it deploys only while that tag still
+names the commit the app serves: **Held deploys: keep or move the
+repository**, below). The answer says when that happened; relay it. When
+it says the rebuild could not be dispatched, the app is started but does
+not serve yet: a
 platform admin's `rebuild_app`, or the owner's next release tag, deploys
 it. Owners have a limited number of self-service starts per app, over the
 app's whole lifetime; each platform sets that number as `start.self_max`,
@@ -171,8 +175,16 @@ and starts its purge countdown
 closes. **Always confirm with the user by name before calling**, and tell them
 the purge date from the response.
 
-- **`app_deploying`**: a stop does not win a race with a deploy (**Answers
-  with one remedy everywhere**, below).
+- **A deploying app.** From platform v0.18.26 a stop wins over a deploy in
+  flight: it ends that deploy and stops the app, and the answer names it
+  (`Its deploy in flight (deployment <n>) was ended: the rest of that run
+  is refused.`), as the owner's stop notice does ("ending its deploy in
+  flight"). That release's CI run then fails at its next step (`inno-ship`'s
+  `app_stopped` row), so say so when confirming the stop; once the app is
+  started again, the next patch tag releases it. Only a deploying app with
+  no deployment to end still answers `app_deploying`. On a platform before
+  v0.18.26 a stop does not win that race: it answers `app_deploying`
+  (**Answers with one remedy everywhere**, below).
 - **`app_pinned`**: the app is pinned, and only a platform admin can unpin
   it. Ask one (**Asking a platform admin**, above).
 
@@ -324,15 +336,17 @@ Deployment statuses: `pending`, `deploying`, `deployed`, `failed` (the
 deploy could not start, because the app was stopped or unlinked as it
 began), and `abandoned` (a deploy released after its CI run failed, or one
 closed out when a later deploy finalizes or the recovery sweep finds it
-stale).
+stale, or, from platform v0.18.26, one a stop ended).
 
 **A deploy whose CI run died.** A deploy whose CI run fails releases the app
 at once: the run's last step asks the platform to, and its `App released`
 notice says the app is active again (or created, if it never completed a
-deploy), so every tool that refuses `app_deploying` (`stop_app`,
-`restart_app`, `set_app_variables`, `remove_app_variables`, and an admin's
-`purge_app`) works again as soon as the run ends. The app's host stays
-attached and serves its last completed release, unless this deploy's
+deploy), so every tool that refuses `app_deploying` works again as soon as
+the run ends: `restart_app`, `set_app_variables` and `remove_app_variables`,
+and on a platform before v0.18.26 `stop_app` and an admin's `purge_app` too
+(from v0.18.26 a stop ends a deploy in flight, `stop_app`'s section above,
+and `purge_app` answers a deploying app `app_not_stopped`). The app's host
+stays attached and serves its last completed release, unless this deploy's
 finalize failed after its upload landed (a function app's script, or a
 container rollout that went through), when this deploy's own code may be
 what serves. Only a run that never reached that step (it was cancelled or
@@ -341,18 +355,26 @@ holds the app `deploying` until a later deploy finishes or the lifecycle
 pass's recovery sweep reverts it, and until then those tools keep refusing.
 The platform's server
 instructions, and the `app_deploying` message itself, say when the sweep
-comes (two run intervals, at least 2 hours); the interval it counts
+comes (two run intervals, at least 2 hours): from platform v0.18.26 counted
+from when the app entered deploying, however many deploys have started
+since, and before it from when that deploy began. The interval it counts
 is the platform-scope `lifecycle.run_interval_hours`, which an owner's
 `get_config app=` does not list. While an app is deploying, `app_status`'s
-`Lifecycle:` line says when that deploy began and names its CI run, as its
-`Last deployment:` line does. When a refusal persists, check that run with
+`Lifecycle:` line says since when (from platform v0.18.26 the moment it
+entered deploying; before it, when that deploy began) and names its CI
+run, as its `Last deployment:` line does. When a refusal persists, check that run with
 `get_ci_status`. If it has already ended without releasing the app, the way
-out now is the owner's next deploy: re-run that whole tag
+out is the owner's next deploy: re-run that whole tag
 run, by the rule in `inno-ship`'s **Right after a deploy, health may read
 `re-probe pending`, which is not a verdict** section, or cut the next patch
-tag (`inno-ship`). An admin's `rebuild_app` is not a way out: it refuses an
-app that is not active or warned. Without a new deploy, the app is held until
-the sweep, which runs only while the platform's lifecycle pass is enabled.
+tag (`inno-ship`). From platform v0.18.26 a stop is a way out at once too:
+`stop_app` ends that deploy and stops the app, and `start_app` brings it
+back (for an owner it uses one of their self-service starts, unless the app
+never completed a deploy), so offer it only when the user would rather not
+wait, and confirm it as any stop. An admin's `rebuild_app` is not a way out:
+it refuses an app that is not active or warned. Without a new deploy (or,
+from v0.18.26, a stop), the app is held until the sweep, which runs only
+while the platform's lifecycle pass is enabled.
 
 ## Runtime issues: read the logs before you theorize
 
@@ -479,6 +501,108 @@ pattern's site and editor, move together in one transfer (the admin names the
 second in `transfer_app`'s `also`, which keeps the link between them), so
 name both in the request. A public app's transfer needs the admin's
 guardrails acceptance after the review, and the app stays public.
+
+From platform v0.18.26 a transfer holds the app's deploys, since its
+repository does not change hands with it: say so when drafting the request.
+The recipient keeps that repository or moves the app to one they control
+before any new code deploys (**Held deploys: keep or move the repository**,
+below), and whoever can push a release tag to the repository they keep
+controls the app's code from then on, so a repository in the previous
+owner's own account is one the recipient usually moves away from.
+
+## Held deploys: keep or move the repository
+
+From platform v0.18.26 every move of an app's ownership holds its deploys:
+a `transfer_app` (one to the owner's own address included), a move into
+custody, a hand-over between custodians and a return from custody. The
+move does not change the app's repository, which still holds its code, so
+nothing new deploys until the app's owner says which repository is the
+app's. `get_platform_docs` section 2 (Creating an app) states the rule.
+This section is the plugin's one home for the owner's side of it.
+
+**How it shows.** `app_status` prints a `Deploys held since <time>: ...`
+line that names the repository and both calls below, and the app's panel
+page shows the same line. The owner's `transferred` notice says it
+(`references/notifications.md`). CI refuses: the `policy` job (shown as
+Gate policy) fails with `Platform refused this app` naming `deploys_held`
+on every push, the preflight's included, and a release tag's later steps
+answer the same (`inno-ship`'s `references/deploy-failures.md`); the
+panel's redeploy of an earlier release answers `deploys_held` too. Until
+the owner acts, the app keeps serving what it serves, and one kind of run
+still deploys: a rebuild of the commit the app serves (an admin's
+`rebuild_app`, a data link's rebuild, the safety respin, a start's
+rebuild), only while the app's live release tag still names that commit,
+since whoever controls the repository can move a tag. `app_in_custody` or
+`owner_inactive` in the same places is not the owner's to settle: the
+app's owner can no longer sign in (`references/deactivation.md`).
+
+**Who lifts it.** Only the app's current owner, with `register_app`, and
+only once their owner row is pinned to their own account (a fresh sign-in
+does that). A platform admin who does not own the app cannot lift it for them,
+and neither can the previous owner. In custody the custodian is the owner,
+but custody refuses new code by itself and the return holds the deploys
+again for the person, so a custodian lifts nothing worth lifting
+(`inno-fleet-admin`'s `references/custody.md`).
+
+**Decide first: keep or move.** Once the hold lifts, whoever can push a
+release tag (`v*`) to the repository controls the app's code. So before
+either call, ask the owner who can push to the repository (on GitHub, its
+collaborators and, for an organization's repository, its teams). When the
+previous owner, or anyone the owner would not trust with the app, can still
+push there, move the app to a repository the owner controls, or have that
+access removed first. A keep is final: once the hold lifts, `register_app`
+moves the app nowhere until a later ownership move holds it again. Confirm
+the choice with the owner by name.
+
+- **Keep.** `register_app` with `app` the app's name, `repo` its bound
+  repository (the `repo=` value `list_apps` shows, which the held line
+  names too) and `accept_guardrails: true`, as every call takes. It answers
+  the registration's text again (`App "<app>" registered from <repo>`, with
+  its `deploy.yml` snippet, which the repository's copy should match), led
+  by a NOTE: `Kept
+  <repo> as "<app>"'s repository: whoever can push a release tag to it
+  controls the app's code, and its deploys are no longer held.` Relay that
+  sentence. The next release (`inno-ship`) deploys unless something else
+  still refuses it (custody, a stop, an unlinked repository). An owner
+  finishing a registration that never finished, with its own repository,
+  lifts the hold the same way.
+- **Move.** `register_app` with the app's name and the other repository,
+  in the two calls a registration makes (`inno-new-app` §3). Call 1 answers
+  `Repository move started for "<app>" <- <repo>.`, with a proof file to
+  commit on that repository's default branch and the platform GitHub App's
+  install link (its setup page then says the next call finishes moving the
+  app to this repository). Call 2, with the same arguments, answers `Moved
+  "<app>" to <repo> and lifted the hold on its deploys: ...`, then the
+  `deploy.yml` for the new repository. Nothing is written to either
+  repository: the owner brings the app's code to the new one, writes that
+  `deploy.yml` there, and releases from it (`inno-safety-preflight`, then
+  `inno-ship`). The app keeps its name, address, type, identity, data,
+  member list and data links; a move adds no member (`grant_access` does).
+  The app's own repository, renamed since, is moved to under its new name
+  in the same two calls.
+- **`"<app>"'s deploys stay held: its owner signs in to the platform again
+  first, ...`**: the owner row waits for a sign-in to pin it to an account
+  (a transfer to an address that has not signed in since, or a transfer to
+  the owner's own address). Only a fresh sign-in pins it, not a session
+  already open: have the owner sign out of the platform's panel and sign in
+  again, or re-authorize the platform's connector in their MCP client (in
+  Claude: `/mcp`, then re-authenticate that server; a plain reconnect does
+  not sign in again), then make the same call.
+- **`"<app>"'s deploys stay held: only its owner, <address>, keeps or moves
+  its repository.`**: the caller is not the owner (an admin, or the app
+  moved again since). The owner makes the call.
+- **`"<app>"'s deploys are no longer held, so it was not moved: ...`**: a
+  keep lifted the hold in the meantime, so nothing moved.
+- **`name_unavailable`** to a call naming another repository: the caller
+  does not own the app, or its deploys are not held. There is no move of an
+  app whose deploys are not held, and on a platform before v0.18.26 no keep
+  or move at all.
+- **`repo_already_registered`**: the repository named is another app's.
+  **`repo_control_unproven`**, **`repo_owner_claimed`** and
+  **`repo_identity_changed`**: as `inno-new-app` §3 says; the hold stays as
+  it was.
+- A keep or a move is no new registration, so it goes through while the
+  platform pauses registrations (`registration_disabled`).
 
 ## `get_app_usage({ app, days? })`: meters and estimated cost
 
@@ -645,9 +769,11 @@ tools share it, in the instructions the platform's MCP server sends when a
 client connects. What to do for each shared one, the same on every tool,
 has one home: `inno-platform-conventions`' **Refusals every tool shares**.
 Two of them recur across this skill, `app_busy` (another change to the app
-is in flight) and `app_deploying` (a deploy of it is in flight): follow
-that section for both. When `app_deploying` does not clear, **A deploy
-whose CI run died**, above, says what holds the app and how to release it.
+is in flight) and `app_deploying` (a deploy of it is in flight; from
+platform v0.18.26 only `restart_app` and the two variable tools answer it,
+since a stop ends the deploy): follow that section for both. When
+`app_deploying` does not clear, **A deploy whose CI run died**, above, says
+what holds the app and how to release it.
 
 ## Authorization summary
 

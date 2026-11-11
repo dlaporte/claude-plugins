@@ -126,6 +126,10 @@ a forced `transfer_app` revokes the link of a function-shaped consumer
 another account owns, the platform rebuilds that consumer to remove its
 binding, and the result or notice says what was done (`set_app_access`'s
 description gives the whole rule, including a stopped consumer and one never
-deployed). When a rebuild could not be dispatched, a platform admin can run
+deployed). A consumer whose deploys are held (from platform v0.18.26, as
+the app a forced transfer moved is) is rebuilt the same way, and that
+rebuild deploys only while its live release tag still names the commit it
+serves (the skill's **Held deploys: keep or move the repository**). When
+a rebuild could not be dispatched, a platform admin can run
 `rebuild_app` sooner. Relay it; the consumer's owner redeploys (`inno-ship`)
 only when the answer says to.

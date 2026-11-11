@@ -48,8 +48,14 @@ them:
   platform admin transferred it to or from the reader, or it came back from
   a platform admin's custody once its owner's account could sign in again
   (`references/deactivation.md`). An app that came back kept
-  running while it was away, with its audience and its data links; nothing
-  needs redoing.
+  running while it was away, with its audience and its data links. On a
+  platform before v0.18.26 nothing needs redoing. From v0.18.26 the move
+  held the app's deploys, and the entry says so: the new owner's, or the
+  returned person's, says its repository still holds its code and names
+  the `register_app` call that keeps it, or the move to another repository
+  they control, to make before the next release (the skill's **Held
+  deploys: keep or move the repository**). The previous owner's says the
+  new owner keeps or moves it, so it asks nothing of them.
 - `degraded`: the owner's app is failing requests. Two senders: the
   error-budget burn (the last hour's failures against the availability
   target), and the post-deploy watch (failures since the latest deploy,
@@ -88,7 +94,12 @@ them:
   gone; a container-shaped app's within about a minute, since those reads
   then answer `link_revoked`): so a rebuild is not the end of it. Remove that code, or
   link the data again with `link_app_data` where the rules allow, as the
-  entry says. Notices sent before platform v0.17.12 are stored under
+  entry says. For an app whose deploys are held (from platform v0.18.26),
+  a dispatched rebuild deploys only while its live release tag still names
+  the commit the app serves; otherwise it fails at its `policy` step, and
+  the binding stays until the owner keeps or moves the repository and
+  releases (the skill's **Held deploys: keep or move the repository**).
+  Notices sent before platform v0.17.12 are stored under
   `link_rebuild_pending`, so a `stage` filter of `link_revoked` does not
   find them: filter by app instead.
 - `cross_owner_link_revoked`: a function-shaped app another account owns read

@@ -12,13 +12,20 @@ skill's `revoke_sessions` section says what that one tool ends.
    platform's own tools (`account_inactive`), their MCP access to every
    app, their access to every browser app (whose front door asks the
    platform at every request) and their admin standing, if they had one,
-   within `auth.status_check_minutes`. A break-glass address is the
+   within `auth.status_check_minutes`. From platform v0.18.26 their apps'
+   repositories also deploy nothing new from then on (`owner_inactive`
+   until the move, then `app_in_custody`), but for a rebuild of the commit
+   each app serves. A break-glass address is the
    exception (`references/custody.md`). In jit mode the platform cannot learn
    of the deactivation: the
    person keeps access until their sessions and MCP grants end, at most the
    lengths the `Identity provider:` line names, which `set_config` shortens.
    There the next two levers, and `revoke_admin` for an admin, are what end
-   it sooner.
+   it sooner. In jit mode an owner who leaves also keeps the power to
+   deploy to each of their apps from that app's repository until an admin
+   stops the app, or, from platform v0.18.26, transfers it, which holds its
+   deploys until the new owner keeps or moves the repository
+   (`references/transfer.md`'s **Held deploys**).
 2. **`revoke_sessions`** ends their panel and browser app sessions now.
 3. **`revoke_access` on each app they are a member of** removes them from
    its member list and deletes their stored connections there
@@ -47,7 +54,9 @@ into custody, where it stays public, and the admins' `account_deactivated`
 entry names it. So decide each public app with the admin, best before the
 account is deactivated: transfer it to an accountable owner (with
 `accept_guardrails` after the review, and its linked editor in `also`),
-where it stays public and leaves custody for good; narrow it now with
+where it stays public and leaves custody for good (from platform v0.18.26
+with its deploys held until that owner keeps or moves its repository);
+narrow it now with
 `set_app_access`; or stop it and then purge it (`purge_app` takes a stopped
 app only; a pinned app is unpinned before the stop, as the skill's
 `purge_app` section says). In jit mode the platform never learns that the

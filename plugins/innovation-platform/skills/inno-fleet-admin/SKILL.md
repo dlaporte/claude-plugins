@@ -46,6 +46,7 @@ until the admin shows fluency (the plugin README's **House style**).
 | switch the membership mode | **Membership mode and SCIM provisioning**, then `references/scim.md` |
 | handle a deactivated owner's apps in custody | `references/custody.md` |
 | reassign an app | **`transfer_app`**, then `references/transfer.md` |
+| explain an app's held deploys (CI refuses `deploys_held` after a transfer or a return from custody), or help its owner lift them | `references/transfer.md`'s **Held deploys**; the owner's procedure is `inno-manage-app`'s **Held deploys: keep or move the repository** |
 | allow an owner or an app to go public | **Audiences** |
 | take a public app down fast | **Audiences** |
 | delete an app now | **`purge_app`** |
@@ -191,7 +192,14 @@ recipient, what becomes of the previous owner (kept as a member unless the
 instance lists allowed email domains and they are outside them, which is
 never a reason to refuse), who is notified, and, on this instance, which
 account becomes the owner. Confirm before calling: state plainly who gains
-and who keeps what, and which data links (if any) it will break.
+and who keeps what, and which data links (if any) it will break. From
+platform v0.18.26 say too that it holds each moved app's deploys: the
+app's repository is not changed and still holds its code, so its CI
+deploys nothing new (but a rebuild of the commit it serves) until the
+recipient keeps that repository or moves the app to one they control, with
+`register_app`, which no admin can do for them; and that once they keep
+it, whoever can push a release tag to it controls the app's code
+(`references/transfer.md`'s **Held deploys**).
 
 Read `references/transfer.md` before the call: a linked set (`also`), a
 public app (its review and `accept_guardrails`), what a previous owner who is
@@ -223,7 +231,10 @@ ends every session they hold, in every browser. It is
 deliberately not part
 of `transfer_app`: a previous owner usually stays a member and a legitimate
 user, and even one a transfer does not keep, being outside the allowed email
-domains (above), keeps their sessions until this ends them.
+domains (above), keeps their sessions until this ends them. From platform
+v0.18.26 one transfer does end sessions: a transfer to the owner's own
+address that moves the owner row away from the account it was pinned to
+ends every session and MCP grant of that account (`references/transfer.md`).
 
 - Confirm with the admin by name before calling. The response says how many
   sessions were ended.
@@ -271,8 +282,12 @@ What to do with its refusals and answers:
 
 - `app_not_stopped`: the app is not stopped. Stop it first (`stop_app`,
   after confirming with the admin, and with the owner when the admin is not
-  the one asking; unpinned first if it is pinned), then purge.
-- `app_deploying`: wait for the deploy to finish, then stop it and purge. A
+  the one asking; unpinned first if it is pinned), then purge. From
+  platform v0.18.26 a deploying app answers it too: the stop ends its
+  deploy in flight (its answer names the deployment, and that release's CI
+  run fails), so say that in the confirmation as well.
+- `app_deploying` (a platform before v0.18.26): wait for the deploy to
+  finish, then stop it and purge. A
   deploy whose CI run fails releases the app at once; only a run that never
   reached its last step (cancelled, timed out, or its runner died), or whose
   release warned `App not released`, holds the app `deploying` until a
@@ -312,6 +327,16 @@ names `rebuild_app` to do it sooner only when the platform's own dispatch
 failed. It starts CI in a repository the platform does not own, which
 cannot be recalled, so confirm first.
 
+From platform v0.18.26, for an app whose deploys are held, one in custody,
+or one whose owner can no longer sign in, a rebuild (this tool's, a data
+link's, the safety respin, a start's) deploys only while the app's live
+release tag still names the commit the app serves, since whoever controls
+the repository can move a tag. Once the tag names another commit the run
+fails at its `policy` step (`deploys_held`, `app_in_custody` or
+`owner_inactive`), and nothing deploys until the owner keeps or moves the
+repository and releases (`references/transfer.md`'s **Held deploys**), or
+an admin stops the app.
+
 - `app_not_deployed`: decided by the app's status alone, and the message
   says what to do: a stopped app is started first (`start_app`). For a
   released app with no script in the platform's app namespace (one stopped
@@ -321,7 +346,8 @@ cannot be recalled, so confirm first.
   one waits for its deploy, which releases the app at once if its CI run
   fails; only when the run never reached its last step (or its release
   warned `App not released`) does it wait for a later deploy or the recovery
-  sweep (`inno-manage-app`'s **A deploy whose CI run died**). A created one
+  sweep (`inno-manage-app`'s **A deploy whose CI run died**), or, from
+  platform v0.18.26, a stop, which ends that deploy. A created one
   has never deployed, and its first release tag deploys it.
 - `no_release_tag`: the owner cuts one `v*` tag first.
 - `app_not_installed`: only the repo's owner can reinstall the platform

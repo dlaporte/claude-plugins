@@ -32,7 +32,12 @@ address. The new grant is pinned to whoever holds the address now.
 **The owner's own address.** Only a platform admin moves the app to the
 address's new holder: `transfer_app` to that same address, in either
 membership mode. Offer to draft the request, as the skill's
-**Transferring an app: ask an admin** says.
+**Transferring an app: ask an admin** says. From platform v0.18.26 that
+transfer holds the app's deploys, and when the owner row was pinned to an
+account, it ends every session and MCP grant that account holds. The
+address's new holder then signs in to the platform and keeps the
+repository or moves the app to one they control (the skill's **Held
+deploys: keep or move the repository**).
 
 **A linked source app.** A link, a grant and a narrowing compare people,
 not addresses, so a source app that lists the address for the account that

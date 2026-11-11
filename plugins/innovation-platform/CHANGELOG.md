@@ -755,3 +755,40 @@ pages, so it now reads "Your encryption key is not reachable from here",
 where it read "isn't", and "Connection link not valid", where it read
 "Invalid connection link". No tool changed, so there is nothing to
 reconnect, and the floor stays 8.0.0.
+
+## 8.0.3
+
+Plugin 8.0.3 follows platform v0.18.26, in which a move of an app's
+ownership reaches its deploys, and a stop wins over a deploy in flight.
+Every move of ownership (a transfer, one to the owner's own address
+included, a move into custody, a hand-over and a return) holds the app's
+deploys, since its repository does not change hands and still holds its
+code: CI's policy step and every deploy step refuse new code with
+`deploys_held` until the app's owner, once their owner row is pinned to
+their account, keeps the bound repository (`register_app` with the app's
+name and that repository) or moves the app to another they control
+(`register_app` with another repository, in a registration's two calls),
+and only a rebuild of the commit the app serves deploys meanwhile. An app
+in custody, or one whose owner can no longer sign in, is refused the same
+way (`app_in_custody`, `owner_inactive`). A stop of a deploying app ends
+that deploy and stops the app, so `purge_app` answers a deploying app
+`app_not_stopped`, only `restart_app` and the two variable tools still
+answer `app_deploying`, and the recovery sweep counts its two run
+intervals from when the app entered deploying. `inno-manage-app` gains a
+**Held deploys: keep or move the repository** section and a Find the task
+row for it, with the keep, the move, each answer that leaves the hold in
+place, and the rule that whoever can push a release tag to the kept
+repository controls the app's code. `inno-ship`'s `references/deploy-failures.md`
+gains a row for the three refusals, and `inno-safety-preflight` sends a
+`deploys_held` refusal to the owner rather than to an admin.
+`inno-fleet-admin` gains a Find the task row, a **Held deploys** paragraph
+in its transfer reference, what custody and offboarding now refuse, the
+re-point's ending of the moved-from account's sessions and MCP grants,
+and the new audit rows (`deploys_resumed`, `repo_rebound`, the three
+`deploy_denied` reasons, `app_stopped`'s `ended_deployment` and
+`app_deploy_recovered`'s `via: "stop"`). `inno-new-app` and
+`inno-migrate-app` read the move's answers, and every skill that said a
+stop waits for a deploy, or that a transfer needs nothing redone, now says
+which platform release each behavior belongs to, since 8.0.x still serves
+earlier ones. No tool's schema changed, so there is nothing to reconnect,
+and the floor stays 8.0.0.
