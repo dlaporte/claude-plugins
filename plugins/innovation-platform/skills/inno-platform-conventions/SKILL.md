@@ -500,12 +500,17 @@ carries a `Domain` attribute, even one naming the app's own host, and
 strips a `Clear-Site-Data` header. So keep your cookies host-only (no
 `Domain`), route nothing under `/_auth/`, and never rely on
 `Clear-Site-Data`. From platform v0.18.29 the platform itself clears what a
-browser keeps for the app's address (its HTTP cache, local and session
-storage, IndexedDB, Cache Storage and service workers, never its cookies):
-when a person opens the address while the app is stopped or not deployed
-yet, and, on an app people sign in to, once at each browser's first sign-in
-(a browser's first after the platform's upgrade to v0.18.29 included, and
-again after its person clears cookies). What a browser keeps for the app's
+browser stores for the app's address: when a person opens the address while
+the app is stopped or not deployed yet, and, on an app people sign in to,
+once at each browser's first sign-in (a browser's first after the
+platform's upgrade to v0.18.29 included, and again after its person clears
+cookies). From platform v0.18.31 that clear is the browser's storage alone
+(local and session storage, IndexedDB, Cache Storage and service workers),
+never its HTTP cache or its cookies, since a browser can hold the page for
+seconds while it clears the app's entries from its HTTP cache, at a cost
+that grows with the whole cache; so a response your app served with a long
+cache lifetime can still be answered from the browser's cache until it
+expires. What a browser keeps for the app's
 host is outside the platform's guarantees (R5): keep nothing there the app
 cannot rebuild, and put what must last in the app's own storage.
 
@@ -759,7 +764,10 @@ there is no version of these files that belongs in your repo.
   build refuses a link that points outside the repository, or nowhere,
   anywhere in the checkout, `node_modules` directories included (the gate
   does not walk them), where an installed package or a `file:` dependency
-  can put one: a link may name only a file inside your repository.
+  can put one: a link may name only a file inside your repository. From
+  platform v0.18.31 a container app's `container` (shown as Container
+  contract and image scan) runs the same check over its checkout before it
+  builds the image, on every push as well as on a tag.
 
 Keep secrets and local env out of the repo entirely: an app-level key or
 config value belongs in a **Variable** (`set_app_variables`, or the app

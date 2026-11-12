@@ -278,7 +278,10 @@ the app's `safety.a11y.mode` is `off` (the run warns `Accessibility check off`
 instead), or when the scanner itself crashed (the run warns
 `Accessibility scanner error`, after an `Accessibility scan crashed` line
 when the scanner got far enough to write one; both platform-side and never
-blocking: re-run the job, and tell a platform admin if it repeats).
+blocking: re-run the job (on a release tag's run, from platform v0.18.31,
+re-run the whole run instead, since the platform refuses a deploy in a run
+attempt that did not run every gate, with `attempt_not_gated`), and tell a
+platform admin if it repeats).
 `Accessibility scan did not run` means no page was scanned, which is never a
 clean result; read the reason it gives. Which reasons are the platform's
 (they never block) and which are the app's (they block only in `enforce`
@@ -317,7 +320,8 @@ changes.
 
 **Confirm the branch before pushing.** The `deploy.yml` `register_app` handed
 back triggers gates only on pushes to the repository's default branch (a `v*`
-tag deploys from any branch). Compare `git branch --show-current` against
+release tag deploys from any branch; from platform v0.18.31 only one named
+as `inno-ship` §2 says). Compare `git branch --show-current` against
 `gh repo view --json defaultBranchRef --jq .defaultBranchRef.name`; if they
 differ, do not push blind, tell the user the gates only run on the default
 branch, and ask whether to switch to it or merge there first.

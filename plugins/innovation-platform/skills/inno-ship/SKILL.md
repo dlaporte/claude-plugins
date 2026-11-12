@@ -186,6 +186,12 @@ release. Only ask the user if it's genuinely ambiguous; otherwise just tell
 them what you're doing ("shipping v1.2.0"). The tag push re-runs the gates on
 the tagged commit and then deploys.
 
+From platform v0.18.31 a release tag is `v` and then 1 to 100 letters,
+digits, dots, hyphens and underscores (`v1.4.2`), so `v<X.Y.Z>` always
+qualifies. Any other `v*` tag still runs the gates, but its deploy is
+refused at `Request deploy token from broker` with `release_tag_invalid`
+(`references/deploy-failures.md` has its row).
+
 ## 3. Watch the release run
 
 ```bash
@@ -209,12 +215,17 @@ the user, one plain sentence: "The security check found an out-of-date
 dependency; I'm updating it and re-shipping." Fix the **root cause**, push,
 and cut the next patch tag (a tag is immutable: never force-move one).
 
-**The re-run rule, for every failure below:** a re-run of the deploy job
-alone reuses that run's artifacts (a container deploy's scanned image, a
-function app's bundle; kept for one day) and the record the platform staged
-for that run, so it works within a day of the run for either shape; after
-that only a re-run of the whole run (`gh run rerun <run-id>`, without
-`--job`) rebuilds them.
+**The re-run rule, for every failure below:** where a row calls for a
+re-run, re-run the whole run (`gh run rerun <run-id>`, with no `--job` and
+no `--failed`, or Re-run all jobs on the run page), which runs every gate
+again and rebuilds what the deploy needs, or cut the next patch tag. From
+platform v0.18.31 a re-run of the deploy job alone, or of the failed jobs
+only, is refused at `Request deploy token from broker` with
+`attempt_not_gated`, since that attempt did not run every gate: nothing is
+minted and no deploy starts. On a platform before v0.18.31 a re-run of the
+deploy job alone reused that run's artifacts (a container deploy's scanned
+image, a function app's bundle; kept for one day) and the record the
+platform staged for that run, so it worked within a day of the run.
 
 The exception: before any fix that moves, deletes or replaces the user's
 files, or edits anything under `.github/workflows/`, show the user the change
@@ -246,7 +257,9 @@ failing at `SBOM upload failed`;
 `No scanned image recorded`; `Image mismatch` or `image_mismatch`;
 a `deploy-token failed` line with no answer in 30 seconds, naming `oidc_invalid` or another 5xx, or naming `app_not_ready`, `image_not_recorded`,
 `link_invalid`, `link_source_missing` or `app_busy`, or, for a container
-app, naming `upstream_error` or `diagnostics_unavailable`;
+app, naming `upstream_error` or `diagnostics_unavailable`, or, from platform
+v0.18.31, naming `attempt_not_gated` or `release_tag_invalid`, or
+`upstream_error` for an app of either shape;
 a `deploy-complete failed` line naming `deployment_not_completable`,
 `link_invalid`, `link_source_missing`, `app_busy`, `host_in_use` or
 `host_check_failed`;
@@ -341,12 +354,17 @@ The `deploy` job (tag runs only) presents a GitHub OIDC token to the
 platform's deploy broker, which answers only the pinned reusable workflow,
 the `CI workflow:` line of the status you read in the Version gate (keep
 `deploy.yml`'s `uses:` reference exactly as `register_app` returned it),
-running for a `refs/tags/v*` release tag. A push to any branch, a fork, or a
-`deploy.yml` edited to skip gates gets a `403 deploy_denied` refusal
-(`deploy_denied:workflow` for a `uses:` line that no longer names the pinned
-workflow, `deploy_denied:ref` off a release tag, `deploy_denied:repo_id` from
-a fork): there is no code
-path where removing the gates yields a working deploy. From platform
+running for a `refs/tags/v*` release tag (from platform v0.18.31, a tag
+named as §2 says, in a run attempt that ran every gate). A push to any
+branch, a fork, or a `deploy.yml` edited to skip gates gets a
+`403 deploy_denied` refusal (`deploy_denied:workflow` for a `uses:` line that
+no longer names the pinned workflow, `deploy_denied:ref` off a release tag):
+there is no code path where removing the gates yields a working deploy. A
+repository bound to no app (a fork, a re-created repository) read
+`deploy_denied:repo_id` or `deploy_denied:unbound` on a platform before
+v0.18.31; from platform v0.18.31 it reads a bare `deploy_denied` at every
+deploy route, whether or not the name it sends is registered, and a
+platform admin finds the reason in the platform Worker's log. From platform
 v0.18.26 the broker also weighs who owns the app: while an ownership move
 holds its deploys, while it is in custody, or while its owner can no longer
 sign in, it admits only a run of the commit the app serves

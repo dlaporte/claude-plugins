@@ -183,9 +183,10 @@ and starts its purge countdown
 closes. **Always confirm with the user by name before calling**, and tell them
 the purge date from the response. From platform v0.18.29 a person who opens
 the address while the app is stopped also has their browser's copy of the
-app cleared: its cache and storage, never its cookies (one who opens it
-within about 10 seconds of a start may still meet the stopped page, and so
-be cleared once). Before stopping an app that keeps anything in the
+app cleared: its HTTP cache and storage (from platform v0.18.31 its storage
+alone: local and session storage, IndexedDB, Cache Storage and service
+workers, never its HTTP cache), never its cookies (one who opens it within about 10 seconds of a start may still meet
+the stopped page, and so be cleared once). Before stopping an app that keeps anything in the
 browser, tell the user so.
 
 - **A deploying app.** From platform v0.18.26 a stop wins over a deploy in
