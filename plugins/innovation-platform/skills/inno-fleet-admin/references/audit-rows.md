@@ -47,6 +47,9 @@ rows from before platform v0.17.23, whose tool that release retired; and:
   panel's Configuration tab): `key`, `scope` and, for a set, `value` and
   `note`. The target is the app's name or the user's address, or the
   platform for platform scope, so filtering by an app finds its settings.
+  From platform v0.18.30 a `config_set` row is written only when a set
+  changes the value or the note: a repeat answers `<key> is already
+  <value> at <scope>; nothing changed.` and writes no row.
 - `notification_read_all`: an admin cleared notifications beyond their own
   feed. With `mark_all_notifications_read`'s `scope: "platform"` it is
   `scope: "all_users"`, and `count` is every notification it marked read,
@@ -170,6 +173,15 @@ whatever its reason was, its earlier keys still inside the cut-down
   retries; `app_started`, `deploy_completed` and `app_purged` carry
   `placeholder: "removed"` when they released it. The key is absent when
   the call changed nothing there.
+- `app_purge_deferred` (actor `lifecycle`, `scheduler` before v0.18.20):
+  the lifecycle run's purge of the target app met a spent delete budget
+  (`detail.reason` `r2_budget_exhausted` or `image_budget_exhausted`) and
+  waits for a later run. From platform v0.18.30 the run goes on with every
+  app that needs no spent budget, one row is written per spent budget per
+  run (for the first app that met it, while `purge_deferred` in
+  `get_platform_status`'s `Last lifecycle run:` line counts every
+  deferral), and the next run starts after the app the newest of these
+  rows names.
 
 ## Transfers and rebuilds
 
@@ -378,7 +390,9 @@ or `platform` for the platform's own connection:
   `subject_conflict` (the address's row is pinned to another account); a
   `subject_conflict` also runs the access check's conflict report, so an
   `identity_conflict` row follows, once per address and account. A support
-  bundle leaves these rows out, as it does `app_signin`.
+  bundle leaves these rows out, as it does `app_signin`. From platform
+  v0.18.30 it is one row per person, app, reason and clock hour (UTC), its
+  detail carrying `aggregated_window: "1h"`.
 - `connection_connect_failed`: a person's connect to one of an app's
   Connections failed at the backend. The actor is the person connecting,
   the target the app, the surface `connections`, and `detail.connection`

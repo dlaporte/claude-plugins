@@ -291,14 +291,28 @@ must correct one later, tell the user that everyone connected will have to
 reconnect, and expect the tool's response to report how many credentials it
 invalidated. Re-supplying an unchanged config is free.
 
+From platform v0.18.30 one exception: a connection stored before that
+release with an endpoint not written in the form below refuses every edit
+that resends its stored config (`set_app_connection`, with or without
+`disabled`, and the panel's Edit), until the owner rewrites that endpoint in
+the form the refusal names. That rewrite counts as an endpoint move: every
+user's stored credential and saved consent is deleted (each is emailed to
+reconnect), and the client secret is cleared unless `client_secret` is sent
+in the same call, so present it as any endpoint change. The panel's Enable
+and Disable still work meanwhile.
+
 Users are shown the destination **hostname** before their credential goes
 anywhere, so an endpoint that doesn't visibly match the backend they expect
-will (rightly) make them stop. When the disclosure page shows for an
+will (rightly) make them stop. From platform v0.18.30 the connect page
+names each endpoint by its origin and path, never its query ("Your
+credentials go to https://host/path and https://host/other."), so tell the
+user what their members will see there. When the disclosure page shows for an
 `oauth2_code` connection is the `connections.consent` setting's to say
 (`get_config` with `app` prints its description). A credential host that no
 connection on the platform was using before notifies the platform admins:
 routine oversight, not a fault, so a legitimate new backend simply shows up
-in their feed once.
+in their feed once (from platform v0.18.30 the notice names the origin and
+path of each endpoint at that host).
 
 Call the `set_app_connection` MCP tool:
 
@@ -327,7 +341,12 @@ you were handed rather than treating the gate as proof it is external. If the
 call is refused `invalid_connection_definition`, its message names the rule
 (a non-public endpoint, a missing field, a bad strategy and config pairing,
 a client pair on a strategy that takes none), and `invalid_connection_name`
-names the connection name's grammar: fix that one thing and retry. A call
+names the connection name's grammar: fix that one thing and retry. From
+platform v0.18.30 write each endpoint exactly as the platform reads it: a
+lower-case host, a path (at least `/`), no default port, and no space, tab
+or newline. Anything else is refused `invalid_connection_definition` with
+"endpoint rejected: write it as <href>, the address the platform sends to",
+naming the form to write. A call
 that fails changed nothing (only the audit rows it may write before the
 write itself, `connection_sink_split` and `connection_credentials_invalidated`,
 can remain), so a retry repeats the whole of it. An
@@ -335,7 +354,7 @@ can remain), so a retry repeats the whole of it. An
 this connection or its pause, is in flight: retry once after a moment,
 never in a loop.
 
-Six answers are **not** bad arguments, so don't retry blindly:
+Seven answers are **not** bad arguments, so don't retry blindly:
 
 - **`app_anonymous`**: the app is anonymous, and an anonymous app has no
   Connections (step 1). Stop, and say so plainly.
@@ -368,6 +387,18 @@ Six answers are **not** bad arguments, so don't retry blindly:
   hosting and SaaS domains the platform compares the full hostname, so two
   instances of one vendor (`dev1.service-now.com` and `dev2.service-now.com`)
   count as different sites and raise the warning.
+- **A `WARNING:` that the stored client secret was cleared** (`oauth2_code`,
+  from platform v0.18.30). An omitted `client_secret` keeps the stored
+  secret only while the endpoints stay where they are: a change of any of
+  its endpoints (`authorize_endpoint`, `token_endpoint`,
+  `revocation_endpoint`) without `client_secret` clears it. The call
+  **succeeded**, its answer reads `Client secret: not set`, and until the
+  secret is sent again the backend refuses the connection's token requests.
+  So whenever an endpoint moves, send `client_secret` in the same call; if
+  this warning came, ask the user for the secret and call again with it. A
+  change of the strategy to `oauth2_client_creds` or `secret_form` drops the
+  secret with no warning, as it always has, since those strategies take
+  none.
 - **A `NOTE:` that stored credentials were invalidated although no endpoint
   changed** ("the connection was changed by another call while this one
   ran, or credentials were left under its name"). The call **succeeded**.
@@ -388,7 +419,10 @@ it's been sent.
 `label`, `strategy`, `config` and `scopes` with every call, not just the
 field you're changing: omitting `scopes`, for instance, silently clears it.
 The tool's description names the fields that are safe to omit. Run
-`list_connections` before any re-call, per the approval gate above.
+`list_connections` before any re-call, per the approval gate above. From
+platform v0.18.30 a transfer of the app (`transfer_app`) clears the client
+secret of every connection that holds one, and its new owner sets each
+again with `set_app_connection` (`client_secret`).
 
 **`remove_app_connection` is the destructive one, and it is not the pause
 switch.** It deletes the definition **and every credential the app's users

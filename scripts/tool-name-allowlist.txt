@@ -12,6 +12,7 @@ accept_guardrails         # register_app, set_app_access and transfer_app argume
 # Refusal codes and status labels that begin with a tool verb.
 export_dispatch_failed    # export_app_data refusal
 export_in_progress        # export_app_data refusal
+export_limit_reached      # export_app_data refusal (from platform v0.18.30)
 link_containment          # link_app_data / grant_access / transfer_app refusal; set_app_access names it inside widening_requirements
 link_invalid              # restart_app / remove_app_variables refusal
 link_not_found            # unlink_app_data refusal
@@ -22,6 +23,9 @@ link_source_missing       # a consumer's deploy refusal
 link_transfer_blocked     # transfer_app refusal
 start_limit_reached       # start_app refusal
 start_requested           # notification kind
+
+# Fields of the platform's own answers that begin with a tool verb.
+purge_deferred            # a count in get_platform_status' Last lifecycle run: line
 
 # Fields of other systems that begin with a tool verb.
 grant_types_supported     # an OAuth server's metadata field
