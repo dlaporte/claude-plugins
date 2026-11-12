@@ -122,8 +122,10 @@ Read the whole artifact and list, using `references/artifact-runtime.md`:
   (`references/html-artifacts.md`). A React `style={{...}}` prop is set
   through the DOM, which the policy allows, and stays.
 - **Browser storage**: `localStorage`/`sessionStorage` keep working, per
-  browser; say so, and suggest `window.storage` for anything that should
-  follow the person.
+  browser, until the platform clears them (from platform v0.18.29, when a
+  person opens the app while it is stopped or not deployed yet, and at each
+  browser's first sign-in to it); say so, and suggest `window.storage` for
+  anything that should last or follow the person.
 
 ## 4. Present the plan, then ask for approval
 

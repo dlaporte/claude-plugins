@@ -863,3 +863,37 @@ minute, and to too many requests from one network in a minute.
 and keep the earlier answers for a platform before v0.18.28, since 8.0.x
 still serves earlier releases. No tool's schema or description changed;
 the floor stays 8.0.0.
+
+## 8.0.6
+
+Plugin 8.0.6 follows platform v0.18.29 and contract 48, in which the front
+door clears what a browser keeps for an app's address, and an app's history
+starts at its registration. From that release the front door answers a
+person's own visit to an app's address while the app is stopped or not
+deployed yet with its page and `Clear-Site-Data: "cache", "storage"`, so
+the browser clears that
+address's HTTP cache, local and session storage, IndexedDB, Cache Storage
+and service workers, never its cookies; another page's image, fetch, frame
+or prefetch of the address clears nothing. A browser's first sign-in to an
+app clears the same once (its first after the platform's upgrade included,
+and again after its person clears cookies), and so does a sign-in to an app
+registered under a name the browser last signed in to under an earlier app;
+public and MCP apps have no sign-in, so only the stopped and not-deployed
+page clears them. Contract 48 adds to R5: what a browser keeps for the app's
+host is outside the platform's guarantees, and when the front door asks it
+cleared.
+`inno-platform-conventions`' cookies paragraph says so, and that an app
+keeps nothing in the browser it cannot rebuild and puts what must last in
+its own storage. `inno-convert-artifact` and its runtime reference say
+`localStorage` and `sessionStorage` work until the platform clears them,
+and suggest `window.storage` for anything that should last or follow the
+person. `inno-manage-app` tells the user before stopping an app that keeps
+anything in the browser (a visitor within about 10 seconds of a start may
+still meet the stopped page), says that for a name registered again its
+support bundle's audit history, its metrics and its charts begin at the new
+registration, and that, on an app people sign in to, a browser that met the
+old app is asked to clear at its first sign-in to the new one, and says a support bundle's `audit.json` starts at the app's
+registration, so an earlier app of the same name is never in it. Every new
+behavior is worded from platform v0.18.29, since 8.0.x still serves earlier
+releases. No tool's name, schema or description changed, so there is
+nothing to reconnect; the floor stays 8.0.0.

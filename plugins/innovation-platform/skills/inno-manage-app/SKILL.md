@@ -173,7 +173,12 @@ visitors a page saying the app is stopped and its owner can start it again)
 and starts its purge countdown
 (`lifecycle.stop_purge_days`); `start_app` fully reverses it until that window
 closes. **Always confirm with the user by name before calling**, and tell them
-the purge date from the response.
+the purge date from the response. From platform v0.18.29 a person who opens
+the address while the app is stopped also has their browser's copy of the
+app cleared: its cache and storage, never its cookies (one who opens it
+within about 10 seconds of a start may still meet the stopped page, and so
+be cleared once). Before stopping an app that keeps anything in the
+browser, tell the user so.
 
 - **A deploying app.** From platform v0.18.26 a stop wins over a deploy in
   flight: it ends that deploy and stops the app, and the answer names it
@@ -203,7 +208,12 @@ purge names the app). No admin can lift the dated hold, so do not suggest
 asking one for that. A purge of an app that never completed a deploy has no
 dated hold, so only the second part (past the date, above) can apply to it.
 After the hold a fresh registration (`register_app`,
-see `inno-new-app`) can take the name again. Purge also releases the repo
+see `inno-new-app`) can take the name again. From platform v0.18.29 a name
+registered again shows nothing of the old app's history: its support
+bundle's audit history, its metrics and its charts begin at the new
+registration, and, on an app people sign in to, a browser that met the old
+app is asked to clear at its first sign-in to the new one. Purge also
+releases the repo
 binding, so the same repo can be registered again right away under a
 different name. An admin's immediate `purge_app` is `inno-fleet-admin`'s.
 
@@ -849,7 +859,9 @@ behind an authenticated download link; its description lists what goes in it
 answer's next step: the user sends the zip to a platform admin (the
 status's `Support:` line names where, when the platform sets one).
 `description` is optional plain text embedded for the platform admin who
-reads it: ask the owner before putting anything sensitive in it.
+reads it: ask the owner before putting anything sensitive in it. From
+platform v0.18.29 the bundle's `audit.json` starts at the app's
+registration, so an earlier app of the same name is never in it.
 
 - `bundle_limit_reached`: the app has hit its bundle cap for the window the
   description names. Every bundle covers the same recent window, so point the
