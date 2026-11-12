@@ -944,3 +944,48 @@ or input changed, though some descriptions did (`set_app_connection`'s and
 its `client_secret`'s, `grant_access`', `request_start`'s and
 `export_app_data`'s among them), which a client shows after it reconnects;
 the floor stays 8.0.0.
+
+## 8.0.8
+
+Plugin 8.0.8 follows platform v0.18.31 and contract 50, in which a deploy
+runs only for a release tag the platform deploys and only in a run attempt
+that ran every gate, a repository bound to no app is refused with no reason
+given, and the front door's clear names the browser's storage alone.
+Contract 50 changes R9: a release tag is `v` and then 1 to 100 letters,
+digits, dots, hyphens and underscores, and a deploy runs only in a run
+attempt that ran every gate; and R5: the front door's clear names the
+browser's storage alone, never its HTTP cache. `inno-ship`'s re-run rule now
+re-runs the whole run (`gh run rerun <run-id>`, with no `--job` and no
+`--failed`, or Re-run all jobs) or cuts the next patch tag, since from that
+release a re-run of the deploy job alone, or of the failed jobs only, is
+refused at `Request deploy token from broker` with `attempt_not_gated`; it
+gives the release tag's form, any other `v*` tag still running the gates
+while its deploy is refused `release_tag_invalid`; and it says a repository
+bound to no app (a fork, a re-created repository) reads a bare
+`deploy_denied` at every deploy route, whether or not the name it sends is
+registered, where it read `deploy_denied:repo_id` or
+`deploy_denied:unbound`, and that a platform admin finds the reason in the
+platform Worker's log. Its `references/deploy-failures.md` gains a row for
+`attempt_not_gated`, with the `upstream_error` the platform answers when it
+cannot read which attempt ran the gates and the refusal of a release run
+whose `Gate policy unavailable` warning means no attempt fetched the policy,
+and one for `release_tag_invalid`;
+re-runs the whole run for a scanned image the platform could not read;
+quotes the hand-over's timeout line as ending
+`re-run the release's workflow`; and names `deploy_denied:repo_id` and
+`deploy_denied:unbound` among its refusals that give no reason for a
+platform before v0.18.31 alone, as `inno-safety-preflight`'s
+`references/gate-failures.md` does. That file also
+says a container app's `container` job runs the symlink check from that
+release, on a push as on a tag, as `inno-platform-conventions` now does too,
+and `inno-safety-preflight` says a scanner fault on a release tag's run
+re-runs the whole run, and that only a tag named as `inno-ship` says
+deploys. `inno-platform-conventions`' cookies paragraph and
+`inno-manage-app`'s `stop_app` section say that from that release the clear
+is the browser's storage (local and session storage, IndexedDB, Cache Storage
+and service workers), never its HTTP cache or its cookies, so a response the app served
+with a long cache lifetime can still be answered from the browser's cache
+until it expires. Every new behavior is worded from platform v0.18.31, since
+8.0.x still serves earlier releases. No tool's name, schema or description
+changed, though `revoke_access`'s answer on an internal or a public app did,
+so there is nothing to reconnect; the floor stays 8.0.0.
