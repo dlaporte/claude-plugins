@@ -12,7 +12,7 @@ things the artifact's code never declares. Each one needs a home in the app.
 | `window.claude.complete(prompt)` | not supported in this version: removed, and listed in the plan |
 | A share link anyone with the link can open | the platform's front door: members-only at first, widened through `inno-manage-app` |
 | No response headers | the starter's Content-Security-Policy, `nosniff`, `Referrer-Policy`, and `private, no-store` on the page and the API |
-| `localStorage`, `sessionStorage` | unchanged: they work, per browser |
+| `localStorage`, `sessionStorage` | unchanged: they work, per browser, until the platform clears them (from platform v0.18.29, when a person opens the app while it is stopped or not deployed yet, and at each browser's first sign-in to it); `window.storage` for anything that should last or follow the person |
 
 ## window.storage
 
