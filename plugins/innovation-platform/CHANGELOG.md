@@ -897,3 +897,50 @@ registration, so an earlier app of the same name is never in it. Every new
 behavior is worded from platform v0.18.29, since 8.0.x still serves earlier
 releases. No tool's name, schema or description changed, so there is
 nothing to reconnect; the floor stays 8.0.0.
+
+## 8.0.7
+
+Plugin 8.0.7 follows platform v0.18.30 and contract 49, in which a
+connection's endpoints are written as the platform reads them and a client
+secret stays with the endpoints it was registered for. Contract 49 changes
+§2.2: an omitted client secret is kept only while a `set_app_connection`
+call leaves the connection's endpoints and strategy as they are,
+`transfer_app` clears the client secrets of the moved apps' connections,
+every endpoint must be written as its own parsed form, and the admins'
+new-host notice and a member's connect page name each endpoint's origin
+and path. `inno-add-connection` says each endpoint is written as the
+platform reads it (a lower-case host, a path of at least `/`, no default
+port, no space, tab or newline) or refused `invalid_connection_definition`
+with the form to write; gains a `WARNING:` bullet for a client secret that
+a change of an endpoint cleared (`Client secret: not set`), so
+`client_secret` goes in the same call whenever an endpoint moves; says a
+connection stored before v0.18.30 with an endpoint in another form refuses
+every edit that resends its config, the panel's Edit included, until the
+owner rewrites that endpoint, a rewrite that deletes every user's stored
+credential and consent and clears the secret unless it is sent again,
+while the panel's Enable and Disable still work; says the connect page and
+the admins' new-host notice name each endpoint by its origin and path; and
+says a transfer clears the app's client secrets, which its new owner sets
+again. `inno-manage-app` says `request_start` answers that an app which
+never completed a deploy needs no request, since `start_app` starts it with
+no admin and no self-service start (or answers `app_limit_reached`); that a
+person told of a share is told again for the same app only after 24 hours,
+and the answer that says so; that `export_app_data` starts at most 3
+on-demand exports per app per 24 hours (`export_limit_reached`); and that a
+log line's level is Cloudflare's own, from the console method the app
+called, never a `level` field it logs, so a numeric one (pino's shape) reads
+`LOG`. `inno-fleet-admin` tells the admin a transfer clears the moved apps'
+client secrets, for the recipient to set again; its Settings section and
+audit rows reference say a `config_set` row is written only when a set
+changes the value or the note, with the repeat's answer, and that
+`app_signin_denied` is one row per person, app, reason and clock hour
+(`aggregated_window: "1h"`); and its `purge_app` budgets and audit rows
+reference say the scheduled purge goes on past a spent delete budget with
+every app that needs none, `purge_deferred` counting every deferral, one
+`app_purge_deferred` row per spent budget per run, and the next run starting
+after the app the newest deferral names. Every new behavior is worded from
+platform v0.18.30, since 8.0.x still serves earlier releases. No tool's name
+or input changed, though some descriptions did (`set_app_connection`'s and
+its `client_secret`'s, `grant_access`', `request_start`'s and
+`export_app_data`'s among them), which a client shows after it reconnects;
+the floor stays 8.0.0.

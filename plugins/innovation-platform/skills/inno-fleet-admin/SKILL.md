@@ -219,7 +219,11 @@ deploys nothing new (but a rebuild of the commit it serves) until the
 recipient keeps that repository or moves the app to one they control, with
 `register_app`, which no admin can do for them; and that once they keep
 it, whoever can push a release tag to it controls the app's code
-(`references/transfer.md`'s **Held deploys**).
+(`references/transfer.md`'s **Held deploys**). From platform v0.18.30 say
+too that it clears the client secret of every connection of a moved app
+that holds one (a secret registered at a backend does not move with an
+app), and the answer names them: tell the recipient to set each again with
+`set_app_connection` (`client_secret`).
 
 Read `references/transfer.md` before the call: a linked set (`also`), a
 public app (its review and `accept_guardrails`), what a previous owner who is
@@ -331,7 +335,13 @@ What to do with its refusals and answers:
   call `purge_app` again, as often as it answers either, until it finishes.
   Until then the app's record is kept; after the image budget its data is
   kept too, but its container and Worker may already be gone, and after the
-  files budget its database may already be deleted.
+  files budget its database may already be deleted. From platform v0.18.30
+  the lifecycle's own scheduled purge, once a delete budget is spent, goes
+  on with every app that needs no spent budget (an app whose bucket holds
+  no object; a function app past the image budget): `purge_deferred` in
+  `get_platform_status`'s `Last lifecycle run:` line counts every budget
+  deferral, one `app_purge_deferred` row is written per spent budget per
+  run, and the next run starts after the app the newest deferral names.
 - **Nothing at the identity provider is deleted.** From platform v0.17.23
   a purge makes no call to the identity provider. A group or rule an earlier
   release made for an app (an app registered before platform v0.16.5, or an
@@ -471,7 +481,9 @@ owner uses (`get_config app=` and `get_config email=`) are in
 - `set_config({ key, scope, scope_id?, value, note?, confirm? })` writes at
   `platform`, `app` or `user` scope; `scope_id` is the app's name or the
   user's email. `remove_config` removes an override so the inherited value
-  applies again.
+  applies again. From platform v0.18.30 a set of the value and note the
+  scope already holds answers `<key> is already <value> at <scope>; nothing
+  changed.` and writes no `config_set` row.
 - **`auth.provisioning`**, the membership mode, is no ordinary write:
   `set_config` and `remove_config` change it only through the switch, and
   `confirm` is for its switch to scim alone (**Membership mode and SCIM
